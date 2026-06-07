@@ -1,0 +1,46 @@
+{{- if .Values.tarifguard.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-tarifguard
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: tarifguard
+spec:
+  replicas: {{ .Values.tarifguard.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tarifhub
+      app.kubernetes.io/component: tarifguard
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tarifhub
+        app.kubernetes.io/component: tarifguard
+    spec:
+      containers:
+        - name: tarifguard
+          image: "{{ .Values.tarifguard.image.repository }}:{{ .Values.tarifguard.image.tag }}"
+          imagePullPolicy: {{ .Values.tarifguard.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.tarifguard.port }}
+          env:
+            # Server-side only — never exposed to the browser. Defaults to the in-cluster serving Service.
+            - name: SERVING_BASE_URL
+              value: {{ .Values.tarifguard.servingBaseUrl | default (printf "http://%s-serving:%v" .Release.Name (.Values.serving.port | int)) | quote }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.tarifguard.resources | nindent 12 }}
+{{- end }}

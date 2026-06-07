@@ -1,0 +1,1 @@
+"""Canonical domain model package."""

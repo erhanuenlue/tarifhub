@@ -1,0 +1,50 @@
+{
+  "resourceType": "Bundle",
+  "type": "collection",
+  "meta": { "versionId": "ePL-2026-06" },
+  "entry": [
+    {
+      "resource": {
+        "resourceType": "MedicinalProductDefinition",
+        "identifier": [{ "system": "urn:bag:sl", "value": "7680000000017" }],
+        "name": [
+          { "language": "de-CH", "productName": "Beispielin 100 mg Tabletten" },
+          { "language": "fr-CH", "productName": "Exempline 100 mg comprimés" },
+          { "language": "it-CH", "productName": "Esempina 100 mg compresse" }
+        ],
+        "classification": [{ "text": "Analgetika" }],
+        "price": { "value": 12.50, "currency": "CHF" },
+        "unit": "pack",
+        "validityPeriod": { "start": "2026-01-01" }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicinalProductDefinition",
+        "identifier": [{ "system": "urn:bag:sl", "value": "7680000000024" }],
+        "name": [
+          { "language": "de-CH", "productName": "Musterol 5 mg/ml Injektionslösung" },
+          { "language": "fr-CH", "productName": "Modèlol 5 mg/ml solution injectable" },
+          { "language": "it-CH", "productName": "Modellolo 5 mg/ml soluzione iniettabile" }
+        ],
+        "classification": [{ "text": "Kardiologie" }],
+        "price": { "value": 48.90, "currency": "CHF" },
+        "unit": "vial",
+        "validityPeriod": { "start": "2026-01-01" }
+      }
+    },
+    {
+      "resource": {
+        "resourceType": "MedicinalProductDefinition",
+        "identifier": [{ "system": "urn:bag:sl", "value": "7680000000031" }],
+        "name": [
+          { "language": "de-CH", "productName": "Probandil 250 mg Kapseln" }
+        ],
+        "classification": [{ "text": "Antibiotika" }],
+        "price": { "value": 23.05, "currency": "CHF" },
+        "unit": "pack",
+        "validityPeriod": { "start": "2026-01-01" }
+      }
+    }
+  ]
+}

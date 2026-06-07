@@ -1,0 +1,48 @@
+{{- if .Values.kassenflow.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-kassenflow
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: kassenflow
+spec:
+  replicas: {{ .Values.kassenflow.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tarifhub
+      app.kubernetes.io/component: kassenflow
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tarifhub
+        app.kubernetes.io/component: kassenflow
+    spec:
+      containers:
+        - name: kassenflow
+          image: "{{ .Values.kassenflow.image.repository }}:{{ .Values.kassenflow.image.tag }}"
+          imagePullPolicy: {{ .Values.kassenflow.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.kassenflow.port }}
+          env:
+            # Server-side only — never exposed to the browser. Default to in-cluster Services.
+            - name: SERVING_BASE_URL
+              value: {{ .Values.kassenflow.servingBaseUrl | default (printf "http://%s-serving:%v" .Release.Name (.Values.serving.port | int)) | quote }}
+            - name: TARIFIQ_BASE_URL
+              value: {{ .Values.kassenflow.tarifiqBaseUrl | default (printf "http://%s-intelligence:%v" .Release.Name (.Values.intelligence.port | int)) | quote }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.kassenflow.resources | nindent 12 }}
+{{- end }}

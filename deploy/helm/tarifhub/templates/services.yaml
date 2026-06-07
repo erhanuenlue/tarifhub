@@ -1,0 +1,147 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-ingestion
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: ingestion
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: ingestion
+  ports:
+    - name: http
+      port: {{ .Values.ingestion.port }}
+      targetPort: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-serving
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: serving
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: serving
+  ports:
+    - name: http
+      port: {{ .Values.serving.port }}
+      targetPort: http
+{{- if .Values.tarifguard.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-tarifguard
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: tarifguard
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: tarifguard
+  ports:
+    - name: http
+      port: {{ .Values.tarifguard.port }}
+      targetPort: http
+{{- end }}
+{{- if .Values.mcp.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-mcp
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: mcp
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: mcp
+  ports:
+    - name: http
+      port: {{ .Values.mcp.port }}
+      targetPort: http
+{{- end }}
+{{- if .Values.intelligence.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-intelligence
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: intelligence
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: intelligence
+  ports:
+    - name: http
+      port: {{ .Values.intelligence.port }}
+      targetPort: http
+{{- end }}
+{{- if .Values.kassenflow.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-kassenflow
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: kassenflow
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: kassenflow
+  ports:
+    - name: http
+      port: {{ .Values.kassenflow.port }}
+      targetPort: http
+{{- end }}
+{{- if .Values.meldepilot.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-meldepilot
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: meldepilot
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: meldepilot
+  ports:
+    - name: http
+      port: {{ .Values.meldepilot.port }}
+      targetPort: http
+{{- end }}
+{{- if .Values.postgres.enabled }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-postgres
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: postgres
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: postgres
+  ports:
+    - name: postgres
+      port: {{ .Values.postgres.port }}
+      targetPort: postgres
+{{- end }}

@@ -1,0 +1,44 @@
+# --- Python (services/ingestion) ---
+.venv/
+venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+*.db
+*.sqlite3
+tarifhub_dev.db
+
+# --- Java / Quarkus (services/serving) ---
+target/
+.mvn/wrapper/maven-wrapper.jar
+*.class
+
+# --- Node / Next.js (apps/tarifguard) ---
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+
+# --- Docs (MkDocs) ---
+site/
+
+# --- Local env & secrets ---
+.env
+.env.*
+!.env.example
+
+# --- OS / editor ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- Claude Code dev workflow artifacts ---
+.codex-review.md
+.graphify/

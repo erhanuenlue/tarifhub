@@ -1,0 +1,48 @@
+{{- if .Values.intelligence.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-intelligence
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: intelligence
+spec:
+  replicas: {{ .Values.intelligence.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tarifhub
+      app.kubernetes.io/component: intelligence
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tarifhub
+        app.kubernetes.io/component: intelligence
+    spec:
+      containers:
+        - name: intelligence
+          image: "{{ .Values.intelligence.image.repository }}:{{ .Values.intelligence.image.tag }}"
+          imagePullPolicy: {{ .Values.intelligence.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.intelligence.port }}
+          env:
+            # Reads LIVE frozen tariff records from the in-cluster serving Service.
+            - name: TARIFIQ_OFFLINE
+              value: {{ .Values.intelligence.offline | quote }}
+            - name: SERVING_BASE_URL
+              value: {{ .Values.intelligence.servingBaseUrl | default (printf "http://%s-serving:%v" .Release.Name (.Values.serving.port | int)) | quote }}
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 5
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.intelligence.resources | nindent 12 }}
+{{- end }}

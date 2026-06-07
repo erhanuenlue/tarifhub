@@ -1,0 +1,161 @@
+# Default values for the TarifHub chart.
+
+nameOverride: ""
+fullnameOverride: ""
+
+ingestion:
+  image:
+    repository: ghcr.io/tarifhub/ingestion
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 8000
+  env:
+    TARIFHUB_REVIEW_THRESHOLD: "0.85"
+    TARIFHUB_EMBEDDINGS: "stub"
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "1"
+      memory: 512Mi
+
+serving:
+  image:
+    repository: ghcr.io/tarifhub/serving
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 8080
+  resources:
+    requests:
+      cpu: 250m
+      memory: 512Mi
+    limits:
+      cpu: "1"
+      memory: 1Gi
+
+# TarifGuard — practice-facing Next.js front end. Read-only over the serving API.
+tarifguard:
+  enabled: true
+  image:
+    repository: ghcr.io/tarifhub/tarifguard
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 3000
+  # Server-side only; never exposed to the browser. Points at the in-cluster serving Service.
+  servingBaseUrl: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+
+# MCP server — read-only tools over the serving API for AI agents.
+mcp:
+  enabled: true
+  image:
+    repository: ghcr.io/tarifhub/mcp
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 8090
+  transport: streamable-http
+  servingBaseUrl: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 128Mi
+    limits:
+      cpu: "500m"
+      memory: 256Mi
+
+# TarifIQ — L2 intelligence service. Deterministic combinability/cross-walk/validation
+# over frozen rule tables; reads frozen tariff facts from the L1 serving API.
+intelligence:
+  enabled: true
+  image:
+    repository: ghcr.io/tarifhub/intelligence
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 2
+  port: 8070
+  # In-cluster it reads LIVE frozen records from serving (offline=0).
+  offline: "0"
+  servingBaseUrl: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+
+# KassenFlow — L3 app (payer correspondence / Kostengutsprache). Stub, opt-in.
+kassenflow:
+  enabled: false
+  image:
+    repository: ghcr.io/tarifhub/kassenflow
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 3001
+  servingBaseUrl: ""
+  tarifiqBaseUrl: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+
+# MeldePilot — L3 app (mandatory reporting / quality data). Stub, opt-in.
+meldepilot:
+  enabled: false
+  image:
+    repository: ghcr.io/tarifhub/meldepilot
+    tag: latest
+    pullPolicy: IfNotPresent
+  replicas: 1
+  port: 3002
+  servingBaseUrl: ""
+  tarifiqBaseUrl: ""
+  resources:
+    requests:
+      cpu: 100m
+      memory: 256Mi
+    limits:
+      cpu: "500m"
+      memory: 512Mi
+
+postgres:
+  enabled: true
+  image: pgvector/pgvector:pg16
+  port: 5432
+  database: tarifhub
+  username: tarifhub
+  # Demo default — override in production (e.g. via an existing Secret).
+  password: tarifhub
+  storage: 5Gi
+
+ingress:
+  enabled: true
+  className: nginx
+  # Platform API surface (serving /api, ingestion /ingest, mcp /mcp).
+  host: tarifhub.local
+  # L2 TarifIQ gets its own host (routes under /), so its /v1/* paths do not collide
+  # with the serving /api surface on the platform host.
+  intelligenceHost: tarifiq.local
+  # The L3 apps each get their own host so their same-origin /api/* route handlers
+  # (where present) do not collide with the serving /api path above.
+  appHost: tarifguard.local
+  kassenflowHost: kassenflow.local
+  meldepilotHost: meldepilot.local
+  tls:
+    enabled: false
+    secretName: tarifhub-tls

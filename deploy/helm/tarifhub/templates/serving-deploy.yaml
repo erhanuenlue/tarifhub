@@ -1,0 +1,47 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-serving
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: serving
+spec:
+  replicas: {{ .Values.serving.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tarifhub
+      app.kubernetes.io/component: serving
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tarifhub
+        app.kubernetes.io/component: serving
+    spec:
+      containers:
+        - name: serving
+          image: "{{ .Values.serving.image.repository }}:{{ .Values.serving.image.tag }}"
+          imagePullPolicy: {{ .Values.serving.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.serving.port }}
+          env:
+            - name: QUARKUS_DATASOURCE_USERNAME
+              value: {{ .Values.postgres.username | quote }}
+            - name: QUARKUS_DATASOURCE_PASSWORD
+              value: {{ .Values.postgres.password | quote }}
+            - name: QUARKUS_DATASOURCE_JDBC_URL
+              value: "jdbc:postgresql://{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+          readinessProbe:
+            httpGet:
+              path: /q/health/ready
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /q/health/live
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.serving.resources | nindent 12 }}

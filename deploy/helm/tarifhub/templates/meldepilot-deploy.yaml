@@ -1,0 +1,48 @@
+{{- if .Values.meldepilot.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-meldepilot
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: meldepilot
+spec:
+  replicas: {{ .Values.meldepilot.replicas }}
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: tarifhub
+      app.kubernetes.io/component: meldepilot
+  template:
+    metadata:
+      labels:
+        app.kubernetes.io/name: tarifhub
+        app.kubernetes.io/component: meldepilot
+    spec:
+      containers:
+        - name: meldepilot
+          image: "{{ .Values.meldepilot.image.repository }}:{{ .Values.meldepilot.image.tag }}"
+          imagePullPolicy: {{ .Values.meldepilot.image.pullPolicy }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.meldepilot.port }}
+          env:
+            # Server-side only — never exposed to the browser. Default to in-cluster Services.
+            - name: SERVING_BASE_URL
+              value: {{ .Values.meldepilot.servingBaseUrl | default (printf "http://%s-serving:%v" .Release.Name (.Values.serving.port | int)) | quote }}
+            - name: TARIFIQ_BASE_URL
+              value: {{ .Values.meldepilot.tarifiqBaseUrl | default (printf "http://%s-intelligence:%v" .Release.Name (.Values.intelligence.port | int)) | quote }}
+          readinessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /
+              port: http
+            initialDelaySeconds: 20
+            periodSeconds: 20
+          resources:
+            {{- toYaml .Values.meldepilot.resources | nindent 12 }}
+{{- end }}

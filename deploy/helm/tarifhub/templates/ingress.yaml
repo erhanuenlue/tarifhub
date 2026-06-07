@@ -1,0 +1,111 @@
+{{- if .Values.ingress.enabled }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ .Release.Name }}-ingress
+  labels:
+    app.kubernetes.io/name: tarifhub
+spec:
+  ingressClassName: {{ .Values.ingress.className }}
+  rules:
+    - host: {{ .Values.ingress.host }}
+      http:
+        paths:
+          # Public API surface -> deterministic serving service.
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-serving
+                port:
+                  number: {{ .Values.serving.port }}
+          # Admin / ingestion trigger surface.
+          - path: /ingest
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-ingestion
+                port:
+                  number: {{ .Values.ingestion.port }}
+          {{- if .Values.mcp.enabled }}
+          # MCP server surface for AI agents (read-only tools over serving).
+          - path: /mcp
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-mcp
+                port:
+                  number: {{ .Values.mcp.port }}
+          {{- end }}
+    {{- if .Values.tarifguard.enabled }}
+    # TarifGuard front end on its own host; its same-origin /api/* route handlers
+    # must not collide with the serving /api path above.
+    - host: {{ .Values.ingress.appHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-tarifguard
+                port:
+                  number: {{ .Values.tarifguard.port }}
+    {{- end }}
+    {{- if .Values.intelligence.enabled }}
+    # L2 TarifIQ on its own host; its /v1/* paths must not collide with serving /api.
+    - host: {{ .Values.ingress.intelligenceHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-intelligence
+                port:
+                  number: {{ .Values.intelligence.port }}
+    {{- end }}
+    {{- if .Values.kassenflow.enabled }}
+    # KassenFlow app on its own host.
+    - host: {{ .Values.ingress.kassenflowHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-kassenflow
+                port:
+                  number: {{ .Values.kassenflow.port }}
+    {{- end }}
+    {{- if .Values.meldepilot.enabled }}
+    # MeldePilot app on its own host.
+    - host: {{ .Values.ingress.meldepilotHost }}
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: {{ .Release.Name }}-meldepilot
+                port:
+                  number: {{ .Values.meldepilot.port }}
+    {{- end }}
+  {{- if .Values.ingress.tls.enabled }}
+  tls:
+    - hosts:
+        - {{ .Values.ingress.host }}
+        {{- if .Values.intelligence.enabled }}
+        - {{ .Values.ingress.intelligenceHost }}
+        {{- end }}
+        {{- if .Values.tarifguard.enabled }}
+        - {{ .Values.ingress.appHost }}
+        {{- end }}
+        {{- if .Values.kassenflow.enabled }}
+        - {{ .Values.ingress.kassenflowHost }}
+        {{- end }}
+        {{- if .Values.meldepilot.enabled }}
+        - {{ .Values.ingress.meldepilotHost }}
+        {{- end }}
+      secretName: {{ .Values.ingress.tls.secretName }}
+  {{- end }}
+{{- end }}

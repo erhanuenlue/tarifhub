@@ -1,0 +1,129 @@
+# Local development stack for TarifHub.
+#   db        -> PostgreSQL 16 with pgvector (system of record + vector search)
+#   minio     -> S3-compatible object store for raw source artifacts
+#   intelligence       -> L2 TarifIQ service, in the "services" profile (opt-in)
+#   tarifguard, mcp, kassenflow, meldepilot -> app/agent sub-systems, in the "apps" profile
+#
+# The ingestion / intelligence test suites do NOT need this stack (they run offline).
+# Bring it up when you want to run against Postgres or the Quarkus serving service.
+#
+#   docker compose up                              # default: db + minio only
+#   docker compose --profile services up           # also TarifIQ (intelligence)
+#   docker compose --profile apps up               # also TarifGuard + MCP + KassenFlow + MeldePilot
+#   docker compose --profile services --profile apps up   # everything
+#
+# The app/intelligence sub-systems target the serving service. Serving runs via
+# `mvn quarkus:dev` on the host (see README), reachable at host.docker.internal:8080.
+
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: tarifhub-db
+    environment:
+      POSTGRES_USER: tarifhub
+      POSTGRES_PASSWORD: tarifhub
+      POSTGRES_DB: tarifhub
+    ports:
+      - "5432:5432"
+    volumes:
+      - tarifhub-db-data:/var/lib/postgresql/data
+      # Schema + seed migrations are applied on first start (alphabetical order).
+      - ./db/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
+      - ./db/migrations/001_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tarifhub -d tarifhub"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: tarifhub-minio
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: ${MINIO_ROOT_USER:-tarifhub}
+      MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD:-tarifhub-dev-secret}
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    volumes:
+      - tarifhub-minio-data:/data
+    healthcheck:
+      test: ["CMD", "mc", "ready", "local"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  # --- App sub-systems (opt-in via the "apps" profile) ---
+
+  tarifguard:
+    build: ./apps/tarifguard
+    container_name: tarifhub-tarifguard
+    profiles: ["apps"]
+    environment:
+      # Server-side only; never exposed to the browser. Points at host serving (mvn dev).
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+    ports:
+      - "3000:3000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  mcp:
+    build: ./services/mcp
+    container_name: tarifhub-mcp
+    profiles: ["apps"]
+    environment:
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      MCP_TRANSPORT: streamable-http
+      MCP_HOST: "0.0.0.0"
+      MCP_PORT: "8090"
+    ports:
+      - "8090:8090"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # --- L2 intelligence service (opt-in via the "services" profile) ---
+
+  intelligence:
+    build: ./services/intelligence
+    container_name: tarifhub-intelligence
+    profiles: ["services"]
+    environment:
+      # Read LIVE frozen records from host serving (mvn dev); flip to "1" for offline tables.
+      TARIFIQ_OFFLINE: ${TARIFIQ_OFFLINE:-0}
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+    ports:
+      - "8070:8070"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  # --- L3 app sub-systems (opt-in via the "apps" profile) ---
+
+  kassenflow:
+    build: ./apps/kassenflow
+    container_name: tarifhub-kassenflow
+    profiles: ["apps"]
+    environment:
+      # Server-side only; never exposed to the browser.
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      TARIFIQ_BASE_URL: ${TARIFIQ_BASE_URL:-http://host.docker.internal:8070}
+    ports:
+      - "3001:3001"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+  meldepilot:
+    build: ./apps/meldepilot
+    container_name: tarifhub-meldepilot
+    profiles: ["apps"]
+    environment:
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      TARIFIQ_BASE_URL: ${TARIFIQ_BASE_URL:-http://host.docker.internal:8070}
+    ports:
+      - "3002:3002"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+
+volumes:
+  tarifhub-db-data:
+  tarifhub-minio-data:

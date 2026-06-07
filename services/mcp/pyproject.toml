@@ -1,0 +1,31 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tarifhub-mcp"
+version = "0.1.0"
+description = "TarifHub MCP server — read-only tools over the deterministic serving API for AI agents."
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "Proprietary" }
+authors = [{ name = "TarifHub" }]
+
+# Thin proxy: the MCP SDK + an HTTP client. No DB, no model, no math libraries.
+dependencies = [
+    "mcp>=1.2",
+    "httpx>=0.27",
+    "pytest>=8.0",
+]
+
+[tool.setuptools]
+py-modules = ["server", "config"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["."]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"

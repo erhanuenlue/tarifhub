@@ -1,0 +1,76 @@
+{
+  "model": "claude-opus-4-8",
+  "enableAllProjectMcpServers": true,
+  "enabledPlugins": {
+    "codex-plugin-cc@openai": true
+  },
+  "permissions": {
+    "allow": [
+      "Bash(git status:*)",
+      "Bash(git diff:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(git switch:*)",
+      "Bash(git checkout:*)",
+      "Bash(git branch:*)",
+      "Bash(git fetch:*)",
+      "Bash(git pull:*)",
+      "Bash(git push:*)",
+      "Bash(git log:*)",
+      "Bash(gh pr:*)",
+      "Bash(gh repo:*)",
+      "Bash(gh api:*)",
+      "Bash(gh auth status:*)",
+      "Bash(codex exec:*)",
+      "Bash(pytest:*)",
+      "Bash(ruff:*)",
+      "Bash(mvn:*)",
+      "Bash(npm run lint:*)",
+      "Bash(npm run build:*)",
+      "Bash(./scripts/ship.sh:*)",
+      "Bash(./scripts/bootstrap-github.sh:*)",
+      "Bash(./scripts/setup-claude-code.sh:*)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": ".claude/hooks/guard_frozen.sh"
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd services/ingestion && pytest -q"
+          },
+          {
+            "type": "command",
+            "command": "cd services/intelligence && pytest -q"
+          },
+          {
+            "type": "command",
+            "command": "cd services/ingestion && pytest -q tests/test_determinism_boundary.py && cd ../intelligence && pytest -q tests/test_determinism_boundary.py"
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "cd services/ingestion && pytest -q tests/test_determinism_boundary.py && cd ../intelligence && pytest -q tests/test_determinism_boundary.py"
+          }
+        ]
+      }
+    ]
+  }
+}
