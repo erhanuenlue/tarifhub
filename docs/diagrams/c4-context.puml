@@ -1,7 +1,7 @@
-@startuml tarifhub-context
+@startuml c4-context
 ' C4 System Context for TarifHub.
-' Render: plantuml docs/diagrams/c4-context.puml  (needs internet for the include, or vendor C4-PlantUML locally)
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Context.puml
+' Render: plantuml docs/diagrams/c4-context.puml  (C4 stdlib is bundled with plantuml >= 1.2023; no internet needed)
+!include <C4/C4_Context>
 
 title TarifHub — System Context
 
@@ -13,7 +13,7 @@ System(tarifhub, "TarifHub", "Harmonizes Swiss ambulatory tariff data and serves
 System_Ext(sources, "Public tariff sources", "BAG EAL (XLSX), BAG ePL (FHIR R5), future OAAT/cantons")
 
 Rel(sources, tarifhub, "Tariff datasets", "file / API")
-Rel(vendor, tarifhub, "Reads frozen records, semantic search", "REST JSON/XML")
+Rel(vendor, tarifhub, "Reads frozen records, semantic search", "REST JSON")
 Rel(expert, tarifhub, "Reviews flagged items")
 
 @enduml

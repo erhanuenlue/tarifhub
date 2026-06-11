@@ -1,0 +1,38 @@
+@startuml seq-search-serving
+' Runtime view: semantic search over frozen records (services/serving).
+' Source of truth: services/serving/src/tarifhub_serving/main.py (search) and
+' repository.py (search_by_embedding). Render via a later pipeline phase.
+!include tarifhub-style.iuml
+
+title Runtime view — semantic search (read-only)
+caption <color:#64748b>Frozen records are returned verbatim; search only ranks them.</color>
+
+actor "API consumer" as consumer
+participant "TarifCore API\n(FastAPI main.py)" as api
+participant "Embedder\n(get_embedder)" as embedder
+participant "ServingRepository" as repo
+database "PostgreSQL\n+ pgvector" as db
+
+consumer -> api : GET /api/v1/search?q&limit
+activate api
+api -> repo : Depends(get_repository)\nopens per-request connection
+api -> embedder : embed(q)
+embedder --> api : vector\n(1024-dim e5 / 16-dim offline stub)
+
+alt vector dimension mismatches schema vector(1024)
+  api --> consumer : HTTP 501 — search honestly unavailable\n(no fake results from a doomed query)
+else dimensions match
+  api -> repo : search_by_embedding(vector, limit)
+  repo -> db : parameterised cosine query\nORDER BY embedding <=> CAST(:v AS vector)\nLIMIT n
+  db --> repo : rows (frozen records)
+  repo --> api : _row_to_record → list[TariffRecord]
+  api --> consumer : 200 JSON — list[SearchHit{rank, record}]
+end
+deactivate api
+
+note over api, db #fff7ed
+  <color:#b45309>Read-only path — no LLM client importable here;
+  enforced by test_serving_boundary.py (AST check).</color>
+end note
+
+@enduml

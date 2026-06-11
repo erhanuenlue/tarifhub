@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-06
 
+> **Superseded numbering.** This is repo-era ADR-003 (pre-register). The consolidated 2026-06 register renumbered all decisions — see [the mapping](README.md).
+
 ## Context
 
 Sources differ in structure, language and value type (tax points vs. CHF prices).

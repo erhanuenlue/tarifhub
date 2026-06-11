@@ -1,0 +1,55 @@
+@startuml use-cases
+!include tarifhub-style.iuml
+' UML use-case diagram for arc42 §1 — actors, triggers, outcomes.
+' Status honesty: <<designed>> = specified, not implemented; <<partial>> = partly live.
+' Render: plantuml docs/diagrams/use-cases.puml (done in a later phase — do not render here)
+
+left to right direction
+
+title TarifHub — use cases (criteria: actors, triggers, outcomes in arc42 §1)
+caption <color:#64748b><size:11>Each UC's trigger/outcome lives in the catalogue table, arc42 §1.</size></color>
+
+' Amber border marks not-yet-live scope (designed / partial)
+skinparam usecase {
+  BorderColor<<designed>> #b45309
+  FontColor<<designed>> #b45309
+  BorderColor<<partial>> #b45309
+}
+
+actor "Operator" as operator #11365f
+actor "Tariff expert" as expert #11365f
+actor "API consumer\n(PIS/HIS)" as consumer #11365f
+actor "AI agent\n(MCP client)" as agent #11365f
+actor "Practice user" as practice #11365f
+
+rectangle "TarifHub" {
+  usecase "UC-01 Trigger ingest" as UC01
+  usecase "UC-02 Review\nlow-confidence mapping" as UC02 <<designed>>
+  usecase "UC-03 Freeze record" as UC03
+  usecase "UC-04 Read tariff by code" as UC04
+  usecase "UC-05 Point-in-time /\ndiff query" as UC05 <<designed>>
+  usecase "UC-06 Semantic search" as UC06
+  usecase "UC-07 MCP get/search" as UC07
+  usecase "UC-08 Console\nmaster-detail lookup" as UC08
+  usecase "UC-09 Explain (labelled AI)" as UC09 <<partial>>
+}
+
+operator --> UC01
+' UC-03 has no external actor: the pipeline freezes automatically post-validation
+' (expert approval loop designed, ADR-013)
+UC01 ..> UC03 : pipeline, automatic\npost-validation
+expert --> UC02
+consumer --> UC04
+consumer --> UC05
+consumer --> UC06
+agent --> UC07
+practice --> UC08
+practice --> UC09
+
+legend right
+  |<#b45309> <<designed>> | specified, not yet implemented (UC-02, UC-05) |
+  |<#b45309> <<partial>> | UC-09: console UI + de-identification live;\n serving endpoint designed |
+  Honest status as of 2026-06.
+endlegend
+
+@enduml

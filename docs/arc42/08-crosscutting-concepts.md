@@ -1,3 +1,59 @@
 # 08 · crosscutting concepts
 
-> Stub — populated in Block 0 (prompts/02) from the Architecture baseline v2.1 (`tarifhub-fable5/03_Architecture/`). On Option A, replace this stub with the existing repo chapter, then refresh per v2.1.
+The concept that cuts across every layer is the determinism boundary:
+
+> **No AI computes or mutates a billing value at serve time.**
+
+It is enforced structurally, not by convention: AST boundary tests (`services/ingestion/tests/test_determinism_boundary.py`, `services/serving/tests/test_serving_boundary.py`) fail CI if an LLM client becomes importable on the value path, and a write-guard hook (`.claude/hooks/guard_frozen.sh`) protects `versioning/`, `audit/` and applied migrations. Everything below assumes this boundary.
+
+## Modern application concepts
+
+The enterprise application concepts taught in the Modulplan, each as implemented in this repository.
+
+### Dependency injection
+
+FastAPI's `Depends` graph wires the serving service: `get_repository` in `services/serving/src/tarifhub_serving/main.py` yields a read-only `ServingRepository` bound to a fresh connection per request and closes it in `finally` — a per-request lifecycle managed by the framework. The `Annotated` aliases `RepoDep` and `SettingsDep` make injected dependencies explicit in every route signature.
+
+### Declarative validation
+
+Pydantic v2 models are the contract. The canonical `TariffRecord` (`services/ingestion/src/tarifhub_ingest/models/tariff_model.py`) declares `ConfigDict(extra="forbid", validate_assignment=True)` plus field constraints (`tax_points`/`price_chf` ≥ 0 as `Decimal`, `harmonization_confidence` bounded 0–1). Query parameters are validated declaratively too (`Query(ge=1, le=MAX_LIST_LIMIT)` in `main.py`). Validation happens at system boundaries only — inside the pipeline, data is already parsed, never re-checked by hand.
+
+### Persistence abstraction
+
+Repository pattern over parameterised SQL — deliberately no ORM. Ingestion writes through `TariffRepository` (`services/ingestion/src/tarifhub_ingest/storage/tariff_repository.py`); serving reads through `ServingRepository` (`services/serving/src/tarifhub_serving/repository.py`), which never writes. A small dialect-aware `Database` facade (`tarifhub_serving/db.py`: `dialect`, `placeholder`) plus the dialect-agnostic `_row_to_record` mapper let the same code run on Postgres 16 and the offline SQLite mirror.
+
+### REST + OpenAPI
+
+FastAPI generates the OpenAPI document from the code: resource routes (`GET /api/v1/tariffs`, `GET /api/v1/tariffs/{system}/{code}`, `GET /api/v1/search`) each declare a `response_model` (`TariffRecord`, `SearchHit`) and a summary line, so Swagger UI at `/docs` is always in sync with the implementation.
+
+### Configuration injection
+
+Env-only, 12-factor: a frozen `Settings` dataclass built fresh by `get_settings()` on every call (`services/ingestion/src/tarifhub_ingest/config.py`, mirrored in `tarifhub_serving/config.py`), so tests reconfigure via `monkeypatch.setenv` with no import-time caching. The knobs are `TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY` (presence alone enables the pre-freeze AI seam) and `TARIFHUB_EMBEDDINGS`.
+
+### Health/readiness probes
+
+The serving service exposes `GET /health` (`HealthResponse`, `tarifhub_serving/main.py`); the Helm chart wires it into Kubernetes readiness and liveness probes (`deploy/helm/tarifhub/templates/serving-deploy.yaml`, `httpGet path: /health`). The MCP server is probed at transport level (`tcpSocket` in `mcp-deploy.yaml`), and the compose database carries a `pg_isready` healthcheck (`deploy/docker-compose.yml`).
+
+### Observability
+
+Decided, not yet instrumented: [ADR-011](../adr/011-opentelemetry-observability.md) selects OpenTelemetry → Prometheus/Grafana plus Sentry; the instrumentation is pending. The traceability primitive that already exists is the append-only `audit_log` (`db/schema.sql`, written via `AuditLogger` in `services/ingestion/src/tarifhub_ingest/audit/audit_logger.py`), which records pipeline events keyed by `record_hash`.
+
+### Container-first packaging
+
+Per-service images on digest-pinned `python:3.12-slim` bases, each running as a non-root user: the MCP and ingestion Dockerfiles are multi-stage (builder venv → minimal runtime), the serving image vendors the ingestion package so one canonical model ships end-to-end. Compose keeps the default profile to the database and puts MinIO behind an `objects` profile; the Helm chart (`deploy/helm/tarifhub/`) deploys the stack to k3d.
+
+### Dev-mode reload
+
+Development runs uvicorn with live reload via `scripts/run_serving.sh` (`uvicorn tarifhub_serving.main:app --reload` on :8000). The production container ENTRYPOINT (`services/serving/Dockerfile`) starts uvicorn without reload — dev convenience never leaks into the image.
+
+### Async
+
+The MCP server (`services/mcp/server.py`) is fully async: each tool (`search_tariffs`, `get_tariff`, `explain_crosswalk`) awaits an `httpx` async client proxying to the serving API. The serving handlers themselves are plain `def` — FastAPI executes them in its worker threadpool, which is the honest fit for their short, blocking DB reads.
+
+## Why Python-first
+
+The workload is a read-mostly serving API in front of a write-time, AI-assisted harmonisation pipeline — and Python owns the AI/data tooling that dominates that pipeline. One canonical Pydantic `TariffRecord` travels end-to-end (parser → freeze → DB row → API response → MCP tool), removing the cross-language mapping defects a polyglot backend would invite. One toolchain (uv, pytest, ruff) keeps a solo engineer fast under a fixed CAS deadline. The strengths of heavier enterprise runtimes (JVM-class concurrency, large-team modularity) are immaterial at this scale and load.
+
+These concepts are stack-portable; this dossier implements them in the Python stack chosen in [ADR-001](../adr/001-python-first-core.md).
+
+Reference: per the Modulplan reading list, item [5] — the FastAPI text (Apress) — covers these concepts as taught; this chapter maps each of them to its implementation in this repository.

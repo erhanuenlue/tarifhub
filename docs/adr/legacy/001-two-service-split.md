@@ -5,6 +5,8 @@
 - Status: Superseded (by ADR-007, 2026-06-11)
 - Date: 2026-06
 
+> **Superseded numbering.** This is repo-era ADR-001 (pre-register). The consolidated 2026-06 register renumbered all decisions — see [the mapping](README.md).
+
 ## Context
 
 TarifHub needs an AI-rich harmonization stage and a strictly deterministic serving

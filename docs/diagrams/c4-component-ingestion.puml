@@ -1,0 +1,53 @@
+@startuml c4-component-ingestion
+' C4 Component view of the ingestion service (L0, pre-freeze).
+' Render: plantuml docs/diagrams/c4-component-ingestion.puml  (offline C4 stdlib)
+!include tarifhub-style.iuml
+!include <C4/C4_Component>
+
+title <b><color:#11365f>Component view — ingestion service (L0, pre-freeze)</color></b>
+caption <color:#64748b>One AI seam (ai_map, fill-only, non-billing) before the freeze line; everything after freeze is deterministic and immutable.</color>
+
+System_Ext(sources, "Public tariff sources", "BAG EAL, BAG ePL, …")
+System_Ext(claude, "Claude API", "structured output, pre-freeze only")
+ContainerDb(db, "PostgreSQL + pgvector", "PostgreSQL 16", "Frozen canonical records, audit log, embeddings")
+
+Container_Boundary(ingest, "Ingestion service (L0, pre-freeze)") {
+  Component(pipeline, "Pipeline orchestrator", "Python", "ingestion/pipeline.py — run_pipeline: load→parse→map→validate→score→flag→freeze→store→audit")
+  Component(adapters, "Source adapters", "Python", "adapters/bag_eal.py — fetch raw source artifacts")
+  Component(parsers, "Parsers", "Python", "parsers/ — XLSX (xlsx_parser.py) + FHIR R5 (fhir_parser.py) into raw rows")
+  Component(mapper, "Mapper", "Python", "mappers/tariff_mapper.py — deterministic map_raw owns ALL billing values")
+  Component(aimap, "ai_map seam", "Python + Claude", "same module — fill-only: designation_fr/it + category; gap-gate; structured output; deterministic fallback to map_raw")
+  Component(validator, "Validator", "Python", "validators/tariff_validator.py — validate → ValidationResult")
+  Component(scorer, "Confidence scorer", "Python", "confidence/scorer.py — deterministic score 0..1")
+  Component(review, "Review routing", "Python", "sets requires_review flag below threshold 0.85 (TARIFHUB_REVIEW_THRESHOLD)")
+  Component(freeze, "Freeze", "Python", "versioning/freeze_record.py — SHA-256 record_hash over sorted canonical content; immutable versions; re-freeze → ValueError")
+  Component(embedder, "Embedder", "Python", "embeddings/embedder.py — get_embedder(): multilingual-e5-large 1024-dim, deterministic hashing stub offline")
+  Component(repo, "Repository", "Python", "storage/tariff_repository.py — persists frozen rows + embeddings")
+  Component(audit, "Audit", "Python", "audit/audit_logger.py — AuditLogger, append-only events")
+}
+
+Rel(pipeline, adapters, "drives the run (load)")
+Rel(sources, adapters, "raw XLSX / FHIR R5", "file / API")
+Rel(adapters, parsers, "raw artifact")
+Rel(parsers, mapper, "parsed rows")
+Rel(mapper, aimap, "draft record with non-billing gaps")
+Rel(aimap, claude, "pre-freeze, non-billing fields only, deterministic fallback")
+Rel(mapper, validator, "canonical TariffRecord")
+Rel(validator, scorer, "validated record")
+Rel(scorer, review, "confidence")
+Rel(review, freeze, "record (+ requires_review flag)")
+Rel(freeze, repo, "frozen record (record_hash)")
+Rel(embedder, repo, "1024-dim embedding")
+Rel(repo, db, "INSERT immutable tariff rows", "SQL")
+Rel(pipeline, audit, "stage event per record")
+Rel(audit, db, "INSERT audit_log (append-only)", "SQL")
+
+note right of freeze #fff7ed
+  <b><color:#b45309>Freeze line</color></b>
+  <color:#475569>Everything downstream of freeze is immutable.
+  No LLM client importable on the value path —
+  AST-enforced by test_determinism_boundary.py (CI gate).
+  "No AI computes or mutates a billing value at serve time."</color>
+end note
+
+@enduml

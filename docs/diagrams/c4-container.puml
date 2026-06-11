@@ -1,7 +1,7 @@
-@startuml tarifhub-container
+@startuml c4-container
 ' C4 Container view for TarifHub.
-' Render: plantuml docs/diagrams/c4-container.puml
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+' Render: plantuml docs/diagrams/c4-container.puml  (C4 stdlib is bundled with plantuml >= 1.2023; no internet needed)
+!include <C4/C4_Container>
 
 title TarifHub — Containers
 
@@ -12,7 +12,7 @@ System_Ext(sources, "Public tariff sources", "BAG EAL, BAG ePL, …")
 
 System_Boundary(th, "TarifHub") {
   Container(ingest, "Ingestion service", "Python 3.12, FastAPI", "Pre-freeze, AI-assisted pipeline (load→…→freeze→store→audit) + admin/read API. NO AI on the value path.")
-  Container(serving, "Serving service", "Python 3.12, FastAPI", "Deterministic REST over frozen records (JSON/XML) + pgvector semantic search")
+  Container(serving, "Serving service", "Python 3.12, FastAPI", "Deterministic REST over frozen records (JSON; XML designed, ADR-008) + pgvector semantic search")
   Container(mcp, "MCP server", "Python, FastMCP", "Read-only MCP tools (search/lookup/explain) over serving. No DB, no model, no math.")
   Container(tarifguard, "TarifGuard", "Next.js, React", "Practice-facing app: search, coding-check, de-identified explain. Read-only over serving.")
   ContainerDb(db, "PostgreSQL + pgvector", "PostgreSQL 16", "Frozen canonical records, audit log, embeddings")
@@ -21,9 +21,9 @@ System_Boundary(th, "TarifHub") {
 
 Rel(sources, ingest, "Fetched by", "file / API")
 Rel(ingest, db, "Writes frozen rows + audit events", "SQL")
-Rel(ingest, minio, "Archives raw artifacts", "S3")
+Rel(ingest, minio, "Archives raw artifacts (designed, ADR-007)", "S3")
 Rel(serving, db, "Reads frozen rows; vector search", "SQL / pgvector")
-Rel(vendor, serving, "Reads / searches", "REST JSON/XML")
+Rel(vendor, serving, "Reads / searches", "REST JSON")
 Rel(practice, tarifguard, "Uses", "HTTPS")
 Rel(tarifguard, serving, "Reads (frozen records, verbatim)", "REST JSON")
 Rel(agent, mcp, "Calls tools", "MCP")

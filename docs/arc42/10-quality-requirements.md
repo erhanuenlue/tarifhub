@@ -1,6 +1,19 @@
 # 10 · quality requirements
 
-> Stub — populated in Block 0 (prompts/02) from the Architecture baseline v2.1 (`tarifhub-fable5/03_Architecture/`). On Option A, replace this stub with the existing repo chapter, then refresh per v2.1. *(Harmonisation results below are maintained per source run — /new-source step 6.)*
+## Quality goals (SMART NFRs)
+
+Targets from Architecture v2.1 §12; validated against the measured runs below.
+
+| Attribute | Target (MVP) |
+|---|---|
+| Determinism | 100% of value-serving responses are frozen records; AST boundary test green in CI on every push |
+| Reproducibility | Re-running the pipeline on identical sources yields identical `record_hash` set (idempotent) |
+| Harmonisation review rate | <15% of records flagged for review on the two BAG sources (tune threshold) |
+| API read latency | p95 < 200 ms for single-record reads (cached), < 500 ms for search |
+| Freshness | New source version reflected (frozen + served) within 24 h of publication |
+| Test coverage | Core modules (model, freeze, pipeline, mapper) > 80% line coverage |
+
+The section below documents measured harmonisation evidence for the determinism, reproducibility and review-rate rows (EAL run 2026-06-11: 1 279/1 279 frozen, review rate 0.0 %).
 
 ## Harmonisation results
 
@@ -25,7 +38,7 @@ verified on the SQLite mirror.
 
 **Honest note on the AI seam.** The official AL is complete — 1 279 parallel
 trilingual rows, zero missing designations, zero missing tax points. Fill-only
-`ai_map` (ADR-008) therefore correctly contributes **nothing**: a deterministic
+`ai_map` ([ADR-005](../adr/005-single-ai-seam.md)) therefore correctly contributes **nothing**: a deterministic
 gap-gate skips the Claude call when no fillable gap exists, so the live run made
 zero API calls. The seam matters for incomplete feeds (cf. the de-only sample
 fixture and future sources), not for this one — that is the designed behaviour,
@@ -45,10 +58,11 @@ official translations. **In-memory demonstration — never stored as frozen reco
 | 3550 | Toxoplasma gondii, IgG-Avidität | `Toxoplasma gondii, avidité des IgG` / identical ✓ | `Toxoplasma gondii, avidità delle IgG` / identical ✓ | byte-identical |
 
 4 of 6 fills exact-match the official text; the two deltas are stylistic
-(hyphenation/punctuation), and both would surface in the review console for a
+(hyphenation/punctuation), and both would be flagged `requires_review` and routed
+to the review form (design scope, [ADR-013](../adr/013-demo-scope.md)) for a
 human decision in a real gap scenario. AI provenance (`ai_model`, `ai_fields`,
 `ai_status`) is recorded in record metadata; billing values are structurally
-unreachable by the model (ADR-008).
+unreachable by the model ([ADR-005](../adr/005-single-ai-seam.md)).
 
 *Runtime serving evidence (Postgres + pgvector search) is captured under
 `docs/evidence/`.*

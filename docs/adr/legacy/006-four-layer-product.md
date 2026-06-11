@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-06
 
+> **Superseded numbering.** This is repo-era ADR-006 (pre-register). The consolidated 2026-06 register renumbered all decisions — see [the mapping](README.md).
+
 ## Context
 
 The platform started as ingestion (L0) + serving (L1), then gained two read-only

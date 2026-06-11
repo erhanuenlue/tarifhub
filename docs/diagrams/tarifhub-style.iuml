@@ -1,0 +1,57 @@
+' tarifhub-style.iuml — shared skinparams for all TarifHub PlantUML diagrams.
+' Matches the hand-drawn house style of runtime-harmonise-freeze.svg:
+' navy (#11365f) participants on white, slate (#475569/#94a3b8) lines, amber notes.
+' Usage (from a sibling .puml file):  !include tarifhub-style.iuml
+
+skinparam backgroundColor white
+skinparam defaultFontName Helvetica
+skinparam shadowing false
+
+' Title
+skinparam titleFontColor #11365f
+
+' Sequence diagrams
+skinparam sequence {
+  ParticipantBackgroundColor #11365f
+  ParticipantFontColor white
+  ParticipantBorderColor #11365f
+  LifeLineBorderColor #94a3b8
+  ArrowColor #475569
+  ArrowFontColor #475569
+  ActorBackgroundColor white
+  ActorBorderColor #11365f
+}
+
+' Arrows + labels (non-sequence diagram types)
+skinparam ArrowColor #475569
+skinparam ArrowFontColor #475569
+
+' Actors
+skinparam actor {
+  BackgroundColor white
+  BorderColor #11365f
+}
+
+' Use case diagrams
+skinparam usecase {
+  BackgroundColor #f8fafc
+  BorderColor #11365f
+}
+
+' State diagrams
+skinparam state {
+  BackgroundColor #f8fafc
+  BorderColor #11365f
+}
+
+' Component diagrams
+skinparam component {
+  BackgroundColor #f8fafc
+  BorderColor #11365f
+}
+
+' Notes
+skinparam note {
+  BackgroundColor #fffbeb
+  BorderColor #b45309
+}
