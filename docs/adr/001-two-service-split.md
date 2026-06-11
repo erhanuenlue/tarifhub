@@ -1,6 +1,8 @@
 # ADR-001 — Two-service split: Python ingestion + Quarkus serving
 
-- Status: Accepted
+*Superseded by the owner's no-JVM decision (2026-06-11): serving ported to Python 3.12 + FastAPI; the two-service split stands, the serving toolchain does not — see ADR-007.*
+
+- Status: Superseded (by ADR-007, 2026-06-11)
 - Date: 2026-06
 
 ## Context

@@ -1,28 +1,29 @@
 # syntax=docker/dockerfile:1
-# Multi-stage JVM build for the TarifHub serving service (Quarkus, Java 21).
-# For a native binary instead: build with `-Pnative` and swap the runtime stage for
-# a minimal base (e.g. quay.io/quarkus/quarkus-micro-image) copying target/*-runner.
+# TarifHub serving service (Python 3.12 + FastAPI). Read-only over frozen records.
+# The canonical TariffRecord and the embedder come from the sibling ingestion package,
+# which is vendored into the image so there is one canonical model end-to-end.
 
-# --- build ---
-FROM maven:3.9-eclipse-temurin-21 AS build
-WORKDIR /build
-# Warm the dependency cache first for faster rebuilds.
-COPY pom.xml .
-RUN mvn -B -q dependency:go-offline || true
-COPY src ./src
-RUN mvn -B -q clean package -DskipTests
+FROM python:3.12-slim AS runtime
 
-# --- runtime (Quarkus fast-jar) ---
-FROM eclipse-temurin:21-jre AS runtime
-ENV LANG=C.UTF-8 \
-    JAVA_OPTS="-XX:+UseParallelGC -XX:MaxRAMPercentage=75"
+ENV PYTHONUNBUFFERED=1 \
+    PYTHONDONTWRITEBYTECODE=1 \
+    PIP_NO_CACHE_DIR=1
+
 WORKDIR /app
 
-COPY --from=build /build/target/quarkus-app/lib/ /app/lib/
-COPY --from=build /build/target/quarkus-app/*.jar /app/
-COPY --from=build /build/target/quarkus-app/app/ /app/app/
-COPY --from=build /build/target/quarkus-app/quarkus/ /app/quarkus/
+# The serving package depends on ../ingestion (path dependency). Copy both so the
+# editable/local install can resolve the canonical model + embedder.
+COPY services/ingestion /app/services/ingestion
+COPY services/serving /app/services/serving
 
+RUN pip install --no-cache-dir /app/services/ingestion \
+    && pip install --no-cache-dir /app/services/serving
+
+# Non-root runtime.
+RUN useradd --create-home --uid 1001 appuser
 USER 1001
-EXPOSE 8080
-ENTRYPOINT ["sh", "-c", "java $JAVA_OPTS -jar /app/quarkus-run.jar"]
+
+EXPOSE 8000
+ENV TARIFHUB_DB_URL=postgresql://tarifhub:tarifhub@db:5432/tarifhub
+
+ENTRYPOINT ["uvicorn", "tarifhub_serving.main:app", "--host", "0.0.0.0", "--port", "8000"]

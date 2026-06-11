@@ -1,190 +1,30 @@
-# TarifHub
+# tarifhub — development workspace (Fable 5)
 
-AI-assisted harmonization platform for Swiss ambulatory tariff data. TarifHub ingests
-public tariff sources (BAG EAL, BAG ePL, …), harmonizes them through an AI-assisted,
-human-in-the-loop pipeline, **freezes** each record as an immutable, versioned,
-SHA-256-hashed fact, and serves those facts deterministically over adaptive APIs.
+Swiss ambulatory tariff data platform: AI-assisted harmonisation above a deterministic freeze line, one versioned API below it, a thin TarifGuard demo on top. CAS capstone (FFHS, due 6 Jul 2026) and the seed of the commercial platform — same codebase.
 
-**The architectural backbone is the freeze line.** AI may assist *before* the freeze
-(format recognition, field mapping, multilingual normalization, anomaly flagging) and
-for *search/discovery/explanation* in serving — but **AI never computes or mutates a
-billing-relevant value**. Every authoritative value returned is an unaltered frozen
-record. See `AGENTS.md` for the seven non-negotiable rules.
+**Read order for a new session:** `AGENTS.md` (facts) → `CLAUDE.md` (workflow) → `vault/` (CAS evidence status). Strategy/architecture documents live in the `tarifhub-fable5` folder this workspace ships inside (`../../`): CAS Dossier, Architecture v2, Feasibility v3, Business Plan v3.
 
-## Architecture — one platform, four layers
-
-TarifHub is **one platform** organized as **four layers** around the freeze line. Each
-layer has a product/brand name and maps to one or more independently containerized
-sub-systems:
-
-| Layer | Brand name | Sub-system(s) | Stack | Role |
-|---|---|---|---|---|
-| **L0** | **Harmonization Engine** | `services/ingestion` | Python 3.12, FastAPI, Pydantic v2 | Ingest → AI-map (pre-freeze) → confidence → human review → **FREEZE + VERSION + HASH + LINEAGE** → canonical store |
-| **L1** | **TarifCore API** + **TarifMCP** | `services/serving` + `services/mcp` | Java 21 / Quarkus; Python / FastMCP | Deterministic REST (JSON/XML) + semantic search over frozen records; read-only MCP tools for AI agents |
-| **L2** | **TarifIQ** | `services/intelligence` | Python 3.12, FastAPI | Deterministic combinability/cumulation rules, **TARMED↔TARDOC cross-walk**, rule validation. AI only *suggests* rules pre-freeze |
-| **L3** | **TarifGuard · KassenFlow · MeldePilot** | `apps/tarifguard`, `apps/kassenflow`, `apps/meldepilot` | Next.js (App Router), React, Tailwind | Practice / payer / reporting apps — read-only over L1 + L2, de-identified LLM boundary |
-
-Shared: `db/` (PostgreSQL 16 + pgvector schema), `deploy/helm/` (Kubernetes), `docs/`
-(arc42 site + C4 diagrams + ADRs), `scripts/` (helpers).
-
-```
-            ┌──────────────────────────── THE FREEZE LINE ────────────────────────────┐
- sources ─▶ │ L0 Harmonization Engine (ingestion): load→map→…→FREEZE+HASH+VERSION       │ ─▶ canonical store
-            │      (AI assists pre-freeze only)            │  NO AI COMPUTES A VALUE BEYOND HERE
-            └──────────────────────────────────────────────┼──────────────────────────┘
-                                                            ▼
-                              L1 TarifCore API (serving): deterministic REST + semantic search
-                                                            │
-                         ┌──────────────────┬───────────────┼───────────────────────────┐
-                         ▼                  ▼               ▼                              ▼
-                   TarifMCP (mcp)   L2 TarifIQ (intelligence)                       (read-only)
-                   read-only tools  deterministic rules /     ───────────────▶  L3 apps: TarifGuard,
-                   for AI agents    cross-walk / validation                      KassenFlow, MeldePilot
-```
-
-Everything downstream of the freeze line is read-only over frozen records: L1 serves
-them verbatim, L2 reasons about *relationships between codes* (never prices), and L3 apps
-relay frozen values and L2 verdicts. AI may only assist **before** the freeze
-(L0 mapping, L2 rule *suggestion*) or for search/explain — it never computes or mutates a
-billing value. Any LLM use in an L3 app is on de-identified data, confined to that app's
-`lib/deident.ts` (see `AGENTS.md` rule 7); see `docs/adr/006-four-layer-product.md`.
-
-## Run the ingestion pipeline & API locally (offline)
-
-Requires Python 3.12. No network, no Postgres, no LLM key needed — SQLite by default.
+## Quick start
 
 ```bash
-cd services/ingestion
-python3 -m venv .venv && . .venv/bin/activate
-pip install -e .
-
-# Start the admin/read API
-tarifhub-ingest                      # or: uvicorn tarifhub_ingest.main:app --reload
-
-# In another shell: ingest the bundled sample sources, then read frozen records
-curl -X POST localhost:8000/ingest/sample
-curl localhost:8000/tariffs
-curl localhost:8000/tariffs/0010.00
+./SETUP.md  # read it — one-time machine setup (uv, docker, k3d, gh, claude)
+claude      # then paste FIRST_PROMPT.md for session 1
 ```
 
-## Run the tests
+## What's deliberately NOT here
 
-```bash
-cd services/ingestion && pytest -q          # fully offline
-```
+This setup was rebuilt lean for Fable 5 (June 2026). Removed vs the earlier environments, on purpose:
 
-## Run the serving service
+- **No agent zoo** — 6 custom agents, each with one pinned job: two pipeline workers (`implementer` on Opus 4.8 for TDD volume, `e2e-tester` on Sonnet for runtime verification) and four reviewers (verifier, determinism-auditor, security-reviewer, codex-reviewer). Fable 5 keeps the three jobs where quality compounds: plan, orchestration, merge-gate. Built-in Explore covers search.
+- **A phased shipping pipeline with a live board** — `/ship` runs 9 phases (plan-approval → TDD implement → gates → reviews → fix → PR/CI → runtime E2E+logs → report → merge-confirmation) with exactly two human gates. **Shipboard** (`tools/shipboard/shipboard.py`, stdlib one-filer on :8787) visualises phases and active agents live, fed by the emit script + Task hooks — plus a **session/context/usage monitor**: session status, context gauge against the 1M window (with compaction warnings), cumulative tokens in/out, cache-hit rate, turns/prompts/tool-calls, and estimated cost per model (editable price table in the file), all parsed incrementally from the Claude Code transcript via the `session_track` hook. CAS-fit: phase 7 verifies against local compose instead of cloud staging, and every run generates journal-ready multi-model evidence (criterion 15).
+- **No graphify / knowledge-graph MCP** — context cost without payoff at this repo size. `.mcp.json` carries Context7 only; `gh` CLI covers GitHub; Playwright runs as a plain dev dependency.
+- **No hand-rolled memory system for Claude** — native auto memory handles its learnings. `vault/` exists for **graded CAS evidence** (journal, decision matrix, Fazit notes) — human-curated, contemporaneous.
+- **A living second brain instead of a static one** — the `brain_sync` SessionEnd hook regenerates `vault/00-index.md` (current map of every ADR, journal day, learning) and optionally mirrors the knowledge set into your Obsidian vault (`OBSIDIAN_VAULT` in `.env`). Open the repo in Obsidian and the architecture documents itself as you work. Publishing: `docs/mkdocs.yml` → GitHub Pages via `.github/workflows/docs.yml`, PDF via the print-site page. SETUP.md §4–5.
+- **No commands/ directory** — skills replaced commands (`/ship`, `/new-source`, `/cas-status`).
+- **A prompt library that respects the model** — `prompts/01–07` cover the road to submission as **outcome prompts** (goal, constraints, verification), one per block milestone. What's deliberately absent is the old style of prescriptive step-scripts, which degrade Fable's output. `prompts/README.md` has the usage rules.
 
-```bash
-docker-compose up -d db                      # Postgres 16 + pgvector
-cd services/serving && mvn quarkus:dev       # http://localhost:8080/q/swagger-ui
-# Endpoints: GET /api/v1/tariffs , GET /api/v1/tariffs/{system}/{code} , GET /api/v1/search?q=...
-```
+Three hooks only, each enforcing what instructions can't: `guard_frozen` (PreToolUse — the freeze line), `format` (PostToolUse — ruff/prettier), `journal_draft` (SessionEnd — CAS evidence skeleton).
 
-Semantic search ranks frozen records via a langchain4j embedding model (multilingual-e5,
-matching the pgvector column). The optional `QUARKUS_LANGCHAIN4J_ANTHROPIC_API_KEY` adds
-natural-language explanations over the frozen text — it never fabricates or mutates values.
+## The one rule
 
-## Run the MCP server
-
-Read-only MCP tools (`search_tariffs`, `get_tariff`, `explain_crosswalk`) over serving.
-
-```bash
-cd services/mcp
-python3 -m venv .venv && . .venv/bin/activate
-pip install -e .
-SERVING_BASE_URL=http://localhost:8080 python server.py   # streamable-HTTP on :8090
-cd services/mcp && pytest -q                                # fully offline (serving is mocked)
-```
-
-## Run the intelligence service (TarifIQ)
-
-The L2 service — deterministic combinability checks, TARMED↔TARDOC cross-walk, and rule
-validation. Runs fully offline (bundled frozen rule/cross-walk tables); set
-`TARIFIQ_OFFLINE=0` + `SERVING_BASE_URL` to read live frozen records from serving.
-
-```bash
-cd services/intelligence
-python3 -m venv .venv && . .venv/bin/activate
-pip install -e ".[dev]"
-pytest -q                                  # fully offline
-
-tarifiq                                    # uvicorn tarifiq.main:app on :8070
-curl -X POST localhost:8070/v1/combinability-check -H 'content-type: application/json' \
-  -d '{"system":"TARDOC","positions":[{"code":"AA.00.0010"},{"code":"AA.00.0030"}]}'
-curl localhost:8070/v1/crosswalk/00.0010
-```
-
-TarifIQ *evaluates* rules deterministically; AI may only *suggest* a candidate rule
-pre-freeze (the replaceable `ai_rule_suggest` seam), which a human validates via
-`POST /v1/validate` before freezing. No endpoint calls a model.
-
-## Run the TarifGuard front end
-
-The practice-facing Next.js app (search / coding-check / explain), read-only over serving.
-
-```bash
-cd apps/tarifguard
-cp .env.example .env.local            # set SERVING_BASE_URL (default http://localhost:8080)
-npm install && npm run dev            # http://localhost:3000
-```
-
-TarifGuard never computes a billing value, and the only code that may build an
-LLM-bound payload is `lib/deident.ts` (de-identified inputs, EU-routed model).
-
-## Run the KassenFlow / MeldePilot app stubs
-
-Two further L3 apps, currently **skeleton stubs** that ship their planned scope (a
-"coming in development" screen), not working features. **KassenFlow** automates payer
-correspondence / Kostengutsprache; **MeldePilot** automates mandatory reporting and
-quality data (BFS/MARS, ANQ, interRAI/BESA → cantonal). Both are read-only over L1 + L2
-and carry the same de-identification boundary (`lib/deident.ts`).
-
-```bash
-cd apps/kassenflow      # or: apps/meldepilot
-cp .env.example .env.local        # set SERVING_BASE_URL + TARIFIQ_BASE_URL
-npm install && npm run dev        # KassenFlow :3001 · MeldePilot :3002
-```
-
-## Local stack (Postgres + MinIO)
-
-```bash
-cp .env.example .env
-docker-compose up                            # db = pgvector/pgvector:pg16 , minio
-./scripts/init_db.sh                          # apply db/schema.sql + migrations
-```
-
-## Deploy to Kubernetes (Helm)
-
-```bash
-helm install tarifhub deploy/helm/tarifhub
-# or with overrides:  helm install tarifhub deploy/helm/tarifhub -f my-values.yaml
-```
-
-## Publish the arc42 documentation site
-
-```bash
-pip install mkdocs-material
-mkdocs serve -f docs/mkdocs.yml               # preview at http://localhost:8000
-mkdocs gh-deploy -f docs/mkdocs.yml           # publish to GitHub Pages
-```
-
-## Layout
-
-```
-tarifhub/
-├─ services/ingestion/    L0 Harmonization Engine — Python pipeline (pre-freeze, AI-assisted)
-├─ services/serving/      L1 TarifCore API — Quarkus serving (post-freeze, deterministic)
-├─ services/mcp/          L1 TarifMCP — Python MCP server (read-only tools, for AI agents)
-├─ services/intelligence/ L2 TarifIQ — Python rules / cross-walk / validation (deterministic)
-├─ apps/tarifguard/       L3 TarifGuard — Next.js (search / coding-check / explain), read-only
-├─ apps/kassenflow/       L3 KassenFlow — Next.js stub (payer correspondence / Kostengutsprache)
-├─ apps/meldepilot/       L3 MeldePilot — Next.js stub (mandatory reporting / quality data)
-├─ db/                    PostgreSQL schema + migrations (canonical model + pgvector + audit)
-├─ deploy/helm/tarifhub/  Helm chart (ingestion, serving, mcp, intelligence, the 3 apps, postgres, ingress)
-├─ docs/                  arc42 site (MkDocs Material), C4 diagrams, ADRs
-├─ scripts/               init_db.sh, run_ingestion.sh, run_serving.sh
-├─ .claude/               Claude Code hooks (tests on Stop, frozen-path guard)
-├─ AGENTS.md  CLAUDE.md   Working agreement + the seven non-negotiable rules
-└─ docker-compose.yml     Postgres+pgvector, MinIO (+ services profile: intelligence; apps profile: the apps + mcp)
-```
+**No AI computes or mutates a billing value at serve time.** Everything else is negotiable; this is not. `tests/test_determinism_boundary.py` + `guard_frozen.sh` + the determinism-auditor agent enforce it at three layers.

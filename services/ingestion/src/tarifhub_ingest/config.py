@@ -16,6 +16,9 @@ DEFAULT_REVIEW_THRESHOLD = 0.85
 # "stub" => offline deterministic hashing embedder (default); "e5" => multilingual-e5
 # (requires the optional 'ai' extra). Never auto-enabled, so tests stay offline.
 DEFAULT_EMBEDDINGS_BACKEND = "stub"
+# Claude model for the pre-freeze harmonizer. Exact string, no date suffix; this
+# model has no temperature/top_p/top_k knobs. Override with TARIFHUB_AI_MODEL.
+DEFAULT_AI_MODEL = "claude-opus-4-8"
 
 
 @dataclass(frozen=True)
@@ -27,6 +30,7 @@ class Settings:
     anthropic_api_key: str | None
     sample_dir: str | None
     embeddings_backend: str = DEFAULT_EMBEDDINGS_BACKEND
+    ai_model: str = DEFAULT_AI_MODEL
     app_name: str = "tarifhub-ingest"
 
 
@@ -43,4 +47,5 @@ def get_settings() -> Settings:
         anthropic_api_key=os.getenv("ANTHROPIC_API_KEY") or None,
         sample_dir=os.getenv("TARIFHUB_SAMPLE_DIR") or None,
         embeddings_backend=os.getenv("TARIFHUB_EMBEDDINGS", DEFAULT_EMBEDDINGS_BACKEND),
+        ai_model=os.getenv("TARIFHUB_AI_MODEL", DEFAULT_AI_MODEL),
     )

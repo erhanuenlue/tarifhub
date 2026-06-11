@@ -25,21 +25,21 @@ spec:
             - name: http
               containerPort: {{ .Values.serving.port }}
           env:
-            - name: QUARKUS_DATASOURCE_USERNAME
-              value: {{ .Values.postgres.username | quote }}
-            - name: QUARKUS_DATASOURCE_PASSWORD
-              value: {{ .Values.postgres.password | quote }}
-            - name: QUARKUS_DATASOURCE_JDBC_URL
-              value: "jdbc:postgresql://{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+            # Single env-only DB URL (12-factor). Username/password come from the
+            # postgres values (override in production via an existing Secret); the
+            # secret-wiring shape is preserved so a real deployment can swap the
+            # inline value for valueFrom.secretKeyRef.
+            - name: TARIFHUB_DB_URL
+              value: "postgresql://{{ .Values.postgres.username }}:{{ .Values.postgres.password }}@{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
           readinessProbe:
             httpGet:
-              path: /q/health/ready
+              path: /health
               port: http
             initialDelaySeconds: 10
             periodSeconds: 10
           livenessProbe:
             httpGet:
-              path: /q/health/live
+              path: /health
               port: http
             initialDelaySeconds: 20
             periodSeconds: 20

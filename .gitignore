@@ -8,6 +8,7 @@ venv/
 .coverage
 htmlcov/
 dist/
+*.egg-info/
 
 # Node / Next.js
 node_modules/
@@ -27,6 +28,7 @@ CLAUDE.local.md
 
 # Data & artifacts
 *.sqlite
+tarifhub_dev.db
 data/raw/
 site/
 .shipboard/

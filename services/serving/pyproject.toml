@@ -1,0 +1,51 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "tarifhub-serving"
+version = "0.1.0"
+description = "TarifHub L1 serving service — deterministic read API over frozen tariff records (FastAPI)."
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "Proprietary" }
+authors = [{ name = "TarifHub" }]
+
+# Runtime dependencies. The service is strictly READ-ONLY over frozen records and
+# must run fully OFFLINE for tests (SQLite mirror + stub embedder, no network).
+# It imports the canonical TariffRecord and the embedder from the ingestion package
+# (one canonical model end-to-end) — never an LLM client.
+dependencies = [
+    "fastapi>=0.110",
+    "uvicorn[standard]>=0.29",
+    "pydantic>=2.6",
+    # db.py imports psycopg directly for the Postgres read path; declare it explicitly
+    # rather than relying on it transitively via tarifhub-ingest. Same family as ingestion.
+    "psycopg[binary]>=3.1",
+    "tarifhub-ingest",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "httpx>=0.27",
+    "ruff>=0.4",
+]
+
+[tool.uv.sources]
+# One canonical TariffRecord end-to-end: import the model + embedder from ingestion,
+# never duplicate them. Editable path dependency so a local change is picked up.
+tarifhub-ingest = { path = "../ingestion", editable = true }
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]
+addopts = "-q"
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+target-version = "py312"

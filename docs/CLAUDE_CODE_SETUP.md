@@ -37,8 +37,9 @@ are frozen, versioned, hashed records (`AGENTS.md`, rules 1–2).
 - **SubagentStop** → runs the determinism-boundary tests so a *parallel* subagent can't finish
   across a broken freeze line. This is what makes `/ultracode` safe here.
 
-(Serving's determinism test is the JVM `DeterminismBoundaryTest`, run via `mvn verify` as a
-pre-PR/CI gate — too heavy for a Stop hook, covered by CI.)
+(Serving is Python too: its determinism gate is `uv run pytest tests/test_determinism_boundary.py`
+— the same Python AST check that runs in **ingestion** and **serving**, asserting no LLM client is
+importable on the value path. Run in CI as a pre-PR gate.)
 
 ## The review loop (Codex reviews every PR)
 
@@ -82,7 +83,7 @@ Claude Code performs **all** git/gh operations (`AGENTS.md`). Two scripts encaps
 - **graphify** = structural brain of the code (what's wired to what); MCP + post-commit
   auto-rebuild + `graphify --obsidian knowledge` export into the vault.
 - **Obsidian vault** (`knowledge/`) = human brain (why we decided things).
-- **context7** = fresh external library docs (Quarkus/Jakarta/FHIR/Next.js).
+- **context7** = fresh external library docs (FastAPI/FHIR/Next.js).
 - **mattpocock/skills** = composable engineering skills that complement, not replace, the
   spec-driven spine.
 

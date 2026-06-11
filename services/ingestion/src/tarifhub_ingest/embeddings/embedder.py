@@ -1,7 +1,7 @@
 """Embedding interface + an offline, deterministic stub.
 
 The production embedder is multilingual-e5 (1024-dim) whose vectors are written to
-a pgvector column for the Quarkus serving service's semantic search. That model is
+a pgvector column for the FastAPI serving service's semantic search. That model is
 an *optional* dependency: importing ``sentence-transformers`` is guarded so the
 test suite runs with no model download and no network.
 

@@ -16,14 +16,15 @@ jobs:
           for svc in services/*/; do
             if [ -f "$svc/pyproject.toml" ]; then
               echo "=== $svc ==="
-              (cd "$svc" && uv sync --quiet && uv run ruff check . && uv run pytest -q)
+              # uvx: ruff is not a base dependency of every service; plain `uv sync`
+              # would not install it and the job would die before the tests run.
+              (cd "$svc" && uv sync --quiet && uvx ruff check . && uv run pytest -q)
             fi
           done
-      - name: Determinism boundary test (must be visible in this log)
+      - name: Determinism boundary tests (must be visible in this log)
         run: |
-          if [ -f services/ingestion/pyproject.toml ]; then
-            cd services/ingestion && uv run pytest -q tests/test_determinism_boundary.py -v || exit 1
-          fi
+          (cd services/ingestion && uv run pytest -q tests/test_determinism_boundary.py -v)
+          (cd services/serving && uv run pytest -q tests/test_serving_boundary.py -v)
 
   console:
     runs-on: ubuntu-latest
@@ -41,6 +42,11 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    permissions:
+      # gitleaks-action lists PR commits via the API; the default restricted
+      # token 403s ("Resource not accessible by integration") without this.
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }

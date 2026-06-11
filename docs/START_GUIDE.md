@@ -25,8 +25,8 @@ project has renamed something.
 | **Codex CLI** | Independent reviewer (`codex exec`, codex-plugin-cc) | `npm install -g @openai/codex` — then `codex login` |
 | **gh (GitHub CLI)** | All git/gh automation (repo, PRs, merges) | `brew install gh` — then `gh auth login` |
 | **Node 20+** | Next.js apps, npx-based MCP servers, the CLIs | `brew install node` (or nvm) |
-| **Python 3.12** | ingestion + intelligence services | `brew install python@3.12` |
-| **JDK 21 + Maven** | Quarkus serving service | `brew install openjdk@21 maven` |
+| **Python 3.12** | ingestion + intelligence + **serving (FastAPI)** services | `brew install python@3.12` |
+| **uv** | Python package/venv manager for every service | `brew install uv` |
 | **Docker** | Local Postgres+pgvector, MinIO, container builds | Docker Desktop |
 | **k3d** or **kind** | Local Kubernetes for the Helm chart | `brew install k3d` (or `brew install kind`) |
 | **Helm** | Deploy the chart | `brew install helm` |
@@ -36,7 +36,7 @@ Quick version check:
 
 ```bash
 claude --version && codex --version && gh --version \
-  && node -v && python3 --version && java -version && mvn -v \
+  && node -v && python3 --version && uv --version \
   && docker --version && helm version --short && (k3d version || kind version)
 ```
 
