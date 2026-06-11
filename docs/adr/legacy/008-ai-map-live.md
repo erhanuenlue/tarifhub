@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-06-11
 
+> **Superseded numbering.** This is repo-era ADR-008 (pre-register). The consolidated 2026-06 register renumbered all decisions — see [the mapping](README.md).
+
 ## Context
 
 ADR-002 permits AI **pre-freeze only**, on non-billing fields. AGENTS.md specified the seam as

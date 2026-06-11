@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-06-11
 
+> **Superseded numbering.** This is repo-era ADR-007 (pre-register). The consolidated 2026-06 register renumbered all decisions — see [the mapping](README.md).
+
 ## Context
 
 The owner decided (final, 2026-06-11): **no Java/JVM anywhere** — a single-language Python

@@ -3,6 +3,8 @@
 - Status: Accepted
 - Date: 2026-06
 
+> **Superseded numbering.** This is repo-era ADR-005 (pre-register). The consolidated 2026-06 register renumbered all decisions — see [the mapping](README.md).
+
 ## Context
 
 The platform (ingestion + serving) is backend-heavy. A practice-facing front end makes
