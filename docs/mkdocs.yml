@@ -72,6 +72,7 @@ nav:
       - "ADR-012 — Data residency in Switzerland; LLM region boundary for patie": adr/012-data-residency-llm-region.md
       - "ADR-013 — TarifGuard console demo scope: master-detail, review form, e": adr/013-demo-scope.md
       - "ADR-014 — arc42-light retained as the documentation framework": adr/014-arc42-light.md
+      - "ADR-015 — BAG ePL Spezialitätenliste (FHIR R5) ingestion": adr/015-epl-sl-fhir-ingestion.md
   - AI-Assisted Method:
       - AI Tools & Workflow: method/ai-tools.md
       - Decision Matrix: method/decision-matrix.md

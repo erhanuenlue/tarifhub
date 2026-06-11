@@ -513,12 +513,40 @@ def parse_transcript():
         if t["anchor"] != tp:
             t.clear()
             t.update(_t_blank(tp))
-        _parse_file(t, anchor, main=True)
-        _scan_sidechains(t, anchor)
+        main_p = pathlib.Path(t.get("mainfile") or tp)
+        _parse_file(t, main_p, main=True)
+        # tracker heal: a short empty session can steal session.json (last-writer-wins).
+        # If the tracked transcript has no prompts and its session is over, switch to the
+        # most substantial recently-active MAIN transcript in the same project dir.
+        if not t.get("healed") and t["prompts"] == 0 and sess.get("status") == "ended":
+            best = None
+            try:
+                for p in anchor.parent.glob("*.jsonl"):
+                    st = p.stat()
+                    if p == main_p or st.st_size < 20000 or time.time() - st.st_mtime > 86400:
+                        continue
+                    with open(p, encoding="utf-8", errors="replace") as f:
+                        head = f.readline(4000)
+                    if '"isSidechain": true' in head or '"isSidechain":true' in head:
+                        continue
+                    if best is None or st.st_mtime > best.stat().st_mtime:
+                        best = p
+            except Exception:
+                pass
+            t["healed"] = True
+            if best:
+                healed_tp = t["anchor"]
+                t.clear()
+                t.update(_t_blank(healed_tp))
+                t["mainfile"] = str(best)
+                t["healed"] = True
+                main_p = best
+                _parse_file(t, main_p, main=True)
+        _scan_sidechains(t, main_p)
         for key in sorted(t["sibs"]):
             _parse_file(t, pathlib.Path(key), main=False)
         try:
-            idle = max(0, int(time.time() - anchor.stat().st_mtime))
+            idle = max(0, int(time.time() - main_p.stat().st_mtime))
         except Exception:
             idle = 0
     _attribute(t)
@@ -550,6 +578,7 @@ def parse_transcript():
                     "last_activity": sess.get("last_activity", ""),
                     "compactions": sess.get("compactions", 0)},
         "t0": t["t0"], "idle_sec": idle, "sess_secs": sess_secs,
+        "healed": bool(t.get("healed") and t.get("mainfile")),
         "ctx": t["ctx"], "ctx_limit": CONTEXT_LIMIT,
         "ctx_pct": round(100.0 * t["ctx"] / CONTEXT_LIMIT, 1) if t["ctx"] else 0.0,
         "tokens": {"in": tin, "out": tout, "cache_read": tcr, "cache_write": tcw},
@@ -1534,7 +1563,8 @@ async function tick(){
   const idle = u.idle_sec>120 ? ' · idle '+fdur(u.idle_sec) : ' · live';
   document.getElementById('sess').textContent = u.tracked ? (u.session.status.toUpperCase()+(u.session.id?' · '+u.session.id:'')) : 'not tracked';
   document.getElementById('sess2').innerHTML = (u.t0?('since '+esc(u.t0)+(u.sess_secs?' ('+fdur(u.sess_secs)+')':'')):'')+
-    (u.idle_sec>120?'<span style="color:var(--run)">'+idle+'</span>':idle);
+    (u.idle_sec>120?'<span style="color:var(--run)">'+idle+'</span>':idle)+
+    (u.healed?' <span style="color:var(--vio)">· healed→live transcript</span>':'');
   document.getElementById('ctx').textContent = u.ctx ? fmt(u.ctx)+' / '+fmt(u.ctx_limit) : '—';
   const bar=document.getElementById('ctxbar'); bar.style.width=Math.min(u.ctx_pct,100)+'%'; bar.className=u.ctx_pct>80?'warn':'';
   let eta='';
