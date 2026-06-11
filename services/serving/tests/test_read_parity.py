@@ -199,6 +199,37 @@ def test_list_pagination_windows_parity(serving_client):
     assert page3 == latest[1:3]
 
 
+def test_list_pagination_edge_windows_parity(serving_client):
+    """Edge offset/limit windows behave identically across engines (full-body equality).
+
+    Three edges that differ from the happy path:
+      * offset == total_rows -> empty page (200, not an error),
+      * offset > total_rows  -> empty page (200, no error or off-by-one divergence),
+      * limit > remaining rows -> a short last page (all remaining rows, not padded).
+    LIMIT/OFFSET semantics past the end can drift between SQLite and Postgres; pin them.
+    """
+
+    latest = _latest_by_key(_expected_records())
+    total = len(latest)  # 3 keys -> EAL/1234.00, TARDOC/AA.00.0010, TARDOC/BB.00.0020
+
+    # offset exactly at the end: empty page, HTTP 200.
+    at_end = serving_client.get("/api/v1/tariffs", params={"limit": 10, "offset": total})
+    assert at_end.status_code == 200
+    assert at_end.json() == []
+
+    # offset past the end: still an empty page, still 200 (no error, no wraparound).
+    past_end = serving_client.get("/api/v1/tariffs", params={"limit": 10, "offset": total + 7})
+    assert past_end.status_code == 200
+    assert past_end.json() == []
+
+    # limit larger than the rows remaining after the offset -> short last page with
+    # exactly the remaining rows (here offset 1 leaves 2 rows; limit 50 must not pad).
+    short_last = serving_client.get("/api/v1/tariffs", params={"limit": 50, "offset": 1})
+    assert short_last.status_code == 200
+    assert short_last.json() == latest[1:]
+    assert len(short_last.json()) == total - 1
+
+
 def test_get_latest_version_parity(serving_client):
     resp = serving_client.get("/api/v1/tariffs/TARDOC/AA.00.0010")
     assert resp.status_code == 200
