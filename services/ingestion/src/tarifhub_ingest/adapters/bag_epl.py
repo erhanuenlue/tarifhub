@@ -58,6 +58,11 @@ _STATIC_BASE = "https://epl.bag.admin.ch/static/"
 _ATC_SYSTEM = "http://www.whocc.no/atc"
 _GTIN_SYSTEM = "urn:oid:2.51.1.1"
 _AUTHNO_SYSTEM = "http://fhir.ch/ig/ch-epl/sid/authno"
+# CodeSystems the IG slices these concepts by; a CodeableConcept may legally carry a
+# coding from another system alongside the FOPH one, so we discriminate by system+code
+# across ALL codings rather than trusting coding[0].
+_AUTH_TYPE_SYSTEM = "http://fhir.ch/ig/ch-epl/CodeSystem/ch-authorisation-type"
+_PRICE_TYPE_SYSTEM = "http://fhir.ch/ig/ch-epl/CodeSystem/ch-epl-foph-price-type"
 _AUTH_TYPE_REIMBURSEMENT = "756000002003"  # FOPH "Reimbursement SL" authorisation
 _AUTH_TYPE_MARKETING = "756000002001"  # Swissmedic marketing authorisation
 _PRICE_RETAIL = "756002005001"  # Publikumspreis -> price_chf
@@ -197,7 +202,7 @@ def _emit_bundle_rows(
         resource = ra.get("resource") or {}
         if resource.get("resourceType") != "RegulatedAuthorization":
             continue
-        if _authorisation_type(resource) != _AUTH_TYPE_REIMBURSEMENT:
+        if not _is_authorisation_type(resource, _AUTH_TYPE_REIMBURSEMENT):
             continue
 
         ppd_id = _subject_ppd_id(resource)
@@ -374,12 +379,13 @@ def _pack_size(ppd: dict[str, Any]) -> str | None:
 # --------------------------------------------------------------------------- #
 
 
-def _authorisation_type(ra: dict[str, Any]) -> str | None:
-    for coding in (ra.get("type") or {}).get("coding") or []:
-        code = _as_text(coding.get("code"))
-        if code:
-            return code
-    return None
+def _is_authorisation_type(ra: dict[str, Any], code: str) -> bool:
+    """True iff the RA's ``type`` concept carries the FOPH authorisation ``code``.
+
+    Discriminates by system+code across all codings (the IG slices RA.type.coding by
+    system), so a future second coding system on the concept cannot misclassify it."""
+
+    return _has_coding(ra.get("type"), _AUTH_TYPE_SYSTEM, code)
 
 
 def _subject_ppd_id(ra: dict[str, Any]) -> str | None:
@@ -410,7 +416,7 @@ def _marketing_authno_by_package(entries: list[dict[str, Any]]) -> dict[str, str
         resource = entry.get("resource") or {}
         if resource.get("resourceType") != "RegulatedAuthorization":
             continue
-        if _authorisation_type(resource) != _AUTH_TYPE_MARKETING:
+        if not _is_authorisation_type(resource, _AUTH_TYPE_MARKETING):
             continue
         ppd_id = _subject_ppd_id(resource)
         if not ppd_id:
@@ -452,7 +458,9 @@ def _reimbursement_prices(ra: dict[str, Any]) -> dict[str, Decimal]:
         for child in sub.get("extension") or []:
             url = child.get("url")
             if url == "type":
-                price_type = _codeable_code(child.get("valueCodeableConcept"))
+                # Discriminating: read the code from the price-type CodeSystem only, so
+                # the retail/ex-factory key is never taken from a foreign coding.
+                price_type = _code_in_system(child.get("valueCodeableConcept"), _PRICE_TYPE_SYSTEM)
             elif url == "value":
                 money_value = _money_value(child.get("valueMoney"))
         if price_type is not None and money_value is not None:
@@ -495,9 +503,11 @@ def _reimbursement_fields(ra: dict[str, Any]) -> dict[str, Any]:
 
 
 def _codeable_code_in_price(price_ext: dict[str, Any]) -> str | None:
+    """The price-type code (retail/ex-factory), read from the price-type CodeSystem only."""
+
     for child in price_ext.get("extension") or []:
         if child.get("url") == "type":
-            return _codeable_code(child.get("valueCodeableConcept"))
+            return _code_in_system(child.get("valueCodeableConcept"), _PRICE_TYPE_SYSTEM)
     return None
 
 
@@ -545,12 +555,45 @@ def _first_of_type(entries: list[dict[str, Any]], resource_type: str) -> dict[st
 
 
 def _codeable_code(codeable: Any) -> str | None:
+    """First coding's code (system-agnostic). Use only for NON-discriminating reads."""
+
     if not isinstance(codeable, dict):
         return None
     for coding in codeable.get("coding") or []:
         code = _as_text(coding.get("code"))
         if code:
             return code
+    return None
+
+
+def _has_coding(codeable: Any, system: str, code: str) -> bool:
+    """True iff ANY coding in ``codeable`` matches ``system`` + ``code``.
+
+    The IG slices discriminating concepts (RA.type, price type, status) BY SYSTEM, and a
+    CodeableConcept may legally carry a second coding from another system. So we scan all
+    codings and match system+code — never trust position (coding[0])."""
+
+    if not isinstance(codeable, dict):
+        return False
+    for coding in codeable.get("coding") or []:
+        if coding.get("system") == system and _as_text(coding.get("code")) == code:
+            return True
+    return False
+
+
+def _code_in_system(codeable: Any, system: str) -> str | None:
+    """The code of the FIRST coding from ``system`` (ignoring codings of other systems).
+
+    Used where we need the FOPH code value but the concept may carry foreign codings
+    alongside it (price type: retail vs ex-factory). System-filtered, not positional."""
+
+    if not isinstance(codeable, dict):
+        return None
+    for coding in codeable.get("coding") or []:
+        if coding.get("system") == system:
+            code = _as_text(coding.get("code"))
+            if code:
+                return code
     return None
 
 

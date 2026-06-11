@@ -273,6 +273,33 @@ def test_minimal_bundle_parses_one_row(tmp_path):
     assert keyed[0]["price_chf"] == Decimal("12.5")
 
 
+def test_foph_coding_classified_when_not_first_in_concept(tmp_path):
+    """A dual-coding type concept whose FOPH coding sits SECOND must still classify.
+
+    The IG slices RA.type.coding and price-type.coding BY SYSTEM; multiple codings are
+    legal. We must scan ALL codings and match system+code, not trust coding[0]."""
+    bundle = _minimal_bundle()
+    foreign_auth = {"system": "http://example.org/other-auth", "code": "ZZZ"}
+    foreign_price = {"system": "http://example.org/other-price", "code": "ZZZ"}
+    for entry in bundle["entry"]:
+        resource = entry["resource"]
+        if resource["resourceType"] == "RegulatedAuthorization":
+            # Prepend a foreign coding so the FOPH 756000002003 is no longer first.
+            resource["type"]["coding"].insert(0, foreign_auth)
+            sl = resource["extension"][0]
+            price = sl["extension"][0]
+            for child in price["extension"]:
+                if child["url"] == "type":
+                    child["valueCodeableConcept"]["coding"].insert(0, foreign_price)
+    path = _write_ndjson(tmp_path / "foph-sl-export-20260601.ndjson", [bundle])
+    parsed = bag_epl.parse(path)
+    keyed = [r for r in parsed if not r.get("_parse_failure")]
+    # Still classified as Reimbursement-SL AND the retail price still selected.
+    assert len(keyed) == 1
+    assert keyed[0]["tariff_code"] == "7680000000017"
+    assert keyed[0]["price_chf"] == Decimal("12.5")  # retail (756002005001), found at coding[1]
+
+
 def test_refuses_oversized_file(tmp_path, monkeypatch):
     big = tmp_path / "foph-sl-export-20260601.ndjson"
     big.write_text('{"resourceType":"Bundle"}\n', encoding="utf-8")
