@@ -1,0 +1,17 @@
+/* tarifhub brand tokens for MkDocs Material — original Convergence identity */
+:root {
+  --md-primary-fg-color: #0C4A6E;        /* navy */
+  --md-primary-fg-color--light: #0EA5E9; /* sky */
+  --md-primary-fg-color--dark: #06263B;
+  --md-accent-fg-color: #0EA5E9;
+}
+.md-header { border-bottom: 3px solid #0EA5E9; }
+/* frozen/deterministic values: navy + mono (brand rule) */
+.frozen { font-family: "JetBrains Mono", monospace; color: #0C4A6E; font-weight: 600; }
+/* AI-generated content marker */
+.ai-note {
+  border-left: 4px solid #94A3B8; background: #F8FAFC;
+  padding: .5em .9em; color: #475569; font-size: .9em;
+}
+.ai-note::before { content: "AI-generated explanation — not a billing value"; display: block;
+  font-size: .72em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #94A3B8; }

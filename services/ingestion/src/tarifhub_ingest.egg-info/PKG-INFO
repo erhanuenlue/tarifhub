@@ -1,0 +1,23 @@
+Metadata-Version: 2.4
+Name: tarifhub-ingest
+Version: 0.1.0
+Summary: TarifHub ingestion & AI-assisted harmonization service (pre-freeze pipeline + admin API).
+Author: TarifHub
+License: Proprietary
+Requires-Python: >=3.12
+Description-Content-Type: text/markdown
+Requires-Dist: fastapi>=0.110
+Requires-Dist: uvicorn[standard]>=0.29
+Requires-Dist: pydantic>=2.6
+Requires-Dist: pandas>=2.2
+Requires-Dist: openpyxl>=3.1
+Requires-Dist: lxml>=5.1
+Requires-Dist: pdfplumber>=0.11
+Requires-Dist: psycopg[binary]>=3.1
+Requires-Dist: pgvector>=0.2.5
+Requires-Dist: httpx>=0.27
+Requires-Dist: apscheduler>=3.10
+Requires-Dist: pytest>=8.0
+Provides-Extra: ai
+Provides-Extra: dev
+Requires-Dist: ruff>=0.4; extra == "dev"

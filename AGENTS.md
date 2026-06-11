@@ -1,80 +1,47 @@
-# AGENTS.md — TarifHub working agreement
+# TarifHub — Project Facts (read first)
 
-Open-standard agent guide (read by Codex and other tools). `CLAUDE.md` imports this
-file so Claude Code and Codex share one source of truth. Keep both in sync.
+Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (post-CAS) → L3 apps (demo now). **CAS capstone due 6 July 2026** — scope and grading strategy: the CAS Dossier at `../../02_CAS/TarifHub_CAS_Dossier_EN.md` in this bundle (copy it into `docs/` if this workspace moves out of the bundle).
 
-TarifHub is an AI-assisted harmonization platform for Swiss ambulatory tariff data —
-**one platform, four layers** around the freeze line. The sub-systems, each independently
-containerized:
+## The one inviolable rule
 
-- **L0 — Harmonization Engine** (`services/ingestion`, Python) — pre-freeze, AI-assisted.
-- **L1 — TarifCore API** (`services/serving`, Java 21 / Quarkus) — post-freeze, deterministic —
-  plus **TarifMCP** (`services/mcp`, Python) — read-only MCP tools over serving, for AI agents.
-- **L2 — TarifIQ** (`services/intelligence`, Python / FastAPI) — deterministic
-  combinability/cumulation rules, the **TARMED↔TARDOC cross-walk**, and rule validation over
-  frozen data. AI only *suggests* a candidate rule pre-freeze (the replaceable
-  `ai_rule_suggest` seam — no live call at eval/test time); a human validates via
-  `POST /v1/validate` before freeze.
-- **L3 — Apps** (`apps/`, Next.js): **TarifGuard** (practice), **KassenFlow** (payer
-  correspondence / Kostengutsprache), **MeldePilot** (mandatory reporting / quality data).
-  Read-only over L1 + L2; each carries the de-identification boundary (`lib/deident.ts`).
+**No AI computes or mutates a billing value at serve time.** AI may run only (a) pre-freeze in `ai_map` (non-billing fields, structured output, temp 0) and (b) in explain/search seams that never alter values. Frozen records are immutable: SHA-256 `record_hash` over sorted canonical content; updates are new versions; `audit_log` is append-only. `test_determinism_boundary.py` (AST check: no LLM client importable on the value path) must stay green — CI fails otherwise.
 
-The architectural backbone is the freeze line: AI before it, deterministic facts after it.
-TarifMCP, TarifIQ's evaluation path, and the L3 apps all sit downstream of the line — they
-only READ frozen records (and L2 verdicts) and never compute or mutate a value.
+## Layout
 
-## Non-negotiable engineering rules
+```
+services/ingestion/      L0: adapters → parsers → map_raw → ai_map → validate → score → review → freeze
+services/serving/        L1 TarifCore: REST + FHIR R4, point-in-time + diff, pgvector search (read-only)
+services/mcp/            L1 TarifMCP: search_tariffs, get_tariff, explain_crosswalk (read-only proxies)
+apps/tarifguard-demo/    L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel
+db/                      schema.sql + migrations (Postgres 16 + pgvector; SQLite mirror for offline tests)
+deploy/                  docker-compose.yml + helm/ (k3d for the CAS K8s proof)
+docs/                    arc42/ (12 chapters, MkDocs Material → the deliverable site) + adr/
+vault/                   CAS evidence: daily/ journal, decision-matrix.md, fazit-notes.md
+```
 
-1. AI ONLY pre-freeze, plus search/discovery/explanation in serving — but AI NEVER computes or mutates a billing-relevant value.
-2. Authoritative tariff values are always unaltered frozen, versioned records served deterministically.
-3. Never rewrite whole files; minimal incremental diffs; never rename files/functions/routes/DB columns unless asked.
-4. Preserve the canonical model (fields/columns/routes are frozen contracts — extend, never break).
-5. Tests before done (pytest / mvn verify green).
-6. versioning/ and audit/ modules are protected: change only with explicit human confirmation.
-7. **TarifGuard de-identification.** Patient identifiers never leave Swiss infrastructure; only de-identified coding context (tariff/diagnosis codes, encounter structure) may be sent to an LLM; route via AWS Bedrock EU or Google Vertex AI EU; the only code allowed to build LLM payloads is apps/tarifguard/lib/deident.ts and the ingestion mapper's ai_map(). (The same boundary applies to the KassenFlow and MeldePilot apps via their own `lib/deident.ts`.)
+## Stack
 
-## Dev-loop workflow (non-negotiable)
+Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude structured output temp 0 (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft → GHCR) · OpenTelemetry → Prometheus/Grafana + Sentry. ADR register: `docs/adr/` (13 decisions; ADR-01 Python-first, ADR-13 demo scope).
 
-These govern *how* changes land. They do not override rules 1–7; they enforce them.
+## Commands
 
-- **Codex reviews every PR before merge.** Driven by `/ship`: Claude opens the PR, Codex (a
-  different model family, via codex-plugin-cc / `codex exec`) reviews the diff, Claude
-  addresses findings, then merges. Cadence is **per PR / per logical task**, not per keystroke.
-  The determinism-auditor and security-reviewer subagents run alongside Codex.
-- **Claude Code performs ALL git/gh operations — the user never runs git manually.** Branch,
-  Conventional Commit, push, PR, review, merge all go through `scripts/ship.sh` and
-  `scripts/bootstrap-github.sh`. (gh/codex/claude run on the user's machine, not in CI/sandbox.)
-- **`/ultracode` + determinism under parallel agents.** Use `/ultracode` (Opus 4.8 Dynamic
-  Workflows: parallel plan/execute/verify subagents) for big, test-gated tasks; normal mode for
-  small edits. Under parallelism the freeze line matters MORE: the PreToolUse guard
-  (`.claude/hooks/guard_frozen.sh`, blocking `versioning/`, `audit/`,
-  `services/intelligence/**/crosswalk/`, `rules_frozen*`) and the Stop/SubagentStop determinism
-  tests are what stop any agent from crossing it. Keep a single orchestrator that owns the gate.
-  See `docs/CLAUDE_CODE_SETUP.md` and `knowledge/ai-workflow.md`.
+```bash
+uv sync                                  # per service; uv is the package manager (not pip/poetry)
+uv run pytest -q                         # offline by default: SQLite mirror + stub embedder, no containers
+uv run ruff check --fix . && uv run ruff format .
+docker compose up -d db                  # Postgres+pgvector when a test/dev task needs the real engine
+cd apps/tarifguard-demo && npm run dev   # demo on :3000; npm test = Playwright smoke
+mkdocs serve -f docs/mkdocs.yml          # the arc42 site
+python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (--demo seeds, --reset clears)
+```
 
-## Repo conventions
+## Conventions
 
-- Monorepo. `services/ingestion` (Python 3.12), `services/serving` (Java 21 / Quarkus 3.x),
-  `services/mcp` (Python), `services/intelligence` (Python 3.12), and the `apps/*` (Next.js)
-  are independent builds; `db/`, `deploy/`, `docs/`, `scripts/` are shared.
-- The ingestion suite MUST run fully offline: SQLite by default, no live LLM, no network.
-  The optional `ai` extra (anthropic, sentence-transformers) is never required for tests.
-- Canonical model (LOCKED field set): `tariff_code, tariff_system, designation (de/fr/it),
-  category, tax_points, price_chf, unit, valid_from, valid_to, source_url, source_version,
-  harmonization_confidence, requires_review, metadata, record_hash, version, created_at`.
-- `record_hash` is a deterministic SHA-256 over the sorted canonical content fields
-  (excludes `record_hash`, `created_at`, `version`). Do not change the hashing rule
-  without bumping the pinned test and getting explicit human sign-off.
-- The only place a live LLM may be invoked in ingestion is `mappers/tariff_mapper.py::ai_map`
-  (pre-freeze, non-billing fields). In serving, only the `...serving.search` package may
-  reference langchain4j, and it returns persisted/frozen records — it never invents values.
-- `apps/tarifguard` (Next.js) and `services/mcp` (Python/FastMCP) are READ-ONLY consumers
-  of the serving API: they relay frozen records verbatim and never compute a value. The
-  only TarifGuard code allowed to build an LLM-bound payload is `lib/deident.ts` (rule 7);
-  its server-side route handlers under `app/api/*` keep `SERVING_BASE_URL` off the browser.
-- Style: Python = ruff, line length 100, type hints, small pure functions. Java = standard
-  Quarkus layout, constructor injection, no business logic in resources.
-- Tests-before-done: `cd services/ingestion && pytest -q`, `cd services/intelligence && pytest -q`,
-  `cd services/mcp && pytest -q`, and `cd services/serving && mvn verify`; for the apps,
-  `npm run lint && npm run build`. The Stop/SubagentStop hooks run the Python suites + the
-  determinism-boundary tests automatically (see `.claude/settings.json`).
+- Conventional Commits; branch `feat/…|fix/…`; squash-merge green PRs only.
+- Env-only config (`TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY`). Without an API key, `ai_map` falls back to deterministic `map_raw` — tests rely on this.
+- The canonical model's field set is **locked, additive-only** (ADR-03). A breaking change needs a new ADR before code.
+- German is the canonical designation language; FR/IT optional.
+- Console scope guards (ADR-13): master-detail + review form + explain panel, ~4 components, no auth, no patient data, no benchmarking. Reject scope creep in review.
+- **Graders review code and documentation only — nothing gets deployed or executed by them.** Evidence that exists only at runtime must be captured into `docs/` (screenshots, CI links, coverage figures, report tables). Distribution (criterion 17) is proven by Dockerfiles/compose/Helm + CI builds + captured screenshots, not by a live cluster.
+- **No Java, no JVM, anywhere — owner's decision, final.** The stack is Python + TypeScript (console) only; the rubric is being refreshed to stack-neutral wording. The docs keep a "Modern application concepts" page (arc42 §8: DI, validation, persistence abstraction, observability, container-first — as implemented in Python, citing Modulplan Lehrmittel [5]). Never propose Quarkus/Java components for any reason, including rubric optics.
+- A merged change that decides something architectural → 5-line ADR in `docs/adr/`. A working session → journal entry in `vault/daily/` (the hook drafts it; curate it — this is graded CAS evidence).

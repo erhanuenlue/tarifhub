@@ -1,48 +1,63 @@
-site_name: TarifHub Architecture
-site_description: arc42 architecture documentation for the TarifHub platform.
+# tarifhub — architecture documentation site (MkDocs Material)
+# Option A note: this REPLACES the existing repo's mkdocs.yml (adds PDF export + method chapters).
+# Serve:  mkdocs serve -f docs/mkdocs.yml
+# Build:  mkdocs build -f docs/mkdocs.yml --strict
+# PDF:    open the "Full document (PDF)" page on the built site → browser print → save as PDF.
+
+site_name: tarifhub — Architecture Documentation
+site_description: AI-assisted harmonisation above a deterministic freeze line. FFHS AISE Semesterarbeit.
+site_author: Erhan Ünlü
 docs_dir: .
+site_dir: ../site
+repo_url: https://github.com/CHANGE-ME/tarifhub   # set after `gh repo create`; appears in header
+edit_uri: ""
 
 theme:
   name: material
+  palette:
+    primary: custom
+    accent: custom
+  font:
+    text: Inter
+    code: JetBrains Mono
   features:
     - navigation.sections
     - navigation.top
     - content.code.copy
-  palette:
-    - scheme: default
-      primary: teal
-      accent: teal
+    - toc.follow
 
-markdown_extensions:
-  - admonition
-  - attr_list
-  - tables
-  - pymdownx.details
-  - pymdownx.superfences
-  - toc:
-      permalink: true
-
-# To render the Mermaid diagrams in diagrams/ inline, add the superfences custom
-# fence for "mermaid" (uses a Python-name format) or the mkdocs-mermaid2 plugin.
+extra_css:
+  - stylesheets/brand.css
 
 nav:
   - Home: index.md
-  - arc42:
-      - 1. Introduction and Goals: arc42/01-introduction-goals.md
-      - 2. Constraints: arc42/02-constraints.md
-      - 3. Context and Scope: arc42/03-context-scope.md
-      - 4. Solution Strategy: arc42/04-solution-strategy.md
-      - 5. Building Block View: arc42/05-building-block-view.md
-      - 6. Runtime View: arc42/06-runtime-view.md
-      - 7. Deployment View: arc42/07-deployment-view.md
-      - 8. Crosscutting Concepts: arc42/08-crosscutting-concepts.md
-      - 9. Architecture Decisions: arc42/09-architecture-decisions.md
-      - 10. Quality Requirements: arc42/10-quality-requirements.md
-      - 11. Risks and Technical Debt: arc42/11-risks-technical-debt.md
-      - 12. Glossary: arc42/12-glossary.md
-  - Decision Records:
-      - ADR-001 Two-service split: adr/001-two-service-split.md
-      - ADR-002 AI before freeze: adr/002-ai-before-freeze.md
-      - ADR-003 Canonical model: adr/003-canonical-model.md
-      - ADR-004 Quarkus serving: adr/004-quarkus-serving.md
-      - ADR-005 TarifGuard merge + MCP: adr/005-tarifguard-merge-and-mcp.md
+  - Architecture (arc42):
+      - 1 · Introduction & Goals: arc42/01-introduction-goals.md
+      - 2 · Constraints: arc42/02-constraints.md
+      - 3 · Context & Scope: arc42/03-context-scope.md
+      - 4 · Solution Strategy: arc42/04-solution-strategy.md
+      - 5 · Building Blocks: arc42/05-building-block-view.md
+      - 6 · Runtime View: arc42/06-runtime-view.md
+      - 7 · Deployment View: arc42/07-deployment-view.md
+      - 8 · Crosscutting Concepts: arc42/08-crosscutting-concepts.md
+      - 9 · Architecture Decisions: arc42/09-architecture-decisions.md
+      - 10 · Quality Requirements: arc42/10-quality-requirements.md
+      - 11 · Risks & Technical Debt: arc42/11-risks-technical-debt.md
+      - 12 · Glossary: arc42/12-glossary.md
+  - AI-Assisted Method:
+      - AI Tools & Workflow: method/ai-tools.md
+      - Decision Matrix: method/decision-matrix.md
+      - Journal (excerpts): method/journal.md
+      - Fazit: method/fazit.md
+  - Criterion Map: criterion-map.md
+  - Zusammenfassung (DE): zusammenfassung-de.md
+
+plugins:
+  - search
+  - print-site:
+      add_to_navigation: true
+      print_page_title: "Full document (PDF)"
+      add_cover_page: true
+      cover_page_template: ""
+      toc_title: "Contents"
+      enumerate_headings: false

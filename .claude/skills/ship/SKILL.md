@@ -1,0 +1,39 @@
+---
+name: ship
+description: The 9-phase multi-model shipping pipeline — plan-approval, TDD implementation, reviews, CI, runtime verification, merge-gate. Only Erhan triggers this. Fable 5 orchestrates; Opus implements; Sonnet verifies runtime.
+disable-model-invocation: true
+allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
+---
+
+Ship the requested work through the phased pipeline. **You (Fable 5) do only the jobs where quality compounds: the plan, the orchestration, and the merge-gate review.** Delegate the volume. Emit a dashboard event at every phase transition: `bash tools/shipboard/emit.sh <phase01-09> <running|pass|fail|skip> "<short detail>"` — never let an emit failure block the pipeline. Watch the board at `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
+
+**Model discipline:** each agent's model is pinned in its config — never override it, never switch a model mid-task (prompt caches are model-scoped; a switch re-reads the whole context at full price). Hold the plan-quality bar ruthlessly: a wrong plan wastes every downstream token.
+
+## Phase 01 — Plan *(inline, Fable)*
+Read the task/issue + the code it touches. Produce the plan: scoped task list with file-level targets, acceptance criteria per task, review routing (which reviewers this diff needs), and what phase 07 must prove. **STOP and present the plan to Erhan for approval.** Do not proceed without his explicit yes; fold in his corrections. `emit 01 pass`.
+
+## Phase 02 — Implement *(delegated: `implementer` × N, Opus)*
+Dispatch each approved task to an `implementer` — in parallel where tasks are independent (separate files/services), sequentially where they conflict. Branch first if on `main` (`feat/…|fix/…`). Review each returned report; reject scope creep immediately. You write code yourself only for trivial glue the dispatch overhead doesn't justify.
+
+## Phase 03 — Local gates *(inline)*
+`uv run ruff check . && uv run pytest -q` per touched service (offline suite); `npm run lint && npm test` if `apps/` changed. Quote failures verbatim; route fixes back to the responsible implementer. Stage related changes into small Conventional Commits.
+
+## Phase 04 — Reviews *(delegated, parallel)*
+Always: `verifier` (fresh-context diff-vs-plan). Conditional: `determinism-auditor` (anything under `services/`), `security-reviewer` (secrets/parsing/deident/API surface), `codex-reviewer` (architectural diffs, or when Erhan asks — independent second model family). Launch applicable reviewers **in one parallel batch**.
+
+## Phase 05 — Fix cycle *(orchestrated)*
+Consolidate findings, de-duplicate, rank. Route real defects to `implementer`; reject false positives with one-line reasoning (keep it in the report). Re-run phase 03 gates + the objecting reviewer after fixes. Loop until clean or escalate to Erhan if a finding disputes the approved plan itself.
+
+## Phase 06 — PR + CI *(inline)*
+`gh pr create` — description: what + why, evidence (test output), review summary, what phase 07 will prove. Wait for CI; the determinism boundary test must be visible in the run log. CI red → phase 05.
+
+## Phase 07 — Runtime verification *(delegated: `e2e-tester`, Sonnet)*
+Compose-up, integration suite against real Postgres, API smoke, console smoke + screenshots when `apps/` changed, container-log scan. This is the CAS-fit replacement for cloud staging — captured evidence beats a live deploy nobody will visit. Findings → phase 05.
+
+## Phase 08 — Full report *(inline, Fable)*
+Consolidated ship report: what landed (per task), evidence (quoted test/CI/runtime output), review findings and their dispositions, files touched, risks remaining. Append the journal-relevant extract to today's `vault/daily/` draft — which agents ran on which model, what they got wrong, what caught it (criterion-15 raw material, generated as a by-product).
+
+## Phase 09 — Merge gate *(Erhan)*
+Present the report and **STOP: ask Erhan to confirm the merge.** On his yes: squash-merge, delete branch, `emit 09 pass`, confirm `brain_sync` ran. On no: capture why into the journal and leave the PR open.
+
+**Failure posture:** any phase fails → `emit <phase> fail "<reason>"`, attempt the fix loop once, then stop and report rather than thrash. The two human gates (01, 09) are never skipped, never assumed.

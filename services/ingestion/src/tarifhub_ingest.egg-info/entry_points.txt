@@ -1,0 +1,2 @@
+[console_scripts]
+tarifhub-ingest = tarifhub_ingest.main:run

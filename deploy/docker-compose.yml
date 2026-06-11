@@ -1,0 +1,35 @@
+# Local development stack. Default: just the database. Profiles add MinIO.
+#   docker compose -f deploy/docker-compose.yml up -d db
+#   docker compose -f deploy/docker-compose.yml --profile objects up -d
+services:
+  db:
+    image: pgvector/pgvector:pg16
+    container_name: tarifhub-db
+    environment:
+      POSTGRES_USER: tarifhub
+      POSTGRES_PASSWORD: tarifhub
+      POSTGRES_DB: tarifhub
+    ports: ["5432:5432"]
+    volumes:
+      - tarifhub-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U tarifhub"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  minio:
+    image: minio/minio:latest
+    container_name: tarifhub-minio
+    profiles: [objects]
+    command: server /data --console-address ":9001"
+    environment:
+      MINIO_ROOT_USER: tarifhub
+      MINIO_ROOT_PASSWORD: tarifhub-dev
+    ports: ["9000:9000", "9001:9001"]
+    volumes:
+      - tarifhub-minio:/data
+
+volumes:
+  tarifhub-pgdata:
+  tarifhub-minio:

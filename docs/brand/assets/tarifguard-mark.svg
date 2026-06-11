@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" fill="none" role="img" aria-label="TarifGuard mark">
+  <!-- TarifGuard - Sub-brand mark -->
+  <!-- Shield (protect / coding-check) housing the TarifHub hub node + a validation check; -->
+  <!-- three converging streams tie it back to the TarifHub convergence DNA. -->
+
+  <!-- Shield -->
+  <path d="M32 5 L53 13 V31 C53 44 43.5 53 32 58 C20.5 53 11 44 11 31 V13 Z" fill="#0C4A6E"/>
+
+  <!-- Converging streams into the node -->
+  <path d="M21 17 C25 19 29 21 32 23" stroke="#22D3EE" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M32 14 L32 23" stroke="#38BDF8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M43 17 C39 19 35 21 32 23" stroke="#60A5FA" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <circle cx="21" cy="17" r="2" fill="#22D3EE"/>
+  <circle cx="32" cy="14" r="2" fill="#38BDF8"/>
+  <circle cx="43" cy="17" r="2" fill="#60A5FA"/>
+
+  <!-- Hub node (white) -->
+  <rect x="24" y="23" width="16" height="16" rx="4.5" fill="#FFFFFF"/>
+
+  <!-- Validation check inside the node -->
+  <polyline points="27,31 30.5,35 38,25" stroke="#0EA5E9" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round" fill="none"/>
+</svg>

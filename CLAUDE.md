@@ -1,68 +1,37 @@
-# CLAUDE.md — Claude Code project memory
+# CLAUDE.md — TarifHub (Fable 5)
 
 @AGENTS.md
 
-The non-negotiable rules and repo conventions live in `AGENTS.md` (imported above).
-This file adds Claude-Code-specific workflow. Do not duplicate the rules here; if they
-ever diverge, `AGENTS.md` wins and CLAUDE.md must be re-synced.
+Project facts, layout, commands and the determinism rule are in AGENTS.md above. This file is the Claude-Code workflow, tuned for Fable 5 — deliberately short. When Erhan corrects you, add one short rule here (or in auto memory), don't grow paragraphs.
 
-## Claude Code workflow
+## How to work
 
-- **Four layers (one platform).** L0 `services/ingestion` (pre-freeze, Python); L1
-  `services/serving` (deterministic, Quarkus) + `services/mcp` (read-only MCP tools, Python);
-  L2 `services/intelligence` — **TarifIQ** (deterministic combinability/cumulation rules +
-  TARMED↔TARDOC cross-walk + validation, Python); L3 `apps/tarifguard`, `apps/kassenflow`,
-  `apps/meldepilot` (Next.js). Everything downstream of the freeze line only READS frozen
-  records (and L2 verdicts) and never computes a value. TarifIQ *evaluates* deterministically;
-  AI only *suggests* a rule pre-freeze (the `ai_rule_suggest` seam — no live call at eval/test).
-- **Plan mode for multi-module changes.** Any change that spans more than one sub-system,
-  the DB schema, the Helm chart, or the canonical model must start in plan mode. Produce
-  the plan, get it approved, then implement as minimal incremental diffs (rule 3).
-- **Codex reviews every PR; Claude does all git/gh.** Ship with **`/ship`** — Claude branches,
-  makes a Conventional Commit, pushes, opens the PR, runs the **codex-reviewer**,
-  **determinism-auditor**, and **security-reviewer** subagents, addresses findings, then merges
-  (the user never runs git by hand; see `scripts/ship.sh` + `scripts/bootstrap-github.sh`).
-  The review confirms: (a) no LLM client imported on a value path (`services/ingestion`
-  `main.py`/`storage` and everything outside `serving.search`; `services/intelligence`
-  `main.py`/`rules`/`crosswalk`/`validators`/`store`), (b) no AI computes/mutates a billing
-  value, (c) tests green (rule 5). Cadence: **per PR / per logical task**, not per keystroke.
-- **`/ultracode` for big tasks, normal mode for small edits.** `/ultracode` (Opus 4.8 Dynamic
-  Workflows) runs parallel plan/execute/verify subagents until the suite passes — ideal for
-  per-source ingestion work and cross-service refactors. Keep one orchestrator that owns the
-  determinism gate; the hooks below are what keep parallel agents off the freeze line.
-- **Protected / frozen paths.** A PreToolUse hook (`.claude/hooks/guard_frozen.sh`) blocks
-  edits to `versioning/`, `audit/`, `services/intelligence/**/crosswalk/`, and `rules_frozen*`
-  (exit 2). Editing them needs explicit human confirmation + a re-freeze/version bump where
-  relevant; do not try to bypass the hook.
-- **Hooks (see `.claude/settings.json`).** Stop → `pytest -q` in ingestion *and* intelligence
-  plus the determinism-boundary tests; SubagentStop → the determinism-boundary tests (so a
-  parallel `/ultracode` subagent can't finish across a broken freeze line); PreToolUse on
-  Edit/Write/MultiEdit → the frozen-path guard. Let the hooks run; if a hook fails, the work
-  is not done.
-- **Contracts are frozen.** The canonical fields, DB columns, and REST routes are
-  contracts. Extend additively; never rename or remove without an explicit request and
-  an ADR.
+- Take tasks whole (spec → implement → verify); don't pre-chop. State the why when delegating. Do the simplest thing that works — no speculative abstractions, no future-proofing, validate at system boundaries only.
+- Before claiming progress, check each claim against a tool result from this session. Failing test → say so with output. Skipped step → say so.
+- Plan mode for anything multi-file; skip it when the diff fits one sentence. For long unattended runs use `/goal "<verifiable condition>"`.
+- When Erhan is thinking out loud, deliver an assessment, not a patch. Pause only for: destructive/irreversible actions, real scope changes, or input only he has.
+- Effort: stay on `high`. `medium` for routine chores; `xhigh` only for genuinely hard multi-file problems.
 
-## TarifGuard de-identification boundary (enforced)
+## The pipeline — you orchestrate, workers produce
 
-`AGENTS.md` rule 7 is non-negotiable and Claude Code must enforce it on every change:
+You (Fable 5) do the three jobs where quality compounds: **the plan, the orchestration, the merge-gate review**. The volume is delegated to model-pinned workers — never override an agent's pinned model, never switch models mid-task (caches are model-scoped):
 
-> Patient identifiers never leave Swiss infrastructure; only de-identified coding context (tariff/diagnosis codes, encounter structure) may be sent to an LLM; route via AWS Bedrock EU or Google Vertex AI EU; the only code allowed to build LLM payloads is apps/tarifguard/lib/deident.ts and the ingestion mapper's ai_map().
+- `implementer` (**Opus 4.8**) — TDD implementation of approved-plan tasks; parallel dispatch when tasks are independent. You write code yourself only for glue too small to dispatch, and in quick interactive sessions where pipeline overhead isn't worth it.
+- `e2e-tester` (**Sonnet**) — mechanical runtime verification: compose-up, integration runs, API/console smoke, log scans. Evidence collector, not a fixer.
+- Reviewers: `verifier` (fresh-context diff-vs-spec — self-critique is not verification) · `determinism-auditor` (Sonnet, mandatory for `services/`) · `security-reviewer` (Opus — also covers what Fable's safety classifiers decline) · `codex-reviewer` (independent second model family; CAS evidence of multi-tool use — journal it).
+- Built-in Explore handles codebase search. Launch independent agents in one parallel batch and keep working.
 
-Before any PR that touches `apps/tarifguard` or the AI seams, confirm: no LLM-bound
-payload is constructed outside `apps/tarifguard/lib/deident.ts` or
-`services/ingestion/.../tariff_mapper.py::ai_map`; `apps/tarifguard` and `services/mcp`
-remain read-only over serving and compute no value; `SERVING_BASE_URL` is read only in
-server-side code (route handlers / `lib/api.ts`), never in browser bundles.
+**`/ship` runs the whole 9-phase pipeline** (plan-approval → implement → gates → reviews → fix → PR/CI → runtime verification → report → merge-confirmation) with two human gates that are never skipped: Erhan approves the plan, Erhan confirms the merge. Live board: `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
 
-## Quick commands
+## Git & GitHub — you do all of it
 
-- Ingestion tests: `cd services/ingestion && pytest -q`
-- Intelligence (TarifIQ) tests: `cd services/intelligence && pytest -q`
-- MCP tests: `cd services/mcp && pytest -q`
-- Serving build: `cd services/serving && mvn verify`
-- App dev: `cd apps/tarifguard && npm install && npm run dev` (also `apps/kassenflow`, `apps/meldepilot`)
-- Local stack: `docker-compose up` (Postgres+pgvector, MinIO); add `--profile apps` for the apps+MCP, `--profile services` for intelligence
-- Docs preview: `mkdocs serve -f docs/mkdocs.yml`
-- **Ship a change:** `/ship "feat(scope): summary"` (Claude does branch→commit→push→PR→Codex review→merge)
-- Dev setup details: `docs/START_GUIDE.md` · `docs/CLAUDE_CODE_SETUP.md` · `knowledge/ai-workflow.md`
+Erhan never runs git by hand. Branch → small Conventional Commits → `gh pr create` → reviews (verifier + determinism + security as applicable) → address → squash-merge green. `/ship` runs the whole loop. First time only: `gh repo create tarifhub --private --source=. --push`.
+
+## Memory & CAS evidence (two different things)
+
+- **Auto memory is yours** — record corrections, gotchas, confirmed approaches there; keep it current; delete what proves wrong.
+- **`vault/` is Erhan's graded evidence, not your memory.** The SessionEnd hook drafts `vault/daily/` journal entries; end each session by curating the draft into 3–6 honest lines: what was delegated, what AI got wrong and what caught it (hook? review? test?), one concrete prompt→diff example. Never backfill journal entries — contemporaneity is the point.
+
+## Definition of done
+
+Code works → `pytest -q` green (offline) → ruff clean → relevant reviewers addressed → PR squash-merged → ADR if a decision was made → journal entry curated. Nothing below the freeze line touched by AI — `guard_frozen` enforces this; don't work around it, flag it.

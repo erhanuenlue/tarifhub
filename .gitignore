@@ -1,44 +1,37 @@
-# --- Python (services/ingestion) ---
-.venv/
-venv/
+# Python
 __pycache__/
 *.py[cod]
-*.egg-info/
-.eggs/
-build/
-dist/
+.venv/
+venv/
 .pytest_cache/
 .ruff_cache/
-.mypy_cache/
-*.db
-*.sqlite3
-tarifhub_dev.db
+.coverage
+htmlcov/
+dist/
 
-# --- Java / Quarkus (services/serving) ---
-target/
-.mvn/wrapper/maven-wrapper.jar
-*.class
-
-# --- Node / Next.js (apps/tarifguard) ---
+# Node / Next.js
 node_modules/
 .next/
 out/
-*.tsbuildinfo
+playwright-report/
+test-results/
 
-# --- Docs (MkDocs) ---
-site/
-
-# --- Local env & secrets ---
+# Env & secrets — never committed
 .env
 .env.*
 !.env.example
 
-# --- OS / editor ---
+# Claude Code — personal/local files stay out; shared config stays in
+.claude/settings.local.json
+CLAUDE.local.md
+
+# Data & artifacts
+*.sqlite
+data/raw/
+site/
+.shipboard/
+
+# OS / editors
 .DS_Store
 .idea/
 .vscode/
-*.swp
-
-# --- Claude Code dev workflow artifacts ---
-.codex-review.md
-.graphify/

@@ -1,0 +1,29 @@
+# 00b — The CAS one-shot (run inside the prepared workspace)
+
+> Unlike 00 (empty-dir reference), this one assumes the launchpad: CLAUDE.md/AGENTS.md loaded, hooks armed, docs scaffold present, existing code possibly merged (SETUP Option A). It drives one long autonomous run to the CAS floor — **criteria-driven, evidence-capturing, resumable**. Run with auto-accept permissions and patience (hours). What it cannot do is be you: the Fazit's final voice, the rubric-refresh diff, the Problemstellung box and the Moodle upload stay human.
+
+---
+
+You are in the prepared TarifHub workspace — AGENTS.md and CLAUDE.md are loaded; hooks enforce the freeze line; the docs scaffold and CI/publish workflows exist. Existing service code may be present: audit it first and build on what survives the audit; rewrite only what is wrong, not what is unfamiliar.
+
+**Mission:** bring this repository to the state where the FFHS grading table below scores at the top of every row a machine can influence, in one continuous run. Work plan-first, then execute block by block; commit in small Conventional Commits as you go; keep working until the exit condition holds or you hit something only Erhan can decide (irreversible, legal, money — nothing else stops you).
+
+**The product, the invariant, the constraints:** as defined in AGENTS.md and `docs/` — four layers, BAG-only sources (EAL XLSX + ePL SL FHIR R5, real trimmed fixtures), the freeze line enforced by the AST boundary test, one Python toolchain, the TarifGuard Console (master-detail + review form + labelled explain panel), offline-capable tests, per-service containers, CI with security gates. Graders **read** code and documentation — they never run anything. Therefore: every runtime truth must be captured as an artifact (test output, coverage figure, CI link, screenshot) inside `docs/`.
+
+**The grading table you are building against (18 criteria, 100 points — outgoing version; a stack-neutral refresh is announced, diff it when published; the stack is Python end-to-end, no JVM, regardless):**
+Spezifikation — use-cases (5), SMART NfAs (5), vision (5) · Entwurf — architecture pictorial+textual (7), structure/behaviour/interaction perspectives (7), DB model (3) · Programmierung — code structured by layer/module/sub-system (7), modern application concepts ["Modern application concepts" page in arc42 §8, see CAS Dossier §3] (10), learnings documented (3), Git repo (2) · Validierung — acceptance criteria (5), test approach (5), unit tests (3), **test results documented** (3) · KI — **tools used + described (12)**, intelligent services built with AI (6), independently deployable container sub-systems (5), **Fazit (7)**.
+
+**Deliver, in whatever order your plan justifies:**
+
+1. Pipeline live end-to-end on both real sources — parse → `ai_map` (live with key, deterministic fallback without) → validate → confidence → review queue → freeze; idempotent re-run proven by the hash-identity test.
+2. TarifCore complete (REST + FHIR R4 read, point-in-time, diff, pgvector search) + TarifMCP (3 read-only tools); a test per documented behaviour; >80% coverage on core modules.
+3. TarifGuard Console: master-detail + review form (posts to the review endpoint; approval freezes server-side) + labelled explain panel; component tests + one smoke test; **screenshot set into `docs/img/console/`**. Built on the **original Convergence brand** — tokens and content-state classes from `docs/brand/tokens.css`, rules in `docs/brand/README.md`; the visual law (frozen values = navy + JetBrains Mono with provenance chips · AI content = slate, always labelled) is review-blocking, and tests assert it.
+4. Containers + CI green: per-service images build in CI, compose works locally (capture `docker compose up` + `docker ps` screenshot), security gates pass.
+5. Documentation populated, not stubbed: all 12 arc42 chapters from the v2.1 baseline; ADR-001…014 materialised; the criterion-8 translation page; use-case catalogue + UML + 3 sequence diagrams + C4 views + ER; acceptance criteria; test strategy; **results section with real figures**; the criterion-map appendix filled so a grader finds each criterion's evidence in under two minutes; German Zusammenfassung. Site builds `--strict`; print-page renders.
+6. **Evidence of the method (criterion 15 — do this throughout, not at the end):** maintain `RUN-LOG.md` with timestamped entries as you work — what you delegated to which agent, what failed and what caught it (hook, review, test), prompt→diff examples, decisions taken. This log is machine-contemporaneous raw material; Erhan curates it into `vault/daily/` and the Fazit afterwards. Draft `docs/method/ai-tools.md` and a **Fazit draft** from the log — marked clearly as drafts for Erhan's voice.
+7. A presentation deck draft (the minimal reveal pattern in `../../05_Pitch/`, repointed at the grader: problem → architecture → freeze line → live evidence → method → lessons).
+8. `LIMITS.md`: what's cut, what's weak, what comes next — honest, because the Nachprüfung path and the post-CAS product both build on this repo. Tag the final state `cas-rc1`.
+
+**Exit condition:** `/cas-status` reports every floor item green with repo evidence; a fresh-context hostile review of the whole repo against this prompt and the grading table finds no criterion without an artifact; final report to Erhan lists — what exists, what's proven (quoted output), what's drafted awaiting his voice (Fazit, journal curation), the three biggest risks, and the exact remaining human actions (refreshed-rubric diff, Problemstellung submission, journal curation, Moodle upload Sun 5 Jul).
+
+Do not touch anything below the freeze line guard; do not invent journal entries for days you didn't run; do not gold-plate the console past its four components. The simplest system whose evidence is complete beats a richer system whose evidence is thin.

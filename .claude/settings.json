@@ -1,73 +1,100 @@
 {
-  "model": "claude-opus-4-8",
-  "enableAllProjectMcpServers": true,
-  "enabledPlugins": {
-    "codex-plugin-cc@openai": true
-  },
   "permissions": {
     "allow": [
-      "Bash(git status:*)",
-      "Bash(git diff:*)",
-      "Bash(git add:*)",
-      "Bash(git commit:*)",
-      "Bash(git switch:*)",
-      "Bash(git checkout:*)",
-      "Bash(git branch:*)",
-      "Bash(git fetch:*)",
-      "Bash(git pull:*)",
-      "Bash(git push:*)",
-      "Bash(git log:*)",
-      "Bash(gh pr:*)",
-      "Bash(gh repo:*)",
-      "Bash(gh api:*)",
-      "Bash(gh auth status:*)",
-      "Bash(codex exec:*)",
-      "Bash(pytest:*)",
-      "Bash(ruff:*)",
-      "Bash(mvn:*)",
-      "Bash(npm run lint:*)",
-      "Bash(npm run build:*)",
-      "Bash(./scripts/ship.sh:*)",
-      "Bash(./scripts/bootstrap-github.sh:*)",
-      "Bash(./scripts/setup-claude-code.sh:*)"
+      "Bash(uv run pytest*)",
+      "Bash(uv run ruff*)",
+      "Bash(uv sync*)",
+      "Bash(uv add*)",
+      "Bash(npm run*)",
+      "Bash(npm install*)",
+      "Bash(npm test*)",
+      "Bash(npx playwright*)",
+      "Bash(docker compose*)",
+      "Bash(docker build*)",
+      "Bash(k3d*)",
+      "Bash(kubectl get*)",
+      "Bash(kubectl describe*)",
+      "Bash(kubectl logs*)",
+      "Bash(helm*)",
+      "Bash(mkdocs*)",
+      "Bash(git add*)",
+      "Bash(git commit*)",
+      "Bash(git checkout*)",
+      "Bash(git switch*)",
+      "Bash(git push*)",
+      "Bash(git pull*)",
+      "Bash(git merge*)",
+      "Bash(git rebase*)",
+      "Bash(git status*)",
+      "Bash(git diff*)",
+      "Bash(git log*)",
+      "Bash(gh pr*)",
+      "Bash(gh repo view*)",
+      "Bash(gh run*)"
+    ],
+    "deny": [
+      "Bash(rm -rf*)",
+      "Bash(git push --force*)",
+      "Bash(git push -f*)",
+      "Bash(git reset --hard*)",
+      "Read(.env*)",
+      "Read(**/.env*)",
+      "Write(.env*)",
+      "Bash(kubectl delete*)",
+      "Bash(helm uninstall*)"
     ]
   },
   "hooks": {
     "PreToolUse": [
       {
-        "matcher": "Edit|Write|MultiEdit",
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": ".claude/hooks/guard_frozen.sh"
+            "command": "bash .claude/hooks/guard_frozen.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/shipboard_emit.sh"
           }
         ]
       }
     ],
-    "Stop": [
+    "PostToolUse": [
       {
+        "matcher": "Edit|Write",
         "hooks": [
           {
             "type": "command",
-            "command": "cd services/ingestion && pytest -q"
-          },
+            "command": "bash .claude/hooks/format.sh"
+          }
+        ]
+      },
+      {
+        "matcher": "Task",
+        "hooks": [
           {
             "type": "command",
-            "command": "cd services/intelligence && pytest -q"
-          },
-          {
-            "type": "command",
-            "command": "cd services/ingestion && pytest -q tests/test_determinism_boundary.py && cd ../intelligence && pytest -q tests/test_determinism_boundary.py"
+            "command": "bash .claude/hooks/shipboard_emit.sh"
           }
         ]
       }
     ],
-    "SubagentStop": [
+    "SessionEnd": [
       {
         "hooks": [
           {
             "type": "command",
-            "command": "cd services/ingestion && pytest -q tests/test_determinism_boundary.py && cd ../intelligence && pytest -q tests/test_determinism_boundary.py"
+            "command": "bash .claude/hooks/journal_draft.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/brain_sync.sh"
           }
         ]
       }

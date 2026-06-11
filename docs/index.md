@@ -1,34 +1,11 @@
-# TarifHub Architecture
+# tarifhub — Architecture Documentation
 
-TarifHub is an AI-assisted harmonization platform for Swiss ambulatory tariff data. It
-ingests public tariff sources, harmonizes them through an AI-assisted, human-in-the-loop
-pipeline, **freezes** each record as an immutable, versioned, hashed fact, and serves
-those facts deterministically over adaptive APIs.
+**AI-assisted harmonisation above a deterministic freeze line; one versioned tariff API below it.**
 
-This site is the [arc42](https://arc42.org) architecture documentation, plus the
-architecture decision records (ADRs).
+This site is the Semesterarbeit deliverable for the FFHS CAS *AI-Assisted Software Engineering* (FS26). The PDF hand-in is the [Full document (PDF)](print_page/) export of this site; the source code lives in the Git repository linked in the header.
 
-## The one rule that shapes everything
+- Start with [Introduction & Goals](arc42/01-introduction-goals.md) → the [Solution Strategy](arc42/04-solution-strategy.md) → the [Decisions](arc42/09-architecture-decisions.md).
+- The AI-assisted build method — the heart of this CAS — is documented under **AI-Assisted Method**.
+- The [Criterion Map](criterion-map.md) is the grader's index: every grading criterion → its evidence, one click.
 
-> AI may assist **before** the freeze (and for search/discovery/explanation in serving),
-> but **AI never computes or mutates a billing-relevant value**. Every authoritative
-> value returned is an unaltered, frozen, versioned record served deterministically.
-
-## Four sub-systems, one freeze line
-
-| Sub-system | Stack | Side of the line |
-|---|---|---|
-| Ingestion | Python 3.12, FastAPI, Pydantic v2 | Pre-freeze (AI-assisted harmonization) |
-| Serving | Java 21, Quarkus, Hibernate/Panache | Post-freeze (deterministic) + langchain4j search |
-| MCP server | Python 3.12, FastMCP | Read-only tools over serving (downstream) |
-| TarifGuard | Next.js, React, Tailwind | Practice-facing front end over serving (downstream) |
-
-The MCP server and TarifGuard are read-only consumers: they relay frozen records and
-never compute a value.
-
-## Contents
-
-- arc42 sections 1–12 (see the navigation).
-- ADRs 001–005 (two-service split, AI-before-freeze, canonical model, Quarkus serving,
-  TarifGuard merge + MCP).
-- C4 diagrams in `diagrams/` (context + container).
+*The one rule that defines this system: no AI computes or mutates a billing value at serve time.*

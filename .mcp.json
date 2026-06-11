@@ -2,22 +2,7 @@
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp@latest"],
-      "env": {
-        "CONTEXT7_API_KEY": "${CONTEXT7_API_KEY:-}"
-      }
-    },
-    "graphify": {
-      "command": "graphify",
-      "args": ["mcp"],
-      "env": {
-        "GRAPHIFY_API_KEY": "${GRAPHIFY_API_KEY:-}"
-      }
-    },
-    "obsidian": {
-      "command": "npx",
-      "args": ["-y", "obsidian-mcp", "${TARIFHUB_VAULT:-./knowledge}"],
-      "env": {}
+      "args": ["-y", "@upstash/context7-mcp"]
     }
   }
 }
