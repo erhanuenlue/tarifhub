@@ -1072,6 +1072,7 @@ requires-dist = [
     { name = "pydantic", specifier = ">=2.6" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
+    { name = "sentence-transformers", marker = "extra == 'ai'", specifier = ">=2.7" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
 ]
 provides-extras = ["ai", "dev"]

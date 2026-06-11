@@ -37,3 +37,6 @@ site/
 .DS_Store
 .idea/
 .vscode/
+.gstack/
+.claude/agent-memory/
+services/*/.claude/
