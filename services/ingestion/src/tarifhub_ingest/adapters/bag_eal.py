@@ -24,6 +24,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
 
+from tarifhub_ingest.adapters._http import open_no_redirect
+
 ADAPTER_VERSION = "bag-eal/0.1.0"
 
 # Hostile-input guards: the real file is ~0.8 MB / 1281 rows; refuse anything wildly
@@ -179,9 +181,12 @@ def fetch(url: str, dest_path: str | Path) -> Path:
     request = urllib.request.Request(url, headers={"User-Agent": "tarifhub-ingest"})
     digest = hashlib.sha256()
     total = 0
-    with urllib.request.urlopen(  # noqa: S310 — caller-supplied source URL, http(s)
-        request, timeout=_FETCH_TIMEOUT_S
-    ) as response, open(dest, "wb") as handle:
+    # open_no_redirect: scheme/host are pinned on the initial URL only, so any 30x is
+    # refused (a redirect could otherwise jump the request to an unpinned host).
+    with (
+        open_no_redirect(request, timeout=_FETCH_TIMEOUT_S) as response,
+        open(dest, "wb") as handle,
+    ):
         while True:
             chunk = response.read(_CHUNK)
             if not chunk:

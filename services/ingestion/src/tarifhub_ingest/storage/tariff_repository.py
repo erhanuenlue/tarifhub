@@ -80,12 +80,15 @@ class TariffRepository:
         starts at 1, ignoring whatever version the incoming record carried.
         """
 
+        # Alias the aggregate and read it by name: sqlite3.Row supports positional and
+        # mapping access, but psycopg's dict_row rows are mapping-only — ``[0]`` raises
+        # KeyError there. Named access works identically on both engines.
         cur = self._conn.execute(
-            "SELECT MAX(version) FROM tariff "
+            "SELECT MAX(version) AS max_version FROM tariff "
             f"WHERE tariff_system = {self._ph} AND tariff_code = {self._ph}",
             (record.tariff_system.value, record.tariff_code),
         )
-        current_max = cur.fetchone()[0]
+        current_max = cur.fetchone()["max_version"]
         return 1 if current_max is None else int(current_max) + 1
 
     def exists(self, record_hash: str) -> bool:
@@ -163,11 +166,27 @@ class TariffRepository:
             source_version=data["source_version"],
             harmonization_confidence=data["harmonization_confidence"],
             requires_review=bool(data["requires_review"]),
-            metadata=json.loads(data["metadata"]) if data["metadata"] else {},
+            metadata=_parse_metadata(data["metadata"]),
             record_hash=data["record_hash"],
             version=data["version"],
-            created_at=datetime.fromisoformat(data["created_at"]),
+            created_at=_to_datetime(data["created_at"]),
         )
+
+
+def _parse_metadata(value: Any) -> dict[str, Any]:
+    """Normalise the ``metadata`` column into a dict across engines.
+
+    SQLite stores it as a JSON text string; the Postgres JSONB column comes back from
+    psycopg as a native ``dict``. Calling ``json.loads`` on the dict raises ``TypeError``
+    (the Block-0 bug that crashed every Postgres response). Decode only when the value
+    is a ``str``; pass a native dict through unchanged. ``None``/empty -> ``{}``.
+    """
+
+    if value in (None, ""):
+        return {}
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
 
 
 def _decimal_to_text(value: Decimal | None) -> str | None:
@@ -175,8 +194,35 @@ def _decimal_to_text(value: Decimal | None) -> str | None:
 
 
 def _text_to_decimal(value: Any) -> Decimal | None:
-    return Decimal(str(value)) if value not in (None, "") else None
+    """Decode a stored money/points value to a scale-canonical ``Decimal``.
+
+    SQLite stores the writer's exact text (``10.50``); Postgres NUMERIC(12,4)/(12,2)
+    coerces to the column scale (``10.5000`` / ``12.30``). Left raw, the two engines
+    serialise different JSON strings for the same value. We normalise to the SAME
+    canonical form the integrity hash uses (``format(Decimal.normalize(), "f")`` —
+    ``10.5000`` -> ``10.5``), so the wire value is engine-independent and equals the
+    hashed content form.
+    """
+
+    if value in (None, ""):
+        return None
+    return Decimal(format(Decimal(str(value)).normalize(), "f"))
 
 
 def _text_to_date(value: Any) -> date | None:
-    return date.fromisoformat(str(value)[:10]) if value not in (None, "") else None
+    if value in (None, ""):
+        return None
+    # SQLite stores ISO text; Postgres DATE returns a native ``date`` already.
+    if isinstance(value, date) and not isinstance(value, datetime):
+        return value
+    return date.fromisoformat(str(value)[:10])
+
+
+def _to_datetime(value: Any) -> datetime:
+    """Normalise the ``created_at`` column to a datetime across engines.
+
+    SQLite stores ISO text; Postgres TIMESTAMPTZ returns a native ``datetime`` (which
+    ``datetime.fromisoformat`` rejects). Pass native datetimes through unchanged.
+    """
+
+    return value if isinstance(value, datetime) else datetime.fromisoformat(str(value))

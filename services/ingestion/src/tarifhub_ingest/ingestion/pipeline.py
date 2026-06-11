@@ -19,16 +19,16 @@ from tarifhub_ingest.embeddings.embedder import Embedder
 from tarifhub_ingest.ingestion.source_loader import SourceSpec
 from tarifhub_ingest.mappers.tariff_mapper import ai_map
 from tarifhub_ingest.models.tariff_model import TariffRecord
-from tarifhub_ingest.adapters import bag_eal
-from tarifhub_ingest.parsers import fhir_parser, xlsx_parser
+from tarifhub_ingest.adapters import bag_eal, bag_epl
+from tarifhub_ingest.parsers import xlsx_parser
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
 from tarifhub_ingest.validators.tariff_validator import validate
 from tarifhub_ingest.versioning.freeze_record import freeze
 
 _PARSERS = {
     "xlsx": (xlsx_parser.parse, xlsx_parser.PARSER_VERSION),
-    "fhir": (fhir_parser.parse, fhir_parser.PARSER_VERSION),
     "bag_eal": (bag_eal.parse, bag_eal.ADAPTER_VERSION),
+    "bag_epl": (bag_epl.parse, bag_epl.ADAPTER_VERSION),
 }
 
 
@@ -40,6 +40,7 @@ class PipelineReport:
     frozen: int = 0
     skipped_existing: int = 0
     flagged_for_review: int = 0
+    parse_failures: int = 0  # rows an adapter could not key -> never mapped/frozen
     records: list[TariffRecord] = field(default_factory=list)
 
 
@@ -59,6 +60,13 @@ def run_pipeline(
     for spec in sorted(specs, key=lambda s: (s.system.value, str(s.path))):
         parse_fn, parser_version = _PARSERS[spec.kind]
         for raw in parse_fn(spec.path):
+            # Fail-closed marker: the adapter could not key this row (e.g. a
+            # reimbursed package with no GTIN). Count it and never map/freeze it —
+            # a parsing failure must never produce a frozen record.
+            if raw.get("_parse_failure"):
+                report.parse_failures += 1
+                continue
+
             report.processed += 1
 
             record = ai_map(
