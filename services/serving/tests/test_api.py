@@ -60,7 +60,9 @@ def test_get_returns_latest_record(client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["version"] == 2
-    assert body["tax_points"] == "10.10"
+    # tax_points is normalised to the scale-canonical (engine-independent) form on read,
+    # matching the integrity-hash form: 10.10 -> "10.1" (see repository._text_to_decimal).
+    assert body["tax_points"] == "10.1"
     assert body["record_hash"]
 
 

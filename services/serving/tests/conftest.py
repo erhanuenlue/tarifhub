@@ -8,6 +8,7 @@ serving app is pointed at the temp DB through ``TARIFHUB_DB_URL``.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -18,6 +19,7 @@ from tarifhub_ingest.models.tariff_model import Designation, TariffRecord, Tarif
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
 from tarifhub_ingest.versioning.freeze_record import freeze
+from _parity import ENGINE_PARAMS, Engine, make_engine
 
 
 def _seed_records() -> list[TariffRecord]:
@@ -92,6 +94,17 @@ def client(seeded_db_url, monkeypatch) -> TestClient:
     from tarifhub_serving.main import app
 
     return TestClient(app)
+
+
+@pytest.fixture(params=ENGINE_PARAMS)
+def engine(request, tmp_path) -> Iterator[Engine]:
+    """Yield a provisioned, isolated DB engine (sqlite always; postgres when opted in).
+
+    Parity tests request this fixture and assert the serving API returns identical JSON
+    on both engines, making Postgres-vs-SQLite drift impossible to pass silently.
+    """
+
+    yield from make_engine(request.param, tmp_path)
 
 
 @pytest.fixture()
