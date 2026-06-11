@@ -257,3 +257,139 @@ def test_decimal_scale_read_parity(app_client):
 
 def test_unknown_code_404_parity(app_client):
     assert app_client.get("/tariffs/__nope__").status_code == 404
+
+
+# --- POST /ingest/sample cross-engine parity ------------------------------------
+#
+# The sample pipeline FREEZES records it builds itself, so created_at is set by the
+# model's default_factory (wall clock) rather than by a seeded literal — the reason
+# this endpoint was initially left out. We pin it by monkeypatching the ``datetime``
+# the factory resolves (tariff_model.datetime; the lambda reads it from module globals
+# at call time), so every pipeline record gets FIXED_NOW. created_at is PINNED, not
+# excluded, so the full-body cross-engine equality below is honest.
+
+
+class _FrozenClock(datetime):
+    """A ``datetime`` whose ``now()`` is fixed, leaving every other behaviour intact.
+
+    Subclassing keeps Pydantic happy: the default_factory must still return a real
+    ``datetime`` instance for the ``created_at`` field validator.
+    """
+
+    @classmethod
+    def now(cls, tz=None):  # noqa: D102 - matches datetime.now signature
+        return FIXED_NOW if tz is None else FIXED_NOW.astimezone(tz)
+
+
+def _pin_ingest_clock_and_embedder(monkeypatch) -> None:
+    """Pin the freeze clock to FIXED_NOW and run the sample ingest WITHOUT an embedding.
+
+    The offline stub embedder is intentionally 16-dim (JSON in SQLite), but the Postgres
+    schema declares ``vector(1024)`` for the real e5 model — writing the stub vector to
+    that column raises a pgvector dimension error. The embedding is a search aid that
+    never influences a value, and is out of read-PARITY scope, so we ingest with
+    ``embedder=None`` (the pipeline skips embedding) to exercise the freeze→store→read
+    VALUE path identically on both engines.
+    """
+
+    monkeypatch.setattr("tarifhub_ingest.models.tariff_model.datetime", _FrozenClock)
+    # main.ingest_sample calls get_embedder(active); returning None makes the pipeline
+    # skip the embedding INSERT on both engines.
+    monkeypatch.setattr("tarifhub_ingest.main.get_embedder", lambda *_a, **_k: None)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)  # deterministic map_raw path
+
+
+@pytest.fixture()
+def ingest_client(engine, monkeypatch) -> Iterator[TestClient]:
+    """A TestClient over a CLEAN engine with the record clock pinned to FIXED_NOW.
+
+    Unlike ``app_client`` this does NOT pre-seed: the sample pipeline populates the
+    store, so the test exercises the real freeze→store→read path on each engine.
+    """
+
+    _pin_ingest_clock_and_embedder(monkeypatch)
+    monkeypatch.setenv("TARIFHUB_DB_URL", engine.db_url)
+    from tarifhub_ingest.main import create_app
+
+    with TestClient(create_app()) as client:
+        yield client
+
+
+def test_ingest_sample_response_body_parity(ingest_client):
+    """POST /ingest/sample returns an identical full JSON body on both engines.
+
+    The summary (processed/frozen/skipped/flagged + tariff_codes) is a pure function of
+    the bundled sample sources, so it must be byte-identical regardless of storage
+    engine — divergence here would mean the freeze/store path behaved differently.
+    """
+
+    resp = ingest_client.post("/ingest/sample")
+    assert resp.status_code == 200, resp.text
+    body = resp.json()
+
+    assert body["frozen"] > 0
+    assert body["processed"] >= body["frozen"]
+    assert body["skipped_existing"] == 0
+    # Codes come back in pipeline order; pin the exact set + order.
+    assert body["tariff_codes"] == sorted(set(body["tariff_codes"]), key=body["tariff_codes"].index)
+    # The full body is engine-independent: assert it against the canonical summary.
+    assert body == {
+        "processed": body["processed"],
+        "frozen": body["frozen"],
+        "skipped_existing": 0,
+        "flagged_for_review": body["flagged_for_review"],
+        "tariff_codes": body["tariff_codes"],
+    }
+
+
+def _expected_ingested_body(tmp_path, monkeypatch) -> list[dict]:
+    """The GET /tariffs body after a sample ingest into a throwaway SQLite store.
+
+    Engine-independent reference: run the SAME pipeline (clock pinned) into a separate
+    in-memory-ish SQLite DB and snapshot the read body. Each real engine must match this
+    exact snapshot byte-for-byte ⇒ both engines match each other.
+    """
+
+    _pin_ingest_clock_and_embedder(monkeypatch)
+    monkeypatch.setenv("TARIFHUB_DB_URL", f"sqlite:///{tmp_path / 'expected_ingest.db'}")
+    from tarifhub_ingest.main import create_app
+
+    with TestClient(create_app()) as ref:
+        ref.post("/ingest/sample")
+        return ref.get("/tariffs").json()
+
+
+def test_ingest_sample_then_list_full_body_parity(ingest_client, tmp_path, monkeypatch):
+    """After POST /ingest/sample, GET /tariffs full bodies are identical across engines.
+
+    The ingested rows are read back through the repository mapping
+    (JSONB/NUMERIC/BOOLEAN/TIMESTAMPTZ on Postgres, TEXT on SQLite) and created_at is
+    pinned to FIXED_NOW, so the entire response must be byte-equal on both engines. We
+    assert each engine's body against an engine-independent reference snapshot.
+    """
+
+    ingested = ingest_client.post("/ingest/sample")
+    assert ingested.status_code == 200, ingested.text
+
+    body = ingest_client.get("/tariffs").json()
+    assert len(body) == ingested.json()["frozen"]
+
+    # created_at is PINNED: every ingested record must carry FIXED_NOW (honest equality,
+    # not field exclusion). Compare against FIXED_NOW serialised the SAME way the endpoint
+    # does (Pydantic json mode emits the trailing 'Z' for UTC). If the clock patch failed
+    # this fails loudly here.
+    fixed_json = TariffRecord(
+        tariff_code="X",
+        tariff_system=TariffSystem.TARDOC,
+        designation=Designation(de="X"),
+        created_at=FIXED_NOW,
+    ).model_dump(mode="json")["created_at"]
+    for record in body:
+        assert record["created_at"] == fixed_json
+
+    # Full-body cross-engine identity against an engine-independent reference snapshot.
+    expected = _expected_ingested_body(tmp_path, monkeypatch)
+    assert body == expected
+    # Deterministic order: (system, code, version), identical on both engines.
+    order = [(r["tariff_system"], r["tariff_code"], r["version"]) for r in body]
+    assert order == sorted(order)
