@@ -91,7 +91,14 @@ class Database:
         # Postgres: import guarded so SQLite-only runs need no driver installed.
         import psycopg  # noqa: PLC0415
 
-        return psycopg.connect(self.db_url)
+        # dict_row mirrors sqlite3.Row's mapping access: the repository reconstructs
+        # records via ``dict(row)``, which on psycopg's default tuple rows raises
+        # ``TypeError``. Without this, every read on Postgres crashes (cross-engine
+        # drift the SQLite-only suite was structurally blind to). Writes still rely on
+        # the existing explicit ``conn.commit()`` calls, so autocommit stays OFF here.
+        conn = psycopg.connect(self.db_url)
+        conn.row_factory = psycopg.rows.dict_row
+        return conn
 
     def init_schema(self, conn) -> None:
         """Create tables if absent.
