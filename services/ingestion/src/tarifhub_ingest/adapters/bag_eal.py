@@ -22,6 +22,7 @@ import urllib.request
 from datetime import date
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 ADAPTER_VERSION = "bag-eal/0.1.0"
 
@@ -30,10 +31,14 @@ ADAPTER_VERSION = "bag-eal/0.1.0"
 _MAX_BYTES = 20 * 1024 * 1024
 _MAX_ROWS = 100_000
 
-# Network guard for fetch(): stream-cap the download at the same byte budget.
+# Network guard for fetch(): stream-cap the download at the same byte budget, and
+# pin the scheme/host so a future caller passing untrusted input can't reach
+# file:// / internal addresses (SSRF). Only https on the BAG federal domain.
 _FETCH_TIMEOUT_S = 30
 _FETCH_MAX_BYTES = 20 * 1024 * 1024
 _CHUNK = 64 * 1024
+_ALLOWED_SCHEME = "https"
+_ALLOWED_HOST = "bag.admin.ch"
 
 # Header anchor: the row whose SECOND cell (stripped) equals this is the header row.
 # We search the first few rows rather than hardcoding an index, so a future edition
@@ -90,23 +95,31 @@ def parse(path: str | Path) -> list[dict[str, Any]]:
         if de_sheet is None:
             raise ValueError("BAG EAL workbook has no German ('Deutsch') sheet")
 
+        # Fail fast if BAG renamed a REQUIRED German column: silently emitting rows
+        # with None designation/TP would freeze junk. (FR/IT stay tolerant by design.)
+        de_headers = _find_header_row(de_sheet, _POS_HEADER_DE) or []
+        _require_headers(de_headers, (_H_POS_DE, _H_TP_DE, _H_DESIG_DE))
+
         fr_by_pos = _index_translations(
             _pick_sheet(sheets, ("Français", "Francais"), _POS_HEADER_FR),
             _POS_HEADER_FR,
             _H_POS_FR,
             _H_DESIG_FR,
+            sheet_label="Français",
         )
         it_by_pos = _index_translations(
             _pick_sheet(sheets, ("Italiano",), _POS_HEADER_IT),
             _POS_HEADER_IT,
             _H_POS_IT,
             _H_DESIG_IT,
+            sheet_label="Italiano",
         )
 
         valid_from = _date_from_filename(path.name)
         source_version = _source_version_from_filename(path.name)
 
         records: list[dict[str, Any]] = []
+        seen_positions: set[str] = set()
         for headers, values in _data_rows(de_sheet, _POS_HEADER_DE):
             index = {h: i for i, h in enumerate(headers)}
             pos = _cell(values, index.get(_H_POS_DE))
@@ -114,6 +127,19 @@ def parse(path: str | Path) -> list[dict[str, Any]]:
             if not tariff_code:
                 continue  # no position number -> not a tariff position
 
+            # The position number is the frozen join key; a duplicate would silently
+            # overwrite translations / collide on the (system, code) version key.
+            if tariff_code in seen_positions:
+                raise ValueError(
+                    f"BAG EAL 'Deutsch' sheet repeats position {tariff_code!r}; "
+                    "position numbers must be unique (frozen join key)"
+                )
+            seen_positions.add(tariff_code)
+
+            if len(records) >= _MAX_ROWS:
+                raise ValueError(
+                    f"BAG EAL workbook exceeds the {_MAX_ROWS} row limit; refusing to parse"
+                )
             records.append(
                 {
                     "tariff_code": tariff_code,
@@ -127,10 +153,6 @@ def parse(path: str | Path) -> list[dict[str, Any]]:
                     "source_version": source_version,
                 }
             )
-            if len(records) > _MAX_ROWS:
-                raise ValueError(
-                    f"BAG EAL workbook exceeds the {_MAX_ROWS} row limit; refusing to parse"
-                )
         return records
     finally:
         workbook.close()
@@ -144,6 +166,7 @@ def fetch(url: str, dest_path: str | Path) -> Path:
     tests) — this is the scale-run driver's entry point.
     """
 
+    _validate_fetch_url(url)
     dest = Path(dest_path)
     sidecar = dest.with_name(dest.name + ".sha256")
 
@@ -180,6 +203,33 @@ def fetch(url: str, dest_path: str | Path) -> Path:
 # --------------------------------------------------------------------------- #
 # Internals
 # --------------------------------------------------------------------------- #
+
+
+def _validate_fetch_url(url: str) -> None:
+    """Reject anything but https on the BAG federal domain (SSRF / file:// guard)."""
+
+    parts = urlsplit(url)
+    if parts.scheme != _ALLOWED_SCHEME:
+        raise ValueError(
+            f"fetch URL scheme must be {_ALLOWED_SCHEME!r}, got {parts.scheme!r}: {url}"
+        )
+    host = (parts.hostname or "").lower()
+    if host != _ALLOWED_HOST and not host.endswith("." + _ALLOWED_HOST):
+        raise ValueError(
+            f"fetch URL host must be {_ALLOWED_HOST!r} or a subdomain, got {host!r}: {url}"
+        )
+
+
+def _require_headers(headers: list[str], required: tuple[str, ...]) -> None:
+    """Raise if any required German column header is absent after anchoring."""
+
+    present = set(headers)
+    missing = [h for h in required if h not in present]
+    if missing:
+        raise ValueError(
+            "BAG EAL 'Deutsch' sheet is missing required column header(s): "
+            + ", ".join(repr(h) for h in missing)
+        )
 
 
 def _guard_file_size(path: Path) -> None:
@@ -238,9 +288,19 @@ def _data_rows(sheet: Any, pos_header: str):
 
 
 def _index_translations(
-    sheet: Any | None, pos_header: str, pos_col: str, desig_col: str
+    sheet: Any | None,
+    pos_header: str,
+    pos_col: str,
+    desig_col: str,
+    *,
+    sheet_label: str,
 ) -> dict[str, str | None]:
-    """Build ``{position -> designation}`` for a translation sheet (empty if absent)."""
+    """Build ``{position -> designation}`` for a translation sheet (empty if absent).
+
+    A missing sheet/column is tolerated (de-only rows, by design), but a *repeated*
+    position number is rejected: it is the frozen join key, and a silent overwrite of
+    one translation by another is unacceptable.
+    """
 
     index: dict[str, str | None] = {}
     if sheet is None:
@@ -250,6 +310,11 @@ def _index_translations(
         pos = _as_str(_cell(values, col.get(pos_col)))
         if not pos:
             continue
+        if pos in index:
+            raise ValueError(
+                f"BAG EAL {sheet_label!r} sheet repeats position {pos!r}; "
+                "position numbers must be unique (frozen join key)"
+            )
         index[pos] = _as_str(_cell(values, col.get(desig_col)))
     return index
 

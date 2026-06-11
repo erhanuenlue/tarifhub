@@ -36,6 +36,53 @@ _EAL_URL = "https://www.bag.admin.ch/de/analysenliste-al"
 POS_1000_HASH = "33f658ff57952693dc45b51c2c7b11e567d2d3799278247d3231aa67e40f69a0"
 
 
+def _build_workbook(
+    path: Path,
+    *,
+    de_headers: list[str],
+    de_rows: list[list],
+    fr_rows: list[list] | None = None,
+    it_rows: list[list] | None = None,
+) -> Path:
+    """Write a minimal EAL-shaped workbook (banner + header + data) for guard tests.
+
+    The DE sheet uses ``de_headers``; FR/IT sheets carry their own position-header
+    label and a single 'Dénomination'/'Denominazione' column so duplicate-position
+    guards can be exercised without depending on the large committed fixture.
+    """
+    from openpyxl import Workbook
+
+    wb = Workbook()
+    wb.remove(wb.active)
+
+    de = wb.create_sheet("Deutsch")
+    de.append(["Fachbereiche"])  # banner row
+    de.append(de_headers)
+    for row in de_rows:
+        de.append(row)
+
+    if fr_rows is not None:
+        fr = wb.create_sheet("Français")
+        fr.append(["Domaines"])
+        fr.append(["No.", "No. Pos.", "PT", "Dénomination"])
+        for row in fr_rows:
+            fr.append(row)
+
+    if it_rows is not None:
+        it = wb.create_sheet("Italiano")
+        it.append(["Settori"])
+        it.append(["No.", "No. pos.", "PT", "Denominazione"])
+        for row in it_rows:
+            it.append(row)
+
+    wb.save(path)
+    return path
+
+
+# Canonical minimal DE header row (only the columns the adapter reads need be real).
+_DE_HEADERS = ["Kapitel", "Pos.-Nr.", "TP", "Bezeichnung", "Chemie"]
+
+
 @pytest.fixture(scope="module")
 def rows() -> list[dict]:
     return bag_eal.parse(_FIXTURE)
@@ -131,6 +178,124 @@ def test_refuses_oversized_file(tmp_path, monkeypatch):
     monkeypatch.setattr(bag_eal, "_MAX_BYTES", 0)
     with pytest.raises(ValueError, match="over the"):
         bag_eal.parse(big)
+
+
+# --------------------------------------------------------------------------- #
+# Ship-review fixes (1-4)
+# --------------------------------------------------------------------------- #
+
+
+@pytest.mark.parametrize("dropped", ["TP", "Bezeichnung"])
+def test_fail_fast_on_missing_required_de_header(tmp_path, dropped):
+    """Fix 1: a renamed REQUIRED German column raises a ValueError naming the header.
+
+    The position column ('Pos.-Nr.') also anchors the header row, so it is covered
+    separately in :func:`test_fail_fast_on_renamed_position_header`.
+    """
+    headers = list(_DE_HEADERS)
+    headers[headers.index(dropped)] = dropped + "_RENAMED"
+
+    path = _build_workbook(
+        tmp_path / "analysenliste_2026-01-01.xlsx",
+        de_headers=headers,
+        de_rows=[["k", "1000", 76.5, "Vitamin D", "Ja"]],
+    )
+    with pytest.raises(ValueError, match=dropped):
+        bag_eal.parse(path)
+
+
+def test_fail_fast_on_renamed_position_header(tmp_path):
+    """Fix 1: if 'Pos.-Nr.' is renamed the anchor is lost; we raise rather than emit
+    rows with silently-None designation/TP (the required-header check names it)."""
+    headers = ["Kapitel", "Pos.-Nr._RENAMED", "TP", "Bezeichnung", "Chemie"]
+    path = _build_workbook(
+        tmp_path / "analysenliste_2026-01-01.xlsx",
+        de_headers=headers,
+        de_rows=[["k", "1000", 76.5, "Vitamin D", "Ja"]],
+    )
+    with pytest.raises(ValueError, match="Pos\\.-Nr\\."):
+        bag_eal.parse(path)
+
+
+def test_reject_duplicate_position_in_de_sheet(tmp_path):
+    """Fix 2: a repeated Pos.-Nr. in the German sheet raises, naming the position."""
+    path = _build_workbook(
+        tmp_path / "analysenliste_2026-01-01.xlsx",
+        de_headers=_DE_HEADERS,
+        de_rows=[
+            ["k", "1000", 76.5, "Vitamin D", "Ja"],
+            ["k", "1000", 8.5, "Hämatokrit", "Ja"],  # duplicate join key
+        ],
+    )
+    with pytest.raises(ValueError, match="1000"):
+        bag_eal.parse(path)
+
+
+def test_reject_duplicate_position_in_translation_sheet(tmp_path):
+    """Fix 2: a repeated position in a translation sheet raises, naming the position."""
+    path = _build_workbook(
+        tmp_path / "analysenliste_2026-01-01.xlsx",
+        de_headers=_DE_HEADERS,
+        de_rows=[["k", "1000", 76.5, "Vitamin D", "Ja"]],
+        fr_rows=[
+            ["n", "1000", 76.5, "Vitamine D"],
+            ["n", "1000", 76.5, "Vitamine D bis"],  # duplicate join key
+        ],
+    )
+    with pytest.raises(ValueError, match="1000"):
+        bag_eal.parse(path)
+
+
+@pytest.mark.parametrize(
+    "bad_url",
+    [
+        "http://www.bag.admin.ch/al.xlsx",  # wrong scheme
+        "file:///etc/passwd",  # file://
+        "https://evil.example.com/al.xlsx",  # wrong host
+        "https://bag.admin.ch.evil.com/al.xlsx",  # suffix-spoof host
+        "ftp://bag.admin.ch/al.xlsx",  # wrong scheme
+    ],
+)
+def test_fetch_rejects_untrusted_url(bad_url):
+    """Fix 3 (M1): fetch validates scheme=https + host bag.admin.ch up front (no network)."""
+    with pytest.raises(ValueError):
+        bag_eal.fetch(bad_url, "/tmp/should-never-be-written.xlsx")
+
+
+@pytest.mark.parametrize(
+    "good_url",
+    [
+        "https://bag.admin.ch/al.xlsx",
+        "https://www.bag.admin.ch/de/analysenliste-al",
+    ],
+)
+def test_fetch_url_validation_accepts_bag_domain(good_url):
+    """Fix 3: the validator itself accepts the federal domain + subdomains."""
+    # Pure-function check on the validator — no download is attempted.
+    bag_eal._validate_fetch_url(good_url)
+
+
+def test_row_limit_is_exact_not_off_by_one(tmp_path, monkeypatch):
+    """Fix 4 (M2): with _MAX_ROWS=1, two data rows must raise (not silently keep 2)."""
+    monkeypatch.setattr(bag_eal, "_MAX_ROWS", 1)
+    path = _build_workbook(
+        tmp_path / "analysenliste_2026-01-01.xlsx",
+        de_headers=_DE_HEADERS,
+        de_rows=[
+            ["k", "1000", 76.5, "Vitamin D", "Ja"],
+            ["k", "1001", 8.5, "Hämatokrit", "Ja"],
+        ],
+    )
+    with pytest.raises(ValueError, match="row limit"):
+        bag_eal.parse(path)
+
+    # And exactly _MAX_ROWS rows is accepted (boundary is inclusive of the limit).
+    ok = _build_workbook(
+        tmp_path / "analysenliste_2026-01-01_ok.xlsx",
+        de_headers=_DE_HEADERS,
+        de_rows=[["k", "1000", 76.5, "Vitamin D", "Ja"]],
+    )
+    assert len(bag_eal.parse(ok)) == 1
 
 
 def test_parse_missing_file_raises(tmp_path):
