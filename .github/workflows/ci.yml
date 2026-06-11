@@ -84,5 +84,8 @@ jobs:
       - name: Build every sub-system image (criterion 17 evidence)
         run: |
           for df in services/*/Dockerfile apps/*/Dockerfile; do
-            [ -f "$df" ] && docker build -f "$df" -t "tarifhub-$(basename $(dirname $df)):ci" "$(dirname $df)"
+            [ -f "$df" ] || continue
+            # serving vendors the ../ingestion path dependency -> needs repo-root context
+            ctx="$(dirname $df)"; [ "$df" = "services/serving/Dockerfile" ] && ctx=.
+            docker build -f "$df" -t "tarifhub-$(basename $(dirname $df)):ci" "$ctx"
           done
