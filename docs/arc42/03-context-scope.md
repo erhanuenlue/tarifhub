@@ -12,3 +12,4 @@ their SHA-256 is recorded so a grader can verify provenance from the code/docs a
 | Source | Format | URL | Update cadence | Licence / re-use | Raw artifact |
 | --- | --- | --- | --- | --- | --- |
 | BAG Analysenliste (EAL) | XLSX, 3 sheets DE/FR/IT | https://www.bag.admin.ch/de/analysenliste-al | updates ~semiannual (1.1 / 1.7) + Vorpublikationen | Swiss federal publication, free re-use with attribution | raw artifact `data/raw/eal/` (gitignored), sha256 recorded |
+| BAG Spezialitätenliste (SL) | FHIR R5 NDJSON (one `ch-idmp-bundle` per line) | https://epl.bag.admin.ch (manifest API → static file) | monthly, 1st | CC0-1.0 (public domain) | raw artifact `data/raw/epl/` (gitignored), sha256 recorded |

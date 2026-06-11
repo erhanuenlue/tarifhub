@@ -24,7 +24,9 @@ from tarifhub_ingest.models.tariff_model import TariffSystem
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
 
-_FIXTURE = Path(__file__).resolve().parent / "fixtures" / "eal" / "analysenliste_2026-01-01_fixture.xlsx"
+_FIXTURE = (
+    Path(__file__).resolve().parent / "fixtures" / "eal" / "analysenliste_2026-01-01_fixture.xlsx"
+)
 _EAL_URL = "https://www.bag.admin.ch/de/analysenliste-al"
 
 # Pinned content hash of the frozen Pos-1000 record as produced by the pipeline
@@ -159,7 +161,10 @@ def test_valid_from_derived_from_filename(tmp_path):
     """valid_from / source_version are a pure function of the filename convention."""
     assert bag_eal._date_from_filename("analysenliste_2026-07-01.xlsx") == date(2026, 7, 1)
     assert bag_eal._date_from_filename("analysenliste_2026-07-01.xlsx") is not None
-    assert bag_eal._source_version_from_filename("analysenliste_2026-07-01.xlsx") == "BAG AL 2026-07-01"
+    assert (
+        bag_eal._source_version_from_filename("analysenliste_2026-07-01.xlsx")
+        == "BAG AL 2026-07-01"
+    )
     # A non-conforming name yields None (documented graceful degradation).
     assert bag_eal._date_from_filename("random.xlsx") is None
     assert bag_eal._source_version_from_filename("random.xlsx") is None
@@ -275,6 +280,22 @@ def test_fetch_url_validation_accepts_bag_domain(good_url):
     bag_eal._validate_fetch_url(good_url)
 
 
+def test_fetch_refuses_redirect(tmp_path, monkeypatch):
+    """The scheme/host pin only covers the initial URL, so a 30x is refused (no network).
+
+    The shared redirect-refusing opener raises before any byte is read off an
+    unpinned host; fetch must surface that as a ValueError naming the redirect."""
+    import urllib.request
+
+    def _fake_open(request, *, timeout):
+        raise ValueError("fetch refused a 302 redirect to 'https://evil.example.com/x'")
+
+    monkeypatch.setattr(urllib.request, "Request", lambda *a, **k: object())
+    monkeypatch.setattr(bag_eal, "open_no_redirect", _fake_open)
+    with pytest.raises(ValueError, match="redirect"):
+        bag_eal.fetch("https://bag.admin.ch/al.xlsx", tmp_path / "al.xlsx")
+
+
 def test_row_limit_is_exact_not_off_by_one(tmp_path, monkeypatch):
     """Fix 4 (M2): with _MAX_ROWS=1, two data rows must raise (not silently keep 2)."""
     monkeypatch.setattr(bag_eal, "_MAX_ROWS", 1)
@@ -310,9 +331,7 @@ def _pipeline(tmp_path, monkeypatch):
     db.init_schema(conn)
     repo = TariffRepository(conn, db)
     audit = AuditLogger(conn, db)
-    spec = SourceSpec(
-        system=TariffSystem.EAL, kind="bag_eal", path=_FIXTURE, source_url=_EAL_URL
-    )
+    spec = SourceSpec(system=TariffSystem.EAL, kind="bag_eal", path=_FIXTURE, source_url=_EAL_URL)
     return [spec], repo, audit, conn
 
 

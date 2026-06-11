@@ -93,8 +93,27 @@ def map_raw(
         valid_to=_to_date(raw.get("valid_to")),
         source_url=source_url,
         source_version=_as_text(raw.get("source_version")) or source_version,
-        metadata={"mapper_version": MAPPER_VERSION, "ai_assisted": False},
+        metadata=_metadata(raw),
     )
+
+
+def _metadata(raw: dict[str, Any]) -> dict[str, Any]:
+    """Build record.metadata: the mapper's provenance keys plus optional source extras.
+
+    HASH-CRITICAL: a row WITHOUT ``raw['metadata']`` (every EAL row, the pre-SL world)
+    must produce exactly ``{"mapper_version": ..., "ai_assisted": False}`` — byte-
+    identical to before — so existing pinned record hashes never move. Source extras
+    (the SL adapter's JSON-native dict) are folded in first; the provenance keys are
+    written last so they always win on any collision.
+    """
+
+    metadata: dict[str, Any] = {}
+    extras = raw.get("metadata")
+    if isinstance(extras, dict):
+        metadata.update(extras)
+    metadata["mapper_version"] = MAPPER_VERSION
+    metadata["ai_assisted"] = False
+    return metadata
 
 
 def ai_map(
@@ -130,11 +149,7 @@ def ai_map(
 def _has_fillable_gap(record: TariffRecord) -> bool:
     """True iff a non-billing field the AI seam may fill is still missing."""
 
-    return (
-        record.designation.fr is None
-        or record.designation.it is None
-        or record.category is None
-    )
+    return record.designation.fr is None or record.designation.it is None or record.category is None
 
 
 def _claude_assisted_map(

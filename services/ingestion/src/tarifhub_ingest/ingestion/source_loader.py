@@ -1,9 +1,9 @@
 """Discovery of source artifacts to ingest.
 
 For the offline sample the artifacts ship in ``services/ingestion/sample-data/input``:
-a tiny EAL-like XLSX (lab analyses, tax-point based, DE-only) and a tiny ePL-like
-FHIR bundle (medications, price-based, multilingual). In production this is where a
-scheduled loader would fetch from BAG / OAAT / MinIO.
+a tiny EAL-like XLSX (lab analyses, tax-point based, DE-only) and a small real ePL
+FHIR R5 NDJSON slice (medications, price-based, multilingual, keyed by GTIN). In
+production this is where a scheduled loader would fetch from BAG / OAAT / MinIO.
 """
 
 from __future__ import annotations
@@ -15,10 +15,10 @@ from tarifhub_ingest.models.tariff_model import TariffSystem
 
 # EAL (BAG Analysenliste) and SL (BAG ePL Spezialitätenliste) public source pages.
 _EAL_SOURCE_URL = "https://www.bag.admin.ch/de/analysenliste-al"
-_EPL_SOURCE_URL = "https://github.com/bag-epl/bag-epl-fhir"
+_EPL_SOURCE_URL = "https://epl.bag.admin.ch"
 
 _EAL_FILENAMES = ("eal_sample.xlsx", "eal_sample.csv", "bag_eal_sample.xlsx")
-_EPL_FILENAMES = ("epl_sample.json", "bag_epl_sample.json")
+_EPL_FILENAMES = ("bag_epl_sample.ndjson",)
 
 
 @dataclass(frozen=True)
@@ -26,7 +26,7 @@ class SourceSpec:
     """A single source artifact and how to parse it."""
 
     system: TariffSystem
-    kind: str  # "xlsx" | "fhir"
+    kind: str  # "xlsx" | "bag_eal" | "bag_epl"
     path: Path
     source_url: str
 
@@ -54,7 +54,7 @@ def discover_samples(sample_dir: str | Path | None = None) -> list[SourceSpec]:
     epl = _first_existing(base, _EPL_FILENAMES)
     if epl:
         specs.append(
-            SourceSpec(system=TariffSystem.SL, kind="fhir", path=epl, source_url=_EPL_SOURCE_URL)
+            SourceSpec(system=TariffSystem.SL, kind="bag_epl", path=epl, source_url=_EPL_SOURCE_URL)
         )
 
     return specs

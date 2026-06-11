@@ -1,10 +1,21 @@
-"""Parser tests: XLSX (EAL-like) and FHIR (ePL-like), both fully offline."""
+"""Parser tests: XLSX (EAL-like) and the ePL FHIR R5 sample, both fully offline.
+
+The toy ``fhir_parser`` was retired (PR ``feat/epl-sl-fhir-source``) in favour of the
+real :mod:`tarifhub_ingest.adapters.bag_epl` FHIR R5 adapter; its detailed coverage
+lives in ``tests/test_bag_epl.py``. Here we only smoke-test the shipped offline
+``bag_epl_sample.ndjson`` so ``discover_samples`` has a parseable SL artifact.
+"""
 
 from __future__ import annotations
 
-import json
+from decimal import Decimal
+from pathlib import Path
 
-from tarifhub_ingest.parsers import fhir_parser, xlsx_parser
+from tarifhub_ingest.adapters import bag_epl
+from tarifhub_ingest.parsers import xlsx_parser
+
+_SAMPLE_DIR = Path(__file__).resolve().parents[1] / "sample-data" / "input"
+_EPL_SAMPLE = _SAMPLE_DIR / "bag_epl_sample.ndjson"
 
 
 def test_xlsx_parser_reads_header_and_rows(tmp_path):
@@ -46,40 +57,13 @@ def test_csv_parser_roundtrip(tmp_path):
     ]
 
 
-def test_fhir_parser_extracts_multilingual_and_price(tmp_path):
-    bundle = {
-        "resourceType": "Bundle",
-        "type": "collection",
-        "meta": {"versionId": "ePL-2026-06"},
-        "entry": [
-            {
-                "resource": {
-                    "resourceType": "MedicinalProductDefinition",
-                    "identifier": [{"system": "urn:bag:sl", "value": "7680000000017"}],
-                    "name": [
-                        {"language": "de-CH", "productName": "Beispielin 100 mg"},
-                        {"language": "fr-CH", "productName": "Exempline 100 mg"},
-                        {"language": "it-CH", "productName": "Esempina 100 mg"},
-                    ],
-                    "classification": [{"text": "Analgetika"}],
-                    "price": {"value": 12.50, "currency": "CHF"},
-                    "unit": "pack",
-                    "validityPeriod": {"start": "2026-01-01"},
-                }
-            }
-        ],
-    }
-    path = tmp_path / "epl.json"
-    path.write_text(json.dumps(bundle), encoding="utf-8")
-
-    rows = fhir_parser.parse(path)
-
-    assert len(rows) == 1
-    row = rows[0]
-    assert row["tariff_code"] == "7680000000017"
-    assert row["designation_de"] == "Beispielin 100 mg"
-    assert row["designation_fr"] == "Exempline 100 mg"
-    assert row["designation_it"] == "Esempina 100 mg"
-    assert row["price_chf"] == 12.50
-    assert row["category"] == "Analgetika"
-    assert row["source_version"] == "ePL-2026-06"
+def test_epl_sample_parses_real_bundles():
+    """The shipped offline SL sample (3 real bundles) parses into keyed rows."""
+    rows = bag_epl.parse(_EPL_SAMPLE)
+    keyed = [r for r in rows if not r.get("_parse_failure")]
+    assert keyed, "ePL sample must yield at least one keyable row"
+    first = next(r for r in keyed if r["tariff_code"] == "7680536620137")
+    assert first["designation_de"] == "3TC Filmtabl 150 mg"
+    assert first["designation_fr"] == "3TC cpr pell 150 mg"
+    assert first["price_chf"] == Decimal("191.9")  # retail price, Decimal-typed
+    assert first["tax_points"] is None  # SL is money-only
