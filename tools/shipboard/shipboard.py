@@ -605,8 +605,12 @@ def vault_graph():
             texts[p.stem.lower()] = ""
     edges = set()
     for src, txt in texts.items():
-        for m in re.findall(r"\[\[([^\]|#]+)", txt):
-            tgt = m.strip().lower()
+        targets = [m.strip().lower() for m in re.findall(r"\[\[([^\]|#]+)", txt)]
+        # markdown relative links count too — arc42 chapters and the ADR register
+        # cross-reference each other this way (that's the real structure)
+        targets += [pathlib.Path(m).stem.lower()
+                    for m in re.findall(r"\]\(([^)#?\s]+\.md)\)", txt)]
+        for tgt in targets:
             if tgt in nodes and tgt != src:
                 edges.add(tuple(sorted((nodes[src]["id"], nodes[tgt]["id"]))))
     data = {"nodes": list(nodes.values()), "edges": [list(e) for e in edges],
@@ -1296,42 +1300,78 @@ document.addEventListener('keydown',e=>{
   if(m) showTab(m);
 });
 // ---------- graphs tab: vault wikilink graph (canvas force layout) + graphify iframe ----------
+let VGanim=null;
 function drawVG(g){
   const cv=document.getElementById('vgc'); if(!cv) return;
   const W=cv.clientWidth||1100, H=460;
   cv.width=W*devicePixelRatio; cv.height=H*devicePixelRatio;
-  const ctx=cv.getContext('2d'); ctx.scale(devicePixelRatio,devicePixelRatio);
+  const ctx=cv.getContext('2d'); ctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0);
   const N=g.nodes||[], E=g.edges||[], idx={};
   N.forEach((n,i)=>idx[n.id]=i);
+  if(VGanim) cancelAnimationFrame(VGanim);
   if(!N.length){ctx.fillStyle='rgba(186,230,253,.4)';ctx.font='12px JetBrains Mono';
     ctx.fillText('vault empty — notes appear as the second brain grows',24,44);return;}
-  N.forEach((n,i)=>{const a=i/N.length*6.283;
-    n.x=W/2+Math.cos(a)*(130+(i%5)*24); n.y=H/2+Math.sin(a)*(95+(i%7)*16);});
-  const hub=N.find(n=>n.t==='hub'); if(hub){hub.x=W/2;hub.y=H/2;}
-  for(let it=0;it<220;it++){
-    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
-      const a=N[i],b=N[j]; let dx=a.x-b.x,dy=a.y-b.y; const d2=dx*dx+dy*dy||1; const f=1700/d2;
-      a.x+=dx*f;a.y+=dy*f;b.x-=dx*f;b.y-=dy*f;}
-    E.forEach(e=>{const a=N[idx[e[0]]],b=N[idx[e[1]]]; if(!a||!b)return;
-      let dx=b.x-a.x,dy=b.y-a.y; const d=Math.sqrt(dx*dx+dy*dy)||1; const f=(d-95)*0.02;
-      a.x+=dx/d*f;a.y+=dy/d*f;b.x-=dx/d*f;b.y-=dy/d*f;});
-    N.forEach(n=>{n.x+=(W/2-n.x)*0.004;n.y+=(H/2-n.y)*0.004;
-      n.x=Math.max(34,Math.min(W-130,n.x));n.y=Math.max(22,Math.min(H-18,n.y));});
-  }
-  ctx.clearRect(0,0,W,H);
-  ctx.strokeStyle='rgba(125,211,252,.22)';ctx.lineWidth=1;
-  E.forEach(e=>{const a=N[idx[e[0]]],b=N[idx[e[1]]]; if(!a||!b)return;
-    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();});
+  const deg={};
+  E.forEach(e=>{deg[e[0]]=(deg[e[0]]||0)+1; deg[e[1]]=(deg[e[1]]||0)+1;});
+  N.forEach(n=>{n.d=deg[n.id]||0; n.r=n.t==='hub'?10:4+Math.min(5,1.5*Math.sqrt(n.d));});
+  // seed by type so clusters start near each other, hub in the centre
+  const ang={adr:0.9,arc:2.7,journal:4.3,reflect:5.5};
+  N.forEach((n,i)=>{const a=(ang[n.t]??(i*0.7))+(i%9)*0.14;
+    const r=n.t==='hub'?0:110+(i%6)*22;
+    n.x=W/2+Math.cos(a)*r; n.y=H/2+Math.sin(a)*r*0.55; n.vx=0; n.vy=0;});
+  const hubId=(N.find(n=>n.t==='hub')||{}).id;
   const col={hub:'#0EA5E9',adr:'#C4B5FD',journal:'#34D399',reflect:'#FBBF24',arc:'#22D3EE'};
-  N.forEach(n=>{ctx.fillStyle=col[n.t]||'#94A3B8';
-    ctx.beginPath();ctx.arc(n.x,n.y,n.t==='hub'?9:5.5,0,6.283);ctx.fill();
-    ctx.fillStyle='rgba(231,244,255,.82)';ctx.font='10px JetBrains Mono';
-    ctx.fillText((n.label||n.id).slice(0,26),n.x+9,n.y+3);});
-  cv.onclick=ev=>{const r=cv.getBoundingClientRect();
-    const x=ev.clientX-r.left,y=ev.clientY-r.top;
-    let best=null,bd=500;
+  let alpha=1, hover=null;
+  function step(){
+    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
+      const a=N[i],b=N[j]; let dx=a.x-b.x,dy=a.y-b.y; let d2=dx*dx+dy*dy; if(d2<1)d2=1;
+      if(d2<36000){const f=820/d2*alpha; a.vx+=dx*f;a.vy+=dy*f;b.vx-=dx*f;b.vy-=dy*f;}}
+    E.forEach(e=>{const a=N[idx[e[0]]],b=N[idx[e[1]]]; if(!a||!b)return;
+      const hub=(e[0]===hubId||e[1]===hubId);
+      let dx=b.x-a.x,dy=b.y-a.y; const d=Math.sqrt(dx*dx+dy*dy)||1;
+      const f=(d-(hub?175:72))*(hub?0.0045:0.03)*alpha;
+      a.vx+=dx/d*f;a.vy+=dy/d*f;b.vx-=dx/d*f;b.vy-=dy/d*f;});
+    N.forEach(n=>{n.vx+=(W/2-n.x)*0.0035*alpha; n.vy+=(H/2-n.y)*0.007*alpha;
+      n.vx*=0.58;n.vy*=0.58; n.x+=n.vx;n.y+=n.vy;
+      n.x=Math.max(16,Math.min(W-16,n.x)); n.y=Math.max(14,Math.min(H-14,n.y));});
+    ctx.clearRect(0,0,W,H);
+    let hl=null;
+    if(hover){hl=new Set([hover.id]);
+      E.forEach(e=>{if(e[0]===hover.id)hl.add(e[1]); if(e[1]===hover.id)hl.add(e[0]);});}
+    E.forEach(e=>{const a=N[idx[e[0]]],b=N[idx[e[1]]]; if(!a||!b)return;
+      const on=hover&&(e[0]===hover.id||e[1]===hover.id);
+      const hub=(e[0]===hubId||e[1]===hubId);
+      ctx.strokeStyle=on?'rgba(34,211,238,.75)':(hub?'rgba(125,211,252,.08)':'rgba(125,211,252,.30)');
+      ctx.lineWidth=on?1.5:1;
+      ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();});
+    const drawn=[];
+    N.forEach(n=>{const dim=hl&&!hl.has(n.id);
+      ctx.globalAlpha=dim?0.22:1;
+      ctx.fillStyle=col[n.t]||'#94A3B8';
+      ctx.beginPath();ctx.arc(n.x,n.y,n.r,0,6.283);ctx.fill();
+      if(n.t==='hub'){ctx.strokeStyle='rgba(255,255,255,.5)';ctx.lineWidth=1;ctx.stroke();}
+      const want=(n.t==='hub')||(hl&&hl.has(n.id))||(!hl&&(n.d>=2||N.length<=26));
+      if(want){const lx=n.x+n.r+4, ly=n.y+3;
+        if(!drawn.some(p=>Math.abs(p[0]-lx)<76&&Math.abs(p[1]-ly)<11)){
+          ctx.font='9.5px JetBrains Mono';
+          ctx.fillStyle=dim?'rgba(231,244,255,.2)':'rgba(231,244,255,.85)';
+          ctx.fillText((n.label||n.id).slice(0,24),lx,ly); drawn.push([lx,ly]);}}
+      ctx.globalAlpha=1;});
+    alpha=Math.max(0.025, alpha*0.985);
+    const view=document.getElementById('v-graphs');
+    if(view && view.classList.contains('on')) VGanim=requestAnimationFrame(step);
+  }
+  step();
+  const near=(x,y)=>{let best=null,bd=260;
     N.forEach(n=>{const d=(n.x-x)*(n.x-x)+(n.y-y)*(n.y-y); if(d<bd){bd=d;best=n;}});
-    if(best) inspect(best.t==='adr'?'adr':'note', best.f||best.id);};
+    return best;};
+  cv.onmousemove=ev=>{const r=cv.getBoundingClientRect();
+    hover=near(ev.clientX-r.left, ev.clientY-r.top);
+    cv.style.cursor=hover?'pointer':'default';};
+  cv.onmouseleave=()=>{hover=null;};
+  cv.onclick=ev=>{const r=cv.getBoundingClientRect();
+    const n=near(ev.clientX-r.left, ev.clientY-r.top);
+    if(n) inspect(n.t==='adr'?'adr':'note', n.f||n.id);};
 }
 async function loadGraphs(){
   try{
