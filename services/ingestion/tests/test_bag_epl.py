@@ -342,6 +342,39 @@ def test_fetch_accepts_epl_host():
     bag_epl._validate_fetch_url("https://epl.bag.admin.ch/static/foph-sl-export-20260601.ndjson")
 
 
+def test_redirect_handler_refuses_and_names_location():
+    """The shared redirect handler raises ValueError naming the rejected Location."""
+    from tarifhub_ingest.adapters import _http
+
+    handler = _http._RefuseRedirects()
+    with pytest.raises(ValueError, match="evil.example.com"):
+        handler.redirect_request(
+            req=None,
+            fp=None,
+            code=302,
+            msg="Found",
+            headers=None,
+            newurl="https://evil.example.com/loot.ndjson",
+        )
+
+
+def test_fetch_download_refuses_redirect(tmp_path, monkeypatch):
+    """A 302 on the file download is refused before any byte is read (no network)."""
+    import urllib.request
+
+    def _fake_open(request, *, timeout):  # the redirect-refusing opener would raise here
+        raise ValueError("fetch refused a 302 redirect to 'https://evil.example.com/x'")
+
+    monkeypatch.setattr(bag_epl, "_validate_fetch_url", lambda url: None)
+    monkeypatch.setattr(
+        bag_epl, "_download_bytes", lambda url, max_bytes: b'{"fhir": {"fileUrl": "x.ndjson"}}'
+    )
+    monkeypatch.setattr(bag_epl, "open_no_redirect", _fake_open)
+    monkeypatch.setattr(urllib.request, "Request", lambda *a, **k: object())
+    with pytest.raises(ValueError, match="redirect"):
+        bag_epl.fetch(tmp_path)
+
+
 # --------------------------------------------------------------------------- #
 # Pipeline integration (SQLite, offline)
 # --------------------------------------------------------------------------- #

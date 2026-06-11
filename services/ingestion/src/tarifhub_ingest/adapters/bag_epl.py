@@ -33,6 +33,8 @@ from pathlib import Path
 from typing import Any
 from urllib.parse import urljoin, urlsplit
 
+from tarifhub_ingest.adapters._http import open_no_redirect
+
 ADAPTER_VERSION = "bag-epl/0.1.0"
 
 _LOG = logging.getLogger(__name__)
@@ -118,7 +120,9 @@ def parse(path: str | Path) -> list[dict[str, Any]]:
                 bundle = json.loads(stripped, parse_float=Decimal)
             except json.JSONDecodeError as exc:
                 # File-level hard fail: a parsing failure must never silently drop data.
-                raise ValueError(f"BAG ePL export line {line_no} is not valid JSON: {exc}") from exc
+                raise ValueError(
+                    f"BAG ePL export line {line_no} is not valid JSON: {exc}"
+                ) from exc
 
             _emit_bundle_rows(
                 bundle,
@@ -631,9 +635,9 @@ def _download_bytes(url: str, max_bytes: int) -> bytes:
     request = urllib.request.Request(url, headers={"User-Agent": "tarifhub-ingest"})
     chunks: list[bytes] = []
     total = 0
-    with urllib.request.urlopen(  # noqa: S310 — host/scheme pinned by _validate_fetch_url
-        request, timeout=_FETCH_TIMEOUT_S
-    ) as response:
+    # open_no_redirect: scheme/host are pinned on the initial URL only, so any 30x is
+    # refused (a redirect could otherwise jump the request to an unpinned host).
+    with open_no_redirect(request, timeout=_FETCH_TIMEOUT_S) as response:
         while True:
             chunk = response.read(_CHUNK)
             if not chunk:
@@ -649,10 +653,9 @@ def _stream_to_file(url: str, dest: Path, max_bytes: int) -> str:
     request = urllib.request.Request(url, headers={"User-Agent": "tarifhub-ingest"})
     digest = hashlib.sha256()
     total = 0
+    # open_no_redirect: refuse any 30x so the host pin can't be bypassed (see _http).
     with (
-        urllib.request.urlopen(  # noqa: S310 — host/scheme pinned by _validate_fetch_url
-            request, timeout=_FETCH_TIMEOUT_S
-        ) as response,
+        open_no_redirect(request, timeout=_FETCH_TIMEOUT_S) as response,
         open(dest, "wb") as handle,
     ):
         while True:
