@@ -82,6 +82,36 @@ def test_search_requires_query(client):
     assert client.get("/api/v1/search").status_code == 422
 
 
+def test_search_guards_embedding_dimension_mismatch(monkeypatch):
+    """On Postgres, a non-1024-dim embedder must 501 BEFORE any SQL is issued.
+
+    No Postgres is needed: the repository dependency is overridden with a stub that
+    raises if touched, proving the dimension guard short-circuits ahead of the query.
+    The offline stub embedder produces 16 dims, so the 1024 guard fires.
+    """
+
+    from fastapi.testclient import TestClient
+
+    from tarifhub_serving.main import app, get_repository
+
+    monkeypatch.setenv("TARIFHUB_DB_URL", "postgresql://u:p@localhost:5432/tarifhub")
+
+    class _ExplodingRepo:
+        def search_by_embedding(self, *_a, **_k):  # pragma: no cover - must not run
+            raise AssertionError("SQL must not be issued when the dimension guard fires")
+
+    app.dependency_overrides[get_repository] = lambda: _ExplodingRepo()
+    try:
+        resp = TestClient(app).get("/api/v1/search", params={"q": "glucose", "limit": 3})
+    finally:
+        app.dependency_overrides.pop(get_repository, None)
+
+    assert resp.status_code == 501
+    detail = resp.json()["detail"]
+    assert "1024-dim embedder (multilingual-e5)" in detail
+    assert "16 dims" in detail
+
+
 def test_list_on_empty_db_is_empty(empty_client):
     resp = empty_client.get("/api/v1/tariffs")
     assert resp.status_code == 200

@@ -1082,6 +1082,7 @@ version = "0.1.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastapi" },
+    { name = "psycopg", extra = ["binary"] },
     { name = "pydantic" },
     { name = "tarifhub-ingest" },
     { name = "uvicorn", extra = ["standard"] },
@@ -1098,6 +1099,7 @@ dev = [
 requires-dist = [
     { name = "fastapi", specifier = ">=0.110" },
     { name = "httpx", marker = "extra == 'dev'", specifier = ">=0.27" },
+    { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
     { name = "pydantic", specifier = ">=2.6" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },

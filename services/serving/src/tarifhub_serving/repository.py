@@ -106,30 +106,54 @@ class ServingRepository:
     # --- mapping ---------------------------------------------------------
 
     def _row_to_record(self, row: Any) -> TariffRecord:
-        data = dict(row)
-        return TariffRecord(
-            tariff_code=data["tariff_code"],
-            tariff_system=TariffSystem(data["tariff_system"]),
-            designation=Designation(
-                de=data["designation_de"],
-                fr=data["designation_fr"],
-                it=data["designation_it"],
-            ),
-            category=data["category"],
-            tax_points=_text_to_decimal(data["tax_points"]),
-            price_chf=_text_to_decimal(data["price_chf"]),
-            unit=data["unit"],
-            valid_from=_text_to_date(data["valid_from"]),
-            valid_to=_text_to_date(data["valid_to"]),
-            source_url=data["source_url"],
-            source_version=data["source_version"],
-            harmonization_confidence=data["harmonization_confidence"],
-            requires_review=bool(data["requires_review"]),
-            metadata=json.loads(data["metadata"]) if data["metadata"] else {},
-            record_hash=data["record_hash"],
-            version=data["version"],
-            created_at=_to_datetime(data["created_at"]),
-        )
+        return _row_to_record(row)
+
+
+def _row_to_record(row: Any) -> TariffRecord:
+    """Reconstruct a canonical :class:`TariffRecord` from a DB row (dialect-agnostic).
+
+    Module-level so the mapping is unit-testable without a live connection.
+    """
+
+    data = dict(row)
+    return TariffRecord(
+        tariff_code=data["tariff_code"],
+        tariff_system=TariffSystem(data["tariff_system"]),
+        designation=Designation(
+            de=data["designation_de"],
+            fr=data["designation_fr"],
+            it=data["designation_it"],
+        ),
+        category=data["category"],
+        tax_points=_text_to_decimal(data["tax_points"]),
+        price_chf=_text_to_decimal(data["price_chf"]),
+        unit=data["unit"],
+        valid_from=_text_to_date(data["valid_from"]),
+        valid_to=_text_to_date(data["valid_to"]),
+        source_url=data["source_url"],
+        source_version=data["source_version"],
+        harmonization_confidence=data["harmonization_confidence"],
+        requires_review=bool(data["requires_review"]),
+        metadata=_parse_metadata(data["metadata"]),
+        record_hash=data["record_hash"],
+        version=data["version"],
+        created_at=_to_datetime(data["created_at"]),
+    )
+
+
+def _parse_metadata(value: Any) -> dict[str, Any]:
+    """Normalise the ``metadata`` column into a dict.
+
+    SQLite stores it as a JSON text string; the Postgres JSONB column comes back from
+    the driver as a native ``dict`` (or list). Decode only when it is a ``str``; pass a
+    native dict through unchanged. ``None``/empty -> ``{}``.
+    """
+
+    if value in (None, ""):
+        return {}
+    if isinstance(value, str):
+        return json.loads(value)
+    return value
 
 
 def _text_to_decimal(value: Any) -> Decimal | None:

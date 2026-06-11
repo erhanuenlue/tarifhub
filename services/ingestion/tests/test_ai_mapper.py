@@ -200,18 +200,20 @@ def test_no_api_key_returns_deterministic_and_never_calls_parse(monkeypatch):
 
 
 def test_parse_raises_falls_back_safely(monkeypatch):
-    """Case e: an API error returns the deterministic record, marked error."""
+    """Case e: an API error returns the deterministic record UNCHANGED.
+
+    The error fallback must be byte-identical to the no-key path (same future
+    record_hash), or transient AI outages would break re-ingest idempotency.
+    """
     _install_fake_anthropic(monkeypatch, raise_exc=RuntimeError("boom"))
     settings = _settings(monkeypatch)
 
     ai = ai_map(_EAL_RAW, system=TariffSystem.EAL, settings=settings)
     rules = map_raw(_EAL_RAW, system=TariffSystem.EAL)
 
-    assert ai.designation == rules.designation
-    assert ai.tax_points == rules.tax_points
-    assert ai.metadata["ai_assisted"] is False
-    assert ai.metadata["ai_status"].startswith("error:")
-    assert "RuntimeError" in ai.metadata["ai_status"]
+    # created_at is excluded from the freeze hash; everything else must match.
+    assert ai.model_dump(exclude={"created_at"}) == rules.model_dump(exclude={"created_at"})
+    assert "ai_status" not in ai.metadata
 
 
 @pytest.mark.parametrize(
@@ -226,9 +228,8 @@ def test_refusal_or_none_output_is_error_path(monkeypatch, parsed_output, stop_r
     ai = ai_map(_EAL_RAW, system=TariffSystem.EAL, settings=settings)
     rules = map_raw(_EAL_RAW, system=TariffSystem.EAL)
 
-    assert ai.designation == rules.designation
-    assert ai.metadata["ai_assisted"] is False
-    assert ai.metadata["ai_status"].startswith("error:")
+    assert ai.model_dump(exclude={"created_at"}) == rules.model_dump(exclude={"created_at"})
+    assert "ai_status" not in ai.metadata
 
 
 def test_parse_kwargs_omit_removed_sampling_params(monkeypatch):

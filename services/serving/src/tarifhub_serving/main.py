@@ -16,7 +16,7 @@ from __future__ import annotations
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, HTTPException, Query
-from tarifhub_ingest.embeddings.embedder import get_embedder
+from tarifhub_ingest.embeddings.embedder import E5_DIMENSION, get_embedder
 from tarifhub_ingest.models.tariff_model import TariffRecord
 
 from tarifhub_serving.config import (
@@ -120,5 +120,17 @@ def search(
         )
 
     vector = get_embedder().embed(q)
+    # The pgvector column is vector(1024). A non-1024-dim embedder (e.g. the offline
+    # stub) would trigger a dimension-mismatch error inside pgvector mid-request; fail
+    # closed with the same explicit 501 instead of issuing the doomed query.
+    if len(vector) != E5_DIMENSION:
+        raise HTTPException(
+            status_code=501,
+            detail=(
+                f"search requires a {E5_DIMENSION}-dim embedder (multilingual-e5); "
+                f"current backend produces {len(vector)} dims"
+            ),
+        )
+
     records = repo.search_by_embedding(vector, limit)
     return [SearchHit(rank=i, record=r) for i, r in enumerate(records, start=1)]

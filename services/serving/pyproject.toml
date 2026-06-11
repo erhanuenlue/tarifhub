@@ -19,6 +19,9 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
     "pydantic>=2.6",
+    # db.py imports psycopg directly for the Postgres read path; declare it explicitly
+    # rather than relying on it transitively via tarifhub-ingest. Same family as ingestion.
+    "psycopg[binary]>=3.1",
     "tarifhub-ingest",
 ]
 

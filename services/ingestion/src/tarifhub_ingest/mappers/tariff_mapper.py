@@ -166,18 +166,13 @@ def _claude_assisted_map(
         if refinement is None:
             raise RuntimeError("model returned no parsed output")
     except Exception as exc:  # noqa: BLE001 — the AI seam must never break the pipeline
+        # Return the deterministic record UNCHANGED: the error fallback must be
+        # byte-identical (same record_hash) to the no-key path, or transient AI
+        # outages would break re-ingest idempotency. Failure evidence goes to the log.
         _LOG.warning(
             "AI harmonization failed (%s); using deterministic mapping", type(exc).__name__
         )
-        return record.model_copy(
-            update={
-                "metadata": {
-                    **record.metadata,
-                    "ai_assisted": False,
-                    "ai_status": f"error:{type(exc).__name__}",
-                }
-            }
-        )
+        return record
 
     fr = record.designation.fr or _as_text(refinement.designation_fr)
     it = record.designation.it or _as_text(refinement.designation_it)
