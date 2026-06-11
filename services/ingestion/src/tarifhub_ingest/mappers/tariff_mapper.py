@@ -116,7 +116,25 @@ def ai_map(
     record = map_raw(raw, system=system, source_url=source_url, source_version=source_version)
     if not settings.anthropic_api_key:
         return record
+    # Gap-gate (deterministic pre-check): the live harmonizer can only ever FILL
+    # missing non-billing fields. If there is nothing fillable, calling it would cost
+    # latency/tokens for a guaranteed no-op AND — because the fallback metadata must
+    # stay byte-identical to the no-key path — would risk record_hash drift. So when
+    # there is no gap we return the deterministic record UNCHANGED (ai_assisted=False),
+    # identical to the no-key path. The model is invoked only when a gap exists.
+    if not _has_fillable_gap(record):
+        return record
     return _claude_assisted_map(raw, record, settings)
+
+
+def _has_fillable_gap(record: TariffRecord) -> bool:
+    """True iff a non-billing field the AI seam may fill is still missing."""
+
+    return (
+        record.designation.fr is None
+        or record.designation.it is None
+        or record.category is None
+    )
 
 
 def _claude_assisted_map(
