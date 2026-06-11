@@ -23,5 +23,6 @@ We ingest SL with a dedicated streaming adapter (`adapters/bag_epl.py`) under th
 - (+) Two structurally opposite BAG formats (flat XLSX, FHIR R5 graph) harmonise through one Pydantic model and one deterministic value path — heterogeneity is absorbed entirely in the adapter.
 - (+) Fail-closed on unkeyable packages (109 export-wide) keeps the freeze set provably GTIN-keyed and the count reproducible.
 - (–) The adapter carries real FHIR R5 traversal complexity (relative-reference resolution, exact extension-url matching at each nesting level, content-discriminated slices); this is tested against a 255-bundle real-data fixture and a pinned record hash. Revisit the mapping if BAG changes the IG slicing or the price-type code system.
+- (–) Measured on the live run: the 47 ATC-less records whose `category` is filled by the AI seam are **not byte-stable across re-ingests with a live key** (they re-version each run, contained by UNIQUE constraints + append-only versioning with zero duplicate hashes); the deterministic core stays fully reproducible, but this re-version churn is an open follow-up pending an owner decision (see §10 reproducibility note).
 
 *Lineage: new (replaces the retired toy `parsers/fhir_parser.py`).*
