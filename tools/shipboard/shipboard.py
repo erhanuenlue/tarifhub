@@ -50,7 +50,7 @@ PHASES = [
     ("06", "PR + CI", "gh + Actions · inline"),
     ("07", "Runtime", "E2E + logs · e2e-tester · Sonnet"),
     ("08", "Report", "consolidated · Fable 5"),
-    ("09", "Merge", "confirmation gate · Erhan"),
+    ("09", "Merge", "auto on green · fallback gate: Erhan"),
 ]
 PINS = {"implementer": "Opus 4.8", "e2e-tester": "Sonnet 4.6", "determinism-auditor": "Sonnet 4.6",
         "security-reviewer": "Opus 4.8", "codex-reviewer": "Haiku 4.5", "verifier": "Fable 5"}

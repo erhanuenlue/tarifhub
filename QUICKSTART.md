@@ -60,7 +60,7 @@ What happens, and where you're needed:
 2. When it reports done with evidence, type **`/ship`**.
 3. **Phase 01 stops for you:** it presents the plan of what's being shipped — read it, correct it, approve it.
 4. Phases 02–08 run: Opus implements fixes if needed, gates, parallel reviews (verifier always; determinism for `services/`; security when relevant; **Codex on architectural diffs or when you say "include codex review"**), PR + CI, Sonnet's runtime verification, the consolidated report.
-5. **Phase 09 stops for you:** read the report, confirm the merge (or say no — it records why and leaves the PR open).
+5. **Phase 09 merges itself when the green-contract holds** (CI fully green incl. security, all findings dispositioned, no unauthorized frozen-path change, tree clean) and tells you what merged and why it qualified. Anything less **stops for you** with the failing condition named.
 6. Before closing: open `vault/daily/<today>.md` — curate the drafted journal entry to 3–6 honest lines. **This is graded material; 2 minutes, every working day.**
 
 First-session sanity (from SETUP.md): `pytest` green offline · `ai_map` makes a real Claude call with the key set · ask Claude to edit `services/ingestion/versioning/` once and watch `guard_frozen` refuse · CI green · Pages live.
@@ -70,7 +70,7 @@ First-session sanity (from SETUP.md): `pytest` green offline · `ai_map` makes a
 - **One sitting = one prompt = one shipped outcome.** The road: `prompts/02` (spec & design artifacts) → `03` (FHIR second source) → `04` (services + MCP) → `05` (console) → `06` (validation evidence) → `07` (documentation + Fazit + submission). Block plan and gates: CAS Dossier §7.
 - **Prompts are the mission; `/ship` is the landing.** Every prompt ends in `/ship` automatically. For ad-hoc changes between prompts, just describe the change and say `/ship` when it's ready — the pipeline scales down fine for small diffs.
 - `/cas-status` once or twice a week: honest floor check against the rubric, evidence-based.
-- The board, the journal hook and brain_sync run themselves. Your only recurring duties: approve plans, confirm merges, curate the journal.
+- The board, the journal hook, brain_sync and the vault auto-commit run themselves; merges land themselves on green. Your only recurring duties: **approve plans, curate the journal** — and answer the rare gate when the green-contract doesn't hold.
 
 ## 4 · Submission week (Block 3)
 

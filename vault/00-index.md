@@ -1,6 +1,6 @@
 # tarifhub — knowledge index (auto-generated)
 
-> Rebuilt by the `brain_sync` hook at every session end (2026-06-11 20:38). Do not edit by hand — edit the sources.
+> Rebuilt by the `brain_sync` hook at every session end (2026-06-11 21:50). Do not edit by hand — edit the sources.
 
 ## Decisions (ADRs)
 
@@ -33,4 +33,4 @@
 ## Architecture (source of truth)
 
 - arc42: [[01-introduction-goals|§1]] · [[02-constraints|§2]] · [[03-context-scope|§3]] · [[04-solution-strategy|§4]] · [[05-building-block-view|§5]] · [[06-runtime-view|§6]] · [[07-deployment-view|§7]] · [[08-crosscutting-concepts|§8]] · [[09-architecture-decisions|§9]] · [[10-quality-requirements|§10]] · [[11-risks-technical-debt|§11]] · [[12-glossary|§12]]  — site: `mkdocs serve -f docs/mkdocs.yml`
-- Last docs change: 2026-06-11 · docs: spec & design artifacts for grading criteria 1–6 + 8 (Block 0, prompts/02) (#4)
+- Last docs change: 2026-06-11 · docs(adr): ADR pages in site nav — print-site PDF carries full decision texts

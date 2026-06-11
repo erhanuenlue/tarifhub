@@ -1,6 +1,6 @@
 ---
 name: ship
-description: The 9-phase multi-model shipping pipeline — plan-approval, TDD implementation, reviews, CI, runtime verification, merge-gate. Invoke whenever work is ready to land (prompts end with "then /ship" — that means run this skill). The two human gates (plan approval, merge confirmation) always stop for Erhan regardless of who invoked.
+description: The 9-phase multi-model shipping pipeline — plan-approval, TDD implementation, reviews, CI, runtime verification, auto-merge on green. Invoke whenever work is ready to land (prompts end with "then /ship" — that means run this skill). Gate 01 (plan approval) always stops for Erhan; phase 09 auto-merges only under its green-contract and stops for Erhan otherwise (owner decision 2026-06-11).
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
 
@@ -8,7 +8,7 @@ Ship the requested work through the phased pipeline. **The first action of every
 
 **Model discipline:** each agent's model is pinned in its config — never override it, never switch a model mid-task (prompt caches are model-scoped; a switch re-reads the whole context at full price). Hold the plan-quality bar ruthlessly: a wrong plan wastes every downstream token.
 
-**Effort policy (ultracode):** this pipeline runs in an **`/effort ultracode`** session. Allocate your own reasoning depth per task, **medium ↔ xhigh by complexity**: xhigh for the plan on complex scopes, for consolidating disputed findings, and for the merge-gate read; high for routine orchestration, reports and writing; medium for mechanical inline steps (staging commits, running gates, emitting events). Auto-orchestration operates **inside** this skill's contract: the nine phases and their order stand, the emits fire, and **gates 01 and 09 always stop for Erhan — no autonomy setting overrides a human gate.** Delegated phases are unaffected by your effort (workers run their pinned models).
+**Effort policy (ultracode):** this pipeline runs in an **`/effort ultracode`** session. Allocate your own reasoning depth per task, **medium ↔ xhigh by complexity**: xhigh for the plan on complex scopes, for consolidating disputed findings, and for the merge-gate read; high for routine orchestration, reports and writing; medium for mechanical inline steps (staging commits, running gates, emitting events). Auto-orchestration operates **inside** this skill's contract: the nine phases and their order stand, the emits fire, **gate 01 always stops for Erhan**, and phase 09 auto-merges only when its green-contract holds — anything less stops for him. Delegated phases are unaffected by your effort (workers run their pinned models).
 
 ## Phase 01 — Plan *(inline, Fable)*
 Read the task/issue + the code it touches. Produce the plan: scoped task list with file-level targets, acceptance criteria per task, review routing (which reviewers this diff needs), and what phase 07 must prove. **STOP and present the plan to Erhan for approval.** Do not proceed without his explicit yes; fold in his corrections. `emit 01 pass`.
@@ -34,7 +34,14 @@ Compose-up, integration suite against real Postgres, API smoke, console smoke + 
 ## Phase 08 — Full report *(inline, Fable)*
 Consolidated ship report: what landed (per task), evidence (quoted test/CI/runtime output), review findings and their dispositions, files touched, risks remaining. Append the journal-relevant extract to today's `vault/daily/` draft — which agents ran on which model, what they got wrong, what caught it (criterion-15 raw material, generated as a by-product).
 
-## Phase 09 — Merge gate *(Erhan)*
-Present the report and **STOP: ask Erhan to confirm the merge.** On his yes: squash-merge, delete branch, `emit 09 pass`, confirm `brain_sync` ran. On no: capture why into the journal and leave the PR open.
+## Phase 09 — Merge *(auto on green · fallback gate: Erhan)*
+Owner decision 2026-06-11: Erhan delegated routine merge confirmation. Present the phase-08 report, then check the **green-contract — ALL FOUR must hold:**
 
-**Failure posture:** any phase fails → `emit <phase> fail "<reason>"`, attempt the fix loop once, then stop and report rather than thrash. The two human gates (01, 09) are never skipped, never assumed.
+1. CI fully green on the PR — every check, security job included; the determinism boundary test visible in the run log.
+2. Every reviewer finding resolved or explicitly dispositioned in the report — no open P1/P2.
+3. The diff touches **no frozen path** (`versioning/`, `audit/`, applied migrations, boundary tests) beyond changes Erhan explicitly authorized **this session**.
+4. Working tree clean; branch current with `main`.
+
+All four hold → `gh pr merge --squash --delete-branch` without waiting, `emit 09 pass "auto-merged on green"`, confirm `brain_sync` ran, and close the report with one line stating what merged and why it qualified. **Any condition fails → STOP and ask Erhan**, naming exactly which condition failed. Never widen the contract; when in doubt, it is a gate.
+
+**Failure posture:** any phase fails → `emit <phase> fail "<reason>"`, attempt the fix loop once, then stop and report rather than thrash. Gate 01 is never skipped, never assumed; phase 09's autonomy exists only inside its green-contract.

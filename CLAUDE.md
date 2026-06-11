@@ -11,7 +11,7 @@ Project facts, layout, commands and the determinism rule are in AGENTS.md above.
 - Plan mode for anything multi-file; skip it when the diff fits one sentence. For long unattended runs use `/goal "<verifiable condition>"`.
 - **Maintain your todo list during multi-step work** (statuses kept current) — Shipboard's kanban mirrors it live; an untracked plan is invisible to Erhan's board.
 - When Erhan is thinking out loud, deliver an assessment, not a patch. Pause only for: destructive/irreversible actions, real scope changes, or input only he has.
-- Effort — **Erhan's policy (owner decision):** build/ship sessions run **`/effort ultracode`** (xhigh baseline + auto-orchestration). Within the pipeline, **allocate effort per task by complexity, medium ↔ xhigh**: xhigh where reasoning compounds (the plan on complex scope, disputed review findings, the merge-gate read), high for normal orchestration and writing, medium for mechanical inline steps. Two invariants no orchestration mode may touch: **gates 01 and 09 are hard human stops — never auto-skipped**, and **worker model pins are never overridden** (effort governs your reasoning, not theirs). Outside build sessions: `medium` for chores; `max` never by default.
+- Effort — **Erhan's policy (owner decision):** build/ship sessions run **`/effort ultracode`** (xhigh baseline + auto-orchestration). Within the pipeline, **allocate effort per task by complexity, medium ↔ xhigh**: xhigh where reasoning compounds (the plan on complex scope, disputed review findings, the merge-gate read), high for normal orchestration and writing, medium for mechanical inline steps. Two invariants no orchestration mode may touch: **gate 01 (plan approval) is a hard human stop**, and **worker model pins are never overridden** (effort governs your reasoning, not theirs). Phase 09 auto-merges **only** under the green-contract in the /ship skill (owner decision 2026-06-11) — anything less stops for Erhan. Outside build sessions: `medium` for chores; `max` never by default.
 
 ## The pipeline — you orchestrate, workers produce
 
@@ -22,7 +22,7 @@ You (Fable 5) do the three jobs where quality compounds: **the plan, the orchest
 - Reviewers: `verifier` (fresh-context diff-vs-spec — self-critique is not verification) · `determinism-auditor` (Sonnet, mandatory for `services/`) · `security-reviewer` (Opus — also covers what Fable's safety classifiers decline) · `codex-reviewer` (independent second model family; CAS evidence of multi-tool use — journal it).
 - Built-in Explore handles codebase search. Launch independent agents in one parallel batch and keep working.
 
-**`/ship` runs the whole 9-phase pipeline** (plan-approval → implement → gates → reviews → fix → PR/CI → runtime verification → report → merge-confirmation) with two human gates that are never skipped: Erhan approves the plan, Erhan confirms the merge. Live board: `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
+**`/ship` runs the whole 9-phase pipeline** (plan-approval → implement → gates → reviews → fix → PR/CI → runtime verification → report → auto-merge on green). One human gate is never skipped: **Erhan approves the plan (01)**. Phase 09 merges autonomously when the skill's green-contract holds (CI fully green, findings dispositioned, no unauthorized frozen-path change, tree clean) and stops for Erhan otherwise. The SessionEnd `vault_autocommit` hook commits + pushes vault/LEARNINGS evidence automatically. Live board: `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
 
 ## Git & GitHub — you do all of it
 
