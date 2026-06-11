@@ -132,7 +132,10 @@ class TariffRepository:
             record.source_url,
             record.source_version,
             record.harmonization_confidence,
-            1 if record.requires_review else 0,
+            # Real bool: psycopg must send a boolean for the Postgres column
+            # (an int arrives as smallint and is rejected); sqlite3 adapts
+            # bools to 0/1 natively, so both engines are happy.
+            record.requires_review,
             json.dumps(record.metadata, sort_keys=True, ensure_ascii=False),
             json.dumps(embedding) if embedding is not None else None,
             record.record_hash,
