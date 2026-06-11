@@ -12,8 +12,8 @@ Start at **[[00-index]]**.
 - **graphify = the structural brain of the codebase.** It answers *"what is in this monorepo
   and how is it wired"* — which ingestion adapter feeds which serving endpoint, what links the
   MCP server to the frozen-records store, where a concept lives across `services/ingestion`
-  (Python), `services/serving` (Quarkus), `services/intelligence` (Python) and `apps/*`
-  (Next.js). It extracts code locally via tree-sitter, commits its graph, and serves it over
+  (Python), `services/serving` (Python / FastAPI, read-only, :8000), `services/intelligence`
+  (Python) and `apps/*` (Next.js). It extracts code locally via tree-sitter, commits its graph, and serves it over
   MCP (`query_graph`, `get_node`, `shortest_path`) — see the `graphify` server in `.mcp.json`.
 - **Obsidian (this vault) = the human brain.** It answers *"why did we decide this"* — the
   durable record of decisions, research, and rationale.

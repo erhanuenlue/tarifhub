@@ -12,7 +12,7 @@ System_Ext(sources, "Public tariff sources", "BAG EAL, BAG ePL, …")
 
 System_Boundary(th, "TarifHub") {
   Container(ingest, "Ingestion service", "Python 3.12, FastAPI", "Pre-freeze, AI-assisted pipeline (load→…→freeze→store→audit) + admin/read API. NO AI on the value path.")
-  Container(serving, "Serving service", "Java 21, Quarkus", "Deterministic REST over frozen records (JSON/XML) + langchain4j semantic search")
+  Container(serving, "Serving service", "Python 3.12, FastAPI", "Deterministic REST over frozen records (JSON/XML) + pgvector semantic search")
   Container(mcp, "MCP server", "Python, FastMCP", "Read-only MCP tools (search/lookup/explain) over serving. No DB, no model, no math.")
   Container(tarifguard, "TarifGuard", "Next.js, React", "Practice-facing app: search, coding-check, de-identified explain. Read-only over serving.")
   ContainerDb(db, "PostgreSQL + pgvector", "PostgreSQL 16", "Frozen canonical records, audit log, embeddings")

@@ -9,7 +9,7 @@ site_description: AI-assisted harmonisation above a deterministic freeze line. F
 site_author: Erhan Ünlü
 docs_dir: .
 site_dir: ../site
-repo_url: https://github.com/CHANGE-ME/tarifhub   # set after `gh repo create`; appears in header
+repo_url: https://github.com/erhanuenlue/tarifhub   # set after `gh repo create`; appears in header
 edit_uri: ""
 
 theme:
