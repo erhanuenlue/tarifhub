@@ -201,3 +201,42 @@ unreachable by the model ([ADR-005](../adr/005-single-ai-seam.md)).
 
 *Runtime serving evidence (Postgres + pgvector search) is captured under
 `docs/evidence/`.*
+
+### Ranked retrieval (cross-lingual)
+
+multilingual-e5 is trained with an asymmetric instruction scheme: indexed documents
+are embedded as `"passage: …"` and search queries as `"query: …"`. The Block-0 proof
+indexed passages correctly but embedded queries through the **passage path**
+(`"passage: "` prefix instead of the e5-expected `"query: "` prefix), degrading
+cross-lingual alignment — French `hématocrite` ranked the exact record (EAL 1375,
+*Hämatokrit, zentrifugiert*) at 3, not 1. The fix applies the `"query: "` prefix on the
+serving search path (stored passage vectors are unchanged). `tools/search_eval/` runs a
+12-query DE/FR/IT/EN labelled set both ways and reports rank, MRR@5 and recall@5. Live
+run on the EAL corpus (1 279 records) 2026-06-11 — full tables + trade-off analysis in
+[`docs/evidence/2026-06-11-fr-ranking-eval.md`](../evidence/2026-06-11-fr-ranking-eval.md).
+
+| query (lang) | expected code | rank — prefix passage | rank — prefix query |
+|---|---|---|---|
+| hématocrite (fr) | 1375 | 3 | 2 |
+| Hämatokrit (de) | 1375 | 1 | 1 |
+| vitamin D blood test (en) | 1006 | 1 | 1 |
+| glicemia (it) | 1356 | 3 | 2 |
+
+| metric | prefix passage (baseline) | prefix query (the fix) |
+|---|---|---|
+| MRR@5 | 0.681 | 0.597 |
+| recall@5 | 0.833 | 0.917 |
+
+The query prefix is a deliberate **trade-off**: cross-lingual recall@5 improves +0.084
+(both Italian misses recovered, French `hématocrite` 3 → 2 — the Block-0 defect), while
+MRR@5 dips −0.084 as several rank-1 hits slip to rank 2, mostly cosmetic same-name `.01`
+billing-variant swaps (e.g. 1356 ↔ 1356.01, both *"Glukose"*). **Decision:** the query
+prefix ships — it is the e5-correct usage and cross-lingual recall is the problem Block-0
+exposed. The documented follow-up (extend passage text with FR/IT designations + re-embed
+the corpus) stays open, since `hématocrite → 1375` is not yet rank 1 (a broader Hämatogramm
+panel, 1372.01, outranks the exact record).
+
+**Method:** each query is embedded both ways via the repo's own `get_embedder` — the
+passage path (`"passage: "`, the faithful Block-0 production baseline) and the query path
+(`"query: "`, the fix) — ranked with the same pgvector cosine SQL the serving API uses,
+against the frozen EAL set. (MRR is computed over the top-5 retrieved, hence MRR@5.)

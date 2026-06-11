@@ -119,7 +119,9 @@ def search(
             detail="semantic search requires Postgres+pgvector",
         )
 
-    vector = get_embedder().embed(q)
+    # Embed the user query through the QUERY path (e5 "query: " prefix), not the
+    # passage path used to index records — the asymmetry is what e5 is trained for.
+    vector = get_embedder().embed_query(q)
     # The pgvector column is vector(1024). A non-1024-dim embedder (e.g. the offline
     # stub) would trigger a dimension-mismatch error inside pgvector mid-request; fail
     # closed with the same explicit 501 instead of issuing the doomed query.

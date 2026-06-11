@@ -118,3 +118,48 @@ def test_list_on_empty_db_is_empty(empty_client):
     resp = empty_client.get("/api/v1/tariffs")
     assert resp.status_code == 200
     assert resp.json() == []
+
+
+def test_search_embeds_query_via_query_path(monkeypatch):
+    """The search endpoint must embed the user query through ``embed_query`` (e5
+    'query: ' prefix), NOT the passage-side ``embed``. A spy embedder records which
+    method the endpoint calls; we run on Postgres so the embed step is reached, and
+    stop SQL with a 1024-dim spy that returns a real-width vector through a stub repo.
+    """
+
+    from fastapi.testclient import TestClient
+
+    import tarifhub_serving.main as serving_main
+    from tarifhub_serving.main import app, get_repository
+
+    monkeypatch.setenv("TARIFHUB_DB_URL", "postgresql://u:p@localhost:5432/tarifhub")
+
+    calls: list[str] = []
+
+    class _SpyEmbedder:
+        @property
+        def dimension(self) -> int:
+            return 1024
+
+        def embed(self, text: str):  # pragma: no cover - must NOT be called
+            calls.append("embed")
+            return [0.0] * 1024
+
+        def embed_query(self, text: str):
+            calls.append("embed_query")
+            return [0.0] * 1024
+
+    class _StubRepo:
+        def search_by_embedding(self, vector, limit):
+            assert len(vector) == 1024
+            return []
+
+    monkeypatch.setattr(serving_main, "get_embedder", lambda: _SpyEmbedder())
+    app.dependency_overrides[get_repository] = lambda: _StubRepo()
+    try:
+        resp = TestClient(app).get("/api/v1/search", params={"q": "hématocrite", "limit": 5})
+    finally:
+        app.dependency_overrides.pop(get_repository, None)
+
+    assert resp.status_code == 200
+    assert calls == ["embed_query"], "endpoint must use the query path, not the passage path"
