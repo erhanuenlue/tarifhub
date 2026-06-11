@@ -6,8 +6,10 @@
 # the expected record is known to exist in the 1 279-record frozen EAL set.
 #
 # The set spans DE / FR / IT / EN to probe multilingual-e5's cross-lingual alignment.
-# `prefix off` embeds the query raw (the Block-0 "before"); `prefix on` adds the e5
-# "query: " prefix (the "after"). The hématocrite→1375 case is the headline regression.
+# `--prefix passage` embeds the query through the passage path ("passage: " prefix) —
+# the faithful Block-0 baseline, since production called embed(q), NOT a raw query.
+# `--prefix query` adds the e5-expected "query: " prefix (the fix). The hématocrite→1375
+# case is the headline regression.
 #
 # fields: id, lang, query, expected_code, why
 queries:

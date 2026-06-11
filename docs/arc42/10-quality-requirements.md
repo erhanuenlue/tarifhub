@@ -71,24 +71,27 @@ unreachable by the model ([ADR-005](../adr/005-single-ai-seam.md)).
 
 multilingual-e5 is trained with an asymmetric instruction scheme: indexed documents
 are embedded as `"passage: …"` and search queries as `"query: …"`. The Block-0 proof
-indexed passages correctly but embedded queries **raw**, degrading cross-lingual
-alignment — French `hématocrite` ranked the exact record (EAL 1375,
+indexed passages correctly but embedded queries through the **passage path**
+(`"passage: "` prefix instead of the e5-expected `"query: "` prefix), degrading
+cross-lingual alignment — French `hématocrite` ranked the exact record (EAL 1375,
 *Hämatokrit, zentrifugiert*) at 3, not 1. The fix applies the `"query: "` prefix on the
 serving search path (stored passage vectors are unchanged). `tools/search_eval/` runs a
-12-query DE/FR/IT/EN labelled set both ways and reports rank, MRR and recall@5; numbers
+12-query DE/FR/IT/EN labelled set both ways and reports rank, MRR@5 and recall@5; numbers
 land in the e2e phase.
 
-| query (lang) | expected code | rank — prefix off | rank — prefix on |
+| query (lang) | expected code | rank — prefix passage | rank — prefix query |
 |---|---|---|---|
 | hématocrite (fr) | 1375 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
 | Hämatokrit (de) | 1375 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
 | vitamin D blood test (en) | 1006 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
 | glicemia (it) | 1356 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
 
-| metric | prefix off (before) | prefix on (after) |
+| metric | prefix passage (baseline) | prefix query (the fix) |
 |---|---|---|
-| MRR | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
+| MRR@5 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
 | recall@5 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
 
-**Method:** each query is embedded both ways via the repo's own `get_embedder`, ranked
-with the same pgvector cosine SQL the serving API uses, against the frozen EAL set.
+**Method:** each query is embedded both ways via the repo's own `get_embedder` — the
+passage path (`"passage: "`, the faithful Block-0 production baseline) and the query path
+(`"query: "`, the fix) — ranked with the same pgvector cosine SQL the serving API uses,
+against the frozen EAL set. (MRR is computed over the top-5 retrieved, hence MRR@5.)

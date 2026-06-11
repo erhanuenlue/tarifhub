@@ -9,18 +9,24 @@ It runs DIRECTLY against the repo's own modules — the same ``get_embedder`` an
 Postgres+pgvector DB with the multilingual-e5 model installed. This is simpler than
 standing up the HTTP server and removes a moving part; the ranking SQL is identical.
 
-  --prefix off   embed each query RAW via embedder.embed()        (the "before")
-  --prefix on    embed each query via embedder.embed_query()      ("query: " prefix; "after")
+In production the search endpoint called ``embed(q)``, which applies the e5 PASSAGE
+prefix (``"passage: "``) instead of the model-expected ``"query: "`` prefix — so the
+Block-0 baseline is passage-prefixed queries, NOT raw queries. The harness measures that
+faithful baseline against the fix:
+
+  --prefix passage   embed each query via embedder.embed()        (faithful Block-0 baseline)
+  --prefix query     embed each query via embedder.embed_query()  ("query: " prefix; the fix)
 
 For each labelled query it reports the rank of the expected ``tariff_code`` (the lower
-the better, ``—`` if outside top-k), then aggregates MRR and recall@5, and prints a
+the better, ``—`` if outside top-k), then aggregates MRR@5 and recall@5, and prints a
 ready-to-paste Markdown table. Output ordering is deterministic (queries in file order).
+(MRR is computed over the top-5 results the harness retrieves, hence MRR@5.)
 
 Usage (from repo root, serving venv has the modules + the 'ai' extra for e5):
 
     TARIFHUB_DB_URL=postgresql://tarif:tarif@localhost:5432/tarifhub \\
     TARIFHUB_EMBEDDINGS=e5 \\
-    uv run --project services/serving python tools/search_eval/eval.py --prefix on
+    uv run --project services/serving python tools/search_eval/eval.py --prefix query
 
 Requires Postgres+pgvector with frozen EAL embeddings and the e5 model; with the offline
 stub (16-dim) the harness refuses to run rather than emit meaningless ranks.
@@ -49,10 +55,14 @@ def _load_queries() -> list[dict]:
     return list(data["queries"])
 
 
-def _embed(embedder, query: str, *, prefix_on: bool) -> list[float]:
-    """Embed a query with ('on') or without ('off') the e5 query prefix."""
+def _embed(embedder, query: str, *, query_path: bool) -> list[float]:
+    """Embed via the query path (e5 'query: ' prefix) or the passage path (baseline).
 
-    return embedder.embed_query(query) if prefix_on else embedder.embed(query)
+    ``query_path=True`` uses ``embed_query`` (the fix); ``False`` uses ``embed``, which
+    applies the ``"passage: "`` prefix — the faithful Block-0 production baseline.
+    """
+
+    return embedder.embed_query(query) if query_path else embedder.embed(query)
 
 
 def _rank_of(codes: list[str], expected: str) -> int | None:
@@ -64,8 +74,12 @@ def _rank_of(codes: list[str], expected: str) -> int | None:
     return None
 
 
-def evaluate(prefix_on: bool) -> tuple[list[dict], dict]:
-    """Run every labelled query and return per-query rows + aggregate metrics."""
+def evaluate(query_path: bool) -> tuple[list[dict], dict]:
+    """Run every labelled query and return per-query rows + aggregate metrics.
+
+    ``query_path=True`` embeds via ``embed_query`` (the fix); ``False`` via ``embed``
+    (the passage-prefixed faithful Block-0 baseline).
+    """
 
     settings = get_settings()
     db = Database.from_url(settings.db_url)
@@ -91,7 +105,7 @@ def evaluate(prefix_on: bool) -> tuple[list[dict], dict]:
     try:
         repo = ServingRepository(conn, db)
         for q in _load_queries():
-            vector = _embed(embedder, q["query"], prefix_on=prefix_on)
+            vector = _embed(embedder, q["query"], query_path=query_path)
             records = repo.search_by_embedding(vector, _TOPK)
             codes = [r.tariff_code for r in records]
             rank = _rank_of(codes, str(q["expected_code"]))
@@ -112,16 +126,22 @@ def evaluate(prefix_on: bool) -> tuple[list[dict], dict]:
         conn.close()
 
     n = len(rows)
+    # Reciprocal rank is computed over the top-5 the harness retrieves (_TOPK=5), so this
+    # is MRR@5, not unbounded MRR — a record ranked >5 contributes 0.
     metrics = {
         "n": n,
-        "mrr": (sum(reciprocal_ranks) / n) if n else 0.0,
+        "mrr_at_5": (sum(reciprocal_ranks) / n) if n else 0.0,
         "recall_at_5": (hits_at_5 / n) if n else 0.0,
     }
     return rows, metrics
 
 
-def _markdown(rows: list[dict], metrics: dict, prefix_on: bool) -> str:
-    state = "on (query: prefix)" if prefix_on else "off (raw query — before)"
+def _markdown(rows: list[dict], metrics: dict, query_path: bool) -> str:
+    state = (
+        "query (query: prefix — the fix)"
+        if query_path
+        else "passage (passage: prefix — faithful Block-0 baseline)"
+    )
     lines = [
         f"#### Eval run — prefix {state}",
         "",
@@ -136,7 +156,7 @@ def _markdown(rows: list[dict], metrics: dict, prefix_on: bool) -> str:
         )
     lines += [
         "",
-        f"**MRR** = {metrics['mrr']:.3f} · **recall@5** = {metrics['recall_at_5']:.3f} "
+        f"**MRR@5** = {metrics['mrr_at_5']:.3f} · **recall@5** = {metrics['recall_at_5']:.3f} "
         f"(n={metrics['n']})",
     ]
     return "\n".join(lines)
@@ -146,15 +166,18 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--prefix",
-        choices=("on", "off"),
+        choices=("passage", "query"),
         required=True,
-        help="on = e5 'query:' prefix (after); off = raw query (before)",
+        help=(
+            "passage = embed() / 'passage:' prefix (faithful Block-0 baseline); "
+            "query = embed_query() / 'query:' prefix (the fix)"
+        ),
     )
     args = parser.parse_args(argv)
-    prefix_on = args.prefix == "on"
+    query_path = args.prefix == "query"
 
-    rows, metrics = evaluate(prefix_on=prefix_on)
-    print(_markdown(rows, metrics, prefix_on))
+    rows, metrics = evaluate(query_path=query_path)
+    print(_markdown(rows, metrics, query_path))
     return 0
 
 
