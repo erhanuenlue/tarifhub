@@ -1,23 +1,23 @@
 # tarifhub — knowledge index (auto-generated)
 
-> Rebuilt by the `brain_sync` hook at every session end (2026-06-11 21:50). Do not edit by hand — edit the sources.
+> Rebuilt by the `brain_sync` hook at every session end (2026-06-11 22:17). Do not edit by hand — edit the sources.
 
 ## Decisions (ADRs)
 
-- [[001-python-first-core|# ADR-001 — Python-first core; Next.js only at L3]]
-- [[002-freeze-line-decomposition|# ADR-002 — Service decomposition along the freeze line]]
-- [[003-canonical-record-model|# ADR-003 — Canonical, versioned, immutable record model]]
-- [[004-freeze-content-hash-lineage|# ADR-004 — Freeze, content-hash and lineage as the determinism anchor]]
-- [[005-single-ai-seam|# ADR-005 — Single AI seam (ai_map) with human-in-the-loop]]
-- [[006-postgres-pgvector|# ADR-006 — PostgreSQL 16 + pgvector as the single store]]
-- [[007-object-store-raw-artifacts|# ADR-007 — S3-compatible object store for raw source artifacts]]
-- [[008-api-styles|# ADR-008 — API styles: REST primary, plus GraphQL, FHIR R4, XML and MCP]]
-- [[009-docker-kubernetes-helm|# ADR-009 — Docker images + Kubernetes via Helm; compose for local]]
-- [[010-github-actions-devsecops|# ADR-010 — GitHub Actions CI/CD with DevSecOps gates]]
-- [[011-opentelemetry-observability|# ADR-011 — OpenTelemetry-based observability]]
-- [[012-data-residency-llm-region|# ADR-012 — Data residency in Switzerland; LLM region boundary for patient data]]
-- [[013-demo-scope|# ADR-013 — TarifGuard console demo scope: master-detail, review form, explain panel]]
-- [[014-arc42-light|# ADR-014 — arc42-light retained as the documentation framework]]
+- [[001-python-first-core|ADR-001 — Python-first core; Next.js only at L3]]
+- [[002-freeze-line-decomposition|ADR-002 — Service decomposition along the freeze line]]
+- [[003-canonical-record-model|ADR-003 — Canonical, versioned, immutable record model]]
+- [[004-freeze-content-hash-lineage|ADR-004 — Freeze, content-hash and lineage as the determinism anchor]]
+- [[005-single-ai-seam|ADR-005 — Single AI seam (ai_map) with human-in-the-loop]]
+- [[006-postgres-pgvector|ADR-006 — PostgreSQL 16 + pgvector as the single store]]
+- [[007-object-store-raw-artifacts|ADR-007 — S3-compatible object store for raw source artifacts]]
+- [[008-api-styles|ADR-008 — API styles: REST primary, plus GraphQL, FHIR R4, XML and MCP]]
+- [[009-docker-kubernetes-helm|ADR-009 — Docker images + Kubernetes via Helm; compose for local]]
+- [[010-github-actions-devsecops|ADR-010 — GitHub Actions CI/CD with DevSecOps gates]]
+- [[011-opentelemetry-observability|ADR-011 — OpenTelemetry-based observability]]
+- [[012-data-residency-llm-region|ADR-012 — Data residency in Switzerland; LLM region boundary for patient data]]
+- [[013-demo-scope|ADR-013 — TarifGuard console demo scope: master-detail, review form, explain panel]]
+- [[014-arc42-light|ADR-014 — arc42-light retained as the documentation framework]]
 
 ## AI-workflow journal (CAS criterion 15 — contemporaneous)
 

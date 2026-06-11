@@ -33,7 +33,7 @@ mkdir -p vault/daily
   found=0
   for f in docs/adr/[0-9]*.md; do
     [ -f "$f" ] || continue
-    title=$(head -1 "$f" | sed 's/^#\+ *//; s/[][|]//g')
+    title=$(head -1 "$f" | LC_ALL=C sed -E 's/^[^A-Za-z0-9]+//; s/[][|]//g')
     echo "- [[$(basename "$f" .md)|${title}]]"
     found=1
   done

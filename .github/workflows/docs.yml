@@ -17,11 +17,8 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  build-deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -30,5 +27,17 @@ jobs:
       - run: mkdocs build -f docs/mkdocs.yml --strict
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }
+
+  deploy:
+    # Block 3 go-live, in order: (1) flip repo public, (2) Settings → Environments →
+    # github-pages → allow branch `main`, (3) Settings → Secrets and variables →
+    # Actions → Variables → DEPLOY_PAGES=true. Until then this job skips cleanly.
+    if: vars.DEPLOY_PAGES == 'true'
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
