@@ -42,6 +42,11 @@ jobs:
 
   security:
     runs-on: ubuntu-latest
+    permissions:
+      # gitleaks-action lists PR commits via the API; the default restricted
+      # token 403s ("Resource not accessible by integration") without this.
+      contents: read
+      pull-requests: read
     steps:
       - uses: actions/checkout@v4
         with: { fetch-depth: 0 }
