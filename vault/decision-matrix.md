@@ -11,3 +11,5 @@
 | Where it won here (dated journal ref) | | | |
 
 Conclusion to argue honestly: spec-driven for the core contract (freeze/hash), agentic for breadth (parsers, API, demo), vibe only for throwaway exploration.
+
+↩ [[00-index]]

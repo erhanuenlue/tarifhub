@@ -17,3 +17,5 @@ Journal entry shape (keep it this small):
 - Prompt → diff example: "make ai_map live, designations only" → ai_map.py +84/-12
 - Decision: review threshold stays 0.85 (→ no ADR, config)
 ```
+
+↩ [[00-index]]

@@ -303,6 +303,8 @@ def _parse_file(t, path, main):
                             ph = AGENT_PHASE.get(agent)
                             if ph:
                                 _sense(t, ph, "running", desc, ets)
+                            elif agent.lower() == "plan":
+                                _sense(t, "01", "running", desc or "planning", ets)
                             elif agent in REVIEWER_AGENTS:
                                 _sense(t, "04", "running", agent, ets)
                         elif name == "Bash":
@@ -349,6 +351,8 @@ def _parse_file(t, path, main):
                                             v["agent"] in REVIEWER_AGENTS for v in t["open"].values()):
                                         dn, tot = _agent_counts(t, REVIEWER_AGENTS)
                                         _sense(t, "04", "pass", f"{dn}/{tot} reviewers returned", ets)
+                                    if ag.lower() == "plan":
+                                        _sense(t, "01", "running", "plan drafted · awaiting Erhan", ets)
                                 elif xid in t["prov"]:
                                     row = t["prov"].pop(xid)
                                     m = re.search(r"#(\d+)", _result_text(x)[:120])
@@ -757,7 +761,9 @@ def compute_phases(ev, u, p, ghd):
     for ph, st in (u.get("sensed") or {}).items():
         if ph in phases and ph not in explicit:
             phases[ph] = {"status": st["status"], "detail": st["detail"], "ts": st["ts"], "src": "sensed"}
-    if ghd and "06" not in explicit:
+    # gh refines phase 06 ONLY once this run has its own 06 evidence (sensed PR/push) —
+    # an open PR on the branch is repo-level truth, not proof this run reached phase 06
+    if ghd and "06" not in explicit and (u.get("sensed") or {}).get("06"):
         pr = next((x for x in ghd["prs"] if x["br"] == p["git"]["branch"]), None)
         if pr:
             tag = f"PR #{pr['n']} · {pr['ok']}✓"
@@ -767,9 +773,13 @@ def compute_phases(ev, u, p, ghd):
                 phases["06"] = {"status": "running", "detail": f"CI running · {tag} {pr['pend']}◌", "ts": phases["06"]["ts"], "src": "gh"}
             elif pr["ok"]:
                 phases["06"] = {"status": "pass", "detail": f"CI green · {tag}", "ts": phases["06"]["ts"], "src": "gh"}
-    # ordered-pipeline inference: downstream evidence implies the upstream human gate was passed
-    if phases["01"]["status"] == "pending" and any(
-            phases[k]["status"] != "pending" for k in ("02", "03", "04", "05", "06", "07")):
+    # ordered-pipeline inference: WORK-phase evidence implies the plan gate was passed —
+    # never while a Plan agent is live, and never from repo-level (gh) signals alone
+    plan_live = any((d.get("agent") or "").lower() == "plan" for d in (u.get("live") or []))
+    p1_upgradable = (phases["01"]["status"] == "pending"
+                     or (phases["01"]["src"] == "sensed" and phases["01"]["status"] == "running"))
+    if p1_upgradable and not plan_live and any(
+            phases[k]["status"] != "pending" for k in ("02", "03", "04", "07")):
         phases["01"] = {"status": "pass", "ts": "",
                         "detail": "implied — implementation ran, and the contract forbids it before plan approval",
                         "src": "implied"}
@@ -1101,6 +1111,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="k">9-phase pipeline — click any phase for its evidence · state source: emit &gt; gh &gt; sensed</div>
     <button class="btn" onclick="resetRun()">reset run state</button>
   </div>
+  <div id="runhint" class="empty" style="display:none;margin-bottom:8px"></div>
   <div id="phasesFull"></div>
   <div class="mid" style="margin-top:14px">
     <div class="panel">
@@ -1403,6 +1414,12 @@ async function tick(){
   document.getElementById('c1v').textContent=last.ctx?fmt(last.ctx):''; document.getElementById('c2v').textContent=last.cost?'$'+last.cost.toFixed(2):'';
   document.getElementById('c3v').textContent=last.out?fmt(last.out):'';
   // pipeline tab
+  const allPend = Object.values(s.phases).every(x=>x.status==='pending');
+  const rh=document.getElementById('runhint');
+  if(allPend && (u.delegations.length || u.session.status==='active')){
+    rh.style.display='block';
+    rh.textContent='no /ship run detected in this session — '+(u.delegations.length?u.delegations.length+' delegation(s) ran on non-pipeline work (graph build, recon, docs …). ':'')+'The rail lights when shipping evidence appears: a Plan agent, implementers, gates, or an emit.';
+  } else rh.style.display='none';
   document.getElementById('phasesFull').innerHTML = PH.map(ph=>{
     const st=s.phases[ph[0]]||{status:'pending',detail:'',ts:'',src:''};
     return '<div class="phase"><div class="num'+(st.status==='running'?' live':'')+'">'+ph[0]+'</div>'+

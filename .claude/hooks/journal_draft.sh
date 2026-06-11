@@ -20,6 +20,8 @@ if [ ! -f "$FILE" ]; then
 - AI got wrong → caught by:
 - One concrete prompt → diff example:
 - Decision made (→ ADR?):
+
+↩ [[00-index]] · [[fazit-notes]]
 EOF
 fi
 

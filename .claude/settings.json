@@ -115,6 +115,16 @@
         ]
       }
     ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/brain_sync.sh --debounce"
+          }
+        ]
+      }
+    ],
     "SessionEnd": [
       {
         "hooks": [
