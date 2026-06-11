@@ -5,15 +5,16 @@
 #   tarifguard, mcp, kassenflow, meldepilot -> app/agent sub-systems, in the "apps" profile
 #
 # The ingestion / intelligence test suites do NOT need this stack (they run offline).
-# Bring it up when you want to run against Postgres or the Quarkus serving service.
+# Bring it up when you want to run against Postgres or the FastAPI serving service.
 #
 #   docker compose up                              # default: db + minio only
-#   docker compose --profile services up           # also TarifIQ (intelligence)
+#   docker compose --profile services up           # also serving (FastAPI) + TarifIQ
 #   docker compose --profile apps up               # also TarifGuard + MCP + KassenFlow + MeldePilot
 #   docker compose --profile services --profile apps up   # everything
 #
-# The app/intelligence sub-systems target the serving service. Serving runs via
-# `mvn quarkus:dev` on the host (see README), reachable at host.docker.internal:8080.
+# The app/intelligence sub-systems target the L1 serving service (FastAPI, :8000).
+# In the "services" profile it runs in-cluster as the `serving` container; on the host
+# it runs via scripts/run_serving.sh, reachable at host.docker.internal:8000.
 
 services:
   db:
@@ -35,6 +36,24 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  # --- L1 serving service (FastAPI, read-only over frozen records) ---
+
+  serving:
+    build:
+      # Build context is the repo root: the image vendors the sibling ingestion
+      # package (canonical TariffRecord + embedder), so it needs both service trees.
+      context: .
+      dockerfile: services/serving/Dockerfile
+    container_name: tarifhub-serving
+    profiles: ["services"]
+    environment:
+      TARIFHUB_DB_URL: ${TARIFHUB_DB_URL:-postgresql://tarifhub:tarifhub@db:5432/tarifhub}
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
 
   minio:
     image: minio/minio:latest
@@ -61,8 +80,8 @@ services:
     container_name: tarifhub-tarifguard
     profiles: ["apps"]
     environment:
-      # Server-side only; never exposed to the browser. Points at host serving (mvn dev).
-      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      # Server-side only; never exposed to the browser. Points at host serving (scripts/run_serving.sh).
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8000}
     ports:
       - "3000:3000"
     extra_hosts:
@@ -73,7 +92,7 @@ services:
     container_name: tarifhub-mcp
     profiles: ["apps"]
     environment:
-      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8000}
       MCP_TRANSPORT: streamable-http
       MCP_HOST: "0.0.0.0"
       MCP_PORT: "8090"
@@ -89,9 +108,9 @@ services:
     container_name: tarifhub-intelligence
     profiles: ["services"]
     environment:
-      # Read LIVE frozen records from host serving (mvn dev); flip to "1" for offline tables.
+      # Read LIVE frozen records from host serving (scripts/run_serving.sh); flip to "1" for offline tables.
       TARIFIQ_OFFLINE: ${TARIFIQ_OFFLINE:-0}
-      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8000}
     ports:
       - "8070:8070"
     extra_hosts:
@@ -105,7 +124,7 @@ services:
     profiles: ["apps"]
     environment:
       # Server-side only; never exposed to the browser.
-      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8000}
       TARIFIQ_BASE_URL: ${TARIFIQ_BASE_URL:-http://host.docker.internal:8070}
     ports:
       - "3001:3001"
@@ -117,7 +136,7 @@ services:
     container_name: tarifhub-meldepilot
     profiles: ["apps"]
     environment:
-      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8080}
+      SERVING_BASE_URL: ${SERVING_BASE_URL:-http://host.docker.internal:8000}
       TARIFIQ_BASE_URL: ${TARIFIQ_BASE_URL:-http://host.docker.internal:8070}
     ports:
       - "3002:3002"

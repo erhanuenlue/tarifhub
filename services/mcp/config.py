@@ -25,8 +25,8 @@ class Settings:
     @classmethod
     def from_env(cls) -> "Settings":
         return cls(
-            # Base URL of the Quarkus serving service (system of record for frozen values).
-            serving_base_url=os.environ.get("SERVING_BASE_URL", "http://localhost:8080").rstrip("/"),
+            # Base URL of the FastAPI serving service (system of record for frozen values).
+            serving_base_url=os.environ.get("SERVING_BASE_URL", "http://localhost:8000").rstrip("/"),
             request_timeout=float(os.environ.get("MCP_HTTP_TIMEOUT", "10")),
             # "streamable-http" for the container/Service; "stdio" for a local agent.
             transport=os.environ.get("MCP_TRANSPORT", "streamable-http"),

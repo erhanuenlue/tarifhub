@@ -27,7 +27,7 @@ serving:
     tag: latest
     pullPolicy: IfNotPresent
   replicas: 2
-  port: 8080
+  port: 8000
   resources:
     requests:
       cpu: 250m

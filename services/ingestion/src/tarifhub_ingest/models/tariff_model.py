@@ -2,7 +2,7 @@
 
 Per the engineering rules, the field set here is a frozen contract: extend it
 additively, never break it. The relational schema (``db/schema.sql``) and the
-Quarkus serving entity map onto exactly these fields.
+FastAPI serving layer map onto exactly these fields.
 """
 
 from __future__ import annotations

@@ -1,57 +1,53 @@
-# tarifhub-serving
+# TarifHub Serving (L1 TarifCore)
 
-Deterministic serving of frozen tariff records (Quarkus, Java 21). This is the value
-path: every value returned is an unaltered, frozen, versioned record read from the
-system of record. AI lives only in the `search` package, which ranks/explains frozen
-records and never fabricates a value.
+Deterministic, **read-only** REST API over frozen Swiss ambulatory tariff records.
+Python 3.12 + FastAPI + Pydantic v2. Every value returned is an unaltered, frozen,
+versioned record read straight from the system of record — **no AI on the value path**.
+
+## The inviolable rule
+
+No AI computes or mutates a billing value at serve time. The only AI-adjacent seam is
+semantic search, which uses an embedder to *rank* frozen rows by similarity — it never
+computes, alters, or fabricates a value. No LLM client is importable anywhere in the
+`tarifhub_serving` package; `tests/test_serving_boundary.py` enforces this with an AST
+scan, and only `models` and `embeddings` are imported from the ingestion package.
 
 ## Endpoints
 
-| Method | Path | Purpose |
-|---|---|---|
-| GET | `/api/v1/tariffs` | List frozen records (JSON or XML via `Accept`) |
-| GET | `/api/v1/tariffs/{system}/{code}` | One record by key (JSON or XML) |
-| GET | `/api/v1/search?q=...&limit=10` | Semantic search → frozen records ranked (JSON) |
-| GET | `/q/swagger-ui`, `/q/openapi` | API docs |
-| GET | `/q/metrics` | Prometheus metrics |
+| Method & path | Description |
+| --- | --- |
+| `GET /health` | Liveness probe → `{"status":"ok"}` |
+| `GET /api/v1/tariffs?system=&limit=&offset=` | Latest version of each frozen record, optional system filter, paginated, deterministically ordered |
+| `GET /api/v1/tariffs/{system}/{code}` | Latest frozen record for a key; `404` if absent |
+| `GET /api/v1/search?q=&limit=` | Semantic search (Postgres+pgvector). On SQLite returns `501` — honest unavailability, no fake fallback |
 
-## Run
+OpenAPI/Swagger UI is served at `/docs`; the schema at `/openapi.json`.
 
-```bash
-docker-compose up -d db          # Postgres 16 + pgvector (from repo root)
-../../scripts/init_db.sh         # apply db/schema.sql + migrations
-mvn quarkus:dev                  # http://localhost:8080 ; live reload
-```
+## Config (env only)
 
-## Test
+- `TARIFHUB_DB_URL` — system of record. Default `sqlite:///./tarifhub_dev.db` (offline).
+  Switch to Postgres with `postgresql://tarifhub:tarifhub@localhost:5432/tarifhub`.
+
+## Run locally
 
 ```bash
-mvn verify
+cd services/serving
+uv sync --extra dev
+./../../scripts/run_serving.sh        # uvicorn dev reload on :8000, Swagger at /docs
 ```
 
-`DeterminismBoundaryTest` is plain JUnit and runs with no infrastructure: it asserts the
-AI boundary (only `…serving.search` references langchain4j; the value path returns
-persisted records). `TariffResourceTest` is a `@QuarkusTest` and expects a reachable
-Postgres with the schema applied (or Dev Services with a pgvector-enabled image).
+## Test (offline by default)
 
-## AI semantic search
-
-`search/SemanticSearchService` embeds the query with a langchain4j `EmbeddingModel` and
-asks the repository for nearest frozen rows by cosine distance on the pgvector column.
-The embedding model and the `quarkus.langchain4j.pgvector.dimension` MUST match the model
-ingestion used (multilingual-e5, 1024-dim). If no embedding model is wired, the value
-endpoints still work and `/api/v1/search` returns 503. Set
-`QUARKUS_LANGCHAIN4J_ANTHROPIC_API_KEY` to enable optional natural-language explanations
-(over frozen text only — never altering a value).
-
-## Layout
-
+```bash
+cd services/serving
+uv run pytest -q          # SQLite mirror + stub embedder, no network, no containers
+uv run ruff check .
 ```
-src/main/java/ch/tarifhub/serving/
-├─ TariffRecordEntity.java     read-only Panache projection of the frozen `tariff` table
-├─ TariffRepository.java       read queries + pgvector nearest-neighbour helper
-├─ TariffResource.java         GET /api/v1/tariffs[...] (JSON/XML) — no AI
-└─ search/
-   ├─ SemanticSearchService.java   the ONLY langchain4j user; ranks frozen records
-   └─ SearchResource.java          GET /api/v1/search
+
+## Container
+
+```bash
+# Build from the repo root (the image vendors the sibling ingestion package).
+docker build -f services/serving/Dockerfile -t tarifhub-serving .
+docker run -p 8000:8000 -e TARIFHUB_DB_URL=postgresql://tarifhub:tarifhub@host.docker.internal:5432/tarifhub tarifhub-serving
 ```

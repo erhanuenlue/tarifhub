@@ -1,12 +1,15 @@
 #!/usr/bin/env bash
 #
-# Run the Quarkus serving service in dev mode (live reload on :8080).
-# Needs a reachable Postgres+pgvector:  docker-compose up -d db && ./scripts/init_db.sh
+# Run the TarifHub serving service (FastAPI) in dev mode with live reload on :8000.
+# Offline by default (SQLite). For Postgres+pgvector (enables semantic search):
+#   docker compose up -d db && export TARIFHUB_DB_URL=postgresql://tarifhub:tarifhub@localhost:5432/tarifhub
 #
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT/services/serving"
 
-echo "Starting Quarkus dev mode on http://localhost:8080 (Swagger UI at /q/swagger-ui)"
-exec mvn quarkus:dev "$@"
+uv sync --extra dev
+
+echo "Starting FastAPI dev server on http://localhost:8000 (Swagger UI at /docs)"
+exec uv run uvicorn tarifhub_serving.main:app --host 0.0.0.0 --port 8000 --reload "$@"

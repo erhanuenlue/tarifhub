@@ -1,6 +1,6 @@
 -- TarifHub canonical schema (PostgreSQL 16 + pgvector).
 -- Consolidated current-state view of the schema. Ordered changes live in
--- db/migrations/. The Python canonical model and the Quarkus entity map onto exactly
+-- db/migrations/. The Python canonical model and the FastAPI serving layer map onto
 -- these columns; they are a FROZEN contract — extend additively, never break.
 
 CREATE EXTENSION IF NOT EXISTS vector;
