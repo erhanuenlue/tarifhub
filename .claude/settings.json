@@ -56,7 +56,7 @@
         ]
       },
       {
-        "matcher": "Task",
+        "matcher": "Task|Agent",
         "hooks": [
           {
             "type": "command",
@@ -76,11 +76,41 @@
         ]
       },
       {
-        "matcher": "Task",
+        "matcher": "Task|Agent",
         "hooks": [
           {
             "type": "command",
             "command": "bash .claude/hooks/shipboard_emit.sh"
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_track.sh"
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_track.sh"
+          }
+        ]
+      }
+    ],
+    "PreCompact": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_track.sh"
           }
         ]
       }
@@ -95,6 +125,10 @@
           {
             "type": "command",
             "command": "bash .claude/hooks/brain_sync.sh"
+          },
+          {
+            "type": "command",
+            "command": "bash .claude/hooks/session_track.sh"
           }
         ]
       }

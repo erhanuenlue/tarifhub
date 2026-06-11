@@ -249,6 +249,63 @@ def test_parse_kwargs_omit_removed_sampling_params(monkeypatch):
         assert forbidden not in kwargs
 
 
+def test_gap_gate_skips_call_when_nothing_fillable(monkeypatch):
+    """Gap-gate: a complete record + a key must NOT invoke the model at all.
+
+    With fr/it/category all present there is nothing the fill-only harmonizer could
+    add, so the deterministic record is returned UNCHANGED (ai_assisted=False) — and
+    Anthropic() is never constructed. This keeps the no-gap path byte-identical to the
+    no-key path (record_hash idempotency) and avoids a guaranteed no-op API call.
+    """
+    complete = {
+        "tariff_code": "1000",
+        "designation_de": "1,25-Dihydroxy-Vitamin D",
+        "designation_fr": "1,25-dihydroxy-vitamine D",
+        "designation_it": "1,25-diidrossivitamina D",
+        "category": "Chemie",
+        "tax_points": "76.5",
+        "unit": "point",
+        "valid_from": "2026-01-01",
+    }
+    fake = _install_fake_anthropic(monkeypatch, parsed_output=AIRefinement(designation_fr="X"))
+    settings = _settings(monkeypatch)
+
+    ai = ai_map(complete, system=TariffSystem.EAL, settings=settings)
+    rules = map_raw(complete, system=TariffSystem.EAL)
+
+    # Byte-identical to the deterministic path (created_at excluded from the hash).
+    assert ai.model_dump(exclude={"created_at"}) == rules.model_dump(exclude={"created_at"})
+    assert ai.metadata.get("ai_assisted") is False
+    assert "ai_status" not in ai.metadata
+    # Anthropic() was never constructed -> no parse call.
+    assert not hasattr(fake, "_last")
+
+
+def test_gap_gate_invokes_call_when_a_gap_exists(monkeypatch):
+    """Gap-gate: a single missing fillable field (here: it) triggers the live call."""
+    one_gap = {
+        "tariff_code": "1000",
+        "designation_de": "1,25-Dihydroxy-Vitamin D",
+        "designation_fr": "1,25-dihydroxy-vitamine D",
+        "category": "Chemie",
+        "tax_points": "76.5",
+        "unit": "point",
+        "valid_from": "2026-01-01",
+    }
+    fake = _install_fake_anthropic(
+        monkeypatch, parsed_output=AIRefinement(designation_it="1,25-diidrossivitamina D")
+    )
+    settings = _settings(monkeypatch)
+
+    ai = ai_map(one_gap, system=TariffSystem.EAL, settings=settings)
+
+    assert hasattr(fake, "_last")  # the model WAS invoked
+    assert len(fake._last.messages.calls) == 1
+    assert ai.designation.it == "1,25-diidrossivitamina D"
+    assert ai.metadata["ai_assisted"] is True
+    assert ai.metadata["ai_fields"] == ["designation_it"]
+
+
 def test_pipeline_over_eal_sample_with_fake_client(monkeypatch, tmp_path):
     """Case h: full pipeline run with the fake client + a fake key.
 

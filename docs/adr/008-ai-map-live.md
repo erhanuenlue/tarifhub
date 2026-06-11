@@ -25,3 +25,8 @@ sampling parameter; the absent `temperature` knob is therefore not relied on.
 - AI provenance is recorded in record metadata: `ai_model`, `ai_fields`, `ai_status`.
 - The "temp 0" phrasing in older docs is superseded by this architectural-determinism
   guarantee; the freeze-line boundary (ADR-002) is unchanged.
+- **Gap-gate (deterministic pre-check):** `ai_map` computes fillable gaps (missing
+  `designation_fr` / `designation_it` / `category`) before any live call. With nothing
+  fillable, it returns the deterministic record unchanged and never invokes the model —
+  saving cost/latency on a guaranteed no-op and keeping the no-gap path byte-identical to
+  the no-key path (record_hash idempotency). The model is called only when a gap exists.

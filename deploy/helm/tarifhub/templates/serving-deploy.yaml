@@ -25,12 +25,16 @@ spec:
             - name: http
               containerPort: {{ .Values.serving.port }}
           env:
-            # Single env-only DB URL (12-factor). Username/password come from the
-            # postgres values (override in production via an existing Secret); the
-            # secret-wiring shape is preserved so a real deployment can swap the
-            # inline value for valueFrom.secretKeyRef.
+            # 12-factor DB URL. The password is never inlined: it is pulled from the
+            # db Secret into TARIFHUB_DB_PASSWORD and the URL is composed with
+            # Kubernetes $(VAR) env-substitution, so no plaintext secret is rendered.
+            - name: TARIFHUB_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-db
+                  key: password
             - name: TARIFHUB_DB_URL
-              value: "postgresql://{{ .Values.postgres.username }}:{{ .Values.postgres.password }}@{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+              value: "postgresql://{{ .Values.postgres.username }}:$(TARIFHUB_DB_PASSWORD)@{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
           readinessProbe:
             httpGet:
               path: /health

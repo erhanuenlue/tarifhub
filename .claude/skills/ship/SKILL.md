@@ -1,13 +1,14 @@
 ---
 name: ship
-description: The 9-phase multi-model shipping pipeline — plan-approval, TDD implementation, reviews, CI, runtime verification, merge-gate. Only Erhan triggers this. Fable 5 orchestrates; Opus implements; Sonnet verifies runtime.
-disable-model-invocation: true
+description: The 9-phase multi-model shipping pipeline — plan-approval, TDD implementation, reviews, CI, runtime verification, merge-gate. Invoke whenever work is ready to land (prompts end with "then /ship" — that means run this skill). The two human gates (plan approval, merge confirmation) always stop for Erhan regardless of who invoked.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
 
-Ship the requested work through the phased pipeline. **You (Fable 5) do only the jobs where quality compounds: the plan, the orchestration, and the merge-gate review.** Delegate the volume. Emit a dashboard event at every phase transition: `bash tools/shipboard/emit.sh <phase01-09> <running|pass|fail|skip> "<short detail>"` — never let an emit failure block the pipeline. Watch the board at `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
+Ship the requested work through the phased pipeline. **The first action of every phase is its emit command — before any other tool call of that phase.** **You (Fable 5) do only the jobs where quality compounds: the plan, the orchestration, and the merge-gate review.** Delegate the volume. Emit a dashboard event at every phase transition: `bash tools/shipboard/emit.sh <phase01-09> <running|pass|fail|skip> "<short detail>"` — never let an emit failure block the pipeline. Watch the board at `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
 
 **Model discipline:** each agent's model is pinned in its config — never override it, never switch a model mid-task (prompt caches are model-scoped; a switch re-reads the whole context at full price). Hold the plan-quality bar ruthlessly: a wrong plan wastes every downstream token.
+
+**Effort policy (ultracode):** this pipeline runs in an **`/effort ultracode`** session. Allocate your own reasoning depth per task, **medium ↔ xhigh by complexity**: xhigh for the plan on complex scopes, for consolidating disputed findings, and for the merge-gate read; high for routine orchestration, reports and writing; medium for mechanical inline steps (staging commits, running gates, emitting events). Auto-orchestration operates **inside** this skill's contract: the nine phases and their order stand, the emits fire, and **gates 01 and 09 always stop for Erhan — no autonomy setting overrides a human gate.** Delegated phases are unaffected by your effort (workers run their pinned models).
 
 ## Phase 01 — Plan *(inline, Fable)*
 Read the task/issue + the code it touches. Produce the plan: scoped task list with file-level targets, acceptance criteria per task, review routing (which reviewers this diff needs), and what phase 07 must prove. **STOP and present the plan to Erhan for approval.** Do not proceed without his explicit yes; fold in his corrections. `emit 01 pass`.

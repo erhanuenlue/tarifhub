@@ -2,7 +2,8 @@
 # Multi-stage build for the TarifHub intelligence service / TarifIQ (Python 3.12).
 
 # --- builder: install into a self-contained virtualenv ---
-FROM python:3.12-slim AS builder
+# Base image pinned by digest 2026-06-11 (python:3.12-slim manifest-list digest).
+FROM python:3.12-slim@sha256:a39549e211a16149edf74e5fdc9ef03a6767e46cd987c5048b6659b6c9904c94 AS builder
 
 ENV PIP_NO_CACHE_DIR=1 \
     PIP_DISABLE_PIP_VERSION_CHECK=1
@@ -17,7 +18,8 @@ COPY src ./src
 RUN pip install --upgrade pip && pip install .
 
 # --- runtime: minimal image, non-root ---
-FROM python:3.12-slim AS runtime
+# Base image pinned by digest 2026-06-11 (python:3.12-slim manifest-list digest).
+FROM python:3.12-slim@sha256:a39549e211a16149edf74e5fdc9ef03a6767e46cd987c5048b6659b6c9904c94 AS runtime
 
 ENV PATH="/opt/venv/bin:$PATH" \
     PYTHONUNBUFFERED=1 \

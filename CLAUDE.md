@@ -9,8 +9,9 @@ Project facts, layout, commands and the determinism rule are in AGENTS.md above.
 - Take tasks whole (spec → implement → verify); don't pre-chop. State the why when delegating. Do the simplest thing that works — no speculative abstractions, no future-proofing, validate at system boundaries only.
 - Before claiming progress, check each claim against a tool result from this session. Failing test → say so with output. Skipped step → say so.
 - Plan mode for anything multi-file; skip it when the diff fits one sentence. For long unattended runs use `/goal "<verifiable condition>"`.
+- **Maintain your todo list during multi-step work** (statuses kept current) — Shipboard's kanban mirrors it live; an untracked plan is invisible to Erhan's board.
 - When Erhan is thinking out loud, deliver an assessment, not a patch. Pause only for: destructive/irreversible actions, real scope changes, or input only he has.
-- Effort: stay on `high`. `medium` for routine chores; `xhigh` only for genuinely hard multi-file problems.
+- Effort — **Erhan's policy (owner decision):** build/ship sessions run **`/effort ultracode`** (xhigh baseline + auto-orchestration). Within the pipeline, **allocate effort per task by complexity, medium ↔ xhigh**: xhigh where reasoning compounds (the plan on complex scope, disputed review findings, the merge-gate read), high for normal orchestration and writing, medium for mechanical inline steps. Two invariants no orchestration mode may touch: **gates 01 and 09 are hard human stops — never auto-skipped**, and **worker model pins are never overridden** (effort governs your reasoning, not theirs). Outside build sessions: `medium` for chores; `max` never by default.
 
 ## The pipeline — you orchestrate, workers produce
 

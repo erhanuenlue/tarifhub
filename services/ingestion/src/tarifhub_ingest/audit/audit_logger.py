@@ -46,7 +46,7 @@ class AuditLogger:
             "source_file": source_file,
             "parser_version": parser_version,
             "confidence": confidence,
-            "validation_ok": None if validation_ok is None else int(validation_ok),
+            "validation_ok": validation_ok,
             "detail": json.dumps(detail, sort_keys=True, ensure_ascii=False) if detail else None,
         }
         columns = ", ".join(event.keys())

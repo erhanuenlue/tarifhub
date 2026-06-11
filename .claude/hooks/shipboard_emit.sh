@@ -12,7 +12,7 @@ except Exception:
     sys.exit(0)
 event = d.get("hook_event_name", "")
 agent = status = None
-if d.get("tool_name") == "Task":
+if d.get("tool_name") in ("Task", "Agent"):   # subagent tool name varies by Claude Code version
     agent = (d.get("tool_input") or {}).get("subagent_type", "subagent")
     status = "active" if event == "PreToolUse" else "done"
 elif event == "SubagentStop":

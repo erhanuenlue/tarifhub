@@ -2,13 +2,15 @@
 # Multi-stage Node build for KassenFlow (Next.js App Router, standalone output).
 
 # --- deps: install dependencies against the lockfile ---
-FROM node:22-alpine AS deps
+# Base image pinned by digest 2026-06-11 (node:22-alpine manifest-list digest).
+FROM node:22-alpine@sha256:9385cd9f3001dfc3431e8ead12c43e9e1f87cc1b9b5c6cfd0f73865d405b27c4 AS deps
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci
 
 # --- build: compile the Next.js standalone server ---
-FROM node:22-alpine AS build
+# Base image pinned by digest 2026-06-11 (node:22-alpine manifest-list digest).
+FROM node:22-alpine@sha256:9385cd9f3001dfc3431e8ead12c43e9e1f87cc1b9b5c6cfd0f73865d405b27c4 AS build
 WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 COPY . .
@@ -16,7 +18,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 RUN npm run build
 
 # --- runtime: minimal, non-root ---
-FROM node:22-alpine AS runtime
+# Base image pinned by digest 2026-06-11 (node:22-alpine manifest-list digest).
+FROM node:22-alpine@sha256:9385cd9f3001dfc3431e8ead12c43e9e1f87cc1b9b5c6cfd0f73865d405b27c4 AS runtime
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \

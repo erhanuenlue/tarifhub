@@ -19,6 +19,7 @@ from tarifhub_ingest.embeddings.embedder import Embedder
 from tarifhub_ingest.ingestion.source_loader import SourceSpec
 from tarifhub_ingest.mappers.tariff_mapper import ai_map
 from tarifhub_ingest.models.tariff_model import TariffRecord
+from tarifhub_ingest.adapters import bag_eal
 from tarifhub_ingest.parsers import fhir_parser, xlsx_parser
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
 from tarifhub_ingest.validators.tariff_validator import validate
@@ -27,6 +28,7 @@ from tarifhub_ingest.versioning.freeze_record import freeze
 _PARSERS = {
     "xlsx": (xlsx_parser.parse, xlsx_parser.PARSER_VERSION),
     "fhir": (fhir_parser.parse, fhir_parser.PARSER_VERSION),
+    "bag_eal": (bag_eal.parse, bag_eal.ADAPTER_VERSION),
 }
 
 

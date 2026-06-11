@@ -1,8 +1,10 @@
 """Repository for frozen tariff records (write-once, read-many).
 
 Frozen records are immutable: ``add`` is idempotent on ``record_hash`` (re-ingesting
-identical content is a no-op), and the repository never updates a row in place. Reads
-reconstruct canonical :class:`TariffRecord` objects. No LLM imports — this is the
+identical content is a no-op), and the repository never updates a row in place. When
+content *changes* for an existing ``(tariff_system, tariff_code)`` the new content is
+stored as a fresh version (``MAX(version) + 1``) rather than mutating the prior row.
+Reads reconstruct canonical :class:`TariffRecord` objects. No LLM imports — this is the
 deterministic value path.
 """
 
@@ -56,6 +58,12 @@ class TariffRepository:
         if self.exists(record.record_hash):
             return False
 
+        # Changed content for an existing (system, code) supersedes the prior row:
+        # frozen records are immutable, so we never UPDATE — we insert a new version
+        # at MAX(version) + 1. version is excluded from HASHED_FIELDS, so stamping the
+        # bumped value cannot alter record_hash. The record's incoming version is ignored.
+        record = record.model_copy(update={"version": self._next_version(record)})
+
         columns = ", ".join(_COLUMNS)
         markers = ", ".join([self._ph] * len(_COLUMNS))
         values = self._record_to_row(record, embedding)
@@ -64,6 +72,21 @@ class TariffRepository:
         )
         self._conn.commit()
         return True
+
+    def _next_version(self, record: TariffRecord) -> int:
+        """Return MAX(version) + 1 for the record's (tariff_system, tariff_code), or 1.
+
+        New content for an existing key starts a new version; the first row for a key
+        starts at 1, ignoring whatever version the incoming record carried.
+        """
+
+        cur = self._conn.execute(
+            "SELECT MAX(version) FROM tariff "
+            f"WHERE tariff_system = {self._ph} AND tariff_code = {self._ph}",
+            (record.tariff_system.value, record.tariff_code),
+        )
+        current_max = cur.fetchone()[0]
+        return 1 if current_max is None else int(current_max) + 1
 
     def exists(self, record_hash: str) -> bool:
         cur = self._conn.execute(
@@ -109,7 +132,10 @@ class TariffRepository:
             record.source_url,
             record.source_version,
             record.harmonization_confidence,
-            1 if record.requires_review else 0,
+            # Real bool: psycopg must send a boolean for the Postgres column
+            # (an int arrives as smallint and is rejected); sqlite3 adapts
+            # bools to 0/1 natively, so both engines are happy.
+            record.requires_review,
             json.dumps(record.metadata, sort_keys=True, ensure_ascii=False),
             json.dumps(embedding) if embedding is not None else None,
             record.record_hash,
