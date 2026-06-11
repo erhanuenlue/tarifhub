@@ -46,3 +46,4 @@ vault/.brain_sync_last
 .obsidian/
 graphify-out/
 .graphifyignore
+.claude/worktrees/
