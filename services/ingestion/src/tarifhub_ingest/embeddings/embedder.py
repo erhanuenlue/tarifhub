@@ -25,14 +25,37 @@ E5_DIMENSION = 1024
 STUB_DIMENSION = 16
 
 
+def _e5_input(text: str, *, kind: str) -> str:
+    """Apply the multilingual-e5 instruction prefix for the given ``kind``.
+
+    multilingual-e5 is trained with an asymmetric scheme: documents to index are
+    embedded as ``"passage: ..."`` and search queries as ``"query: ..."``. Indexing a
+    passage but embedding the query raw degrades cross-lingual alignment (Block-0:
+    a French "hématocrite" query ranked the exact record at 3, not 1). Keeping the
+    prefix application in one pure function makes the asymmetry unit-testable without
+    downloading the model. ``kind`` is ``"passage"`` or ``"query"``.
+    """
+
+    if kind not in ("passage", "query"):
+        raise ValueError(f"kind must be 'passage' or 'query', got {kind!r}")
+    return f"{kind}: {text}"
+
+
 @runtime_checkable
 class Embedder(Protocol):
-    """Port for turning text into a dense vector."""
+    """Port for turning text into a dense vector.
+
+    ``embed`` is the passage/document side (used by ingestion to index frozen records);
+    ``embed_query`` is the search side. For the real multilingual-e5 model these differ
+    by the instruction prefix (``"passage: "`` vs ``"query: "``).
+    """
 
     @property
     def dimension(self) -> int: ...
 
     def embed(self, text: str) -> list[float]: ...
+
+    def embed_query(self, text: str) -> list[float]: ...
 
 
 class HashingEmbedder:
@@ -60,29 +83,49 @@ class HashingEmbedder:
         norm = math.sqrt(sum(v * v for v in raw)) or 1.0
         return [v / norm for v in raw]
 
+    def embed_query(self, text: str) -> list[float]:
+        # The stub is not semantic, so it does NOT differentiate query from passage:
+        # a query embeds identically to the same text as a passage. This keeps offline
+        # tests free of any order/flake sensitivity that a fabricated prefix would add.
+        return self.embed(text)
 
-def _build_e5_embedder():  # pragma: no cover - exercised only when the model is present
-    """Construct the real e5 embedder. Import is guarded; never hit during tests."""
 
-    try:
-        from sentence_transformers import SentenceTransformer  # noqa: PLC0415
-    except ImportError as exc:  # offline / CI default
-        raise RuntimeError(
-            "multilingual-e5 requires the optional 'ai' extra "
-            "(pip install -e '.[ai]'); falling back to the offline stub."
-        ) from exc
+def _build_e5_embedder(_model_cls=None):
+    """Construct the real e5 embedder. Import is guarded; never hit during tests.
+
+    ``_model_cls`` is a test-only injection seam: a fake SentenceTransformer can be
+    passed so the query/passage prefix wiring is verifiable without downloading the
+    model. Left ``None`` in production, the real ``SentenceTransformer`` is imported
+    lazily (its import is the guarded boundary the offline suite must not cross).
+    """
+
+    if _model_cls is None:  # pragma: no cover - exercised only when the model is present
+        try:
+            from sentence_transformers import SentenceTransformer  # noqa: PLC0415
+        except ImportError as exc:  # offline / CI default
+            raise RuntimeError(
+                "multilingual-e5 requires the optional 'ai' extra "
+                "(pip install -e '.[ai]'); falling back to the offline stub."
+            ) from exc
+        _model_cls = SentenceTransformer
 
     class _E5Embedder:
         def __init__(self) -> None:
-            self._model = SentenceTransformer("intfloat/multilingual-e5-large")
+            self._model = _model_cls("intfloat/multilingual-e5-large")
 
         @property
         def dimension(self) -> int:
             return E5_DIMENSION
 
         def embed(self, text: str) -> list[float]:
-            # e5 expects a "query:"/"passage:" prefix; we index passages.
-            vec = self._model.encode(f"passage: {text}", normalize_embeddings=True)
+            # Passage side: indexed documents. BYTE-IDENTICAL to the original
+            # "passage: {text}" string so stored vectors stay valid (no re-embedding).
+            vec = self._model.encode(_e5_input(text, kind="passage"), normalize_embeddings=True)
+            return [float(x) for x in vec]
+
+        def embed_query(self, text: str) -> list[float]:
+            # Query side: e5 expects the "query: " prefix; same normalization.
+            vec = self._model.encode(_e5_input(text, kind="query"), normalize_embeddings=True)
             return [float(x) for x in vec]
 
     return _E5Embedder()
