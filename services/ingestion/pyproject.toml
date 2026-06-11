@@ -33,7 +33,7 @@ dependencies = [
 # Enable only when you wire the live Claude harmonizer / real e5 embeddings.
 ai = [
     "anthropic>=0.39",
-    # "sentence-transformers>=2.7",
+    "sentence-transformers>=2.7",
 ]
 dev = [
     "ruff>=0.4",
