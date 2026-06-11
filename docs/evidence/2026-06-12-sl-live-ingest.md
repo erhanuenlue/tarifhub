@@ -61,8 +61,19 @@ $ docker exec tarifhub-db psql -U tarifhub -d tarifhub -c \
 (2 rows)
 ```
 
-**Proves:** 111 records flagged (1.08 %), all at 0.75; the rest at 1.0. Matches the
-histogram (`docs/img/sl_confidence_hist_2026-06-01.png`, version=1 rows).
+**Proves:** 111 records flagged (1.08 %), all at exactly 0.75; the rest at 1.0. Matches
+the histogram (`docs/img/sl_confidence_hist_2026-06-01.png`, version=1 rows).
+Composition of the 111 (derivable from the scorer, no new analysis): SL records are
+born-trilingual and always carry a `unit` and a filename-derived `valid_from`, so for SL
+only two penalties can ever fire — `−0.25` no-value and `−0.10` no-category. A flat 0.75
+is therefore unambiguous: `1.0 − 0.25`, the no-value penalty alone (a no-category record
+would be 0.90, both would be 0.65). So the 111 flagged records are exactly the reimbursed
+packages that carry **no retail price** (but do have a category) — keyable (GTIN present)
+and therefore frozen with the price gap left `None`, then flagged for review. This is the designed fail-closed-into-review path and is
+distinct from the 109 unkeyable parse failures of §1 (which are never frozen). Note this
+is a *different* set from the 47 AI-`category`-filled records of §2c: a born-trilingual
+record with a price, unit, category and valid_from scores 1.0, so filling a category
+does not by itself flag a record.
 
 ### 2c. AI-assisted records — category fills only, never designations
 

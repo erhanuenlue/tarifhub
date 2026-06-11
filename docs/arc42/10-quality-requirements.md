@@ -74,9 +74,13 @@ touches a designation. The only gap it fills is `category`: 47 records are ATC-l
 nutritional / special-diet products (Milupa, Nutricia and similar) for which the
 deterministic mapper has no category, and the gap-gate therefore invokes Claude with
 `ai_fields=["category"]`. The other 10 252 records are gap-free and made zero API calls.
-Billing values are structurally unreachable by the model. The 111 flagged-for-review
-records are the 47 AI-filled categories plus the remaining ATC-less rows whose category
-stayed empty — both score 0.75 and route to the review queue by design.
+Billing values are structurally unreachable by the model. Separately, the 111
+flagged-for-review records all score exactly 0.75 — the single `−0.25` no-value penalty
+— i.e. they are the reimbursed packages carrying **no retail price**: keyable and frozen
+with the price gap left `None`, then routed to review (the EAL `nach Aufwand` precedent).
+That is a different set from the 47 AI-`category` fills (a record with price, category,
+unit and trilingual names scores 1.0). See the
+[evidence doc](../evidence/2026-06-12-sl-live-ingest.md) §2b for the derivation.
 
 **Three real before/after `ai_map` category fills** (criterion 16, from the live ingest):
 

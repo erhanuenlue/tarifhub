@@ -19,6 +19,8 @@ We ingest SL with a dedicated streaming adapter (`adapters/bag_epl.py`) under th
 - **Ex-factory price as the canonical value** — rejected; retail is the public-facing reimbursed price consumers expect; ex-factory is retained in metadata for transparency, not as the served value.
 - **Skipping GTIN-less packages silently** — rejected; it would violate "a parsing failure must never produce a frozen record" and lose the deterministic count. They are surfaced as `parse_failures` instead.
 
+**Two distinct failure modes (do not conflate).** An *unkeyable* bundle — a reimbursed package with no GTIN — is a parse failure: it produces NO frozen record and is counted in `parse_failures`. A *keyable-but-incomplete* package — one with a GTIN but a missing non-key field such as the retail price or the ATC category — IS frozen, with the gap left as `None`, a −0.25/−0.10 confidence penalty, and `requires_review=True`; that is the designed fail-closed-into-review path (exactly the EAL precedent where `nach Aufwand` → `tax_points=None`, frozen and flagged). A missing retail price is therefore *not* a parse failure. The inviolable rule is only that AI never computes a billing value — orthogonal to either mode.
+
 ## Consequences
 - (+) Two structurally opposite BAG formats (flat XLSX, FHIR R5 graph) harmonise through one Pydantic model and one deterministic value path — heterogeneity is absorbed entirely in the adapter.
 - (+) Fail-closed on unkeyable packages (109 export-wide) keeps the freeze set provably GTIN-keyed and the count reproducible.
