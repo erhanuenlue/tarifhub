@@ -568,6 +568,52 @@ def parse_transcript():
         "sensed": t["sensed"],
     }
 
+# ---------------- vault wikilink graph (cached 10s) ----------------
+
+_VG = {"ts": 0.0, "data": None}
+
+def vault_graph():
+    now = time.time()
+    if _VG["data"] and now - _VG["ts"] < 10:
+        return _VG["data"]
+    files = []
+    vd = ROOT / "vault"
+    if vd.is_dir():
+        for p in sorted(vd.glob("*.md")):
+            files.append((p, "hub" if p.stem == "00-index" else "reflect"))
+        files += [(p, "journal") for p in sorted((vd / "daily").glob("*.md"))[-14:]]
+    for p in sorted((ROOT / "docs" / "adr").glob("[0-9]*.md")):
+        files.append((p, "adr"))
+    for p in sorted((ROOT / "docs" / "arc42").glob("[0-9]*.md")):
+        files.append((p, "arc"))
+    if (ROOT / "LEARNINGS.md").exists():
+        files.append((ROOT / "LEARNINGS.md", "reflect"))
+    nodes, texts = {}, {}
+    for p, t in files:
+        label = p.stem
+        if t == "adr":
+            try:
+                label = re.sub(r"^[^A-Za-z0-9]+", "",
+                               p.read_text(errors="replace").splitlines()[0])[:40]
+            except Exception:
+                pass
+        nodes[p.stem.lower()] = {"id": p.stem, "label": label, "t": t,
+                                 "f": p.name if t == "adr" else ""}
+        try:
+            texts[p.stem.lower()] = p.read_text(errors="replace")[:200000]
+        except Exception:
+            texts[p.stem.lower()] = ""
+    edges = set()
+    for src, txt in texts.items():
+        for m in re.findall(r"\[\[([^\]|#]+)", txt):
+            tgt = m.strip().lower()
+            if tgt in nodes and tgt != src:
+                edges.add(tuple(sorted((nodes[src]["id"], nodes[tgt]["id"]))))
+    data = {"nodes": list(nodes.values()), "edges": [list(e) for e in edges],
+            "updated": time.strftime("%H:%M:%S")}
+    _VG.update(ts=now, data=data)
+    return data
+
 # ---------------- gh (PR + CI, cached 45s, fail-silent) ----------------
 
 _GH = {"ts": 0.0, "data": None}
@@ -900,6 +946,19 @@ def detail(q):
             return {"err": "bad hash"}
         body = _git("show", h, "--stat", "--format=%h · %an · %ad%n%s%n%n%b", "--date=format:%d.%m %H:%M")
         return {"type": "commit", "hash": h, "body": "\n".join(body.splitlines()[:40])[:4000] or "not found"}
+    if typ == "note":
+        nid = (q.get("id") or [""])[0]
+        if not re.fullmatch(r"[\w.\-]+", nid or ""):
+            return {"err": "bad note id"}
+        fn = nid if nid.endswith(".md") else nid + ".md"
+        for base in (ROOT / "vault", ROOT / "vault" / "daily",
+                     ROOT / "docs" / "arc42", ROOT):
+            f = base / fn
+            if f.exists() and f.is_file():
+                body = f.read_text(errors="replace")
+                return {"type": "adr", "title": nid,
+                        "body": "\n".join(body.splitlines()[:80])[:5000]}
+        return {"err": "note not found"}
     if typ == "gates":
         return {"type": "gates", "list": t["gatehist"][::-1][:25]}
     if typ == "tasks":
@@ -1064,6 +1123,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="tab" data-v="pipeline">Pipeline<span class="kbd">2</span></div>
     <div class="tab" data-v="agents">Agents<span class="kbd">3</span></div>
     <div class="tab" data-v="project">Project<span class="kbd">4</span></div>
+    <div class="tab" data-v="graphs">Graphs<span class="kbd">5</span></div>
   </div>
 </div>
 
@@ -1194,7 +1254,19 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   </div>
 </div>
 
-<div class="foot">shipboard v8 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo · keys: 1-4 tabs, Esc closes inspector</div>
+<div class="view" id="v-graphs">
+  <div class="panel" style="margin-bottom:12px">
+    <span class="s" id="vgmeta" style="float:right"></span>
+    <div class="k">Second brain — vault wikilink graph (the same links Obsidian draws) · click a node to read it</div>
+    <canvas id="vgc" style="width:100%;height:460px;margin-top:8px;display:block"></canvas>
+  </div>
+  <div class="panel">
+    <div class="k">Code graph — graphify (interactive: click, filter, search) · <a href="/graphify" target="_blank" style="color:var(--sky)">open standalone ↗</a></div>
+    <iframe id="gfframe" style="width:100%;height:560px;border:1px solid var(--edge);border-radius:10px;background:#fff;margin-top:8px"></iframe>
+  </div>
+</div>
+
+<div class="foot">shipboard v8.3 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify · keys: 1-5 tabs, Esc closes inspector</div>
 </div>
 <div id="ovl" onclick="closeInsp()"></div>
 <div id="insp"><div class="ih"><span class="it" id="it">inspector</span><span class="ix" onclick="closeInsp()">✕</span></div><div class="ib" id="ib">—</div></div>
@@ -1214,14 +1286,62 @@ function showTab(v){
   document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.v===v));
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
+  if(v==='graphs') loadGraphs();
 }
 document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>showTab(el.dataset.v));
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='Escape') closeInsp();
-  const m={'1':'overview','2':'pipeline','3':'agents','4':'project'}[e.key];
+  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs'}[e.key];
   if(m) showTab(m);
 });
+// ---------- graphs tab: vault wikilink graph (canvas force layout) + graphify iframe ----------
+function drawVG(g){
+  const cv=document.getElementById('vgc'); if(!cv) return;
+  const W=cv.clientWidth||1100, H=460;
+  cv.width=W*devicePixelRatio; cv.height=H*devicePixelRatio;
+  const ctx=cv.getContext('2d'); ctx.scale(devicePixelRatio,devicePixelRatio);
+  const N=g.nodes||[], E=g.edges||[], idx={};
+  N.forEach((n,i)=>idx[n.id]=i);
+  if(!N.length){ctx.fillStyle='rgba(186,230,253,.4)';ctx.font='12px JetBrains Mono';
+    ctx.fillText('vault empty — notes appear as the second brain grows',24,44);return;}
+  N.forEach((n,i)=>{const a=i/N.length*6.283;
+    n.x=W/2+Math.cos(a)*(130+(i%5)*24); n.y=H/2+Math.sin(a)*(95+(i%7)*16);});
+  const hub=N.find(n=>n.t==='hub'); if(hub){hub.x=W/2;hub.y=H/2;}
+  for(let it=0;it<220;it++){
+    for(let i=0;i<N.length;i++)for(let j=i+1;j<N.length;j++){
+      const a=N[i],b=N[j]; let dx=a.x-b.x,dy=a.y-b.y; const d2=dx*dx+dy*dy||1; const f=1700/d2;
+      a.x+=dx*f;a.y+=dy*f;b.x-=dx*f;b.y-=dy*f;}
+    E.forEach(e=>{const a=N[idx[e[0]]],b=N[idx[e[1]]]; if(!a||!b)return;
+      let dx=b.x-a.x,dy=b.y-a.y; const d=Math.sqrt(dx*dx+dy*dy)||1; const f=(d-95)*0.02;
+      a.x+=dx/d*f;a.y+=dy/d*f;b.x-=dx/d*f;b.y-=dy/d*f;});
+    N.forEach(n=>{n.x+=(W/2-n.x)*0.004;n.y+=(H/2-n.y)*0.004;
+      n.x=Math.max(34,Math.min(W-130,n.x));n.y=Math.max(22,Math.min(H-18,n.y));});
+  }
+  ctx.clearRect(0,0,W,H);
+  ctx.strokeStyle='rgba(125,211,252,.22)';ctx.lineWidth=1;
+  E.forEach(e=>{const a=N[idx[e[0]]],b=N[idx[e[1]]]; if(!a||!b)return;
+    ctx.beginPath();ctx.moveTo(a.x,a.y);ctx.lineTo(b.x,b.y);ctx.stroke();});
+  const col={hub:'#0EA5E9',adr:'#C4B5FD',journal:'#34D399',reflect:'#FBBF24',arc:'#22D3EE'};
+  N.forEach(n=>{ctx.fillStyle=col[n.t]||'#94A3B8';
+    ctx.beginPath();ctx.arc(n.x,n.y,n.t==='hub'?9:5.5,0,6.283);ctx.fill();
+    ctx.fillStyle='rgba(231,244,255,.82)';ctx.font='10px JetBrains Mono';
+    ctx.fillText((n.label||n.id).slice(0,26),n.x+9,n.y+3);});
+  cv.onclick=ev=>{const r=cv.getBoundingClientRect();
+    const x=ev.clientX-r.left,y=ev.clientY-r.top;
+    let best=null,bd=500;
+    N.forEach(n=>{const d=(n.x-x)*(n.x-x)+(n.y-y)*(n.y-y); if(d<bd){bd=d;best=n;}});
+    if(best) inspect(best.t==='adr'?'adr':'note', best.f||best.id);};
+}
+async function loadGraphs(){
+  try{
+    const g=await (await fetch('/vaultgraph')).json();
+    drawVG(g);
+    document.getElementById('vgmeta').textContent=(g.nodes||[]).length+' notes · '+(g.edges||[]).length+' links · rebuilt '+(g.updated||'');
+  }catch(e){}
+  const fr=document.getElementById('gfframe');
+  if(fr && !fr.getAttribute('src')) fr.src='/graphify';
+}
 // ---------- inspector ----------
 function closeInsp(){document.getElementById('insp').classList.remove('on');document.getElementById('ovl').style.display='none';}
 async function inspect(type,a,b){
@@ -1498,6 +1618,18 @@ class H(BaseHTTPRequestHandler):
             except Exception as ex:
                 body = json.dumps({"err": f"detail failed: {ex}"}).encode()
             ct = "application/json"
+        elif url.path == "/vaultgraph":
+            body = json.dumps(vault_graph()).encode()
+            ct = "application/json"
+        elif url.path == "/graphify":
+            gf = ROOT / "graphify-out" / "graph.html"
+            if gf.exists():
+                body = gf.read_bytes()
+            else:
+                body = (b"<body style='background:#06263B;color:#7DD3FC;font-family:monospace;"
+                        b"padding:40px'>graphify-out/graph.html not found &mdash; run /graphify . "
+                        b"in a Claude session once, then reload this tab.</body>")
+            ct = "text/html; charset=utf-8"
         else:
             body = HTML.replace("%PHASES%", json.dumps(PHASES)).encode()
             ct = "text/html; charset=utf-8"
