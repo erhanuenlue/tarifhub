@@ -40,3 +40,9 @@ site/
 .gstack/
 .claude/agent-memory/
 services/*/.claude/
+vault/.brain_sync_last
+
+# Knowledge-tooling workspace state (Obsidian, graphify)
+.obsidian/
+graphify-out/
+.graphifyignore
