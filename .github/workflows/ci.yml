@@ -29,6 +29,42 @@ jobs:
           (cd services/ingestion && uv run pytest -q tests/test_determinism_boundary.py -v)
           (cd services/serving && uv run pytest -q tests/test_serving_boundary.py -v)
 
+  # Cross-engine read parity: the SAME read tests run against a real Postgres 16 +
+  # pgvector so SQLite-vs-Postgres drift (Block-0: json.loads on a JSONB dict; int for a
+  # BOOLEAN column) cannot pass silently. Separate, parallel job so the offline `python`
+  # job above stays fast and container-free.
+  python-parity:
+    runs-on: ubuntu-latest
+    env:
+      UV_FROZEN: "1"
+      # The fixtures connect to this server only to CREATE a uniquely-named scratch
+      # database per run (db/schema.sql applied, dropped on teardown). The `tarifhub`
+      # database named here is the connection target for those admin statements; the
+      # scratch DBs are what tests read/write — the named DB itself is never mutated.
+      TARIFHUB_PG_TEST_URL: "postgresql://tarifhub:tarifhub@localhost:5432/tarifhub"
+    services:
+      postgres:
+        image: pgvector/pgvector:pg16
+        env:
+          POSTGRES_USER: tarifhub
+          POSTGRES_PASSWORD: tarifhub
+          POSTGRES_DB: tarifhub
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U tarifhub -d tarifhub"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: astral-sh/setup-uv@v4
+      - name: Read parity (ingestion + serving) against Postgres 16 + pgvector
+        run: |
+          for svc in services/ingestion services/serving; do
+            echo "=== $svc (parity) ==="
+            (cd "$svc" && uv sync --quiet --frozen && uv run pytest -q tests/test_read_parity.py)
+          done
+
   console:
     runs-on: ubuntu-latest
     steps:
