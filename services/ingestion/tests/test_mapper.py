@@ -86,6 +86,24 @@ def test_map_folds_optional_metadata_into_record():
     assert record.metadata["ai_assisted"] is False
 
 
+def test_metadata_provenance_keys_cannot_be_smuggled():
+    """A raw['metadata'] that tries to override the provenance keys loses to them.
+
+    Extras are folded in first and the provenance keys are written last, so a source
+    (or a tampered raw row) can never spoof mapper_version / ai_assisted — the values
+    the freeze hash trusts for AI-provenance stay authoritative."""
+    raw = {
+        "tariff_code": "7680536620137",
+        "designation_de": "3TC Filmtabl 150 mg",
+        "price_chf": Decimal("191.9"),
+        "metadata": {"mapper_version": "evil", "ai_assisted": True, "extra": "kept"},
+    }
+    record = map_raw(raw, system=TariffSystem.SL)
+    assert record.metadata["mapper_version"] == "tariff-mapper/0.1.0"  # provenance wins
+    assert record.metadata["ai_assisted"] is False  # provenance wins
+    assert record.metadata["extra"] == "kept"  # benign extras still pass through
+
+
 def test_eal_metadata_is_byte_identical_without_the_key():
     """HASH-CRITICAL: a row WITHOUT raw['metadata'] (all EAL rows) is unchanged."""
     raw = {

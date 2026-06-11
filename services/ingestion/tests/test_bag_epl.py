@@ -158,10 +158,21 @@ def test_valid_from_and_version_from_filename():
     assert bag_epl._source_version_from_filename("random.ndjson") is None
 
 
-def test_open_ended_sentinel_treated_as_none(record_rows):
-    """A 2100-12-31 sentinel end date means 'open-ended' -> valid_to None."""
-    # No keyable row should carry the sentinel as a concrete valid_to.
-    assert all(r.get("valid_to") != "2100-12-31" for r in record_rows)
+def test_date_or_none_handles_sentinel():
+    """_date_or_none: open-ended sentinel and absent -> None; a real date -> the date."""
+    assert bag_epl._date_or_none("2100-12-31") is None  # open-ended sentinel
+    assert bag_epl._date_or_none(None) is None  # absent
+    assert bag_epl._date_or_none("") is None  # empty -> None
+    assert bag_epl._date_or_none("1996-03-15") == "1996-03-15"  # real date passes through
+
+
+def test_sentinel_end_date_not_carried_into_metadata_dates(record_rows):
+    """The metadata date paths (first_listing_date, price_change_date) never carry the
+    2100-12-31 sentinel — _date_or_none collapses it to absent."""
+    for raw in record_rows:
+        meta = raw.get("metadata") or {}
+        assert meta.get("first_listing_date") != bag_epl._OPEN_ENDED_SENTINEL
+        assert meta.get("price_change_date") != bag_epl._OPEN_ENDED_SENTINEL
 
 
 # --------------------------------------------------------------------------- #
@@ -291,6 +302,17 @@ def test_invalid_json_line_is_hard_fail(tmp_path):
     path = tmp_path / "foph-sl-export-20260601.ndjson"
     path.write_text('{"resourceType":"Bundle","entry":[]}\n{not valid json}\n', encoding="utf-8")
     with pytest.raises(ValueError, match="JSON|decode"):
+        bag_epl.parse(path)
+
+
+def test_deeply_nested_json_line_is_hard_fail(tmp_path):
+    """A pathologically nested line trips RecursionError in json.loads; the parser
+    converts it to the same file-level ValueError (never an escaping RecursionError)."""
+    depth = 200_000
+    evil = "[" * depth + "]" * depth
+    path = tmp_path / "foph-sl-export-20260601.ndjson"
+    path.write_text(evil + "\n", encoding="utf-8")
+    with pytest.raises(ValueError, match="JSON|nest|recurs|decode"):
         bag_epl.parse(path)
 
 

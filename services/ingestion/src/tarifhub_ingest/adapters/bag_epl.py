@@ -118,10 +118,12 @@ def parse(path: str | Path) -> list[dict[str, Any]]:
                 continue
             try:
                 bundle = json.loads(stripped, parse_float=Decimal)
-            except json.JSONDecodeError as exc:
+            except (json.JSONDecodeError, RecursionError) as exc:
                 # File-level hard fail: a parsing failure must never silently drop data.
+                # RecursionError (pathologically nested JSON) escapes JSONDecodeError, so
+                # we catch it here too and surface the same clear, file-level ValueError.
                 raise ValueError(
-                    f"BAG ePL export line {line_no} is not valid JSON: {exc}"
+                    f"BAG ePL export line {line_no} is not valid JSON: {type(exc).__name__}"
                 ) from exc
 
             _emit_bundle_rows(
