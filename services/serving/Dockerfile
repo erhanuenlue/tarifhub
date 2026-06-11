@@ -3,7 +3,8 @@
 # The canonical TariffRecord and the embedder come from the sibling ingestion package,
 # which is vendored into the image so there is one canonical model end-to-end.
 
-FROM python:3.12-slim AS runtime
+# Base image pinned by digest 2026-06-11 (python:3.12-slim manifest-list digest).
+FROM python:3.12-slim@sha256:a39549e211a16149edf74e5fdc9ef03a6767e46cd987c5048b6659b6c9904c94 AS runtime
 
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \

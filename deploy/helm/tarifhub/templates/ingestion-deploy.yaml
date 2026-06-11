@@ -25,8 +25,15 @@ spec:
             - name: http
               containerPort: {{ .Values.ingestion.port }}
           env:
+            # Password comes from the db Secret, never inlined; the URL is composed
+            # with Kubernetes $(VAR) env-substitution (see serving-deploy.yaml).
+            - name: TARIFHUB_DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-db
+                  key: password
             - name: TARIFHUB_DB_URL
-              value: "postgresql://{{ .Values.postgres.username }}:{{ .Values.postgres.password }}@{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+              value: "postgresql://{{ .Values.postgres.username }}:$(TARIFHUB_DB_PASSWORD)@{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
             {{- range $key, $value := .Values.ingestion.env }}
             - name: {{ $key }}
               value: {{ $value | quote }}

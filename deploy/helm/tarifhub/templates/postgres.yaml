@@ -46,7 +46,10 @@ spec:
             - name: POSTGRES_USER
               value: {{ .Values.postgres.username | quote }}
             - name: POSTGRES_PASSWORD
-              value: {{ .Values.postgres.password | quote }}
+              valueFrom:
+                secretKeyRef:
+                  name: {{ .Release.Name }}-db
+                  key: password
             - name: PGDATA
               value: /var/lib/postgresql/data/pgdata
           readinessProbe:
