@@ -32,7 +32,7 @@ dependencies = [
 # OPTIONAL — intentionally NOT installed for tests so the suite stays offline.
 # Enable only when you wire the live Claude harmonizer / real e5 embeddings.
 ai = [
-    # "anthropic>=0.39",
+    "anthropic>=0.39",
     # "sentence-transformers>=2.7",
 ]
 dev = [
