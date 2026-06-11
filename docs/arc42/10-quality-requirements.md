@@ -44,6 +44,75 @@ zero API calls. The seam matters for incomplete feeds (cf. the de-only sample
 fixture and future sources), not for this one — that is the designed behaviour,
 not a failure.
 
+### BAG Spezialitätenliste (SL) — per 01.06.2026, run ⟪TBD: live run⟫
+
+Full official list (FHIR R5 NDJSON, one `ch-idmp-bundle` per line, sha256
+`2dece0da…`, CC0-1.0) through the live pipeline into **PostgreSQL 16 + pgvector**;
+review threshold 0.85. Identical deterministic metrics verified on the SQLite mirror.
+Offline-fixture figures (255-bundle slice) are quoted where a real-run metric is
+still pending so the shape of the result is visible.
+
+| metric | value |
+|---|---|
+| bundles in | ⟪TBD: live run⟫ (6 763 export-wide) |
+| reimbursed packages | ⟪TBD: live run⟫ (10 408 export-wide) |
+| records frozen (GTIN-keyable) | ⟪TBD: live run⟫ (10 299 export-wide) |
+| parse failures (package without GTIN, fail-closed) | ⟪TBD: live run⟫ (109 export-wide) |
+| skipped (idempotent) | ⟪TBD: live run⟫ |
+| flagged for review | ⟪TBD: live run⟫ |
+| confidence distribution | ⟪TBD: live run⟫ |
+| wall clock | ⟪TBD: live run⟫ |
+
+**Honest note on the fail-closed path.** 109 of the 10 408 reimbursed packages
+reference a `PackagedProductDefinition` that carries no `packaging.identifier` (no
+GTIN). Since GTIN is the frozen join key, such a package cannot be keyed — the
+adapter emits a `_parse_failure` marker, the pipeline counts it in
+`PipelineReport.parse_failures`, and **no frozen record is produced**. This is the
+engineering rule "a parsing failure must never produce a frozen record" exercised on
+real data, not a contrived test (the 255-bundle fixture reproduces 11 such cases).
+
+### Per-source comparative summary
+
+| | EAL (Analysenliste) | SL (Spezialitätenliste) |
+|---|---|---|
+| source format | flat XLSX, 3 parallel sheets | hierarchical FHIR R5 NDJSON (IDMP graph) |
+| join key | position number (`Pos.-Nr.`) | GTIN (`urn:oid:2.51.1.1`, prefix 7680) |
+| value type | tax points (`Decimal`) | retail price CHF (`Decimal`), money-only |
+| languages | DE canonical, FR/IT by sheet join | DE/FR/IT all present per product (born-trilingual) |
+| records frozen | 1 279 | ⟪TBD: live run⟫ (10 299 export-wide) |
+| review rate | 0.0 % | ⟪TBD: live run⟫ |
+| AI-assisted records | 0 (complete feed) | ⟪TBD: live run⟫ (≈55 products carry no ATC → category gap) |
+
+### XLSX vs FHIR R5 — what format diversity costs harmonisation
+
+The two BAG sources sit at opposite ends of the structural spectrum, and ingesting
+both through one `TariffRecord` ([ADR-003](../adr/003-canonical-record-model.md)) is
+the platform's harmonisation proof. **EAL** is a flat three-sheet workbook: each
+tariff position is a row, the three languages are three parallel sheets joined by
+position number, and a value is a single cell — harmonisation is essentially a
+column-mapping plus a positional join, and a missing translation is just an empty
+cell. **SL** is a born-FHIR resource *graph*: each medication is a bundle of an
+IDMP `MedicinalProductDefinition` (names, ATC), one or more
+`PackagedProductDefinition` (the billable line items, keyed by GTIN), and pairs of
+`RegulatedAuthorization` discriminated only by a coded `type`; the entire billing
+payload (retail/ex-factory prices, dossier number, cost share, listing dates) hangs
+off a deeply nested `reimbursementSL` extension whose sub-extensions are
+content-discriminated (by `url`, `system`, `code`, BCP-47 language) and **never by
+position**. Extracting one canonical row therefore means traversing the graph,
+resolving relative references (`CHIDMP…/<id>` against the package id), matching
+extension urls *exactly at each nesting level* (both `reimbursementSL` and the
+limitation extension carry a `status` child — flattening by name would corrupt the
+data), and selecting the right slice of a polymorphic `value[x]`. Where EAL is
+born-trilingual only after a join, SL is born-trilingual at the product, but pays for
+it with depth: roughly five resource types and three extension-nesting levels to
+reach a single price. The cost of format diversity is thus paid almost entirely in
+the *adapter*, not the canonical model — `bag_eal.py` and `bag_epl.py` differ
+completely while emitting the same flat row dict, and the same deterministic
+mapper/validator/scorer/freeze chain runs unchanged over both. That is the design
+intent of the freeze-line decomposition ([ADR-002](../adr/002-freeze-line-decomposition.md)):
+heterogeneity is absorbed at the edge so the value path stays a single, auditable,
+deterministic shape.
+
 ### AI-seam demonstration on real positions (FR/IT withheld)
 
 To evidence the live seam on real data, three real positions were re-mapped with
