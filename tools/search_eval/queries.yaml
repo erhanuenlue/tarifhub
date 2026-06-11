@@ -1,0 +1,84 @@
+# Labelled ranked-retrieval set for cross-lingual EAL search evaluation.
+#
+# Each query maps to the EAL `tariff_code` of the record it should surface at rank 1.
+# Codes and DE designations are REAL — taken from the 2026-06-11 pgvector run
+# (docs/evidence/2026-06-11-postgres-serving-pgvector.md, §6) and the EAL fixture, so
+# the expected record is known to exist in the 1 279-record frozen EAL set.
+#
+# The set spans DE / FR / IT / EN to probe multilingual-e5's cross-lingual alignment.
+# `prefix off` embeds the query raw (the Block-0 "before"); `prefix on` adds the e5
+# "query: " prefix (the "after"). The hématocrite→1375 case is the headline regression.
+#
+# fields: id, lang, query, expected_code, why
+queries:
+  - id: hematocrite_fr
+    lang: fr
+    query: "hématocrite"
+    expected_code: "1375"
+    why: "Block-0 headline case: FR query ranked the exact record (Hämatokrit, zentrifugiert) at 3, not 1."
+
+  - id: haematokrit_de
+    lang: de
+    query: "Hämatokrit"
+    expected_code: "1375"
+    why: "Same record, canonical German term — the monolingual control for the FR regression."
+
+  - id: ematocrito_it
+    lang: it
+    query: "ematocrito"
+    expected_code: "1375"
+    why: "Italian term for the same hematocrit record — third language for the headline case."
+
+  - id: hematocrit_en
+    lang: en
+    query: "hematocrit blood test"
+    expected_code: "1375"
+    why: "English phrasing of the hematocrit case; tests EN→DE cross-lingual surfacing."
+
+  - id: glucose_de
+    lang: de
+    query: "Glukose im Blut"
+    expected_code: "1356"
+    why: "DE control: ranked Glukose (1356) at 1-2 in Block-0; should stay strong."
+
+  - id: glucose_fr
+    lang: fr
+    query: "glucose sanguin"
+    expected_code: "1356"
+    why: "French phrasing for the Glukose analyte (1356); FR→DE cross-lingual check."
+
+  - id: glucosio_it
+    lang: it
+    query: "glicemia"
+    expected_code: "1356"
+    why: "Italian clinical term (glicemia) for blood glucose (1356); IT→DE check."
+
+  - id: vitamin_d_en
+    lang: en
+    query: "vitamin D blood test"
+    expected_code: "1006"
+    why: "Block-0 EN cross-lingual success (Vitamin D 1006 at rank 1); regression guard."
+
+  - id: vitamine_d_fr
+    lang: fr
+    query: "vitamine D"
+    expected_code: "1006"
+    why: "French phrasing for Vitamin D (1006); FR→DE alignment on a clean case."
+
+  - id: hba1c_de
+    lang: de
+    query: "Langzeitzucker HbA1c"
+    expected_code: "1363"
+    why: "DE: Hämoglobin A1c (1363) — glycaemic marker; tests a multi-token DE query."
+
+  - id: cholesterol_en
+    lang: en
+    query: "HDL cholesterol"
+    expected_code: "1410.1"
+    why: "EN: HDL-Cholesterin (1410.1) appeared as noise in Block-0; a precise EN query should rank it."
+
+  - id: cortisol_fr
+    lang: fr
+    query: "cortisol"
+    expected_code: "1240.1"
+    why: "FR: Cortisol (1240.1) seen in Block-0 results; single-token FR cross-lingual check."

@@ -66,3 +66,29 @@ unreachable by the model ([ADR-005](../adr/005-single-ai-seam.md)).
 
 *Runtime serving evidence (Postgres + pgvector search) is captured under
 `docs/evidence/`.*
+
+### Ranked retrieval (cross-lingual)
+
+multilingual-e5 is trained with an asymmetric instruction scheme: indexed documents
+are embedded as `"passage: …"` and search queries as `"query: …"`. The Block-0 proof
+indexed passages correctly but embedded queries **raw**, degrading cross-lingual
+alignment — French `hématocrite` ranked the exact record (EAL 1375,
+*Hämatokrit, zentrifugiert*) at 3, not 1. The fix applies the `"query: "` prefix on the
+serving search path (stored passage vectors are unchanged). `tools/search_eval/` runs a
+12-query DE/FR/IT/EN labelled set both ways and reports rank, MRR and recall@5; numbers
+land in the e2e phase.
+
+| query (lang) | expected code | rank — prefix off | rank — prefix on |
+|---|---|---|---|
+| hématocrite (fr) | 1375 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
+| Hämatokrit (de) | 1375 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
+| vitamin D blood test (en) | 1006 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
+| glicemia (it) | 1356 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
+
+| metric | prefix off (before) | prefix on (after) |
+|---|---|---|
+| MRR | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
+| recall@5 | ⟪TBD: eval run⟫ | ⟪TBD: eval run⟫ |
+
+**Method:** each query is embedded both ways via the repo's own `get_embedder`, ranked
+with the same pgvector cosine SQL the serving API uses, against the frozen EAL set.
