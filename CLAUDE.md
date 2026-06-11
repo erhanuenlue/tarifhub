@@ -35,4 +35,4 @@ Erhan never runs git by hand. Branch → small Conventional Commits → `gh pr c
 
 ## Definition of done
 
-Code works → `pytest -q` green (offline) → ruff clean → relevant reviewers addressed → PR squash-merged → ADR if a decision was made → journal entry curated. Nothing below the freeze line touched by AI — `guard_frozen` enforces this; don't work around it, flag it.
+Code works → `pytest -q` green (offline) → ruff clean → relevant reviewers addressed → PR squash-merged → ADR if a decision was made → journal entry curated → **if `docs/` changed materially this session, run `/graphify --update`** (the post-commit hook keeps code nodes current automatically; doc nodes need this nudge). Nothing below the freeze line touched by AI — `guard_frozen` enforces this; don't work around it, flag it.
