@@ -18,7 +18,7 @@ Seven prompts covering the road from today to submission, aligned to the course 
 
 - Session start: Claude reads `AGENTS.md` + `CLAUDE.md` automatically. Don't re-paste project facts into prompts.
 - Every session ends with: tests green (quote output) → verifier on the diff → `/ship` if shippable → **journal entry curated** (criterion 15 raw material — non-negotiable).
-- `/ship` is the **9-phase multi-model pipeline** (Fable plans/orchestrates/gates · Opus implements · Sonnet verifies runtime) with two human gates: you approve the plan, you confirm the merge. Watch it live: `python3 tools/shipboard/shipboard.py` → :8787.
+- `/ship` is the **9-phase multi-model pipeline** (Fable plans/orchestrates/gates · Opus implements · Sonnet verifies runtime) with two human gates: you approve the plan, you confirm the merge. Build/ship sessions run **`/effort ultracode`**; Fable allocates its own effort per task (medium↔xhigh by complexity) inside the skill's contract — gates and worker pins are invariant. Watch it live: `python3 tools/shipboard/shipboard.py` → :8787.
 - The freeze line is hook-enforced. If `guard_frozen` blocks something, the prompt's answer is "tell me why", never "work around it".
 - One session ≈ one prompt ≈ one mergeable outcome. Don't chain two prompts without a `/clear`.
 - If a session drifts or stalls: stop, `/clear`, re-run the same prompt with one added constraint naming the failure. Fable recovers better from a fresh start than from accumulated correction debt.

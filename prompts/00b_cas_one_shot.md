@@ -1,6 +1,6 @@
 # 00b — The CAS one-shot (run inside the prepared workspace)
 
-> Unlike 00 (empty-dir reference), this one assumes the launchpad: CLAUDE.md/AGENTS.md loaded, hooks armed, docs scaffold present, existing code possibly merged (SETUP Option A). It drives one long autonomous run to the CAS floor — **criteria-driven, evidence-capturing, resumable**. Run with auto-accept permissions and patience (hours). What it cannot do is be you: the Fazit's final voice, the rubric-refresh diff, the Problemstellung box and the Moodle upload stay human.
+> Unlike 00 (empty-dir reference), this one assumes the launchpad: CLAUDE.md/AGENTS.md loaded, hooks armed, docs scaffold present, existing code possibly merged (SETUP Option A). It drives one long autonomous run to the CAS floor — **criteria-driven, evidence-capturing, resumable**. Run with auto-accept permissions, ideally `/effort ultracode` (xhigh + auto-orchestration — built for exactly this unattended shape), and patience (hours). What it cannot do is be you: the Fazit's final voice, the rubric-refresh diff, the Problemstellung box and the Moodle upload stay human.
 
 ---
 
