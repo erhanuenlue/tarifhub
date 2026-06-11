@@ -14,7 +14,7 @@ Produce an honest CAS status check — evidence-based, no optimism.
    - determinism test green: run it
    - two sources harmonised end-to-end (which fixtures/tests prove it?)
    - arc42 site builds: `mkdocs build -f docs/mkdocs.yml --strict`
-   - console: `apps/tarifguard-demo` lints/builds + component/smoke tests pass + **screenshot set present in `docs/img/console/`**
+   - console: `apps/tarifguard` lints/builds + component/smoke tests pass + **screenshot set present in `docs/img/console/`**
    - captured distribution evidence: compose-up screenshot + CI image-build matrix green (code-only review — runtime proofs don't count, captures do)
    - "Modern application concepts" page exists in arc42 §8; refreshed rubric (post ≈14 Jun) diffed against the dossier table
 3. **Evidence artifacts:** acceptance criteria written? test-results table populated? decision matrix drafted? Fazit notes accumulating in `vault/fazit-notes.md`?

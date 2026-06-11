@@ -11,6 +11,6 @@ case "$FILE" in
   *.py)
     command -v uv >/dev/null && { uv run ruff format -q "$FILE" 2>/dev/null; uv run ruff check -q --fix "$FILE" 2>/dev/null; } ;;
   *.ts|*.tsx|*.js|*.jsx|*.css)
-    [ -f apps/tarifguard-demo/node_modules/.bin/prettier ] && apps/tarifguard-demo/node_modules/.bin/prettier --write --log-level silent "$FILE" 2>/dev/null ;;
+    [ -f apps/tarifguard/node_modules/.bin/prettier ] && apps/tarifguard/node_modules/.bin/prettier --write --log-level silent "$FILE" 2>/dev/null ;;
 esac
 exit 0

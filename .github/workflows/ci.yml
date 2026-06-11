@@ -8,6 +8,9 @@ on:
 jobs:
   python:
     runs-on: ubuntu-latest
+    env:
+      # Owner decision 2026-06-11: lockfiles are committed; CI never re-resolves.
+      UV_FROZEN: "1"
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v4
@@ -18,7 +21,7 @@ jobs:
               echo "=== $svc ==="
               # uvx: ruff is not a base dependency of every service; plain `uv sync`
               # would not install it and the job would die before the tests run.
-              (cd "$svc" && uv sync --quiet && uvx ruff check . && uv run pytest -q)
+              (cd "$svc" && uv sync --quiet --frozen && uvx ruff check . && uv run pytest -q)
             fi
           done
       - name: Determinism boundary tests (must be visible in this log)
@@ -34,8 +37,9 @@ jobs:
         with: { node-version: 22 }
       - name: Lint + build + test (when the console exists)
         run: |
-          if [ -f apps/tarifguard-demo/package.json ]; then
-            cd apps/tarifguard-demo && npm ci && npm run lint && npm run build && npm test
+          if [ -f apps/tarifguard/package.json ]; then
+            # test runs --if-present: the Playwright smoke lands with the console build block
+            cd apps/tarifguard && npm ci && npm run lint && npm run build && npm run test --if-present
           else
             echo "console not yet scaffolded — skipping"
           fi
