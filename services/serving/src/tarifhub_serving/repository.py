@@ -157,7 +157,19 @@ def _parse_metadata(value: Any) -> dict[str, Any]:
 
 
 def _text_to_decimal(value: Any) -> Decimal | None:
-    return Decimal(str(value)) if value not in (None, "") else None
+    """Decode a stored money/points value to a scale-canonical ``Decimal``.
+
+    SQLite stores the writer's exact text (``10.50``); Postgres NUMERIC(12,4)/(12,2)
+    coerces to the column scale (``10.5000`` / ``12.30``). Left raw, the two engines
+    serialise different JSON strings for the same value. We normalise to the SAME
+    canonical form the integrity hash uses (``format(Decimal.normalize(), "f")`` —
+    ``10.5000`` -> ``10.5``), so the served value is engine-independent and equals the
+    hashed content form.
+    """
+
+    if value in (None, ""):
+        return None
+    return Decimal(format(Decimal(str(value)).normalize(), "f"))
 
 
 def _text_to_date(value: Any) -> date | None:

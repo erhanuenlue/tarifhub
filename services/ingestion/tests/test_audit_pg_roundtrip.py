@@ -53,5 +53,8 @@ def test_validation_ok_roundtrips_on_postgres(pg_conn, flag):
         "ORDER BY id DESC LIMIT 1",
         ("pg_roundtrip_test",),
     )
-    stored = cur.fetchone()[0]
+    # The Database facade now opens Postgres connections with psycopg's dict_row factory
+    # (so the repository's dict(row) read path works) — rows are mapping-only, access by
+    # column name rather than position.
+    stored = cur.fetchone()["validation_ok"]
     assert stored is flag or stored == flag  # boolean column: True/False/None
