@@ -1776,10 +1776,11 @@ function renderBoard(s){
   const el=document.getElementById('boardcols'); if(!el) return;
   const u=s.usage||{}, todos=u.todos||[], dels=u.delegations||[], phs=s.phases||{};
   const pend=[], prog=[], done=[];
+  const PHMODEL=/(Fable 5|Opus 4\.8|Sonnet 4\.6|Haiku 4\.5|Opus|Sonnet|Haiku|Fable)/;
   // 1) /ship pipeline phases — the backbone of "what's done / in progress"
   (typeof PH!=='undefined'?PH:[]).forEach(ph=>{
     const st=(phs[ph[0]]||{}).status||'pending';
-    const c={kind:'phase',id:ph[0],label:ph[0]+' · '+ph[1],status:st};
+    const c={kind:'phase',id:ph[0],label:ph[0]+' · '+ph[1],status:st,detail:ph[2]||''};
     if(st==='pass') done.push(c); else if(st==='running'||st==='fail') prog.push(c); else pend.push(c);
   });
   // 2) dispatched prompts (sub-agent delegations)
@@ -1791,7 +1792,8 @@ function renderBoard(s){
 
   const card=c=>{
     if(c.kind==='phase'){ const m=c.status==='pass'?'done':(c.status==='running'?'doing':(c.status==='fail'?'doing fail':''));
-      return '<div class="kitem '+m+'" onclick="inspect(\'phase\',\''+esc(c.id)+'\')"><span class="btag">phase</span>'+(c.status==='running'?'<span class="dot"></span>':'')+esc(c.label)+'<span class="meta">'+esc(c.status)+'</span></div>'; }
+      const mm=(c.detail||'').match(PHMODEL), meta=(mm?esc(mm[0])+' · ':'')+esc(c.status);
+      return '<div class="kitem '+m+'" onclick="inspect(\'phase\',\''+esc(c.id)+'\')"><span class="btag">phase</span>'+(c.status==='running'?'<span class="dot"></span>':'')+esc(c.label)+'<span class="meta">'+meta+'</span></div>'; }
     if(c.kind==='agent')
       return '<div class="kitem '+(c.done?'done':'doing dlgc')+'" onclick="inspect(\'agent\',\''+esc(c.ts)+'\',\''+esc(c.agent)+'\')"><span class="btag">agent</span>'+(c.done?'':'<span class="dot"></span>')+'<b>'+esc(c.agent)+'</b>'+(c.desc?' — '+esc(c.desc):'')+(c.model?'<span class="meta">'+esc(c.model)+'</span>':'')+'</div>';
     return '<div class="kitem '+(c.status==='in_progress'?'doing':(c.status==='completed'?'done':''))+'" onclick="boardTask('+c.i+')"><span class="btag">task</span>'+esc(c.label)+'</div>';
