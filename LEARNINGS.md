@@ -12,7 +12,7 @@ This register records what the build got wrong and what caught it, drawn from th
 ## Engine parity
 
 - **2026-06-11 — `json.loads()` on a Postgres JSONB column (already a dict) would have 500'd every Postgres response.** SQLite-only tests were blind to it because the SQLite driver returns text; Codex caught it on the value path — AI corrected ± (PR #2, 057a6c1).
-- **2026-06-12 — `int`-for-`bool` passes SQLite and is rejected by Postgres; only a real engine surfaces it.** The first real Postgres run rejected a smallint in a boolean column where 51 green SQLite tests had not; the answer was a cross-engine read-parity suite with full-body snapshots (PR #6, 56b88cb).
+- **2026-06-11 — `int`-for-`bool` passes SQLite and is rejected by Postgres; only a real engine surfaces it.** The first real Postgres run rejected a smallint in a boolean column where 51 green SQLite tests had not; the answer was a cross-engine read-parity suite with full-body snapshots (PR #6, 56b88cb).
 
 ## Evidence and docs discipline
 
@@ -25,7 +25,7 @@ This register records what the build got wrong and what caught it, drawn from th
 - **2026-06-12 — A lockfile is what makes a dependency tree auditable, not just reproducible.** The missing kassenflow/meldepilot lockfiles hard-failed `npm ci`, and once generated they exposed next@14.2.5's CRITICAL CVE-2025-29927 (+ 9 HIGH) to Trivy for the first time; the gate could only bite once the pin existed, so both stubs were aligned to tarifguard's clean next 15.5 set rather than suppressing the finding (PR #10, 1eaf013).
 - **2026-06-12 — Verify action majors against published tags; do not assume a floating alias exists.** astral-sh's setup-uv publishes no `v8` alias (only exact `v8.x` tags), so the Node-24-readiness bumps failed in 2s on tag resolution until pinned to exact `@v8.2.0` — "verify, don't guess" (PR #11, 8bb0b3b).
 - **2026-06-12 — A hook that silently rewrites derived state is invisible until something measures it.** The graphify git hooks full-walked ~77k vendored nodes and rebuilt code-only, dropping every doc/image node per commit; fixed at the right layer by making `.graphifyignore` a tracked single source of truth the incremental hooks consume, with the graph audit itself (criterion-16 tooling) as the detector (PR #9, cf5508c).
-- **2026-06-12 — e5 is asymmetric: queries need the `query:` prefix, passages the `passage:` prefix.** Block-0 embedded search queries through the passage path, degrading cross-lingual ranking; adding the `query:` prefix lifted recall@5 from .833 to .917, with the MRR@5 dip documented as a deliberate trade-off rather than hidden (PR #7, 5da6472).
+- **2026-06-12 — e5 is asymmetric: queries need the `query:` prefix, passages the `passage:` prefix.** Block-0 embedded search queries through the passage path, degrading cross-lingual ranking; Codex's fix proposal, built on the same prefix confusion, was rejected ✗, and the `query:` prefix fix lifted recall@5 from .833 to .917, with the MRR@5 dip documented as a deliberate trade-off rather than hidden (PR #7, 5da6472).
 
 ## Freeze-line protocol
 

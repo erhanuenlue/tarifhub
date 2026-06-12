@@ -95,8 +95,9 @@ AST and asserts that none imports `anthropic`, `openai`, `cohere`, `langchain` o
 - `services/intelligence/tests/test_determinism_boundary.py` scans the TarifIQ rule-
   evaluation path (`main.py`, rules, crosswalk, validators, store).
 
-These run in the offline suite and again, **visibly**, as a dedicated CI step that prints
-the boundary tests with `-v`; CI fails if any LLM client appears on a value path. Because
+All three run in the offline suite and in CI's per-service test loop on every push; the
+ingestion and serving (value-path) suites run **again, visibly**, as a dedicated CI step
+that prints them with `-v`. CI fails if any LLM client appears on a value path. Because
 the guarantee is structural (the import graph cannot reach a model), the boundary stays
 green by construction, not by reviewer discipline.
 
