@@ -98,14 +98,21 @@ class TariffRepository:
         return cur.fetchone() is not None
 
     def get(self, tariff_code: str, system: TariffSystem | str | None = None) -> TariffRecord | None:
-        """Return the highest-version record for a code (optionally scoped to a system)."""
+        """Return the highest-version record for a code (optionally scoped to a system).
+
+        When ``system`` is omitted the same code can exist in two tariff systems; the
+        result is made deterministic with a cross-system tie-break — ``ORDER BY
+        tariff_system, version DESC`` — so an unscoped read never depends on row order.
+        """
 
         query = f"SELECT * FROM tariff WHERE tariff_code = {self._ph}"
         params: list[Any] = [tariff_code]
         if system is not None:
             query += f" AND tariff_system = {self._ph}"
             params.append(system.value if isinstance(system, TariffSystem) else str(system))
-        query += " ORDER BY version DESC LIMIT 1"
+            query += " ORDER BY version DESC LIMIT 1"
+        else:
+            query += " ORDER BY tariff_system, version DESC LIMIT 1"
         row = self._conn.execute(query, tuple(params)).fetchone()
         return self._row_to_record(row) if row else None
 

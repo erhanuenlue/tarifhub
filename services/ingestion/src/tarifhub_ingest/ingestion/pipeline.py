@@ -16,8 +16,9 @@ from tarifhub_ingest.audit.audit_logger import AuditLogger
 from tarifhub_ingest.config import Settings, get_settings
 from tarifhub_ingest.confidence.scorer import score
 from tarifhub_ingest.embeddings.embedder import Embedder
+from tarifhub_ingest.ingestion.fill_reuse import reuse_or_none
 from tarifhub_ingest.ingestion.source_loader import SourceSpec
-from tarifhub_ingest.mappers.tariff_mapper import ai_map
+from tarifhub_ingest.mappers.tariff_mapper import ai_map, map_raw
 from tarifhub_ingest.models.tariff_model import TariffRecord
 from tarifhub_ingest.adapters import bag_eal, bag_epl
 from tarifhub_ingest.parsers import xlsx_parser
@@ -51,8 +52,14 @@ def run_pipeline(
     *,
     settings: Settings | None = None,
     embedder: Embedder | None = None,
+    refill: bool = False,
 ) -> PipelineReport:
-    """Run the full pipeline for the given sources and return a report."""
+    """Run the full pipeline for the given sources and return a report.
+
+    ``refill=False`` (default) carries an unchanged row's prior AI fills forward with no
+    model call (re-ingest idempotency, even key-less). ``refill=True`` bypasses reuse and
+    re-runs ``ai_map`` so a deliberate re-fill can supersede the prior version.
+    """
 
     settings = settings or get_settings()
     report = PipelineReport()
@@ -69,12 +76,26 @@ def run_pipeline(
 
             report.processed += 1
 
-            record = ai_map(
-                raw,
-                system=spec.system,
-                source_url=spec.source_url,
-                settings=settings,
-            )
+            # Fill-reuse seam (repo lives here; ai_map stays repo-free). When source
+            # content is unchanged from the latest frozen version we adopt that version's
+            # content verbatim — AI fills included — with NO model call, so freeze
+            # reproduces the identical hash and the row dedupes. This short-circuits
+            # BEFORE ai_map / the key check, which also fixes the key-less inverse bug.
+            reuse = None
+            if not refill:
+                candidate = map_raw(
+                    raw, system=spec.system, source_url=spec.source_url
+                )
+                reuse = reuse_or_none(candidate, repo, spec.system)
+            if reuse is not None:
+                record = reuse.record
+            else:
+                record = ai_map(
+                    raw,
+                    system=spec.system,
+                    source_url=spec.source_url,
+                    settings=settings,
+                )
 
             result = validate(record)
             confidence = score(record)
@@ -101,6 +122,14 @@ def run_pipeline(
             else:
                 report.skipped_existing += 1
 
+            # Reuse provenance goes into the audit detail ONLY — never into the record
+            # metadata, which would change the hashed bytes and re-version the record
+            # (the deliberate byte-stability trade-off behind fill-reuse).
+            detail = {"errors": result.errors, "warnings": result.warnings}
+            if reuse is not None:
+                detail["ai_fills_reused"] = True
+                detail["reused_from_version"] = reuse.reused_from_version
+
             audit.log(
                 event_type="freeze" if stored else "freeze_skipped_idempotent",
                 record=frozen,
@@ -108,7 +137,7 @@ def run_pipeline(
                 parser_version=parser_version,
                 confidence=confidence,
                 validation_ok=result.ok,
-                detail={"errors": result.errors, "warnings": result.warnings},
+                detail=detail,
             )
 
     return report

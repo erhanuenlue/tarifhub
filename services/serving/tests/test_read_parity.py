@@ -88,6 +88,33 @@ def _seed_records() -> list[TariffRecord]:
             version=1,
             **common,
         ),
+        # Max canonical scales: price_chf 12.34 (NUMERIC(12,2)) + tax_points 76.5000
+        # (NUMERIC(12,4)). At the column scales exactly, so both engines must serialise
+        # the SAME canonical Decimal — the scale contract's cross-engine proof.
+        TariffRecord(
+            tariff_code="SCALE.MAX",
+            tariff_system=TariffSystem.EAL,
+            designation=Designation(de="Skalengrenze"),
+            category="lab",
+            tax_points=Decimal("76.5000"),
+            price_chf=Decimal("12.34"),
+            requires_review=False,
+            version=1,
+            **common,
+        ),
+        # Lossy-input fail-closed shape: billing field None + original kept as a metadata
+        # raw_* string. Both engines store None cleanly and round-trip the same marker.
+        TariffRecord(
+            tariff_code="SCALE.LOSSY",
+            tariff_system=TariffSystem.EAL,
+            designation=Designation(de="Verlustfall"),
+            category="lab",
+            price_chf=None,
+            metadata={"raw_price_chf": "12.345"},
+            requires_review=True,
+            version=1,
+            **common,
+        ),
     ]
 
 
@@ -273,6 +300,27 @@ def test_decimal_scale_read_parity(serving_client):
     assert aa["price_chf"] == expected["price_chf"]  # 12.30 -> "12.3"
 
 
+def test_max_scale_and_lossy_record_parity(serving_client):
+    """Max-scale + lossy-input records round-trip identically on both engines.
+
+    SCALE.MAX sits exactly at NUMERIC(12,4)/(12,2); SCALE.LOSSY is the fail-closed shape
+    (billing field None + raw_* metadata marker). Both engines must serialise the same
+    canonical Decimals and the same None+marker — the scale contract's served invariant
+    across the engine boundary.
+    """
+
+    body = serving_client.get("/api/v1/tariffs").json()
+    maxr = next(r for r in body if r["tariff_code"] == "SCALE.MAX")
+    expected_max = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "SCALE.MAX")
+    assert maxr["tax_points"] == expected_max["tax_points"]  # 76.5000 -> "76.5"
+    assert maxr["price_chf"] == expected_max["price_chf"]  # 12.34 -> "12.34"
+
+    lossy = next(r for r in body if r["tariff_code"] == "SCALE.LOSSY")
+    assert lossy["price_chf"] is None
+    assert lossy["metadata"]["raw_price_chf"] == "12.345"
+    assert lossy["requires_review"] is True
+
+
 def test_dates_read_parity(serving_client):
     """valid_from / valid_to (DATE vs TEXT) serialise identically."""
 
@@ -301,3 +349,50 @@ def test_search_contract_per_engine(serving_client, engine):
         assert resp.json()["detail"] == "semantic search requires Postgres+pgvector"
     else:
         assert "1024-dim embedder" in resp.json()["detail"]
+
+
+def test_pgvector_search_sql_deterministic(engine, monkeypatch):
+    """pgvector search-SQL returns 200 + deterministic ordering (Postgres leg only).
+
+    Seeds 1024-dim embeddings from a deterministic HashingEmbedder(dimension=1024) so the
+    pgvector column dimensions match, points the serving query embedder at the same stub,
+    runs /api/v1/search, and asserts a 200 with a stable ranked order (same query -> same
+    ordering across runs). Skips offline like the other Postgres-only tests. The hits are
+    unaltered frozen rows — search only RANKS, never computes a value.
+    """
+
+    if engine.label != "postgres":
+        pytest.skip("pgvector search requires Postgres")
+
+    from tarifhub_ingest.embeddings.embedder import E5_DIMENSION, HashingEmbedder
+
+    stub = HashingEmbedder(dimension=E5_DIMENSION)  # 1024-dim, matches vector(1024)
+    conn = engine.db.connect()
+    try:
+        engine.db.init_schema(conn)
+        repo = TariffRepository(conn, engine.db)
+        for record in _seed_records():
+            frozen = freeze(record)
+            text = f"{frozen.tariff_system.value} {frozen.tariff_code} {frozen.designation.de}"
+            repo.add(frozen, embedding=stub.embed(text))
+    finally:
+        conn.close()
+
+    # Point both the serving query embedder AND its default at the 1024-dim stub.
+    monkeypatch.setattr("tarifhub_serving.main.get_embedder", lambda *_a, **_k: stub)
+    monkeypatch.setenv("TARIFHUB_DB_URL", engine.db_url)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    from tarifhub_serving.main import app
+
+    client = TestClient(app)
+    first = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
+    assert first.status_code == 200, first.text
+    order1 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in first.json()]
+    assert order1, "search must return at least one ranked hit"
+    # Ranks are 1..n and strictly increasing (deterministic ordering contract).
+    assert [h["rank"] for h in first.json()] == list(range(1, len(first.json()) + 1))
+
+    # Same query -> identical ordering (pgvector cosine SQL is deterministic).
+    second = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
+    order2 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in second.json()]
+    assert order2 == order1

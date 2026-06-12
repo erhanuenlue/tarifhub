@@ -7,7 +7,7 @@ Targets from Architecture v2.1 §12; validated against the measured runs below.
 | Attribute | Target (MVP) |
 |---|---|
 | Determinism | 100% of value-serving responses are frozen records; AST boundary test green in CI on every push |
-| Reproducibility | Re-running the pipeline on identical sources yields identical `record_hash` set (idempotent) |
+| Reproducibility | Re-running the pipeline on identical sources yields an identical `record_hash` set (idempotent) **unconditionally** — live key or not — via fill-reuse ([ADR-005 addendum](../adr/005-single-ai-seam.md)); `--refill` is the deliberate exception. Stored bytes == hashed bytes on every engine ([ADR-016](../adr/016-decimal-scale-contract.md)) |
 | Harmonisation review rate | <15% of records flagged for review on the two BAG sources (tune threshold) |
 | API read latency | p95 < 200 ms for single-record reads (cached), < 500 ms for search |
 | Freshness | New source version reflected (frozen + served) within 24 h of publication |
@@ -106,13 +106,27 @@ For example GTIN 4003053091007 moved v1 `Diätetische Lebensmittel` → v2
 and one v2 fill carried a literal `ä` escape artifact. Live category fills are **not
 byte-stable across runs**. This was contained rather than catastrophic: the UNIQUE
 constraints + append-only versioning produced **zero duplicate hashes**, every variant
-is audit-logged at 0.75 confidence and routes to the review queue. Stated precisely: the
-reproducibility target holds **unconditionally** for gap-free sources (EAL: zero AI
-calls) and for SL's 10 252 gap-free records; for the 47 AI-gap records it holds **only
-without a live key**. The deterministic core is reproducible; the live-fill seam is not,
-which is exactly why fills are never trusted as final and always land in review. This is
-tracked as an open follow-up (re-version churn on re-ingest with a live key — decision
-pending with the owner; cf. [ADR-015](../adr/015-epl-sl-fhir-ingestion.md)).
+is audit-logged at 0.75 confidence and routes to the review queue. That measured churn —
+**55 re-versions across two re-runs (34 + 21)** — is the motivating finding behind the
+**fill-reuse** decision ([ADR-005 addendum](../adr/005-single-ai-seam.md)).
+
+**Resolution (2026-06-12) — fill-reuse.** With fill-reuse the reproducibility target now
+holds **unconditionally**: when a row's deterministic pre-fill content is unchanged from
+the latest frozen version, the pipeline carries that version's AI fills forward with **no
+model call**, so freeze reproduces the identical `record_hash` and the re-ingest dedupes —
+whether or not a live key is present (the same path also fixes the inverse key-less
+re-version). Identical sources therefore yield an identical `record_hash` set in all cases;
+`--refill` is the deliberate exception for when a re-fill *should* supersede the prior
+version. Reuse provenance is recorded in the audit `detail`, not the record (byte-stability
+trade-off). Separately, the silent-rounding risk on insert is closed by the canonical scale
+contract — stored bytes provably equal hashed bytes on every engine
+([ADR-016](../adr/016-decimal-scale-contract.md)). The 55-re-version finding is retained
+above as the contemporaneous evidence that motivated the change.
+
+This property is now **live-measured**: a full-export reuse leg with a deliberately invalid
+key froze **0 of 10 299** records (any model call would have failed → drift → `frozen > 0`,
+so `frozen = 0` is airtight zero-API proof), 29 % faster than the first ingest — see the
+[live fill-reuse proof](../evidence/2026-06-12-sl-live-ingest.md#addendum-2026-06-12-live-fill-reuse-proof).
 
 ### Per-source comparative summary
 

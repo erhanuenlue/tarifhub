@@ -14,8 +14,10 @@ AI seam lives behind ``ingestion.pipeline`` (pre-freeze) and is import-guarded.
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, HTTPException, Query, Request
+from pydantic import BaseModel
 
 from tarifhub_ingest import __version__
 from tarifhub_ingest.audit.audit_logger import AuditLogger
@@ -25,6 +27,17 @@ from tarifhub_ingest.ingestion.pipeline import run_pipeline
 from tarifhub_ingest.ingestion.source_loader import default_sample_dir, discover_samples
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
+
+
+class IngestSampleResponse(BaseModel):
+    """Summary of a sample-pipeline run (the POST /ingest/sample output contract)."""
+
+    processed: int
+    frozen: int
+    skipped_existing: int
+    flagged_for_review: int
+    refill: bool
+    tariff_codes: list[str]
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -70,8 +83,18 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             raise HTTPException(status_code=404, detail=f"tariff_code {tariff_code!r} not found")
         return record.model_dump(mode="json")
 
-    @app.post("/ingest/sample")
-    def ingest_sample(request: Request) -> dict:
+    @app.post(
+        "/ingest/sample",
+        response_model=IngestSampleResponse,
+        summary="Run the offline sample pipeline (set refill=true to re-fill AI gaps)",
+    )
+    def ingest_sample(
+        request: Request,
+        refill: Annotated[
+            bool,
+            Query(description="Bypass AI fill-reuse and re-run ai_map for changed/unchanged rows"),
+        ] = False,
+    ) -> IngestSampleResponse:
         active: Settings = request.app.state.settings
         repo: TariffRepository = request.app.state.repo
         audit: AuditLogger = request.app.state.audit
@@ -80,15 +103,16 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         if not specs:
             raise HTTPException(status_code=404, detail=f"no sample sources under {sample_dir}")
         report = run_pipeline(
-            specs, repo, audit, settings=active, embedder=get_embedder(active)
+            specs, repo, audit, settings=active, embedder=get_embedder(active), refill=refill
         )
-        return {
-            "processed": report.processed,
-            "frozen": report.frozen,
-            "skipped_existing": report.skipped_existing,
-            "flagged_for_review": report.flagged_for_review,
-            "tariff_codes": [record.tariff_code for record in report.records],
-        }
+        return IngestSampleResponse(
+            processed=report.processed,
+            frozen=report.frozen,
+            skipped_existing=report.skipped_existing,
+            flagged_for_review=report.flagged_for_review,
+            refill=refill,
+            tariff_codes=[record.tariff_code for record in report.records],
+        )
 
     return app
 
