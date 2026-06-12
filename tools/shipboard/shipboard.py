@@ -1626,9 +1626,8 @@ function closeInsp(){document.getElementById('insp').classList.remove('on');docu
 async function inspect(type,a,b){
   const q = type==='phase'?('type=phase&id='+a)
     : type==='agent'?('type=agent&ts='+encodeURIComponent(a)+'&agent='+encodeURIComponent(b))
-    : type==='model'?('type=model&id='+encodeURIComponent(a))
-    : type==='adr'?('type=adr&id='+encodeURIComponent(a))
-    : type==='commit'?('type=commit&id='+encodeURIComponent(a))
+    : (type==='model'||type==='adr'||type==='commit'||type==='note'||type==='ghrun'||type==='ghpr')
+      ?('type='+type+'&id='+encodeURIComponent(a))
     : ('type='+type);
   let d; try{ d = await (await fetch('/detail?'+q)).json(); }catch(e){ d={err:'fetch failed'}; }
   const it=document.getElementById('it'), ib=document.getElementById('ib');
