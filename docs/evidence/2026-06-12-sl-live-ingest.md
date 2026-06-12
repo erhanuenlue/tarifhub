@@ -267,3 +267,65 @@ with a live key — decision pending with the owner; cf.
 | parse + map + ai_map (47 live calls) + validate + score + freeze + e5 embed + store | 574 s total |
 | effective throughput | ~18 rec/s (10 299 records) |
 | run window | 2026-06-11 22:07–22:16 UTC |
+
+---
+
+## Addendum (2026-06-12) — live fill-reuse proof
+
+The §6 re-version churn (the measured motivating finding) is closed by **fill-reuse**
+([ADR-005 addendum](../adr/005-single-ai-seam.md)). This addendum captures the live proof
+on the full June export (dev Postgres, multilingual-e5, branch CLI
+`python -m tarifhub_ingest.cli`).
+
+**Baseline (frozen set before the runs).** SL 10 354 rows (v1 10 299 / v2 39 / v3 16),
+EAL 1 279.
+
+### RUN 1 — reuse leg, deliberately INVALID API key
+
+The key is intentionally invalid: any attempted Claude call would fail → fall back →
+content drift → `frozen > 0`. So `frozen = 0` is an **airtight zero-API proof** — the
+reuse path never reached the model.
+
+| metric | value |
+|---|---|
+| processed | 10 299 |
+| frozen | **0** |
+| skipped (idempotent) | 10 299 |
+| flagged for review | 111 |
+| parse failures (GTIN-less, fail-closed) | 109 |
+| wall clock | **409 s** (vs 574 s first ingest, **−29 %**) |
+| version distribution | unchanged (v1 10 299 / v2 39 / v3 16) |
+| audit rows with `ai_fills_reused: true` | 10 299 |
+| `'AI harmonization failed'` warnings | **0** |
+
+Sample audit detail:
+
+```json
+{"errors": [], "warnings": [], "ai_fills_reused": true, "reused_from_version": 1}
+```
+
+### RUN 2 — deliberate `--refill`, real key
+
+| metric | value |
+|---|---|
+| processed | 10 299 |
+| frozen | **20** |
+| skipped (idempotent) | 10 279 |
+| wall clock | 476 s |
+| post-run SL versions | v1 10 299 / v2 40 / v3 26 / v4 9 |
+
+Sample v4 refills:
+
+| GTIN | category fill |
+|---|---|
+| 4003053091007 | `Spezialnahrung` |
+| 4003053096323 | `Spezialnahrung (Säuglinge)` |
+| 5016533092066 | `Spezialnahrung bei Stoffwechselerkrankungen` |
+
+**The nuance (stated explicitly):** only **20 of the ~47 gap records** re-versioned under
+`--refill`. The other fresh fills came back **byte-identical to the stored latest and were
+deduped by hash** — even with `--refill` forcing a fresh model call. So the contract holds
+in **both** directions: unchanged fills carry forward with no call (RUN 1), and a forced
+re-fill that lands on the same value still dedupes by hash rather than minting noise (RUN 2).
+
+**EAL untouched** — 1 279 records, all v1, across both runs. Logs clean.

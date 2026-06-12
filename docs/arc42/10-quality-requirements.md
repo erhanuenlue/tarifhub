@@ -123,6 +123,11 @@ contract — stored bytes provably equal hashed bytes on every engine
 ([ADR-016](../adr/016-decimal-scale-contract.md)). The 55-re-version finding is retained
 above as the contemporaneous evidence that motivated the change.
 
+This property is now **live-measured**: a full-export reuse leg with a deliberately invalid
+key froze **0 of 10 299** records (any model call would have failed → drift → `frozen > 0`,
+so `frozen = 0` is airtight zero-API proof), 29 % faster than the first ingest — see the
+[live fill-reuse proof](../evidence/2026-06-12-sl-live-ingest.md#addendum-2026-06-12-live-fill-reuse-proof).
+
 ### Per-source comparative summary
 
 | | EAL (Analysenliste) | SL (Spezialitätenliste) |
