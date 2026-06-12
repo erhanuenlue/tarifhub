@@ -829,14 +829,20 @@ def alerts(u, p, phases, ghd):
         out.append({"lvl": "warn", "msg": f"{dl} days to submission"})
     return out[:8]
 
+def _phid(v):
+    """Normalize phase ids: '01', 'phase01', '1', 'phase 1' → '01'."""
+    m = re.search(r"(\d{1,2})", str(v or ""))
+    return m.group(1).zfill(2) if m else ""
+
 def compute_phases(ev, u, p, ghd):
     phases = {x[0]: {"status": "pending", "detail": "", "ts": "", "src": ""} for x in PHASES}
     explicit = set()
     for e in ev:
-        if e.get("kind") == "phase" and e.get("phase") in phases:
-            phases[e["phase"]] = {"status": e.get("status", "?"), "detail": e.get("detail", ""),
-                                  "ts": (e.get("ts", "") or "")[11:19] or e.get("ts", ""), "src": "emit"}
-            explicit.add(e["phase"])
+        ph = _phid(e.get("phase"))
+        if e.get("kind") == "phase" and ph in phases:
+            phases[ph] = {"status": e.get("status", "?"), "detail": e.get("detail", ""),
+                          "ts": (e.get("ts", "") or "")[11:19] or e.get("ts", ""), "src": "emit"}
+            explicit.add(ph)
     for ph, st in (u.get("sensed") or {}).items():
         if ph in phases and ph not in explicit:
             phases[ph] = {"status": st["status"], "detail": st["detail"], "ts": st["ts"], "src": "sensed"}
@@ -893,7 +899,7 @@ def state():
         seen.add((e.get("agent") or e.get("phase") or "", e.get("status", ""), hms[:5]))
         feed.append({"ts": hms, "kind": e.get("kind", "?"), "status": e.get("status", ""),
                      "agent": e.get("agent", ""), "model": e.get("model", ""),
-                     "phase": e.get("phase") or "", "detail": e.get("detail", ""), "src": "hook"})
+                     "phase": _phid(e.get("phase")), "detail": e.get("detail", ""), "src": "hook"})
     for d in u["delegations"]:
         for st, tt in (("active", d["ts"]), ("done", d.get("done_ts") if d["done"] else "")):
             if not tt:
