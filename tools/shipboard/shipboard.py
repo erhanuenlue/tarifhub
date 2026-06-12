@@ -691,6 +691,61 @@ def gh_info():
     _GH["data"] = data
     return data
 
+# ---------------- github full view (cached 30s, fail-soft) ----------------
+
+_GHF = {"ts": 0.0, "data": None}
+
+def _gh_json(args, timeout=6):
+    try:
+        r = subprocess.run(["gh", *args], cwd=ROOT, capture_output=True, text=True, timeout=timeout)
+        if r.returncode == 0 and r.stdout.strip():
+            return json.loads(r.stdout)
+    except Exception:
+        pass
+    return None
+
+def github_full():
+    now = time.time()
+    if _GHF["data"] is not None and now - _GHF["ts"] < 30:
+        return _GHF["data"]
+    _GHF["ts"] = now
+    repo = _gh_json(["repo", "view", "--json",
+                     "name,description,visibility,defaultBranchRef,diskUsage,pushedAt,url"])
+    runs = _gh_json(["run", "list", "--limit", "15", "--json",
+                     "databaseId,workflowName,status,conclusion,headBranch,event,createdAt,displayTitle"]) or []
+    prs = _gh_json(["pr", "list", "--state", "all", "--limit", "15", "--json",
+                    "number,title,state,headRefName,statusCheckRollup,mergedAt,createdAt"]) or []
+    for pr in prs:
+        ok = fail = pend = 0
+        for c in pr.get("statusCheckRollup") or []:
+            v = (c.get("conclusion") or c.get("state") or "").upper()
+            if v == "SUCCESS":
+                ok += 1
+            elif v in ("FAILURE", "ERROR", "TIMED_OUT", "STARTUP_FAILURE"):
+                fail += 1
+            else:
+                pend += 1
+        pr["checks"] = {"ok": ok, "fail": fail, "pend": pend}
+        pr.pop("statusCheckRollup", None)
+    branches = []
+    for l in _git("for-each-ref", "refs/heads", "--sort=-committerdate",
+                  "--format=%(refname:short)|%(committerdate:relative)|%(subject)").splitlines()[:10]:
+        p = l.split("|", 2)
+        if len(p) == 3:
+            branches.append({"n": p[0], "age": p[1], "s": p[2][:60]})
+    ops = []
+    for l in _git("reflog", "-n", "18", "--format=%h|%gs").splitlines():
+        p = l.split("|", 1)
+        if len(p) == 2:
+            kind = p[1].split(":")[0].split(" ")[0]
+            ops.append({"h": p[0], "k": kind[:12], "s": p[1][:96]})
+    data = {"repo": repo, "runs": runs, "prs": prs, "branches": branches,
+            "current": _git("branch", "--show-current"), "ops": ops,
+            "gh_ok": bool(repo or runs or prs),
+            "updated": time.strftime("%H:%M:%S")}
+    _GHF["data"] = data
+    return data
+
 # ---------------- project (cached 5s) ----------------
 
 _P = {"ts": 0.0, "data": None}
@@ -1011,6 +1066,28 @@ def detail(q):
                 return {"type": "adr", "title": nid,
                         "body": "\n".join(body.splitlines()[:80])[:5000]}
         return {"err": "note not found"}
+    if typ == "ghrun":
+        rid = (q.get("id") or [""])[0]
+        if not re.fullmatch(r"\d{1,15}", rid or ""):
+            return {"err": "bad run id"}
+        try:
+            r = subprocess.run(["gh", "run", "view", rid], cwd=ROOT,
+                               capture_output=True, text=True, timeout=10)
+            body = r.stdout[:6000] if r.returncode == 0 else (r.stderr[:600] or "gh failed")
+        except Exception as ex:
+            body = f"gh unavailable: {ex}"
+        return {"type": "commit", "hash": "workflow run " + rid, "body": body}
+    if typ == "ghpr":
+        nid = (q.get("id") or [""])[0]
+        if not re.fullmatch(r"\d{1,6}", nid or ""):
+            return {"err": "bad pr id"}
+        try:
+            r = subprocess.run(["gh", "pr", "view", nid], cwd=ROOT,
+                               capture_output=True, text=True, timeout=10)
+            body = r.stdout[:6000] if r.returncode == 0 else (r.stderr[:600] or "gh failed")
+        except Exception as ex:
+            body = f"gh unavailable: {ex}"
+        return {"type": "commit", "hash": "PR #" + nid, "body": body}
     if typ == "gates":
         return {"type": "gates", "list": t["gatehist"][::-1][:25]}
     if typ == "tasks":
@@ -1156,6 +1233,20 @@ border:1px solid var(--edge);border-radius:10px;padding:10px 12px;overflow-x:aut
 .cirow .ok{color:var(--ok)} .cirow .bad{color:var(--fail)} .cirow .pend{color:var(--run)}
 .flag{display:inline-block;font-family:'JetBrains Mono';font-size:10.5px;margin:2px 8px 2px 0;color:var(--dim)}
 .flag.on{color:var(--ok)} .flag.off{color:var(--fail)}
+.pill{font-family:'JetBrains Mono';font-size:9.5px;font-weight:600;letter-spacing:.06em;padding:1px 8px;border-radius:99px;text-transform:uppercase}
+.pill.open{background:rgba(52,211,153,.15);color:var(--ok)}
+.pill.merged{background:rgba(196,181,253,.16);color:var(--vio)}
+.pill.closed{background:rgba(248,113,113,.15);color:var(--fail)}
+.pill.success{background:rgba(52,211,153,.15);color:var(--ok)}
+.pill.failure{background:rgba(248,113,113,.15);color:var(--fail)}
+.pill.live{background:rgba(251,191,36,.15);color:var(--run);animation:pulse 1.4s infinite}
+.ghrow{display:flex;gap:10px;align-items:baseline;font-family:'JetBrains Mono';font-size:11.5px;color:var(--dim);
+padding:4px 8px;border-bottom:1px solid rgba(125,211,252,.07);cursor:pointer}
+.ghrow:hover{background:rgba(255,255,255,.05)}
+.ghrow .gt{color:var(--faint);min-width:78px}
+.ghrow b{color:#fff}
+.ghrow .gtitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.opk{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.05em;color:var(--cyan);min-width:74px;text-transform:uppercase}
 .hbar{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono';font-size:10.5px;color:var(--dim);margin:3px 0}
 .hbar .hn{min-width:86px;text-align:right;color:var(--faint)}
 .hbar .hb{height:8px;border-radius:4px;background:linear-gradient(90deg,var(--sky),var(--cyan))}
@@ -1186,6 +1277,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="tab" data-v="agents">Agents<span class="kbd">3</span></div>
     <div class="tab" data-v="project">Project<span class="kbd">4</span></div>
     <div class="tab" data-v="graphs">Graphs<span class="kbd">5</span></div>
+    <div class="tab" data-v="github">GitHub<span class="kbd">6</span></div>
   </div>
 </div>
 
@@ -1328,7 +1420,37 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   </div>
 </div>
 
-<div class="foot">shipboard v8.3 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify · keys: 1-5 tabs, Esc closes inspector</div>
+<div class="view" id="v-github">
+  <div class="grid5">
+    <div class="cell"><div class="k">Repository</div><div class="v" id="gh1">—</div><div class="s" id="gh1b"></div></div>
+    <div class="cell"><div class="k">Branch</div><div class="v" id="gh2">—</div><div class="s" id="gh2b"></div></div>
+    <div class="cell"><div class="k">Last push</div><div class="v" id="gh3">—</div><div class="s" id="gh3b"></div></div>
+    <div class="cell"><div class="k">Pull requests</div><div class="v" id="gh4">—</div><div class="s" id="gh4b"></div></div>
+    <div class="cell"><div class="k">CI on main</div><div class="v" id="gh5">—</div><div class="s" id="gh5b"></div></div>
+  </div>
+  <div class="mid">
+    <div class="panel">
+      <div class="k">Workflow runs — click for the run summary</div>
+      <div id="ghruns">—</div>
+    </div>
+    <div class="panel">
+      <div class="k">Pull requests (all states) — click for details</div>
+      <div id="ghprs">—</div>
+    </div>
+  </div>
+  <div class="mid">
+    <div class="panel">
+      <div class="k">Branches</div>
+      <div id="ghbr">—</div>
+    </div>
+    <div class="panel">
+      <div class="k">Git operations (reflog — commits, merges, pulls, checkouts)</div>
+      <div id="ghops">—</div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">shipboard v8.5 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify · keys: 1-6 tabs, Esc closes inspector</div>
 </div>
 <div id="ovl" onclick="closeInsp()"></div>
 <div id="insp"><div class="ih"><span class="it" id="it">inspector</span><span class="ix" onclick="closeInsp()">✕</span></div><div class="ib" id="ib">—</div></div>
@@ -1349,14 +1471,55 @@ function showTab(v){
   document.querySelectorAll('.view').forEach(x=>x.classList.remove('on'));
   document.getElementById('v-'+v).classList.add('on');
   if(v==='graphs') loadGraphs();
+  if(v==='github') loadGitHub();
 }
 document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>showTab(el.dataset.v));
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='Escape') closeInsp();
-  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs'}[e.key];
+  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github'}[e.key];
   if(m) showTab(m);
 });
+// ---------- github tab ----------
+const ghWhen = t => t ? (t.slice(5,10).replace('-','.')+' '+t.slice(11,16)) : '';
+async function loadGitHub(){
+  let g; try{ g = await (await fetch('/github')).json(); }catch(e){ return; }
+  const r=g.repo||{};
+  document.getElementById('gh1').textContent = r.name || '—';
+  document.getElementById('gh1b').textContent = r.name ? ((r.visibility||'')+' · '+((r.diskUsage||0)/1024).toFixed(1)+' MB') : (g.gh_ok?'':'gh unavailable — local git only');
+  document.getElementById('gh2').textContent = g.current || '—';
+  document.getElementById('gh2b').textContent = (r.defaultBranchRef?('default: '+r.defaultBranchRef.name+' · '):'')+(g.branches||[]).length+' local branches';
+  document.getElementById('gh3').textContent = r.pushedAt ? ghWhen(r.pushedAt) : '—';
+  document.getElementById('gh3b').textContent = r.url ? r.url.replace('https://','') : '';
+  const open=(g.prs||[]).filter(p=>p.state==='OPEN'), merged=(g.prs||[]).filter(p=>p.state==='MERGED');
+  document.getElementById('gh4').textContent = open.length+' open';
+  document.getElementById('gh4b').textContent = merged.length+' merged · '+((g.prs||[]).length-open.length-merged.length)+' closed (last 15)';
+  const mainRun=(g.runs||[]).find(x=>x.headBranch==='main');
+  const mr=mainRun?(mainRun.conclusion||mainRun.status||'?'):'—';
+  const el5=document.getElementById('gh5'); el5.textContent=mr;
+  el5.style.color=mr==='success'?'var(--ok)':(mr==='failure'?'var(--fail)':'var(--run)');
+  document.getElementById('gh5b').textContent=mainRun?(mainRun.workflowName+' · '+ghWhen(mainRun.createdAt)):'';
+  document.getElementById('ghruns').innerHTML=(g.runs||[]).map(x=>{
+    const st=x.conclusion||x.status||'?';
+    const cls=st==='success'?'success':(st==='failure'?'failure':'live');
+    return '<div class="ghrow" onclick="inspect(\'ghrun\',\''+x.databaseId+'\')"><span class="gt">'+ghWhen(x.createdAt)+'</span>'+
+      '<span class="pill '+cls+'">'+esc(st)+'</span><b>'+esc(x.workflowName||'')+'</b>'+
+      '<span class="gtitle">'+esc(x.displayTitle||'')+'</span><span class="fsrc">'+esc(x.headBranch||'')+'</span></div>';
+  }).join('')||'<div class="empty">no workflow runs visible — is gh installed and authed?</div>';
+  document.getElementById('ghprs').innerHTML=(g.prs||[]).map(p=>{
+    const st=(p.state||'').toLowerCase();
+    const ck=p.checks&&p.state==='OPEN'?(' <span class="ok" style="color:var(--ok)">'+p.checks.ok+'✓</span>'+(p.checks.fail?' <span style="color:var(--fail)">'+p.checks.fail+'✗</span>':'')+(p.checks.pend?' <span style="color:var(--run)">'+p.checks.pend+'◌</span>':'')):'';
+    return '<div class="ghrow" onclick="inspect(\'ghpr\',\''+p.number+'\')"><span class="gt">#'+p.number+'</span>'+
+      '<span class="pill '+st+'">'+esc(st)+'</span><span class="gtitle">'+esc(p.title||'')+ck+'</span>'+
+      '<span class="fsrc">'+esc(p.headRefName||'')+'</span></div>';
+  }).join('')||'<div class="empty">no pull requests yet</div>';
+  document.getElementById('ghbr').innerHTML=(g.branches||[]).map(b=>
+    '<div class="ghrow" style="cursor:default"><b>'+esc(b.n)+(b.n===g.current?' ←':'')+'</b><span class="gt">'+esc(b.age)+'</span><span class="gtitle">'+esc(b.s)+'</span></div>'
+  ).join('')||'<div class="empty">—</div>';
+  document.getElementById('ghops').innerHTML=(g.ops||[]).map(o=>
+    '<div class="ghrow" onclick="inspect(\'commit\',\''+esc(o.h)+'\')"><span class="opk">'+esc(o.k)+'</span><span class="gtitle">'+esc(o.s)+'</span><span class="fsrc">'+esc(o.h)+'</span></div>'
+  ).join('')||'<div class="empty">no operations yet</div>';
+}
 // ---------- graphs tab: vault wikilink graph (canvas force layout) + graphify iframe ----------
 let VGanim=null;
 function drawVG(g){
@@ -1533,7 +1696,7 @@ function spark(id, pts, key, color){
                   '<path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="1.8"/>' +
                   '<circle cx="'+lx+'" cy="'+ly+'" r="2.8" fill="'+color+'" class="sparkdot"/>';
 }
-let lastFeedTs=null;
+let lastFeedTs=null, tickN=0;
 function setV(id, txt){
   const el=document.getElementById(id); if(!el) return;
   if(el.textContent!==txt){ el.textContent=txt; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
@@ -1727,6 +1890,8 @@ async function tick(){
     const sc=a.s==='superseded'?'sup':(a.s==='accepted'?'acc':(a.s?'oth':''));
     return '<div class="lst clk'+(sc==='sup'?' sup':'')+'" onclick="inspect(\'adr\',\''+esc(a.f)+'\')">'+(a.s?'<span class="adrb '+sc+'">'+esc(a.s.slice(0,10))+'</span>':'· ')+esc(a.t)+'</div>';
   }).join('')||'<div class="lst">none yet</div>';
+  // live refresh of the GitHub tab while it's open (~16s, matched to the 30s server cache)
+  if(document.getElementById('v-github').classList.contains('on') && tickN++%8===0) loadGitHub();
 }
 tick(); setInterval(tick, 2000);
 </script></body></html>"""
@@ -1746,6 +1911,9 @@ class H(BaseHTTPRequestHandler):
             ct = "application/json"
         elif url.path == "/vaultgraph":
             body = json.dumps(vault_graph()).encode()
+            ct = "application/json"
+        elif url.path == "/github":
+            body = json.dumps(github_full()).encode()
             ct = "application/json"
         elif url.path == "/graphify":
             gf = ROOT / "graphify-out" / "graph.html"
