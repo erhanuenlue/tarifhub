@@ -95,10 +95,66 @@ AST and asserts that none imports `anthropic`, `openai`, `cohere`, `langchain` o
 - `services/intelligence/tests/test_determinism_boundary.py` scans the TarifIQ rule-
   evaluation path (`main.py`, rules, crosswalk, validators, store).
 
-These run in the offline suite and again, **visibly**, as a dedicated CI step that prints
-the boundary tests with `-v`; CI fails if any LLM client appears on a value path. Because
+All three run in the offline suite and in CI's per-service test loop on every push; the
+ingestion and serving (value-path) suites run **again, visibly**, as a dedicated CI step
+that prints them with `-v`. CI fails if any LLM client appears on a value path. Because
 the guarantee is structural (the import graph cannot reach a model), the boundary stays
 green by construction, not by reviewer discipline.
+
+## Tests der KI-Anteile
+
+The CAS rubric asks that the test strategy show **"Tests der KI-Anteile berücksichtigt"** —
+that the AI parts are themselves tested, not just the deterministic majority. TarifHub's AI
+portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
+only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path
+for search. Its tests therefore fall into four families — a **guardrail** test of the
+boundary itself, **no-call** tests of the gap gate, **non-deterministic-output handling**
+tests of fill-reuse, and **fail-closed parsing** tests of the schema validation that treats
+model output as untrusted.
+
+#### 1 · Guardrail — the boundary itself
+
+The AST boundary tests are described in full above (*The determinism acceptance gate*):
+`services/serving/tests/test_serving_boundary.py`,
+`services/ingestion/tests/test_determinism_boundary.py` and
+`services/intelligence/tests/test_determinism_boundary.py`. This is the test *of* the AI
+boundary — the AI-portion test with the highest leverage, since a single failure proves a
+model became reachable on a value path. Verifies **NfA-1** ([§10](10-quality-requirements.md)).
+
+#### 2 · Gap-gate — the no-call paths
+
+`services/ingestion/tests/test_ai_mapper.py` proves the pipeline makes **zero** model calls
+when there is nothing to fill or no key is present:
+`test_gap_gate_skips_call_when_nothing_fillable`,
+`test_gap_gate_invokes_call_when_a_gap_exists` and
+`test_no_api_key_returns_deterministic_and_never_calls_parse`. The EAL live run — **0 API
+calls over 1,279 complete rows** ([§10](10-quality-requirements.md)) — is exactly this
+behaviour observed at scale.
+
+#### 3 · Fill-reuse — handling non-deterministic AI output
+
+Live model output is **not** byte-stable across runs (the measured 55 re-versions,
+[§10](10-quality-requirements.md)); `services/ingestion/tests/test_fill_reuse.py` pins the
+mechanism that makes the pipeline reproducible anyway:
+`test_reuse_makes_zero_api_calls`, `test_keyless_reuse_still_skips`,
+`test_changed_content_takes_normal_path`, `test_refill_bypasses_reuse` and
+`test_audit_detail_carries_reuse_provenance` — with further byte-exactness legs in the same
+suite (e.g. `test_strip_to_prefill_reverses_a_category_fill_byte_exactly`). Verifies
+**NfA-2** ([§10](10-quality-requirements.md)).
+
+#### 4 · Schema-validation — fail-closed on untrusted model output
+
+Model output is treated as untrusted input. `services/ingestion/tests/test_ai_mapper.py`
+asserts that refusals, empty strings and parse failures all degrade to the deterministic
+path: `test_fill_only_does_not_overwrite_existing`,
+`test_empty_string_output_is_normalized_to_none`,
+`test_refusal_or_none_output_is_error_path` and `test_parse_raises_falls_back_safely`;
+and `services/ingestion/tests/test_mapper.py`'s
+`test_ai_map_offline_does_not_alter_billing_values` confirms billing fields are structurally
+unreachable for the seam to touch.
+
+All four families run in the **offline default suite** (no key, no network) and again in CI
+on every push — the AI portion is tested without ever needing the AI.
 
 ## What CI runs per PR
 
