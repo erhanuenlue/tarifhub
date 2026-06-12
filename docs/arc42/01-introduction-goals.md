@@ -15,7 +15,7 @@ Switzerland's ambulatory tariff data is fragmented. Roughly 110 active tariff ty
 
 One trustworthy machine interface to ambulatory tariff data — in its three elements:
 
-- **Zielgruppe:** PIS/HIS vendors as machine consumers (REST/FHIR), tariff experts who review uncertain mappings, practice users who look up records in the console, and AI agents that read frozen data over MCP.
+- **Zielgruppe:** PIS/HIS vendors as machine consumers (REST/OpenAPI + FHIR R4 read), tariff experts who review uncertain mappings, practice users who look up records in the console, and AI agents that read frozen data over MCP.
 - **Bedürfnis:** one versioned, provenance-carrying interface where a *served value is provably the value that was reviewed and frozen* — replacing per-vendor parsing and hand-reconciled version transitions with a single auditable source.
 - **Abgrenzung:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, benchmarking, and the review POST loop (design scope only).
 
