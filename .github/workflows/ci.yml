@@ -18,7 +18,7 @@ jobs:
       UV_FROZEN: "1"
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v8.2.0 # exact tag: astral-sh has no floating v8 alias yet
       - name: Lint + test (offline suite — SQLite mirror, stub embedder)
         run: |
           for svc in services/*/; do
@@ -62,7 +62,7 @@ jobs:
           --health-retries 10
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v8.2.0 # exact tag: astral-sh has no floating v8 alias yet
       - name: Read parity (ingestion + serving) against Postgres 16 + pgvector
         run: |
           for svc in services/ingestion services/serving; do
