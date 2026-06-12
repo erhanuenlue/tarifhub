@@ -1177,6 +1177,8 @@ border:1px solid var(--edge);margin-bottom:5px;color:var(--dim)}
 .bcol.done .kitem{border-left-color:var(--ok)}
 .bcol .kitem:hover{border-color:var(--cyan);background:rgba(13,46,72,.7)}
 .bcol .empty{padding:8px;font-size:11px}
+.bcol .kitem.fail{border-left-color:var(--fail)}
+.btag{font-family:'JetBrains Mono';font-size:8.5px;letter-spacing:.04em;text-transform:uppercase;color:var(--faint);border:1px solid var(--edge);border-radius:4px;padding:0 4px;margin-right:6px;vertical-align:1px}
 .charts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
 .chart svg{width:100%;height:64px;display:block;margin-top:6px}
 .chart .cv{font-family:'JetBrains Mono';font-size:13px;color:var(--paper);float:right}
@@ -1772,19 +1774,30 @@ function feedRow(e, fresh){
 // ---------- board tab (reflective task board, tab 7) ----------
 function renderBoard(s){
   const el=document.getElementById('boardcols'); if(!el) return;
-  const u=s.usage||{}, todos=u.todos||[];
-  const G={pending:[],in_progress:[],completed:[]};
-  todos.forEach((t,i)=>{(G[t.status]||G.pending).push({_i:i,content:t.content,status:t.status});});
-  const card=t=>'<div class="kitem'+(t.status==='in_progress'?' doing':(t.status==='completed'?' done':''))+'" onclick="boardTask('+t._i+')">'+(t.status==='completed'?'✓ ':'')+esc(t.content)+'</div>';
-  let doing=G.in_progress.map(card).join(''), doingN=G.in_progress.length;
-  if(!doing && s.active && s.active.length){
-    doing=s.active.map(a=>'<div class="kitem doing dlgc" onclick="inspect(\'agent\',\''+esc(a.ts)+'\',\''+esc(a.agent)+'\')"><span class="dot"></span><b>'+esc(a.agent)+'</b>'+(a.desc?' — '+esc(a.desc):'')+'<span class="meta">'+elapsed(a.ts)+'</span></div>').join('');
-    doingN=s.active.length;
-  }
-  const col=(name,cls,items,n,wip)=>'<div class="bcol '+cls+'"><div class="bhead"><span class="bsw"></span><span class="bname">'+name+'</span><span class="bcnt">'+n+'</span>'+(wip?'<span class="bwip'+(n>wip?' over':'')+'">WIP '+n+' / '+wip+'</span>':'')+'</div><div class="blist">'+(items||'<div class="empty">none</div>')+'</div></div>';
-  el.innerHTML=col('Pending','pending',G.pending.map(card).join(''),G.pending.length,0)
-    +col('In progress','doing',doing,doingN,5)
-    +col('Done','done',G.completed.map(card).join(''),G.completed.length,0);
+  const u=s.usage||{}, todos=u.todos||[], dels=u.delegations||[], phs=s.phases||{};
+  const pend=[], prog=[], done=[];
+  // 1) /ship pipeline phases — the backbone of "what's done / in progress"
+  (typeof PH!=='undefined'?PH:[]).forEach(ph=>{
+    const st=(phs[ph[0]]||{}).status||'pending';
+    const c={kind:'phase',id:ph[0],label:ph[0]+' · '+ph[1],status:st};
+    if(st==='pass') done.push(c); else if(st==='running'||st==='fail') prog.push(c); else pend.push(c);
+  });
+  // 2) dispatched prompts (sub-agent delegations)
+  dels.forEach(d=>{ const c={kind:'agent',ts:d.ts,agent:d.agent,model:d.model,desc:d.desc,done:!!d.done};
+    (c.done?done:prog).push(c); });
+  // 3) explicit task list (TodoWrite), when the harness tracks one
+  todos.forEach((t,i)=>{ const c={kind:'todo',i:i,label:t.content,status:t.status};
+    if(t.status==='completed') done.push(c); else if(t.status==='in_progress') prog.push(c); else pend.push(c); });
+
+  const card=c=>{
+    if(c.kind==='phase'){ const m=c.status==='pass'?'done':(c.status==='running'?'doing':(c.status==='fail'?'doing fail':''));
+      return '<div class="kitem '+m+'" onclick="inspect(\'phase\',\''+esc(c.id)+'\')"><span class="btag">phase</span>'+(c.status==='running'?'<span class="dot"></span>':'')+esc(c.label)+'<span class="meta">'+esc(c.status)+'</span></div>'; }
+    if(c.kind==='agent')
+      return '<div class="kitem '+(c.done?'done':'doing dlgc')+'" onclick="inspect(\'agent\',\''+esc(c.ts)+'\',\''+esc(c.agent)+'\')"><span class="btag">agent</span>'+(c.done?'':'<span class="dot"></span>')+'<b>'+esc(c.agent)+'</b>'+(c.desc?' — '+esc(c.desc):'')+(c.model?'<span class="meta">'+esc(c.model)+'</span>':'')+'</div>';
+    return '<div class="kitem '+(c.status==='in_progress'?'doing':(c.status==='completed'?'done':''))+'" onclick="boardTask('+c.i+')"><span class="btag">task</span>'+esc(c.label)+'</div>';
+  };
+  const col=(name,cls,items,wip)=>'<div class="bcol '+cls+'"><div class="bhead"><span class="bsw"></span><span class="bname">'+name+'</span><span class="bcnt">'+items.length+'</span>'+(wip?'<span class="bwip'+(items.length>wip?' over':'')+'">WIP '+items.length+' / '+wip+'</span>':'')+'</div><div class="blist">'+(items.map(card).join('')||'<div class="empty">none</div>')+'</div></div>';
+  el.innerHTML=col('Pending','pending',pend,0)+col('In progress','doing',prog,5)+col('Done','done',done,0);
 }
 function boardTask(i){
   const t=(S0&&S0.usage&&S0.usage.todos)?S0.usage.todos[i]:null;
