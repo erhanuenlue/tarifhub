@@ -1014,8 +1014,10 @@ def cas_floor():
         mod._RD.clear()                      # invalidate its file cache — docs change live
         data, base, passed_now = mod.run()
         try:
-            mod.BASELINE.write_text(json.dumps(
-                {"passed": sorted(base | passed_now), "updated": data["generated"]}, indent=1) + "\n")
+            merged = sorted(base | passed_now)
+            if merged != sorted(base):     # write ONLY on real change — no timestamp churn
+                mod.BASELINE.write_text(json.dumps(
+                    {"passed": merged, "updated": data["generated"]}, indent=1) + "\n")
         except Exception:
             pass
         # latest grade-auditor estimate, if any (vault/cas-audit/*.json — /cas-audit writes it)

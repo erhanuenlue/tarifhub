@@ -233,8 +233,10 @@ def main():
     data, base, passed_now = run()
     if not ci:
         try:
-            BASELINE.write_text(json.dumps({"passed": sorted(base | passed_now),
-                                            "updated": data["generated"]}, indent=1) + "\n")
+            merged = sorted(base | passed_now)
+            if merged != sorted(base):     # write only on real change — no timestamp churn
+                BASELINE.write_text(json.dumps({"passed": merged,
+                                                "updated": data["generated"]}, indent=1) + "\n")
         except Exception:
             pass
     if "--json" in sys.argv:
