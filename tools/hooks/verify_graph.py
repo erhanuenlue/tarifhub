@@ -49,6 +49,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--wait-newer-than", type=float, default=None, metavar="EPOCH")
     ap.add_argument("--timeout", type=float, default=90.0)
+    ap.add_argument("--json", action="store_true", help="machine-readable output")
     args = ap.parse_args()
 
     root = Path.cwd()
@@ -73,11 +74,18 @@ def main() -> int:
     junk = [n for n in nodes if _is_junk(str(n.get("source_file", "")), root, patterns)]
     ft = Counter(str(n.get("file_type")) for n in nodes)
 
+    missing = EXPECTED_FILE_TYPES - set(ft)
+    if args.json:
+        print(json.dumps({
+            "nodes": len(nodes), "file_types": dict(ft), "vendored": len(junk),
+            "missing_types": sorted(missing), "healthy": not junk and not missing,
+        }, sort_keys=True))
+        return 0 if (not junk and not missing) else 1
+
     print(f"nodes: {len(nodes)} | file_types: {dict(ft)} | vendored: {len(junk)}")
     for n in junk[:5]:
         print(f"  JUNK: {n.get('source_file')}")
 
-    missing = EXPECTED_FILE_TYPES - set(ft)
     if junk:
         print(f"FAIL: {len(junk)} vendored node(s) in the graph")
         return 1
