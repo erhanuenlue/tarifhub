@@ -145,6 +145,33 @@ class ServingRepository:
         rows = self._conn.execute(query, tuple(params)).fetchall()
         return [self._row_to_record(row) for row in rows]
 
+    def count_latest_keys(self, system: str, *, as_of: date | None = None) -> int:
+        """Count distinct ``(tariff_system, tariff_code)`` keys in one ``system``.
+
+        Counts keys that have at least one qualifying version (all versions when ``as_of``
+        is None; otherwise versions whose validity window covers the date — same predicate
+        as :meth:`list_latest`). Used by the FHIR CodeSystem route to report the TOTAL key
+        count alongside a windowed concept list, so ``count`` is independent of pagination.
+        Parameterised and dialect-portable (``COUNT(DISTINCT ...)`` over a subquery).
+        """
+
+        ph = self._ph
+        validity_sql, validity_params = self._validity_clause(as_of, alias="")
+        where = f"tariff_system = {ph}"
+        params: list[Any] = [system]
+        if validity_sql:
+            where += f" AND {validity_sql}"
+            params.extend(validity_params)
+        query = (
+            "SELECT COUNT(*) AS n FROM ("
+            "SELECT tariff_code FROM tariff "
+            f"WHERE {where} "
+            "GROUP BY tariff_code) keys"
+        )
+        row = self._conn.execute(query, tuple(params)).fetchone()
+        data = dict(row)
+        return int(data["n"])
+
     def _validity_clause(self, as_of: date | None, *, alias: str) -> tuple[str, list[Any]]:
         """Build the point-in-time validity predicate for ``as_of`` (or empty when None).
 

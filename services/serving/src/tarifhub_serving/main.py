@@ -28,6 +28,12 @@ from tarifhub_serving.config import (
 )
 from tarifhub_serving.db import Database
 from tarifhub_serving.explain import build_diff, build_explanation
+from tarifhub_serving.fhir import (
+    ChargeItemDefinition,
+    CodeSystem,
+    to_charge_item_definition,
+    to_code_system,
+)
 from tarifhub_serving.models import (
     DiffResponse,
     ExplainResponse,
@@ -188,6 +194,106 @@ def explain(
         records=records,
         explanation=build_explanation(code, records),
     )
+
+
+_FHIR_STATUS_RULE = (
+    "status is derived ONLY from record data, never from the wall-clock: the selected "
+    "version is 'active' when it is the highest version of its (system, code) key, else "
+    "'retired' (a superseded version). No 'today' is consulted anywhere."
+)
+_FHIR_ID_RULE = (
+    "The FHIR resource id is built as '{system}-{code}-{version}', lower-cased, with every "
+    "character outside [a-z0-9-] (notably the '.' in tariff codes) replaced by '-' so it is "
+    "FHIR-id-safe (e.g. TARDOC/AA.00.0010 v2 -> 'tardoc-aa-00-0010-2')."
+)
+
+
+@app.get(
+    "/api/v1/fhir/ChargeItemDefinition/{system}/{code}",
+    response_model=ChargeItemDefinition,
+    response_model_exclude_none=True,
+    summary="FHIR R4 ChargeItemDefinition for one frozen tariff record",
+    description=(
+        "Maps ONE frozen TariffRecord to a minimal valid R4 ChargeItemDefinition over the "
+        "same value path as the REST routes (read-only; no AI, no value computation). "
+        "Version selection precedence: ?version wins over ?as_of; both absent -> latest "
+        f"version. {_AS_OF_DESCRIPTION} {_FHIR_STATUS_RULE} {_FHIR_ID_RULE} price_chf maps "
+        "to a 'base' priceComponent with a CHF Money amount; tax_points maps to an "
+        "'informational' priceComponent factor (a component is omitted when its field is "
+        "None). FHIR decimals are JSON numbers emitted via float(); at our scales they "
+        "round-trip the stored Decimal exactly. record_hash and source_url are carried as "
+        "valueString extensions under the TarifHub canonical URL space. 404 when the key, "
+        "version or as_of date matches no frozen record."
+    ),
+)
+def fhir_charge_item_definition(
+    repo: RepoDep,
+    system: Annotated[str, Path(description="Tariff system, e.g. TARDOC")],
+    code: Annotated[str, Path(description="Tariff code, e.g. AA.00.0010")],
+    version: Annotated[
+        int | None,
+        Query(ge=1, description="Exact version; wins over as_of when both are supplied"),
+    ] = None,
+    as_of: Annotated[date | None, Query(description=_AS_OF_DESCRIPTION)] = None,
+) -> ChargeItemDefinition:
+    """Resolve one frozen record (version | as_of | latest) and map it to R4, or 404."""
+
+    if version is not None:
+        record = repo.get_version(system, code, version)
+        if record is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"no version {version} for system={system} code={code}",
+            )
+    else:
+        record = repo.get_latest(system, code, as_of=as_of)
+        if record is None:
+            raise HTTPException(
+                status_code=404,
+                detail=f"no frozen record for system={system} code={code}",
+            )
+
+    # is_latest drives the deterministic status rule: compare the selected version with
+    # the unfiltered highest version of the key. No wall-clock is consulted.
+    latest = repo.get_latest(system, code)
+    is_latest = latest is not None and latest.version == record.version
+    return to_charge_item_definition(system, code, record, is_latest=is_latest)
+
+
+@app.get(
+    "/api/v1/fhir/CodeSystem/{system}",
+    response_model=CodeSystem,
+    response_model_exclude_none=True,
+    summary="FHIR R4 CodeSystem for a tariff system's latest-version records",
+    description=(
+        "Maps a tariff system's latest-version (or as-of) records to ONE minimal valid R4 "
+        "CodeSystem (read-only; no AI). content='fragment' is honest: the response carries a "
+        "windowed page (limit/offset), not necessarily the whole catalogue. count is the "
+        "TOTAL number of (system, code) keys in the system, independent of the window. "
+        "status is always 'active' (an aggregate of current records, derived from data not "
+        "the clock). concept entries are ordered by tariff_code ascending (deterministic); "
+        "each carries the German display plus fr/it as concept.designation entries (only "
+        f"when non-null). {_AS_OF_DESCRIPTION} An unknown or empty system returns 404, "
+        "consistent with the other routes."
+    ),
+)
+def fhir_code_system(
+    repo: RepoDep,
+    system: Annotated[str, Path(description="Tariff system, e.g. TARDOC")],
+    as_of: Annotated[date | None, Query(description=_AS_OF_DESCRIPTION)] = None,
+    limit: Annotated[int, Query(ge=1, le=MAX_LIST_LIMIT)] = DEFAULT_LIST_LIMIT,
+    offset: Annotated[int, Query(ge=0)] = 0,
+) -> CodeSystem:
+    """Map a system's latest-version records (windowed) to one R4 CodeSystem, or 404."""
+
+    total = repo.count_latest_keys(system, as_of=as_of)
+    if total == 0:
+        raise HTTPException(
+            status_code=404,
+            detail=f"no frozen records for system={system}",
+        )
+    records = repo.list_latest(system=system, as_of=as_of, limit=limit, offset=offset)
+    return to_code_system(system, records, count=total)
 
 
 @app.get(
