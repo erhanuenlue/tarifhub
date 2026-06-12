@@ -11,7 +11,7 @@ Targets from Architecture v2.1 §12; validated against the measured runs below.
 | Harmonisation review rate | <15% of records flagged for review on the two BAG sources (tune threshold) |
 | API read latency | p95 < 200 ms for single-record reads (cached), < 500 ms for search |
 | Freshness | New source version reflected (frozen + served) within 24 h of publication |
-| Test coverage | Core modules (model, freeze, pipeline, mapper) > 80% line coverage |
+| Test coverage | Core modules (model, freeze, pipeline, mapper) > 80% line coverage — **met, measured 2026-06-12**: serving 95 %, mcp 91 %, ingestion 89 % totals; every core module ≥ 86 % (figures in [§13](13-test-strategy.md), re-printed on every CI run) |
 
 The section below documents measured harmonisation evidence for the determinism, reproducibility and review-rate rows (EAL run 2026-06-11: 1 279/1 279 frozen, review rate 0.0 %; SL run 2026-06-11: 10 299 frozen, review rate 1.08 %, with a measured reproducibility caveat on the 47 AI-gap records — see below).
 

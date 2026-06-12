@@ -117,16 +117,19 @@ Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision)
 ## Coverage
 
 Target: **core modules (model, freeze, pipeline, mapper) > 80 % line coverage**
-([§10](10-quality-requirements.md)). Measured figures are inserted this session by the
-orchestrator.
-
-<!-- COVERAGE: measured figures inserted at phase 03 -->
+([§10](10-quality-requirements.md)). Measured 2026-06-12 (offline suite, `pytest-cov`,
+line coverage; re-measured on every CI run in the `python` job's coverage step):
 
 | Service | Core modules in scope | Measured |
 |---|---|---|
-| `services/serving` | `main`, `repository`, `models` | |
-| `services/ingestion` | `model`, `freeze`, `pipeline`, `mapper` | |
-| `services/mcp` | proxy tools (`server`) | |
+| `services/serving` | `main` 100 %, `repository` 90 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %) | **95 % total** |
+| `services/ingestion` | `tariff_model` 100 %, `freeze_record` 92 %, `pipeline` 100 %, `tariff_mapper` 92 % | **89 % total** |
+| `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **91 % total** |
+
+Every core module is above the 80 % target. The figures are evidence, not a gate: CI
+prints them on every run (report-only by owner decision at gate 01); a hard
+`--cov-fail-under` floor is deliberately deferred until the figures have a few weeks of
+history.
 
 ## Console component tests
 
