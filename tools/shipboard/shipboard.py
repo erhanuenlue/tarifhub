@@ -1035,14 +1035,24 @@ h1 .slash{color:var(--sky)}
 .gauge i{display:block;height:100%;background:linear-gradient(90deg,var(--sky),var(--cyan))}
 .gauge i.warn{background:linear-gradient(90deg,#FBBF24,#F87171)}
 .rail{display:grid;grid-template-columns:repeat(9,1fr);gap:6px;margin-bottom:12px}
-.step{background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:8px 10px;cursor:pointer}
+.step{background:var(--card);border:1px solid var(--edge);border-radius:10px;padding:8px 10px;cursor:pointer;min-width:0}
 .step:hover{border-color:rgba(125,211,252,.5)}
-.step .sn{font-family:'JetBrains Mono';font-size:10px;color:var(--faint);display:flex;justify-content:space-between;gap:4px}
-.step .sl{font-size:12px;font-weight:600;margin-top:2px}
+.step .sn{font-family:'JetBrains Mono';font-size:10px;color:var(--faint);display:flex;justify-content:space-between;gap:4px;overflow:hidden}
+.step .sn span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.step .sn span:first-child{flex-shrink:0}
+.step .sl{font-size:12px;font-weight:600;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .step .se{font-family:'JetBrains Mono';font-size:9.5px;color:var(--faint);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .step.pass{border-color:rgba(52,211,153,.4)} .step.pass .sl{color:var(--ok)}
-.step.running{border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.07)} .step.running .sl{color:var(--run)}
+.step.running{border-color:rgba(251,191,36,.55);background:rgba(251,191,36,.07);animation:runglow 2.4s ease-in-out infinite}
+.step.running .sl{color:var(--run)}
 .step.fail{border-color:rgba(248,113,113,.55)} .step.fail .sl{color:var(--fail)}
+@keyframes runglow{0%,100%{box-shadow:0 0 0 0 rgba(251,191,36,0)}50%{box-shadow:0 0 16px 0 rgba(251,191,36,.28)}}
+@keyframes rowin{0%{background:rgba(34,211,238,.22);transform:translateX(-5px)}100%{background:transparent;transform:none}}
+.feedrow.fresh{animation:rowin 1.1s ease-out}
+@keyframes vbump{0%{color:var(--cyan)}100%{color:inherit}}
+.v.bump{animation:vbump .9s ease-out}
+.sparkdot{animation:pulse 1.4s infinite}
+.badge .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--run);margin-right:6px;animation:pulse 1.4s infinite;vertical-align:1px}
 .mid{display:grid;grid-template-columns:1.6fr 1fr;gap:12px;margin-bottom:12px}
 .alert{display:flex;gap:8px;font-size:12px;padding:6px 10px;border-radius:8px;margin:4px 0;font-family:'JetBrains Mono'}
 .alert.warn{background:rgba(251,191,36,.1);color:var(--run)} .alert.bad{background:rgba(248,113,113,.12);color:var(--fail)}
@@ -1499,8 +1509,15 @@ function spark(id, pts, key, color){
   const xs = i => 4 + i*(W-8)/(pts.length-1);
   const ys = v => H-6 - (v/mx)*(H-16);
   const line = pts.map((p,i)=>(i?'L':'M')+xs(i).toFixed(1)+','+ys(p[key]).toFixed(1)).join(' ');
-  svg.innerHTML = '<path d="'+line+' L'+xs(pts.length-1).toFixed(1)+','+(H-4)+' L4,'+(H-4)+' Z" fill="'+color+'22"/>' +
-                  '<path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="1.8"/>';
+  const lx=xs(pts.length-1).toFixed(1), ly=ys(pts[pts.length-1][key]).toFixed(1);
+  svg.innerHTML = '<path d="'+line+' L'+lx+','+(H-4)+' L4,'+(H-4)+' Z" fill="'+color+'22"/>' +
+                  '<path d="'+line+'" fill="none" stroke="'+color+'" stroke-width="1.8"/>' +
+                  '<circle cx="'+lx+'" cy="'+ly+'" r="2.8" fill="'+color+'" class="sparkdot"/>';
+}
+let lastFeedTs=null;
+function setV(id, txt){
+  const el=document.getElementById(id); if(!el) return;
+  if(el.textContent!==txt){ el.textContent=txt; el.classList.remove('bump'); void el.offsetWidth; el.classList.add('bump'); }
 }
 function timeline(dl){
   const el=document.getElementById('tl'); if(!el) return;
@@ -1539,12 +1556,12 @@ function dlgRow(d){
     :(d.done?' <span class="meta">✓'+(d.dur_s!=null?' '+fdur(d.dur_s):'')+(d.cost!=null?' · $'+d.cost.toFixed(2):'')+'</span>':'');
   return '<div class="dlg" onclick="inspect(\'agent\',\''+esc(d.ts)+'\',\''+esc(d.agent)+'\')">'+(d.ts?d.ts+' · ':'')+'<b>'+esc(d.agent)+'</b> — '+esc(d.desc)+m+tail+'</div>';
 }
-function feedRow(e){
+function feedRow(e, fresh){
   const lbl=e.kind==='agent'?(e.status==='active'?'dispatch':'return'):('ph '+e.phase+' '+e.status);
   const cls=e.kind==='agent'?(e.status==='active'?'active':'done'):e.status;
   const body=e.kind==='agent'?'<b>'+esc(e.agent)+'</b>'+(e.model?' · '+esc(e.model):'')+(e.detail?' — '+esc(e.detail):''):esc(e.detail||'');
   const onc=e.kind==='agent'?' onclick="inspect(\'agent\',\''+esc(e.ts)+'\',\''+esc(e.agent)+'\')"':(e.phase?' onclick="inspect(\'phase\',\''+esc(e.phase)+'\')"':'');
-  return '<div class="feedrow"'+onc+'><span class="ft">'+esc(e.ts)+'</span><span class="fk '+esc(cls)+'">'+esc(lbl)+'</span><span>'+body+'</span><span class="fsrc">'+esc(e.src||'')+'</span></div>';
+  return '<div class="feedrow'+(fresh?' fresh':'')+'"'+onc+'><span class="ft">'+esc(e.ts)+'</span><span class="fk '+esc(cls)+'">'+esc(lbl)+'</span><span>'+body+'</span><span class="fsrc">'+esc(e.src||'')+'</span></div>';
 }
 async function tick(){
   let s; try { s = await (await fetch('/state')).json(); }
@@ -1556,16 +1573,16 @@ async function tick(){
   const sts = Object.values(s.phases).map(x=>x.status);
   const badge = document.getElementById('badge');
   if (sts.includes('fail')) { badge.textContent='ATTENTION'; badge.className='badge fail'; }
-  else if (sts.includes('running')||s.active.length) { badge.textContent='RUNNING'; badge.className='badge run'; }
+  else if (sts.includes('running')||s.active.length) { badge.innerHTML='<span class="dot"></span>RUNNING'; badge.className='badge run'; }
   else if (s.phases['09'] && s.phases['09'].status==='pass') { badge.textContent='SHIPPED'; badge.className='badge ok'; }
-  else if (u.session.status==='active') { badge.textContent='SESSION ACTIVE'; badge.className='badge run'; }
+  else if (u.session.status==='active') { badge.innerHTML='<span class="dot"></span>SESSION ACTIVE'; badge.className='badge run'; }
   else { badge.textContent='IDLE'; badge.className='badge idle'; }
   const idle = u.idle_sec>120 ? ' · idle '+fdur(u.idle_sec) : ' · live';
   document.getElementById('sess').textContent = u.tracked ? (u.session.status.toUpperCase()+(u.session.id?' · '+u.session.id:'')) : 'not tracked';
   document.getElementById('sess2').innerHTML = (u.t0?('since '+esc(u.t0)+(u.sess_secs?' ('+fdur(u.sess_secs)+')':'')):'')+
     (u.idle_sec>120?'<span style="color:var(--run)">'+idle+'</span>':idle)+
     (u.healed?' <span style="color:var(--vio)">· healed→live transcript</span>':'');
-  document.getElementById('ctx').textContent = u.ctx ? fmt(u.ctx)+' / '+fmt(u.ctx_limit) : '—';
+  setV('ctx', u.ctx ? fmt(u.ctx)+' / '+fmt(u.ctx_limit) : '—');
   const bar=document.getElementById('ctxbar'); bar.style.width=Math.min(u.ctx_pct,100)+'%'; bar.className=u.ctx_pct>80?'warn':'';
   let eta='';
   if(u.series.length>5){const a=u.series[u.series.length-6],b=u.series[u.series.length-1];
@@ -1573,9 +1590,9 @@ async function tick(){
     if(dt>0&&dc>0){const mins=Math.round((u.ctx_limit-u.ctx)/(dc/dt*60));
       if(mins>0&&mins<6000) eta=' · ~'+(mins>120?Math.round(mins/60)+'h':mins+'m')+' to limit';}}
   document.getElementById('ctx2').textContent = u.ctx ? (u.ctx_pct+'% · compactions '+u.session.compactions+eta) : '';
-  document.getElementById('tok').textContent = fmt(u.tokens.in+u.tokens.cache_read+u.tokens.cache_write)+' / '+fmt(u.tokens.out);
+  setV('tok', fmt(u.tokens.in+u.tokens.cache_read+u.tokens.cache_write)+' / '+fmt(u.tokens.out));
   document.getElementById('tok2').textContent = 'cache hit '+u.cache_hit_pct+'% · saved ~$'+u.cache_saved.toFixed(0);
-  document.getElementById('cost').textContent = u.cost_usd ? '$'+u.cost_usd.toFixed(2) : '—';
+  setV('cost', u.cost_usd ? '$'+u.cost_usd.toFixed(2) : '—');
   const split = u.per_model.slice(0,3).map(m=>m.short.split(' ')[0].toLowerCase()+' $'+m.cost.toFixed(0)).join(' · ');
   document.getElementById('cost2').textContent = u.turns ? (u.turns+' turns · '+u.side+' side-sessions'+(u.per_model.length>1?' · '+split:'')) : '';
   const dl=p.cas.days_left;
@@ -1601,7 +1618,8 @@ async function tick(){
   document.getElementById('doing').innerHTML = g.in_progress.map(t=>'<div class="kitem doing">'+esc(t.content)+'</div>').join('')
     || (s.active.length? s.active.map(a=>'<div class="kitem doing dlgc" onclick="inspect(\'agent\',\''+esc(a.ts)+'\',\''+esc(a.agent)+'\')"><span class="dot"></span><b>'+esc(a.agent)+'</b>'+(a.desc?' — '+esc(a.desc):'')+'<span class="meta">'+elapsed(a.ts)+'</span></div>').join('')
     : '<div class="empty">no tracked task in progress — appears from the session’s task list (TaskCreate/TodoWrite)</div>');
-  document.getElementById('minifeed').innerHTML = (s.feed||[]).slice(0,5).map(feedRow).join('')
+  const freshTop = s.feed && s.feed[0] && s.feed[0].ts!==lastFeedTs && lastFeedTs!==null;
+  document.getElementById('minifeed').innerHTML = (s.feed||[]).slice(0,5).map((e,i)=>feedRow(e, freshTop&&i===0)).join('')
     || '<div class="empty">dispatches, returns and phase emits stream here</div>';
   document.getElementById('alerts').innerHTML = s.alerts.length
     ? s.alerts.map(a=>'<div class="alert '+a.lvl+'">&#9888; '+esc(a.msg)+'</div>').join('')
@@ -1636,8 +1654,9 @@ async function tick(){
       (st.src&&st.status!=='pending'?'<span class="src">'+st.src+'</span>':'')+'<span class="ts">'+(st.ts||'')+'</span></div>'+
       '<div class="who">'+ph[2]+'</div>'+(st.detail?'<div class="detail">'+esc(st.detail)+'</div>':'')+'</div></div>';
   }).join('');
-  document.getElementById('evfeed').innerHTML = (s.feed||[]).map(feedRow).join('')
+  document.getElementById('evfeed').innerHTML = (s.feed||[]).map((e,i)=>feedRow(e, freshTop&&i===0)).join('')
     || '<div class="empty">no activity yet — dispatches, returns and emits land here (hooks ∪ transcript)</div>';
+  if(s.feed && s.feed[0]) lastFeedTs=s.feed[0].ts;
   document.getElementById('evlog').textContent = s.event_tail.map(e=>JSON.stringify(e)).join('\n') || '—';
   const gh=s.gh;
   document.getElementById('ghpanel').innerHTML = !gh ? '<div class="empty">gh unavailable (not installed / not authed) — phase 06 falls back to command sensing</div>'
