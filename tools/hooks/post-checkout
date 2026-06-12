@@ -1,0 +1,21 @@
+#!/bin/bash
+# Incremental knowledge-graph refresh on branch switches — async, reuses the
+# post-commit rebuild script with the PREV/NEW heads as the diff range.
+# Replaces the graphify-installed version, which had the same defect class as
+# the upstream post-commit hook (full-tree walk pulling vendored paths, graph
+# replaced wholesale) and additionally ran SYNCHRONOUSLY — a slow rebuild
+# blocked `git checkout` itself (observed 2026-06-12: a hung full-tree walk
+# wedged a `checkout -b` indefinitely).
+# Tracked copy: tools/hooks/ — re-apply with tools/hooks/install.sh
+
+PREV_HEAD=$1
+NEW_HEAD=$2
+BRANCH_SWITCH=$3
+
+# Only on real branch switches with an actual head change and an existing graph
+if [ "$BRANCH_SWITCH" != "1" ] || [ "$PREV_HEAD" = "$NEW_HEAD" ] || [ ! -d "graphify-out" ]; then
+    exit 0
+fi
+
+nohup .git/hooks/post-commit-graphify "$PREV_HEAD" "$NEW_HEAD" >/dev/null 2>&1 &
+exit 0

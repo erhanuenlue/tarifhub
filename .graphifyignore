@@ -1,0 +1,21 @@
+# Vendored / build output — must never enter the knowledge graph.
+# graphify's detect() reads this natively; the repo-local post-commit hook
+# (tools/hooks/post-commit-graphify) loads the SAME patterns via
+# graphify.detect._load_graphifyignore — single source of truth.
+# Semantics: gitignore-style globs, matched against the relative path,
+# the filename, and any path segment.
+
+node_modules/
+.next/
+.venv/
+site-packages/
+__pycache__/
+dist/
+graphify-out/
+.shipboard/
+
+# mkdocs-material build output + bundled search assets
+site/
+lunr
+*.min.js
+wordcut.js

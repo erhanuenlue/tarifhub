@@ -1,0 +1,131 @@
+#!/bin/bash
+# graphify-hook-start
+# Auto-rebuilds the knowledge graph after each commit (code files only, no LLM needed).
+# Originally installed by: graphify hook install
+# LOCAL FIX (2026-06-12): upstream graphify.watch._rebuild_code walks the whole tree
+# (pulls node_modules/site assets) and rebuilds graph.json from scratch (drops the
+# semantically extracted doc/image nodes). This version rebuilds incrementally:
+# extract ONLY the committed code files, ghost-prune + merge into the existing
+# graph, and apply the exclusions from .graphifyignore (single source of truth,
+# loaded via graphify.detect). Never replaces the graph wholesale.
+# Tracked copy: tools/hooks/ — re-apply after any `graphify hook install` with:
+#   tools/hooks/install.sh
+# (the async nohup wrapper .git/hooks/post-commit stays as graphify installed it)
+# Also reused by the post-checkout hook, which passes PREV_HEAD NEW_HEAD as $1 $2.
+
+FROM_REF="${1:-HEAD~1}"
+TO_REF="${2:-HEAD}"
+CHANGED=$(git diff --name-only "$FROM_REF" "$TO_REF" 2>/dev/null || git diff --name-only HEAD 2>/dev/null)
+if [ -z "$CHANGED" ]; then
+    exit 0
+fi
+
+# Detect the correct Python interpreter (handles pipx, venv, system installs)
+GRAPHIFY_BIN=$(command -v graphify 2>/dev/null)
+if [ -n "$GRAPHIFY_BIN" ]; then
+    _SHEBANG=$(head -1 "$GRAPHIFY_BIN" | sed 's/^#![[:space:]]*//')
+    case "$_SHEBANG" in
+        */env\ *) GRAPHIFY_PYTHON="${_SHEBANG#*/env }" ;;
+        *)         GRAPHIFY_PYTHON="$_SHEBANG" ;;
+    esac
+    # Allowlist: only keep characters valid in a filesystem path to prevent
+    # injection if the shebang contains shell metacharacters
+    case "$GRAPHIFY_PYTHON" in
+        *[!a-zA-Z0-9/_.-]*) GRAPHIFY_PYTHON="python3" ;;
+    esac
+    if ! "$GRAPHIFY_PYTHON" -c "import graphify" 2>/dev/null; then
+        GRAPHIFY_PYTHON="python3"
+    fi
+else
+    GRAPHIFY_PYTHON="python3"
+fi
+
+export GRAPHIFY_CHANGED="$CHANGED"
+$GRAPHIFY_PYTHON -c "
+import json, os, sys
+from pathlib import Path
+
+CODE_EXTS = {
+    '.py', '.ts', '.js', '.go', '.rs', '.java', '.cpp', '.c', '.rb', '.swift',
+    '.kt', '.cs', '.scala', '.php', '.cc', '.cxx', '.hpp', '.h', '.kts',
+}
+
+from graphify.detect import _load_graphifyignore, _is_ignored
+
+ROOT = Path.cwd()
+# .graphifyignore is the single source of truth; fall back to the same
+# patterns inline if the file is ever missing.
+PATTERNS = _load_graphifyignore(ROOT) or [
+    'node_modules', '.next', '.venv', 'site-packages', '__pycache__', 'dist',
+    'graphify-out', 'site', 'lunr', '*.min.js', 'wordcut.js',
+]
+
+def is_junk(rel: str) -> bool:
+    return _is_ignored(ROOT / rel, ROOT, PATTERNS)
+
+changed_raw = os.environ.get('GRAPHIFY_CHANGED', '')
+changed = [f.strip() for f in changed_raw.strip().splitlines() if f.strip()]
+code_changed = [Path(f) for f in changed
+                if Path(f).suffix.lower() in CODE_EXTS and Path(f).exists()
+                and not is_junk(f)]
+
+if not code_changed:
+    sys.exit(0)
+
+print(f'[graphify hook] {len(code_changed)} code file(s) changed - incremental rebuild...')
+
+try:
+    import networkx as nx
+    from networkx.readwrite import json_graph
+    from graphify.extract import extract
+    from graphify.build import build_from_json
+    from graphify.cluster import cluster, score_all
+    from graphify.analyze import god_nodes, surprising_connections, suggest_questions
+    from graphify.report import generate
+    from graphify.export import to_json
+
+    result = extract(code_changed)
+    G_new = build_from_json(result)
+
+    out = Path('graphify-out')
+    out.mkdir(exist_ok=True)
+    graph_path = out / 'graph.json'
+    if graph_path.exists():
+        G = json_graph.node_link_graph(json.loads(graph_path.read_text()), edges='links')
+        # Prune ghost nodes only for the files we just re-extracted, then merge.
+        changed_set = {str(f) for f in code_changed}
+        G.remove_nodes_from([n for n, d in G.nodes(data=True)
+                             if str(d.get('source_file', '')) in changed_set])
+        G.update(G_new)
+    else:
+        G = G_new
+
+    # Heal any pollution regardless of origin, then drop disconnected leftovers.
+    G.remove_nodes_from([n for n, d in G.nodes(data=True)
+                         if is_junk(str(d.get('source_file', '')))])
+    G.remove_nodes_from(list(nx.isolates(G)))
+
+    communities = cluster(G)
+    cohesion = score_all(G, communities)
+    gods = god_nodes(G)
+    surprises = surprising_connections(G, communities)
+    labels = {cid: 'Community ' + str(cid) for cid in communities}
+    questions = suggest_questions(G, communities, labels)
+    detection = {'files': {'code': [str(f) for f in code_changed], 'document': [], 'paper': [], 'image': []},
+                 'total_files': len(code_changed), 'total_words': 0}
+    report = generate(G, communities, cohesion, labels, gods, surprises, detection,
+                      {'input': 0, 'output': 0}, '.', suggested_questions=questions)
+    (out / 'GRAPH_REPORT.md').write_text(report)
+    to_json(G, communities, str(graph_path))
+
+    flag = out / 'needs_update'
+    if flag.exists():
+        flag.unlink()
+
+    print(f'[graphify hook] Merged rebuild: {G.number_of_nodes()} nodes, '
+          f'{G.number_of_edges()} edges, {len(communities)} communities')
+except Exception as exc:
+    print(f'[graphify hook] Rebuild failed: {exc}')
+    sys.exit(1)
+"
+# graphify-hook-end
