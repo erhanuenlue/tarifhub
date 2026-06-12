@@ -32,7 +32,7 @@ Consolidate findings, de-duplicate, rank. Route real defects to `implementer`; r
 Compose-up, integration suite against real Postgres, API smoke, console smoke + screenshots when `apps/` changed, container-log scan. This is the CAS-fit replacement for cloud staging — captured evidence beats a live deploy nobody will visit. Findings → phase 05.
 
 ## Phase 08 — Full report *(inline, Fable)*
-Consolidated ship report: what landed (per task), evidence (quoted test/CI/runtime output), review findings and their dispositions, files touched, risks remaining. Append the journal-relevant extract to today's `vault/daily/` draft — which agents ran on which model, what they got wrong, what caught it (criterion-15 raw material, generated as a by-product).
+Consolidated ship report: what landed (per task), evidence (quoted test/CI/runtime output), review findings and their dispositions, files touched, risks remaining. **Include the CAS anchor delta:** run `python3 tools/cas_check.py` and report one line — elements gained/lost vs. the run's start and any ratchet regressions (a regression blocks the green-contract until fixed: it is a failing check). Append the journal-relevant extract to today's `vault/daily/` draft — which agents ran on which model, what they got wrong, what caught it (criterion-15 raw material, generated as a by-product).
 
 ## Phase 09 — Merge *(auto on green · fallback gate: Erhan)*
 Owner decision 2026-06-11: Erhan delegated routine merge confirmation. Present the phase-08 report, then check the **green-contract — ALL FOUR must hold:**

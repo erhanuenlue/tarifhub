@@ -30,8 +30,6 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 SB = ROOT / ".shipboard"
 LOG = SB / "events.jsonl"
 SESSION = SB / "session.json"
-SESS_LIVE_S = 120        # transcript touched within this window → "live"
-SESS_IDLE_S = 1800       # transcripts idle longer than this aren't listed
 PORT = 8787
 
 CONTEXT_LIMIT = 1_000_000
@@ -944,116 +942,6 @@ def compute_phases(ev, u, p, ghd):
                 break
     return phases, explicit
 
-_SESS_CACHE = {}         # path -> (mtime, size, summary) ; head/tail reads cached by mtime
-
-def _summarize_session(p, stt):
-    """Cheap head+tail summary of one main transcript; None if it's a sidechain/garbage."""
-    sid, cwd, branch, started = p.stem, "", "", ""
-    try:
-        with open(p, encoding="utf-8", errors="replace") as f:
-            head = f.read(4096)
-    except Exception:
-        return None
-    if '"isSidechain": true' in head or '"isSidechain":true' in head:
-        return None                      # subagent sidechain, not a terminal session
-    for line in head.splitlines():
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
-        try:
-            e = json.loads(line)
-        except Exception:
-            continue
-        sid = e.get("sessionId") or sid
-        cwd = cwd or e.get("cwd") or ""
-        branch = branch or e.get("gitBranch") or ""
-        if not started and e.get("timestamp"):
-            started = _local_hms(e.get("timestamp"))
-        if cwd and started:
-            break
-    model, last = "", ""
-    try:
-        with open(p, "rb") as f:
-            f.seek(max(0, stt.st_size - 65536))
-            tail = f.read().decode("utf-8", "replace")
-    except Exception:
-        tail = ""
-    for line in reversed(tail.splitlines()):
-        line = line.strip()
-        if not line.startswith("{"):
-            continue
-        try:
-            e = json.loads(line)
-        except Exception:
-            continue
-        if not last and e.get("timestamp"):
-            last = _local_hms(e["timestamp"])
-        if e.get("type") == "assistant":
-            m = (e.get("message") or {}).get("model")
-            if m:
-                model = _short(m)
-                if last:
-                    break
-    proj = pathlib.Path(cwd).name if cwd else (p.parent.name.split("-")[-1] if p.parent.name else "")
-    return {"id": sid or p.stem, "project": (proj or "?")[:28],
-            "branch": branch[:24], "started": started, "last": last, "model": model or "?"}
-
-def discover_sessions(limit=12):
-    """Machine-wide: recently-active Claude Code main transcripts across all projects."""
-    try:
-        tracked = (json.loads(SESSION.read_text()) or {}).get("transcript_path") or ""
-    except Exception:
-        tracked = ""
-    tracked_stem = pathlib.Path(tracked).stem if tracked else ""
-    root = None
-    if tracked:
-        ps = pathlib.Path(tracked).parents
-        if len(ps) >= 2:
-            root = ps[1]                 # ~/.claude/projects/<encoded>/<sid>.jsonl → projects root
-    if not (root and root.is_dir()):
-        root = pathlib.Path.home() / ".claude" / "projects"
-    if not root.is_dir():
-        return []
-    try:
-        files = list(root.glob("*/*.jsonl"))
-    except Exception:
-        return []
-    stt_of = {}
-    for p in files:
-        try:
-            stt_of[p] = p.stat()
-        except Exception:
-            pass
-    order = sorted(stt_of, key=lambda p: stt_of[p].st_mtime, reverse=True)
-    now, out, seen = time.time(), [], set()
-    for p in order:
-        stt = stt_of[p]
-        idle = now - stt.st_mtime
-        if idle > SESS_IDLE_S:
-            break                        # newest-first → everything after is older still
-        if stt.st_size < 1000:
-            continue
-        ck = _SESS_CACHE.get(str(p))
-        if ck and ck[0] == stt.st_mtime and ck[1] == stt.st_size:
-            summ = ck[2]
-        else:
-            summ = _summarize_session(p, stt)
-            if summ is None:
-                continue
-            _SESS_CACHE[str(p)] = (stt.st_mtime, stt.st_size, summ)
-        if summ["id"] in seen:
-            continue
-        seen.add(summ["id"])
-        row = dict(summ)
-        row["idle_s"] = int(idle)
-        row["live"] = idle <= SESS_LIVE_S
-        row["tracked"] = bool(tracked_stem) and p.stem == tracked_stem
-        out.append(row)
-        if len(out) >= limit:
-            break
-    out.sort(key=lambda x: (not x["tracked"], not x["live"], x["idle_s"]))
-    return out
-
 def state():
     ev = read_events()
     agents = [e for e in ev if e.get("kind") == "agent"]
@@ -1089,11 +977,68 @@ def state():
             feed.append({"ts": tt, "kind": "agent", "status": st, "agent": d["agent"],
                          "model": d.get("model", ""), "phase": "", "detail": d["desc"], "src": "transcript"})
     feed.sort(key=lambda r: r["ts"], reverse=True)
+    cas = cas_floor()
+    al = alerts(u, p, phases, ghd)
+    if cas:
+        if cas.get("regressions"):
+            al.insert(0, {"lvl": "bad", "msg": f"CAS ratchet regression: {', '.join(cas['regressions'][:3])}"})
+        t = cas.get("totals", {})
+        if t.get("applicable") and t["passed"] < t["applicable"]:
+            misses = [f"{c['c']} {c['name']}" for c in cas["criteria"]
+                      if c["passed"] < c["applicable"]][:2]
+            al.append({"lvl": "warn",
+                       "msg": f"CAS floor: {t['applicable'] - t['passed']} element(s) missing — {'; '.join(misses)}"})
     return {"phases": phases, "active": list(merged.values()),
             "updated": time.strftime("%H:%M:%S"), "events": len(ev),
             "event_tail": ev[-40:][::-1], "feed": feed[:40],
-            "usage": u, "project": p, "gh": ghd,
-            "alerts": alerts(u, p, phases, ghd), "sessions": discover_sessions()}
+            "usage": u, "project": p, "gh": ghd, "cas": cas,
+            "alerts": al[:8]}
+
+# ---------------- CAS structural floor (tools/cas_check.py, cached 60s) ----------------
+
+_CAS = {"ts": 0.0, "data": None, "mod": None}
+
+def cas_floor():
+    now = time.time()
+    if _CAS["data"] is not None and now - _CAS["ts"] < 60:
+        return _CAS["data"]
+    _CAS["ts"] = now
+    try:
+        if _CAS["mod"] is None:
+            import importlib.util
+            spec = importlib.util.spec_from_file_location("cas_check", ROOT / "tools" / "cas_check.py")
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _CAS["mod"] = mod
+        mod = _CAS["mod"]
+        mod._RD.clear()                      # invalidate its file cache — docs change live
+        data, base, passed_now = mod.run()
+        try:
+            mod.BASELINE.write_text(json.dumps(
+                {"passed": sorted(base | passed_now), "updated": data["generated"]}, indent=1) + "\n")
+        except Exception:
+            pass
+        # latest grade-auditor estimate, if any (vault/cas-audit/*.json — /cas-audit writes it)
+        audit = None
+        try:
+            aj = sorted((ROOT / "vault" / "cas-audit").glob("*.json"))
+            if aj:
+                a = json.loads(aj[-1].read_text(encoding="utf-8", errors="replace"))
+                audit = {"date": a.get("date", aj[-1].stem), "total": a.get("total_estimate"),
+                         "crit": {str(k): v.get("points") for k, v in (a.get("criteria") or {}).items()}}
+        except Exception:
+            audit = None
+        # compact criteria for /state; full elements come via detail?type=crit
+        data = {"generated": data["generated"], "block": data["block"],
+                "totals": data["totals"], "regressions": data["regressions"], "audit": audit,
+                "criteria": [{k: c[k] for k in ("c", "w", "name", "passed", "applicable", "due")}
+                             | {"reg": any(e["status"] == "regression" for e in c["elements"]),
+                                "est": (audit or {}).get("crit", {}).get(str(c["c"]))}
+                             for c in data["criteria"]]}
+    except Exception:
+        data = None
+    _CAS["data"] = data
+    return data
 
 # ---------------- detail (inspector API) ----------------
 
@@ -1200,6 +1145,30 @@ def detail(q):
         except Exception as ex:
             body = f"gh unavailable: {ex}"
         return {"type": "commit", "hash": "PR #" + nid, "body": body}
+    if typ == "crit":
+        cid = (q.get("id") or [""])[0]
+        if not re.fullmatch(r"\d{1,2}", cid or "") or not 1 <= int(cid) <= 18:
+            return {"err": "bad criterion id"}
+        n = int(cid)
+        try:
+            cas_floor()                       # ensures module loaded + caches warm
+            mod = _CAS["mod"]
+            mod._RD.clear()
+            full, _b, _p = mod.run()
+            row = next(c for c in full["criteria"] if c["c"] == n)
+        except Exception as ex:
+            return {"err": f"cas_check unavailable: {ex}"}
+        anchor = ""
+        try:
+            txt = (ROOT / "docs" / "cas" / "bewertungskriterien-anker.md").read_text(
+                encoding="utf-8", errors="replace")
+            m = re.search(rf"^### {n}\..*?(?=^### \d|^## |\Z)", txt, re.M | re.S)
+            anchor = m.group(0).strip()[:3500] if m else ""
+        except Exception:
+            pass
+        return {"type": "crit", "c": n, "w": row["w"], "name": row["name"],
+                "passed": row["passed"], "applicable": row["applicable"], "due": row["due"],
+                "elements": row["elements"], "anchor": anchor}
     if typ == "gates":
         return {"type": "gates", "list": t["gatehist"][::-1][:25]}
     if typ == "tasks":
@@ -1399,18 +1368,6 @@ border:1px solid var(--edge);border-radius:9px;padding:10px 12px;white-space:pre
 max-height:340px;overflow-y:auto;margin:6px 0 12px}
 .itag{display:inline-block;font-family:'JetBrains Mono';font-size:10px;padding:2px 9px;border-radius:5px;
 background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);margin:0 6px 6px 0}
-/* live sessions panel (overview) */
-.srow{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono';font-size:11.5px;color:var(--dim);padding:5px 6px;border-bottom:1px solid rgba(125,211,252,.07)}
-.srow:last-child{border-bottom:none}
-.srow.me{background:rgba(125,211,252,.06);border-radius:7px}
-.sdot{width:8px;height:8px;border-radius:99px;background:var(--faint);flex:none}
-.sdot.on{background:var(--ok);animation:pulse 1.4s infinite}
-.sdot.idle{background:var(--run)}
-.sid{color:var(--paper);min-width:72px}
-.sproj{color:var(--cyan);min-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.smodel{color:var(--dim);margin-left:auto;white-space:nowrap}
-.sage{color:var(--faint);min-width:66px;text-align:right}
-.stag{font-family:'JetBrains Mono';font-size:9px;color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);border-radius:4px;padding:1px 6px;text-transform:uppercase;flex:none}
 </style></head><body><div class="wrap">
 <div class="top">
   <h1><span class="slash">/ship</span> shipboard</h1>
@@ -1437,10 +1394,6 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   </div>
   <div class="rail" id="rail"></div>
   <div class="chips" id="chips" style="display:none"></div>
-  <div class="panel" style="margin-bottom:12px">
-    <div class="k">Live sessions — Claude Code across this machine <span class="s" id="sesscount"></span></div>
-    <div id="sesslist">—</div>
-  </div>
   <div class="mid">
     <div class="panel">
       <div class="k">Mission · in progress now</div>
@@ -1536,6 +1489,11 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
       <div id="jprev" class="mdwrap" style="max-height:260px;overflow-y:auto;font-size:11.5px;color:var(--dim);font-family:'JetBrains Mono';line-height:1.55;margin-top:6px">—</div>
     </div>
     <div>
+      <div class="panel" style="margin-bottom:12px">
+        <span class="s" id="casmeta" style="float:right"></span>
+        <div class="k">CAS anchors — structural floor · click a criterion</div>
+        <div id="caspanel" style="margin-top:6px">—</div>
+      </div>
       <div class="panel" style="margin-bottom:12px">
         <div class="k">Evidence pulse</div>
         <div class="prow clk" onclick="inspect('gates')"><span class="pk">Tests (last gate run) ▸</span><span class="pv" id="ev1">—</span></div>
@@ -1781,7 +1739,7 @@ function closeInsp(){document.getElementById('insp').classList.remove('on');docu
 async function inspect(type,a,b){
   const q = type==='phase'?('type=phase&id='+a)
     : type==='agent'?('type=agent&ts='+encodeURIComponent(a)+'&agent='+encodeURIComponent(b))
-    : (type==='model'||type==='adr'||type==='commit'||type==='note'||type==='ghrun'||type==='ghpr')
+    : (type==='model'||type==='adr'||type==='commit'||type==='note'||type==='ghrun'||type==='ghpr'||type==='crit')
       ?('type='+type+'&id='+encodeURIComponent(a))
     : ('type='+type);
   let d; try{ d = await (await fetch('/detail?'+q)).json(); }catch(e){ d={err:'fetch failed'}; }
@@ -1818,6 +1776,17 @@ async function inspect(type,a,b){
     it.textContent=d.title; ib.innerHTML='<div class="mdwrap" style="font-size:12px;line-height:1.6">'+mdlite(d.body)+'</div>';
   } else if(d.type==='commit'){
     it.textContent='commit '+d.hash; ib.innerHTML='<div class="pre" style="max-height:70vh">'+esc(d.body)+'</div>';
+  } else if(d.type==='crit'){
+    it.innerHTML='Kriterium '+d.c+' — '+esc(d.name)+' <span style="color:var(--faint);font-weight:400">('+d.w+' Punkte)</span>';
+    const mk={'pass':'✅','miss':'⛔','due':'🕓','regression':'🔻'};
+    ib.innerHTML='<span class="itag">'+d.passed+'/'+d.applicable+' elements present</span>'+
+      (d.due?'<span class="itag">'+d.due+' not yet due</span>':'')+
+      ((d.elements||[]).some(e=>e.status==='regression')?'<span class="itag" style="color:var(--fail)">REGRESSION</span>':'')+
+      '<div class="k" style="margin-top:8px">Anchor elements (deterministic floor)</div>'+
+      (d.elements||[]).map(e=>'<div class="dlg" style="cursor:default">'+(mk[e.status]||'?')+' '+esc(e.label)+
+        ' <span class="meta">'+esc((e.evidence||'').split("/").slice(-2).join("/"))+'</span></div>').join('')+
+      '<div class="s" style="margin:8px 0 4px">The floor proves structure, never quality — level judgment: /cas-audit.</div>'+
+      (d.anchor?'<div class="k" style="margin-top:8px">Official anchor text</div><div class="pre" style="max-height:300px">'+esc(d.anchor)+'</div>':'');
   } else if(d.type==='gates'){
     it.textContent='Gate history';
     ib.innerHTML=d.list.length?d.list.map(g=>'<div class="dlg">'+esc(g.ts)+' · <b style="color:'+(g.ok?'var(--ok)':'var(--fail)')+'">'+esc(g.kind)+'</b>'+
@@ -1943,22 +1912,6 @@ function boardTask(i){
   document.getElementById('ovl').style.display='block';
   document.getElementById('insp').classList.add('on');
 }
-// ---------- live sessions panel (overview) ----------
-function fmtIdle(x){ x=x||0; return x<60? x+'s idle' : (x<3600? Math.floor(x/60)+'m idle' : Math.floor(x/3600)+'h idle'); }
-function renderSessions(s){
-  const el=document.getElementById('sesslist'); if(!el) return;
-  const ss=s.sessions||[];
-  const cc=document.getElementById('sesscount'); if(cc) cc.textContent = ss.length? '· '+ss.length+(ss.length===1?' session':' sessions') : '';
-  el.innerHTML = ss.length ? ss.map(x=>
-    '<div class="srow'+(x.tracked?' me':'')+'">'+
-    '<span class="sdot '+(x.live?'on':'idle')+'"></span>'+
-    '<span class="sid">'+esc((x.id||'').slice(0,8))+'</span>'+
-    '<span class="sproj">'+esc(x.project||'?')+(x.branch?' · '+esc(x.branch):'')+'</span>'+
-    '<span class="smodel">'+esc(x.model||'?')+'</span>'+
-    '<span class="sage">'+(x.live?'live':esc(fmtIdle(x.idle_s)))+'</span>'+
-    (x.tracked?'<span class="stag">this board</span>':'')+
-    '</div>').join('') : '<div class="empty">no active Claude sessions found</div>';
-}
 async function tick(){
   let s; try { s = await (await fetch('/state')).json(); }
   catch(e){ const b=document.getElementById('badge'); b.textContent='SERVER UNREACHABLE'; b.className='badge fail';
@@ -2015,7 +1968,6 @@ async function tick(){
     || (s.active.length? s.active.map(a=>'<div class="kitem doing dlgc" onclick="inspect(\'agent\',\''+esc(a.ts)+'\',\''+esc(a.agent)+'\')"><span class="dot"></span><b>'+esc(a.agent)+'</b>'+(a.desc?' — '+esc(a.desc):'')+'<span class="meta">'+elapsed(a.ts)+'</span></div>').join('')
     : '<div class="empty">no tracked task in progress — appears from the session’s task list (TaskCreate/TodoWrite)</div>');
   renderBoard(s);
-  renderSessions(s);
   const freshTop = s.feed && s.feed[0] && s.feed[0].ts!==lastFeedTs && lastFeedTs!==null;
   document.getElementById('minifeed').innerHTML = (s.feed||[]).slice(0,5).map((e,i)=>feedRow(e, freshTop&&i===0)).join('')
     || '<div class="empty">dispatches, returns and phase emits stream here</div>';
@@ -2100,6 +2052,20 @@ async function tick(){
   document.getElementById('flags').innerHTML=[['boundary test',F.boundary],['compose',F.compose],['helm',F.helm],['ci.yml',F.ci],['mkdocs',F.docs]]
     .map(x=>'<span class="flag '+(x[1]?'on':'off')+'">'+(x[1]?'✓':'✗')+' '+esc(x[0])+'</span>').join('');
   document.getElementById('ciruns').innerHTML=(gh&&gh.runs.length)?gh.runs.map(r=>'<div class="cirow"><span>'+esc(r.at)+'</span><span class="'+(r.st==='success'?'ok':(r.st==='failure'?'bad':'pend'))+'">'+esc(r.st)+'</span><span>'+esc(r.wf)+'</span><span>'+esc(r.br)+'</span></div>').join(''):'<div class="s">'+(gh?'none yet':'gh unavailable')+'</div>';
+  const cas=s.cas;
+  document.getElementById('casmeta').textContent = cas ?
+    ('Block '+cas.block+' · '+cas.totals.passed+'/'+cas.totals.applicable+' elements · '+cas.totals.due+' due'+
+     (cas.regressions.length?' · '+cas.regressions.length+' REGRESSION':'')) : '';
+  document.getElementById('caspanel').innerHTML = cas ? cas.criteria.map(c=>{
+    const full=c.applicable>0&&c.passed===c.applicable, none=c.applicable===0;
+    const bar='■'.repeat(c.passed)+'□'.repeat(Math.max(0,c.applicable-c.passed))+'·'.repeat(c.due);
+    const col=c.reg?'var(--fail)':(none?'var(--faint)':(full?'var(--ok)':'var(--run)'));
+    return '<div class="dlg" onclick="inspect(\'crit\',\''+c.c+'\')"><b style="color:'+col+'">'+String(c.c).padStart(2,'0')+'</b>'+
+      ' <span class="meta" style="float:none;margin:0 5px 0 2px">('+c.w+')</span>'+esc(c.name)+
+      '<span class="meta">'+bar+' '+c.passed+'/'+c.applicable+(c.due?(' +'+c.due):'')+
+      (c.est!=null?' · ≈'+c.est+'/'+c.w:'')+(c.reg?' 🔻':'')+'</span></div>';
+  }).join('')+(cas.audit?'<div class="s" style="margin-top:6px">audit estimate ≈'+cas.audit.total+'/100 · '+esc(cas.audit.date)+' (estimate, not the grader)</div>':'')
+   : '<div class="empty">tools/cas_check.py not found — sync it to enable the grading floor</div>';
   document.getElementById('svc').innerHTML=(p.services||[]).map(x=>'<div class="prow" style="margin:4px 0"><span class="pk">'+esc(x.n)+'</span><span class="pv">'+x.src+' / <span style="color:var(--ok)">'+x.tests+'</span></span></div>').join('')||'<div class="s">no services yet</div>';
   document.getElementById('adrn2').textContent=p.adrs.count;
   document.getElementById('adrlist').innerHTML=p.adrs.list.map(a=>{
