@@ -25,12 +25,11 @@ Three scenarios show the architecture at work: the deterministic harmonisation p
 ![Runtime — semantic search](../diagrams/seq-search-serving.svg)
 
 1. A client calls `GET /api/v1/search?q=…&limit=…`; FastAPI injects the repository and settings via dependency injection.
-2. **Dialect guard** — on a non-Postgres backend (the offline SQLite mirror) the endpoint returns **HTTP 501**: honest unavailability instead of a fake fallback search.
-3. The query is embedded with `get_embedder().embed` — the same embedder seam ingestion used to embed the records.
-4. **Dimension guard** — if the vector is not 1024-dim (e.g. the offline stub embedder against the `vector(1024)` column), the endpoint fails closed with the same explicit **501** before issuing the doomed pgvector query.
-5. `ServingRepository.search_by_embedding` runs a parameterised pgvector cosine query (`<=>`) over frozen rows only.
-6. Rows are rehydrated verbatim into `TariffRecord` and returned as ranked `SearchHit` items — no field is recomputed or rewritten.
-7. **Read-only guarantee** — the AST boundary test (`services/serving/tests/test_serving_boundary.py`) proves no LLM client is importable on this path; CI fails otherwise.
+2. The query is embedded with `get_embedder().embed_query` — the same embedder seam ingestion used to embed the records (e5's asymmetric `query:`/`passage:` prefixes are honoured).
+3. **Engine dispatch ([ADR-017](../adr/017-deterministic-search-fallback-explain.md))** — on Postgres, `ServingRepository.search_by_embedding` runs a parameterised pgvector cosine query (`<=>`) over frozen rows; on the offline SQLite mirror the same ranking runs as a **deterministic in-process cosine** over the stored stub embeddings, ties broken by `(tariff_system, tariff_code)` — same response shape, never a faked result.
+4. **Dimension guard** — on Postgres, an embedder whose vector does not match the `vector(1024)` column fails closed with an explicit **501** before issuing the doomed pgvector query.
+5. Rows are rehydrated verbatim into `TariffRecord` and returned as ranked `SearchHit` items — no field is recomputed or rewritten.
+6. **Read-only guarantee** — the AST boundary test (`services/serving/tests/test_serving_boundary.py`) proves no LLM client is importable on this path; CI fails otherwise.
 
 ## Scenario 3 — review → freeze loop (design level)
 
