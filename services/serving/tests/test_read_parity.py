@@ -349,3 +349,50 @@ def test_search_contract_per_engine(serving_client, engine):
         assert resp.json()["detail"] == "semantic search requires Postgres+pgvector"
     else:
         assert "1024-dim embedder" in resp.json()["detail"]
+
+
+def test_pgvector_search_sql_deterministic(engine, monkeypatch):
+    """pgvector search-SQL returns 200 + deterministic ordering (Postgres leg only).
+
+    Seeds 1024-dim embeddings from a deterministic HashingEmbedder(dimension=1024) so the
+    pgvector column dimensions match, points the serving query embedder at the same stub,
+    runs /api/v1/search, and asserts a 200 with a stable ranked order (same query -> same
+    ordering across runs). Skips offline like the other Postgres-only tests. The hits are
+    unaltered frozen rows — search only RANKS, never computes a value.
+    """
+
+    if engine.label != "postgres":
+        pytest.skip("pgvector search requires Postgres")
+
+    from tarifhub_ingest.embeddings.embedder import E5_DIMENSION, HashingEmbedder
+
+    stub = HashingEmbedder(dimension=E5_DIMENSION)  # 1024-dim, matches vector(1024)
+    conn = engine.db.connect()
+    try:
+        engine.db.init_schema(conn)
+        repo = TariffRepository(conn, engine.db)
+        for record in _seed_records():
+            frozen = freeze(record)
+            text = f"{frozen.tariff_system.value} {frozen.tariff_code} {frozen.designation.de}"
+            repo.add(frozen, embedding=stub.embed(text))
+    finally:
+        conn.close()
+
+    # Point both the serving query embedder AND its default at the 1024-dim stub.
+    monkeypatch.setattr("tarifhub_serving.main.get_embedder", lambda *_a, **_k: stub)
+    monkeypatch.setenv("TARIFHUB_DB_URL", engine.db_url)
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    from tarifhub_serving.main import app
+
+    client = TestClient(app)
+    first = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
+    assert first.status_code == 200, first.text
+    order1 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in first.json()]
+    assert order1, "search must return at least one ranked hit"
+    # Ranks are 1..n and strictly increasing (deterministic ordering contract).
+    assert [h["rank"] for h in first.json()] == list(range(1, len(first.json()) + 1))
+
+    # Same query -> identical ordering (pgvector cosine SQL is deterministic).
+    second = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
+    order2 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in second.json()]
+    assert order2 == order1

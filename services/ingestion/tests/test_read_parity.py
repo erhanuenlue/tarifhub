@@ -388,6 +388,7 @@ def test_ingest_sample_response_body_parity(ingest_client):
         "frozen": body["frozen"],
         "skipped_existing": 0,
         "flagged_for_review": body["flagged_for_review"],
+        "refill": False,
         "tariff_codes": body["tariff_codes"],
     }
 
