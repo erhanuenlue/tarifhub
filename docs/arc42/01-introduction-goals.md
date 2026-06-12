@@ -4,6 +4,14 @@ Switzerland's ambulatory tariff data is fragmented: roughly 110 active tariff ty
 
 > **No AI computes or mutates a billing value at serve time.**
 
+### KI-Nutzen je Kernfunktion
+
+- **UC-01 (harmonise):** fill-only AI gap-filling of non-billing fields pre-freeze through a single seam with structured output ([ADR-005](../adr/005-single-ai-seam.md)).
+- **UC-03 (freeze):** freeze seals AI contributions with provenance (`ai_model`, `ai_fields` recorded in metadata) into immutable, hash-verifiable versions — AI work becomes auditable, never silently mutable.
+- **UC-04 (serve deterministically):** deliberately zero AI — the value path is provably LLM-free, enforced by an AST boundary test in CI; the determinism guarantee *is* the feature.
+- **UC-06 (find):** multilingual-e5 embeddings give cross-lingual DE/FR/IT retrieval over frozen records; ML ranks, never alters, the served values.
+- **UC-09 (explain):** a labelled, de-identified AI explanation seam that can never change a served value.
+
 ## Functional requirements
 
 | ID | Requirement | Realised by |
@@ -13,24 +21,35 @@ Switzerland's ambulatory tariff data is fragmented: roughly 110 active tariff ty
 | FR-3 | Deterministic validation + confidence scoring; < 0.85 routes to human review | UC-02 |
 | FR-4 | Freeze: immutable versioned records, SHA-256 record_hash, append-only audit_log | UC-03 |
 | FR-5 | Serve frozen records deterministically by system+code (REST, OpenAPI) | UC-04 |
-| FR-6 | Point-in-time and diff queries over record versions (designed) | UC-05 |
+| FR-6 | Point-in-time and diff queries over record versions | UC-05 |
 | FR-7 | Multilingual semantic search (pgvector HNSW cosine, multilingual-e5 embeddings) | UC-06 |
 | FR-8 | Read-only MCP tools: search_tariffs, get_tariff, explain_crosswalk | UC-07, UC-09 |
 | FR-9 | TarifGuard console: master-detail lookup, review form (designed), labelled AI explain panel | UC-02, UC-08, UC-09 |
 
 ## Use-case catalogue
 
+### Kernfunktionen
+
+These five form the platform's value chain — harmonise → freeze → serve deterministically → find → explain.
+
 | ID | Use case | Actor | Trigger | Outcome | Realises | Status |
 |---|---|---|---|---|---|---|
 | UC-01 | Trigger ingest | Operator (CLI/scheduler) | new BAG source version published / operator runs pipeline | validated, scored records frozen + audited | FR-1, FR-2 | live |
-| UC-02 | Review low-confidence mapping | Tariff expert (console form) | confidence score < 0.85 flags a frozen record into the review queue | expert approves or corrects the flagged mapping; an accepted correction becomes a new frozen version | FR-3, FR-9 | designed (ADR-013) |
 | UC-03 | Freeze record | Pipeline (automatic post-validation; expert approval loop designed) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
 | UC-04 | Read tariff by code | API consumer (PIS/HIS) | GET /api/v1/tariffs/{system}/{code} | frozen record, served verbatim | FR-5 | live |
-| UC-05 | Point-in-time / diff query | API consumer | query with a valid-at date or two record versions | record state as of that date / field-level diff | FR-6 | designed |
 | UC-06 | Semantic search | API consumer | free-text query (DE/FR/IT) against the search endpoint | ranked frozen records via pgvector cosine similarity | FR-7 | live |
+| UC-09 | Explain (crosswalk, labelled AI) | Practice user | user opens the labelled AI explain panel on a record | AI-labelled, de-identified explanation; served values never altered | FR-8, FR-9 | live — console UI + de-id live, serving endpoint (this release) |
+
+### Supporting use cases
+
+These parameterise or proxy the Kernfunktionen — the review threshold loop, version-time access, the MCP proxy, and console lookup.
+
+| ID | Use case | Actor | Trigger | Outcome | Realises | Status |
+|---|---|---|---|---|---|---|
+| UC-02 | Review low-confidence mapping | Tariff expert (console form) | confidence score < 0.85 flags a frozen record into the review queue | expert approves or corrects the flagged mapping; an accepted correction becomes a new frozen version | FR-3, FR-9 | designed (ADR-013) |
+| UC-05 | Point-in-time / diff query | API consumer | query with a valid-at date or two record versions | record state as of that date / field-level diff | FR-6 | live (this release) |
 | UC-07 | MCP get/search | AI agent (MCP client) | MCP tool call search_tariffs / get_tariff | read-only frozen data, proxied from the serving API | FR-8 | live |
 | UC-08 | Console master-detail lookup | Practice user | search in the TarifGuard console | frozen record detail with provenance and hash | FR-9 | live |
-| UC-09 | Explain (crosswalk, labelled AI) | Practice user | user opens the labelled AI explain panel on a record | AI-labelled, de-identified explanation; served values never altered | FR-8, FR-9 | partial: console UI + de-identification live, serving endpoint designed |
 
 The actors and their nine use cases, with system boundary:
 
@@ -42,11 +61,11 @@ The top quality goals are **determinism** (the same query returns the same tarif
 
 ## Stakeholders
 
-| Stakeholder | Concern |
-|---|---|
-| CAS graders / lecturer | Assessable evidence in code and documentation: architecture, AI-assisted method, distribution — nothing requires deployment to grade |
-| Tariff experts | Catch and correct uncertain mappings before freeze; trust that frozen values are never silently changed |
-| PIS/HIS vendors (API consumers) | Stable, deterministic, versioned REST/OpenAPI access to tariff data |
-| Practice users | Fast, reliable tariff lookup in the console; AI assistance clearly labelled and never authoritative for values |
-| AI agents (MCP clients) | Read-only, well-typed tool access to frozen tariff data |
-| Solo maintainer (Erhan Ünlü) | Few well-understood components, AI-assisted velocity, CAS hand-in on 6 July 2026 |
+| Stakeholder | Concern | Key use cases |
+|---|---|---|
+| CAS graders / lecturer | Assessable evidence in code and documentation: architecture, AI-assisted method, distribution — nothing requires deployment to grade | all (evidence) |
+| Tariff experts | Catch and correct uncertain mappings before freeze; trust that frozen values are never silently changed | UC-02, UC-03 |
+| PIS/HIS vendors (API consumers) | Stable, deterministic, versioned REST/OpenAPI access to tariff data | UC-04, UC-05, UC-06 |
+| Practice users | Fast, reliable tariff lookup in the console; AI assistance clearly labelled and never authoritative for values | UC-08, UC-09 |
+| AI agents (MCP clients) | Read-only, well-typed tool access to frozen tariff data | UC-07 |
+| Solo maintainer (Erhan Ünlü) | Few well-understood components, AI-assisted velocity, CAS hand-in on 6 July 2026 | UC-01 |

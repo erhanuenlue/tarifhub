@@ -12,10 +12,10 @@
 | 6 | DB model specified | ER diagram + schema | [arc42/05 — data model](arc42/05-building-block-view.md#data-model) + `db/schema.sql` |
 | 7 | — | — (filled progressively) | — |
 | 8 | „Konzepte des gewählten Frameworks und moderner Applikationsentwicklung sachgerecht eingesetzt — DI, REST-Schnittstellen, Konfiguration, Fehlerbehandlung" (12 Jun 2026 wording) | Concept-by-concept implementation map | [arc42/08 — modern application concepts](arc42/08-crosscutting-concepts.md#modern-application-concepts) |
-| 9 | — | — (filled progressively) | — |
+| 9 | — | Learnings register — every entry commit-ref'd; AI suggestions marked accepted/corrected/rejected | `LEARNINGS.md` (repo root) |
 | 10 | — | — (filled progressively) | — |
-| 11 | — | — (filled progressively) | — |
-| 12 | — | — (filled progressively) | — |
+| 11 | — | Acceptance criteria (G/W/T per UC) with explicit NfA cross-refs | [arc42/10 — acceptance criteria](arc42/10-quality-requirements.md#acceptance-criteria) |
+| 12 | — | Test strategy incl. explicit „Tests der KI-Anteile" subsection | [arc42/13 — test strategy](arc42/13-test-strategy.md) |
 | 13 | — | — (filled progressively) | — |
 | 14 | — | — (filled progressively) | — |
 | 15 | — | — (filled progressively) | — |
