@@ -1,6 +1,23 @@
 # 01 · introduction goals
 
-Switzerland's ambulatory tariff data is fragmented: roughly 110 active tariff types are published across 20+ sources in XLSX, XML, PDF and FHIR, with no single authoritative machine interface. TarifHub harmonises this data into **one canonical, versioned, deterministic API**. AI assists the harmonisation *above* a freeze line — gap-filling non-billing fields, explaining mappings — and never operates below it: frozen records are immutable, hashed and served verbatim. The CAS/MVP scope is the data foundation (two BAG sources: EAL XLSX and ePL FHIR R5), a thin serving API with MCP tools, and the TarifGuard console demo.
+TarifHub harmonises Switzerland's fragmented ambulatory tariff data into **one canonical, versioned, deterministic API**. AI assists the harmonisation *above* a freeze line — gap-filling non-billing fields, explaining mappings — and never operates below it: frozen records are immutable, hashed and served verbatim.
+
+## Problemstellung
+
+Switzerland's ambulatory tariff data is fragmented. Roughly 110 active tariff types are published across 20+ sources in XLSX, XML, PDF and FHIR, with **no single authoritative machine interface** — the public BAG lists alone arrive as semiannual EAL XLSX (three DE/FR/IT sheets) and monthly ePL FHIR NDJSON. The consequences compound downstream:
+
+- every PIS/HIS vendor re-implements parsing per source, multiplying the same brittle work;
+- tariff values reach billing systems **without verifiable provenance** — there is no way to prove a served value is the one that was reviewed;
+- version transitions (semiannual EAL updates on 1.1 / 1.7, monthly SL on the 1st) are reconciled by hand;
+- and an uncaught mapping error propagates silently — it becomes a wrong invoice.
+
+## Vision
+
+One trustworthy machine interface to ambulatory tariff data — in its three elements:
+
+- **Zielgruppe:** PIS/HIS vendors as machine consumers (REST/OpenAPI + FHIR R4 read), tariff experts who review uncertain mappings, practice users who look up records in the console, and AI agents that read frozen data over MCP.
+- **Bedürfnis:** one versioned, provenance-carrying interface where a *served value is provably the value that was reviewed and frozen* — replacing per-vendor parsing and hand-reconciled version transitions with a single auditable source.
+- **Abgrenzung:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, benchmarking, and the review POST loop (design scope only).
 
 > **No AI computes or mutates a billing value at serve time.**
 

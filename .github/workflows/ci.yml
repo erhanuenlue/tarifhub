@@ -125,6 +125,22 @@ jobs:
       - run: pip install mkdocs-material mkdocs-print-site-plugin
       - run: mkdocs build -f docs/mkdocs.yml --strict
 
+  # CAS grading-anchor ratchet: structural floor must never regress (tools/cas_check.py).
+  cas-anchors:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - name: CAS anchor ratchet (fails only on regressions)
+        run: python3 tools/cas_check.py --ci
+      - name: CAS status artifact
+        if: always()
+        run: python3 tools/cas_check.py --ci --json > cas-status.json
+      - uses: actions/upload-artifact@v7
+        if: always()
+        with:
+          name: cas-status
+          path: cas-status.json
+
   images:
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
