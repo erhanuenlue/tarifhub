@@ -37,6 +37,14 @@ def validate(record: TariffRecord) -> ValidationResult:
     ):
         errors.append("valid_from is after valid_to")
 
+    # A billing value the mapper could not represent at the canonical schema scale was
+    # failed closed to None with the original captured in metadata["raw_*"]. That is a
+    # silent-rounding risk a human must resolve, so surface it as an ERROR -> review.
+    if "raw_price_chf" in record.metadata:
+        errors.append("price_chf exceeded canonical scale (2 dp); fail-closed to review")
+    if "raw_tax_points" in record.metadata:
+        errors.append("tax_points exceeded canonical scale (4 dp); fail-closed to review")
+
     if record.tax_points is None and record.price_chf is None:
         warnings.append("neither tax_points nor price_chf is set")
     if record.valid_from is None:

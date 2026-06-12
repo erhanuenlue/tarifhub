@@ -88,6 +88,33 @@ def _seed_records() -> list[TariffRecord]:
             version=1,
             **common,
         ),
+        # Max canonical scales: price_chf 12.34 (NUMERIC(12,2)) + tax_points 76.5000
+        # (NUMERIC(12,4)). At the column scales exactly, so both engines must serialise
+        # the SAME canonical Decimal — the scale contract's cross-engine proof.
+        TariffRecord(
+            tariff_code="SCALE.MAX",
+            tariff_system=TariffSystem.EAL,
+            designation=Designation(de="Skalengrenze"),
+            category="lab",
+            tax_points=Decimal("76.5000"),
+            price_chf=Decimal("12.34"),
+            requires_review=False,
+            version=1,
+            **common,
+        ),
+        # Lossy-input fail-closed shape: billing field None + original kept as a metadata
+        # raw_* string. Both engines store None cleanly and round-trip the same marker.
+        TariffRecord(
+            tariff_code="SCALE.LOSSY",
+            tariff_system=TariffSystem.EAL,
+            designation=Designation(de="Verlustfall"),
+            category="lab",
+            price_chf=None,
+            metadata={"raw_price_chf": "12.345"},
+            requires_review=True,
+            version=1,
+            **common,
+        ),
     ]
 
 
@@ -271,6 +298,27 @@ def test_decimal_scale_read_parity(serving_client):
     expected = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010")
     assert aa["tax_points"] == expected["tax_points"]  # 11.00 -> "11"
     assert aa["price_chf"] == expected["price_chf"]  # 12.30 -> "12.3"
+
+
+def test_max_scale_and_lossy_record_parity(serving_client):
+    """Max-scale + lossy-input records round-trip identically on both engines.
+
+    SCALE.MAX sits exactly at NUMERIC(12,4)/(12,2); SCALE.LOSSY is the fail-closed shape
+    (billing field None + raw_* metadata marker). Both engines must serialise the same
+    canonical Decimals and the same None+marker — the scale contract's served invariant
+    across the engine boundary.
+    """
+
+    body = serving_client.get("/api/v1/tariffs").json()
+    maxr = next(r for r in body if r["tariff_code"] == "SCALE.MAX")
+    expected_max = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "SCALE.MAX")
+    assert maxr["tax_points"] == expected_max["tax_points"]  # 76.5000 -> "76.5"
+    assert maxr["price_chf"] == expected_max["price_chf"]  # 12.34 -> "12.34"
+
+    lossy = next(r for r in body if r["tariff_code"] == "SCALE.LOSSY")
+    assert lossy["price_chf"] is None
+    assert lossy["metadata"]["raw_price_chf"] == "12.345"
+    assert lossy["requires_review"] is True
 
 
 def test_dates_read_parity(serving_client):

@@ -100,6 +100,35 @@ def _seed_records() -> list[TariffRecord]:
             version=1,
             **common,
         ),
+        # Max canonical scales: price_chf 12.34 (NUMERIC(12,2)) + tax_points 76.5000
+        # (NUMERIC(12,4)). At the column scales exactly, so both engines must serialise
+        # the SAME canonical Decimal — the scale contract's cross-engine proof.
+        TariffRecord(
+            tariff_code="SCALE.MAX",
+            tariff_system=TariffSystem.EAL,
+            designation=Designation(de="Skalengrenze"),
+            category="lab",
+            tax_points=Decimal("76.5000"),
+            price_chf=Decimal("12.34"),
+            requires_review=False,
+            version=1,
+            **common,
+        ),
+        # Lossy-input fail-closed shape: the mapper could not represent the value at the
+        # canonical scale, so the billing field is None and the original is kept as a
+        # metadata raw_* string. Both engines store None cleanly and round-trip the same
+        # raw_* marker (JSONB dict vs TEXT json).
+        TariffRecord(
+            tariff_code="SCALE.LOSSY",
+            tariff_system=TariffSystem.EAL,
+            designation=Designation(de="Verlustfall"),
+            category="lab",
+            price_chf=None,
+            metadata={"raw_price_chf": "12.345"},
+            requires_review=True,
+            version=1,
+            **common,
+        ),
     ]
 
 
@@ -253,6 +282,27 @@ def test_decimal_scale_read_parity(app_client):
     )
     assert aa_v1["tax_points"] == expected["tax_points"]
     assert aa_v1["price_chf"] == expected["price_chf"]
+
+
+def test_max_scale_and_lossy_record_parity(app_client):
+    """Max-scale + lossy-input records round-trip identically on both engines.
+
+    SCALE.MAX carries values exactly at NUMERIC(12,4)/(12,2); SCALE.LOSSY is the
+    fail-closed shape (billing field None + raw_* metadata marker). Both engines must
+    serialise the same canonical Decimals and the same None+marker — proving the scale
+    contract's stored==hashed==served invariant across the engine boundary.
+    """
+
+    body = app_client.get("/tariffs").json()
+    maxr = next(r for r in body if r["tariff_code"] == "SCALE.MAX")
+    expected_max = next(r for r in _expected_records() if r["tariff_code"] == "SCALE.MAX")
+    assert maxr["tax_points"] == expected_max["tax_points"]  # 76.5000 -> "76.5"
+    assert maxr["price_chf"] == expected_max["price_chf"]  # 12.34 -> "12.34"
+
+    lossy = next(r for r in body if r["tariff_code"] == "SCALE.LOSSY")
+    assert lossy["price_chf"] is None
+    assert lossy["metadata"]["raw_price_chf"] == "12.345"
+    assert lossy["requires_review"] is True
 
 
 def test_unknown_code_404_parity(app_client):
