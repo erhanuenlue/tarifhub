@@ -28,7 +28,7 @@ Consolidate findings, de-duplicate, rank. Route real defects to `implementer`; r
 ## Phase 06 — PR + CI *(inline)*
 `gh pr create` — description: what + why, evidence (test output), review summary, what phase 07 will prove. Wait for CI; the determinism boundary test must be visible in the run log. CI red → phase 05.
 
-## Phase 07 — Runtime verification *(delegated: `e2e-tester`, Sonnet)*
+## Phase 07 — Runtime verification *(delegated: `e2e-tester`, Opus 4.8)*
 Compose-up, integration suite against real Postgres, API smoke, console smoke + screenshots when `apps/` changed, container-log scan. This is the CAS-fit replacement for cloud staging — captured evidence beats a live deploy nobody will visit. Findings → phase 05.
 
 ## Phase 08 — Full report *(inline, Fable)*

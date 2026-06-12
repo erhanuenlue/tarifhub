@@ -52,10 +52,16 @@ python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (-
 
 ## Conventions
 
+- **Quality before cost (owner law, 13 Jun): every agent seat that exercises judgment or writes
+  anything runs Opus 4.8 or stronger (verifier inherits the orchestrator, Fable 5). Never downgrade
+  a model seat, an effort level or a review step to save tokens. Cost is reported on the board;
+  it is never an argument.**
+
 - Conventional Commits; branch `feat/…|fix/…`; squash-merge green PRs only.
 - Env-only config (`TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY`). Without an API key, `ai_map` falls back to deterministic `map_raw` — tests rely on this.
 - The canonical model's field set is **locked, additive-only** (ADR-03). A breaking change needs a new ADR before code.
 - German is the canonical designation language; FR/IT optional.
+- **Documentation style (owner law, 13 Jun): no em-dashes (—) in any documentation, report or PDF-bound text.** Use commas, colons, periods or parentheses; rewrite the sentence rather than substituting a hyphen. The submission PDF is built from the official FFHS LaTeX template (`docs/latex_template/`), with journal excerpts and the Fazit included as chapters.
 - Console scope guards (ADR-13): master-detail + review form + explain panel, ~4 components, no auth, no patient data, no benchmarking. Reject scope creep in review.
 - **Graders review code and documentation only — nothing gets deployed or executed by them.** Evidence that exists only at runtime must be captured into `docs/` (screenshots, CI links, coverage figures, report tables). Distribution (criterion 17) is proven by Dockerfiles/compose/Helm + CI builds + captured screenshots, not by a live cluster.
 - **No Java, no JVM, anywhere — owner's decision, final.** The stack is Python + TypeScript (console) only; the rubric is being refreshed to stack-neutral wording. The docs keep a "Modern application concepts" page (arc42 §8: DI, validation, persistence abstraction, observability, container-first — as implemented in Python, citing Modulplan Lehrmittel [5]). Never propose Quarkus/Java components for any reason, including rubric optics.

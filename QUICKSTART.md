@@ -59,7 +59,7 @@ What happens, and where you're needed:
 1. Claude plans, then works (reconciliation audit → live `ai_map` → evidence). Watch the board.
 2. When it reports done with evidence, type **`/ship`**.
 3. **Phase 01 stops for you:** it presents the plan of what's being shipped — read it, correct it, approve it.
-4. Phases 02–08 run: Opus implements fixes if needed, gates, parallel reviews (verifier always; determinism for `services/`; security when relevant; **Codex on architectural diffs or when you say "include codex review"**), PR + CI, Sonnet's runtime verification, the consolidated report.
+4. Phases 02–08 run: Opus implements fixes if needed, gates, parallel reviews (verifier always; determinism for `services/`; security when relevant; **Codex on architectural diffs or when you say "include codex review"**), PR + CI, the runtime verification (Opus), the consolidated report.
 5. **Phase 09 merges itself when the green-contract holds** (CI fully green incl. security, all findings dispositioned, no unauthorized frozen-path change, tree clean) and tells you what merged and why it qualified. Anything less **stops for you** with the failing condition named.
 6. Before closing: open `vault/daily/<today>.md` — curate the drafted journal entry to 3–6 honest lines. **This is graded material; 2 minutes, every working day.**
 
@@ -71,7 +71,6 @@ First-session sanity (from SETUP.md): `pytest` green offline · `ai_map` makes a
 - **Prompts are the mission; `/ship` is the landing.** Every prompt ends in `/ship` automatically. For ad-hoc changes between prompts, just describe the change and say `/ship` when it's ready — the pipeline scales down fine for small diffs.
 - `/cas-status` once or twice a week: honest floor check against the rubric, evidence-based.
 - The board, the journal hook, brain_sync and the vault auto-commit run themselves; merges land themselves on green. Your only recurring duties: **approve plans, curate the journal** — and answer the rare gate when the green-contract doesn't hold.
-- After a fresh clone or any `graphify hook install`: run `tools/hooks/install.sh` — re-applies the repo-local **incremental** graph hooks (upstream's regenerate full-walk versions pollute `graph.json` and drop doc nodes; see `tools/hooks/README.md`).
 
 ## 4 · Submission week (Block 3)
 

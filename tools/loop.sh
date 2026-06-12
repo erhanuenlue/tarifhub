@@ -26,7 +26,11 @@ PROMPTS_DEFAULT=(05 06 07)
 PROMPTS=("${@:-${PROMPTS_DEFAULT[@]}}")
 LOG=".shipboard/loop.log"
 mkdir -p .shipboard
-CLAUDE_CMD="${LOOP_CMD:-claude -p --permission-mode acceptEdits --max-turns 400}"
+# Quality before cost (owner law, 13 Jun): headless sessions run the same orchestrator
+# as manual ones. Override with LOOP_MODEL if the alias differs on this machine.
+LOOP_MODEL="${LOOP_MODEL:-claude-fable-5}"
+QUALITY_PREFIX="Owner standing order: maximum reasoning effort (ultracode). Quality before cost, always."
+CLAUDE_CMD="${LOOP_CMD:-claude -p --model $LOOP_MODEL --permission-mode acceptEdits --max-turns 400}"
 
 say() { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" | tee -a "$LOG"; }
 
@@ -68,7 +72,9 @@ for i in "${!PROMPTS[@]}"; do
     if [ -n "${LOOP_CMD:-}" ]; then
         $CLAUDE_CMD || { say "HALT: prompt $n command failed (exit $?)"; exit 1; }
     else
-        claude -p "$(cat "$f")" --permission-mode acceptEdits --max-turns 400 2>&1 | tee -a "$LOG"
+        claude -p "$QUALITY_PREFIX
+
+$(cat "$f")" --model "$LOOP_MODEL" --permission-mode acceptEdits --max-turns 400 2>&1 | tee -a "$LOG"
         rc=${PIPESTATUS[0]}
         [ "$rc" -ne 0 ] && { say "HALT: prompt $n session exited $rc"; exit 1; }
     fi
