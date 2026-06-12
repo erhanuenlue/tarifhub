@@ -10,4 +10,6 @@ Read AGENTS.md and CLAUDE.md. Final assembly: turn five weeks of evidence into t
 
 Constraints: no code changes this session except what pre-flight forces. The Fazit's honesty is its value — a documented 20% review rate beats a hidden one; an AI failure analysed beats a success asserted.
 
+Submission mechanics (confirmed on the Abgabe page, 12 Jun): assignment *"Projektarbeit: Deployment & Abgabe"*, submitted as **Gruppe K**, due **Mon 6 July 2026, 00:00** — PDF upload containing the clickable repo URL. The arc42 §8 page opens with the refreshed criterion-8 wording verbatim (*"Konzepte des gewählten Frameworks und moderner Applikationsentwicklung sachgerecht eingesetzt"* — stack-neutral since the 12 Jun rubric refresh); claim the 10 points directly, no hedging.
+
 Done means: the PDF is uploaded to Moodle and renders; the repo is frozen on the submitted commit; `/cas-status` reports every floor item green. Then stop. Curate the final journal entry — and take the evening off.

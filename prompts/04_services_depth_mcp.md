@@ -4,6 +4,8 @@ Read AGENTS.md and CLAUDE.md, then plan before coding.
 
 Goal: TarifCore serves everything the docs promise, and TarifMCP exists. Criteria 16/17 + the course's "machine-readable API protocols for AI" item.
 
+Assignment anchor (cite it where the evidence lands): the Abgabe-Auftrag demands *"Erweitern Sie Ihre Applikation um **KI-basierende Suche und Workflows**"* — the pgvector cross-lingual search and the ai_map→review→freeze workflow **are** exactly that. Quote the sentence in the §8/§10 evidence so the grader sees the assignment's own words answered.
+
 1. **TarifCore completeness:** point-in-time (`?as_of=`) and diff (`/tariffs/{code}/diff?from=&to=`) queries; the FHIR R4 read adapter (ChargeItemDefinition/CodeSystem mapping from the canonical record); pgvector semantic search endpoint (`/search?q=`, multilingual) with the stub embedder offline and e5 behind a flag. OpenAPI summaries on every route.
 2. **TarifMCP** (`services/mcp`, FastMCP): `search_tariffs`, `get_tariff`, `explain_crosswalk` — read-only proxies to TarifCore returning frozen records verbatim, with one integration test each. No direct DB access from MCP.
 3. **Acceptance criteria artifact** (`docs/arc42/10-quality-requirements.md`): Given/When/Then per use-case from the catalogue, including the determinism acceptance ("no LLM client importable on the value path") and reproducibility acceptance ("identical sources → identical record_hash set").
