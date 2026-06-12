@@ -71,6 +71,7 @@ First-session sanity (from SETUP.md): `pytest` green offline · `ai_map` makes a
 - **Prompts are the mission; `/ship` is the landing.** Every prompt ends in `/ship` automatically. For ad-hoc changes between prompts, just describe the change and say `/ship` when it's ready — the pipeline scales down fine for small diffs.
 - `/cas-status` once or twice a week: honest floor check against the rubric, evidence-based.
 - The board, the journal hook, brain_sync and the vault auto-commit run themselves; merges land themselves on green. Your only recurring duties: **approve plans, curate the journal** — and answer the rare gate when the green-contract doesn't hold.
+- After a fresh clone or any `graphify hook install`: run `tools/hooks/install.sh` — re-applies the repo-local **incremental** graph hooks (upstream's regenerate full-walk versions pollute `graph.json` and drop doc nodes; see `tools/hooks/README.md`).
 
 ## 4 · Submission week (Block 3)
 

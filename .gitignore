@@ -43,7 +43,8 @@ services/*/.claude/
 vault/.brain_sync_last
 
 # Knowledge-tooling workspace state (Obsidian, graphify)
+# .graphifyignore is deliberately TRACKED (single source of truth for graph
+# exclusions — see tools/hooks/README.md)
 .obsidian/
 graphify-out/
-.graphifyignore
 .claude/worktrees/
