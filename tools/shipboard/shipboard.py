@@ -20,7 +20,7 @@ Usage:
   python3 tools/shipboard/shipboard.py            # http://localhost:8787
   python3 tools/shipboard/shipboard.py --demo     # seed demo pipeline events
   python3 tools/shipboard/shipboard.py --reset    # clear pipeline events
-Keys: 1–4 switch tabs · Esc closes the inspector.
+Keys: 1–7 switch tabs · Esc closes the inspector.
 """
 import json, re, sys, time, pathlib, subprocess, datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
@@ -1159,6 +1159,24 @@ border:1px solid var(--edge);margin-bottom:5px;color:var(--dim)}
 .kitem.doing{border-color:rgba(251,191,36,.45);color:var(--paper)}
 .kitem.done{opacity:.55}
 .kitem .meta{float:right;color:var(--faint);font-family:'JetBrains Mono';font-size:10.5px;margin-left:8px}
+/* reflective work board (tab 7) */
+.board-cols{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.bcol{background:var(--card);border:1px solid var(--edge);border-radius:12px;padding:10px 11px;display:flex;flex-direction:column;min-height:52vh}
+.bhead{display:flex;align-items:center;gap:8px;padding-bottom:8px;border-bottom:1px solid var(--edge);margin-bottom:9px}
+.bsw{width:9px;height:9px;border-radius:3px;background:var(--faint)}
+.bname{font-family:'JetBrains Mono';font-size:11px;letter-spacing:.07em;text-transform:uppercase;color:var(--dim)}
+.bcnt{font-family:'JetBrains Mono';font-size:10px;font-weight:700;padding:1px 8px;border-radius:99px;color:var(--deep);background:var(--faint)}
+.bwip{margin-left:auto;font-family:'JetBrains Mono';font-size:10px;color:var(--faint)} .bwip.over{color:var(--fail)}
+.bcol.pending .bsw,.bcol.pending .bcnt{background:var(--sky)}
+.bcol.doing .bsw,.bcol.doing .bcnt{background:var(--run)}
+.bcol.done .bsw,.bcol.done .bcnt{background:var(--ok)}
+.blist{display:flex;flex-direction:column;gap:8px;overflow:auto;flex:1}
+.bcol .kitem{margin-bottom:0;cursor:pointer;border-left:3px solid var(--faint)}
+.bcol.pending .kitem{border-left-color:var(--sky)}
+.bcol.doing .kitem{border-left-color:var(--run)}
+.bcol.done .kitem{border-left-color:var(--ok)}
+.bcol .kitem:hover{border-color:var(--cyan);background:rgba(13,46,72,.7)}
+.bcol .empty{padding:8px;font-size:11px}
 .charts{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:12px}
 .chart svg{width:100%;height:64px;display:block;margin-top:6px}
 .chart .cv{font-family:'JetBrains Mono';font-size:13px;color:var(--paper);float:right}
@@ -1279,6 +1297,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="tab" data-v="project">Project<span class="kbd">4</span></div>
     <div class="tab" data-v="graphs">Graphs<span class="kbd">5</span></div>
     <div class="tab" data-v="github">GitHub<span class="kbd">6</span></div>
+    <div class="tab" data-v="board">Board<span class="kbd">7</span></div>
   </div>
 </div>
 
@@ -1451,7 +1470,12 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   </div>
 </div>
 
-<div class="foot">shipboard v8.5 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify · keys: 1-6 tabs, Esc closes inspector</div>
+<div class="view" id="v-board">
+  <div class="k">Work board — reflective · every task this session, grouped by status · click a card for details</div>
+  <div id="boardcols" class="board-cols" style="margin-top:8px">—</div>
+</div>
+
+<div class="foot">shipboard v8.5 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify · keys: 1-7 tabs, Esc closes inspector</div>
 </div>
 <div id="ovl" onclick="closeInsp()"></div>
 <div id="insp"><div class="ih"><span class="it" id="it">inspector</span><span class="ix" onclick="closeInsp()">✕</span></div><div class="ib" id="ib">—</div></div>
@@ -1478,7 +1502,7 @@ document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>showTab(el.dataset.
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='Escape') closeInsp();
-  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github'}[e.key];
+  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github','7':'board'}[e.key];
   if(m) showTab(m);
 });
 // ---------- github tab ----------
@@ -1745,6 +1769,37 @@ function feedRow(e, fresh){
   const onc=e.kind==='agent'?' onclick="inspect(\'agent\',\''+esc(e.ts)+'\',\''+esc(e.agent)+'\')"':(e.phase?' onclick="inspect(\'phase\',\''+esc(e.phase)+'\')"':'');
   return '<div class="feedrow'+(fresh?' fresh':'')+'"'+onc+'><span class="ft">'+esc(e.ts)+'</span><span class="fk '+esc(cls)+'">'+esc(lbl)+'</span><span>'+body+'</span><span class="fsrc">'+esc(e.src||'')+'</span></div>';
 }
+// ---------- board tab (reflective task board, tab 7) ----------
+function renderBoard(s){
+  const el=document.getElementById('boardcols'); if(!el) return;
+  const u=s.usage||{}, todos=u.todos||[];
+  const G={pending:[],in_progress:[],completed:[]};
+  todos.forEach((t,i)=>{(G[t.status]||G.pending).push({_i:i,content:t.content,status:t.status});});
+  const card=t=>'<div class="kitem'+(t.status==='in_progress'?' doing':(t.status==='completed'?' done':''))+'" onclick="boardTask('+t._i+')">'+(t.status==='completed'?'✓ ':'')+esc(t.content)+'</div>';
+  let doing=G.in_progress.map(card).join(''), doingN=G.in_progress.length;
+  if(!doing && s.active && s.active.length){
+    doing=s.active.map(a=>'<div class="kitem doing dlgc" onclick="inspect(\'agent\',\''+esc(a.ts)+'\',\''+esc(a.agent)+'\')"><span class="dot"></span><b>'+esc(a.agent)+'</b>'+(a.desc?' — '+esc(a.desc):'')+'<span class="meta">'+elapsed(a.ts)+'</span></div>').join('');
+    doingN=s.active.length;
+  }
+  const col=(name,cls,items,n,wip)=>'<div class="bcol '+cls+'"><div class="bhead"><span class="bsw"></span><span class="bname">'+name+'</span><span class="bcnt">'+n+'</span>'+(wip?'<span class="bwip'+(n>wip?' over':'')+'">WIP '+n+' / '+wip+'</span>':'')+'</div><div class="blist">'+(items||'<div class="empty">none</div>')+'</div></div>';
+  el.innerHTML=col('Pending','pending',G.pending.map(card).join(''),G.pending.length,0)
+    +col('In progress','doing',doing,doingN,5)
+    +col('Done','done',G.completed.map(card).join(''),G.completed.length,0);
+}
+function boardTask(i){
+  const t=(S0&&S0.usage&&S0.usage.todos)?S0.usage.todos[i]:null;
+  const it=document.getElementById('it'), ib=document.getElementById('ib');
+  if(!t){ it.textContent='Task'; ib.innerHTML='<div class="empty">task not found</div>'; }
+  else{
+    const nm=({pending:'Pending',in_progress:'In progress',completed:'Done'})[t.status]||t.status;
+    it.textContent='Task';
+    ib.innerHTML='<span class="itag">'+esc(nm)+'</span><span class="itag">source: session task list</span>'+
+      '<div class="k" style="margin-top:8px">Task</div><div class="pre">'+esc(t.content)+'</div>'+
+      '<div class="s" style="margin-top:8px">Reflective — derived from the session task list (TaskCreate / TodoWrite). Status updates on its own as work progresses; see <b>Tasks &#9656;</b> on Overview for the full grouped list.</div>';
+  }
+  document.getElementById('ovl').style.display='block';
+  document.getElementById('insp').classList.add('on');
+}
 async function tick(){
   let s; try { s = await (await fetch('/state')).json(); }
   catch(e){ const b=document.getElementById('badge'); b.textContent='SERVER UNREACHABLE'; b.className='badge fail';
@@ -1800,6 +1855,7 @@ async function tick(){
   document.getElementById('doing').innerHTML = g.in_progress.map(t=>'<div class="kitem doing">'+esc(t.content)+'</div>').join('')
     || (s.active.length? s.active.map(a=>'<div class="kitem doing dlgc" onclick="inspect(\'agent\',\''+esc(a.ts)+'\',\''+esc(a.agent)+'\')"><span class="dot"></span><b>'+esc(a.agent)+'</b>'+(a.desc?' — '+esc(a.desc):'')+'<span class="meta">'+elapsed(a.ts)+'</span></div>').join('')
     : '<div class="empty">no tracked task in progress — appears from the session’s task list (TaskCreate/TodoWrite)</div>');
+  renderBoard(s);
   const freshTop = s.feed && s.feed[0] && s.feed[0].ts!==lastFeedTs && lastFeedTs!==null;
   document.getElementById('minifeed').innerHTML = (s.feed||[]).slice(0,5).map((e,i)=>feedRow(e, freshTop&&i===0)).join('')
     || '<div class="empty">dispatches, returns and phase emits stream here</div>';
