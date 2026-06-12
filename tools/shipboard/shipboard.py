@@ -1029,8 +1029,14 @@ def cas_floor():
         except Exception:
             audit = None
         # compact criteria for /state; full elements come via detail?type=crit
+        gaps = sorted([{"c": c["c"], "w": c["w"], "label": e["label"], "status": e["status"],
+                        "evidence": e["evidence"]}
+                       for c in data["criteria"] for e in c["elements"]
+                       if e["status"] in ("miss", "regression")],
+                      key=lambda g: (0 if g["status"] == "regression" else 1, -g["w"]))[:20]
         data = {"generated": data["generated"], "block": data["block"],
                 "totals": data["totals"], "regressions": data["regressions"], "audit": audit,
+                "gaps": gaps,
                 "criteria": [{k: c[k] for k in ("c", "w", "name", "passed", "applicable", "due")}
                              | {"reg": any(e["status"] == "regression" for e in c["elements"]),
                                 "est": (audit or {}).get("crit", {}).get(str(c["c"]))}
@@ -1381,6 +1387,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="tab" data-v="graphs">Graphs<span class="kbd">5</span></div>
     <div class="tab" data-v="github">GitHub<span class="kbd">6</span></div>
     <div class="tab" data-v="board">Board<span class="kbd">7</span></div>
+    <div class="tab" data-v="cas">CAS<span class="kbd">8</span></div>
   </div>
 </div>
 
@@ -1490,11 +1497,6 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     </div>
     <div>
       <div class="panel" style="margin-bottom:12px">
-        <span class="s" id="casmeta" style="float:right"></span>
-        <div class="k">CAS anchors — structural floor · click a criterion</div>
-        <div id="caspanel" style="margin-top:6px">—</div>
-      </div>
-      <div class="panel" style="margin-bottom:12px">
         <div class="k">Evidence pulse</div>
         <div class="prow clk" onclick="inspect('gates')"><span class="pk">Tests (last gate run) ▸</span><span class="pv" id="ev1">—</span></div>
         <div class="prow"><span class="pk">Journal entries (crit. 15)</span><span class="pv" id="ev2">—</span></div>
@@ -1563,7 +1565,39 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   <div id="boardcols" class="board-cols" style="margin-top:8px">—</div>
 </div>
 
-<div class="foot">shipboard v8.5 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify · keys: 1-7 tabs, Esc closes inspector</div>
+<div class="view" id="v-cas">
+  <div class="grid5">
+    <div class="cell"><div class="k">Structural floor</div><div class="v" id="cas1">—</div><div class="s" id="cas1b"></div></div>
+    <div class="cell"><div class="k">Regressions</div><div class="v" id="cas2">—</div><div class="s" id="cas2b">ratchet: once passed, stays passed</div></div>
+    <div class="cell"><div class="k">Not yet due</div><div class="v" id="cas3">—</div><div class="s" id="cas3b"></div></div>
+    <div class="cell"><div class="k">Audit estimate</div><div class="v" id="cas4">—</div><div class="s" id="cas4b">run /cas-audit at block ends</div></div>
+    <div class="cell"><div class="k">Deadline</div><div class="v" id="cas5">—</div><div class="s" id="cas5b">Mon 6 Jul 00:00 · Gruppe K</div></div>
+  </div>
+  <div class="mid">
+    <div class="panel">
+      <span class="s" id="casmeta" style="float:right"></span>
+      <div class="k">18 criteria — anchor elements (conjunctive: every element of a level must hold) · click a criterion</div>
+      <div id="caspanel" style="margin-top:6px">—</div>
+    </div>
+    <div>
+      <div class="panel" style="margin-bottom:12px">
+        <div class="k">Open gaps — what to fix, with evidence path</div>
+        <div id="casgaps" style="margin-top:6px">—</div>
+      </div>
+      <div class="panel">
+        <div class="k">How this is measured</div>
+        <div class="s" style="line-height:1.6;margin-top:6px">
+          <b style="color:var(--paper)">Floor</b> — tools/cas_check.py: ~60 deterministic anchor elements, block-aware, re-checked every minute. It proves structure, never quality.<br>
+          <b style="color:var(--paper)">Ratchet</b> — tools/cas_baseline.json: an element that ever passed must keep passing; a regression turns red here, blocks the /ship green-contract and fails CI.<br>
+          <b style="color:var(--paper)">Judgment</b> — /cas-audit dispatches the grade-auditor (Sonnet) against the official anchor text; its per-criterion estimate appears here, labeled what it is: an estimate, not the grader.<br>
+          Anchor source: docs/cas/bewertungskriterien-anker.md (local, git-ignored).
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="foot">shipboard v8.6 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify + grading anchors · keys: 1-8 tabs, Esc closes inspector</div>
 </div>
 <div id="ovl" onclick="closeInsp()"></div>
 <div id="insp"><div class="ih"><span class="it" id="it">inspector</span><span class="ix" onclick="closeInsp()">✕</span></div><div class="ib" id="ib">—</div></div>
@@ -1590,7 +1624,7 @@ document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>showTab(el.dataset.
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='Escape') closeInsp();
-  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github','7':'board'}[e.key];
+  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github','7':'board','8':'cas'}[e.key];
   if(m) showTab(m);
 });
 // ---------- github tab ----------
@@ -2053,6 +2087,22 @@ async function tick(){
     .map(x=>'<span class="flag '+(x[1]?'on':'off')+'">'+(x[1]?'✓':'✗')+' '+esc(x[0])+'</span>').join('');
   document.getElementById('ciruns').innerHTML=(gh&&gh.runs.length)?gh.runs.map(r=>'<div class="cirow"><span>'+esc(r.at)+'</span><span class="'+(r.st==='success'?'ok':(r.st==='failure'?'bad':'pend'))+'">'+esc(r.st)+'</span><span>'+esc(r.wf)+'</span><span>'+esc(r.br)+'</span></div>').join(''):'<div class="s">'+(gh?'none yet':'gh unavailable')+'</div>';
   const cas=s.cas;
+  if(cas){
+    setV('cas1', cas.totals.passed+'/'+cas.totals.applicable);
+    document.getElementById('cas1b').textContent='anchor elements present · Block '+cas.block;
+    const r2=document.getElementById('cas2'); r2.textContent=cas.regressions.length;
+    r2.style.color=cas.regressions.length?'var(--fail)':'var(--ok)';
+    document.getElementById('cas3').textContent=cas.totals.due;
+    document.getElementById('cas3b').textContent='unlock in later blocks';
+    document.getElementById('cas4').textContent=cas.audit?('≈'+cas.audit.total+'/100'):'—';
+    document.getElementById('cas4b').textContent=cas.audit?('audited '+cas.audit.date+' · estimate, not the grader'):'run /cas-audit at block ends';
+    document.getElementById('cas5').textContent=p.cas.days_left+' days';
+    document.getElementById('casgaps').innerHTML=(cas.gaps&&cas.gaps.length)?cas.gaps.map(g=>
+      '<div class="dlg" onclick="inspect(\'crit\',\''+g.c+'\')">'+(g.status==='regression'?'🔻':'⛔')+
+      ' <b>'+String(g.c).padStart(2,'0')+'</b> ('+g.w+') '+esc(g.label)+
+      '<span class="meta">'+esc((g.evidence||'').split('/').slice(-2).join('/'))+'</span></div>').join('')
+      :'<div class="alert none">no open gaps — every due anchor element is present</div>';
+  }
   document.getElementById('casmeta').textContent = cas ?
     ('Block '+cas.block+' · '+cas.totals.passed+'/'+cas.totals.applicable+' elements · '+cas.totals.due+' due'+
      (cas.regressions.length?' · '+cas.regressions.length+' REGRESSION':'')) : '';
