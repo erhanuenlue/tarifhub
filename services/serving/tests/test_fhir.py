@@ -82,9 +82,7 @@ def test_cid_happy_path_shape_and_values(client):
     assert body["resourceType"] == "ChargeItemDefinition"
     # id: lowercased, '.' replaced with '-'  => tardoc-aa-00-0010-2
     assert body["id"] == "tardoc-aa-00-0010-2"
-    assert body["url"] == (
-        "https://tarifhub.example/fhir/ChargeItemDefinition/TARDOC/AA.00.0010"
-    )
+    assert body["url"] == ("https://tarifhub.example/fhir/ChargeItemDefinition/TARDOC/AA.00.0010")
     assert body["version"] == "2"
     # Latest version -> active (deterministic, derived from data not the clock).
     assert body["status"] == "active"
@@ -92,9 +90,7 @@ def test_cid_happy_path_shape_and_values(client):
     assert body["title"] == "Grundkonsultation (rev)"
 
     coding = body["code"]["coding"][0]
-    assert coding["system"] == (
-        "https://tarifhub.example/fhir/CodeSystem/TARDOC"
-    )
+    assert coding["system"] == ("https://tarifhub.example/fhir/CodeSystem/TARDOC")
     assert coding["code"] == "AA.00.0010"
     assert coding["display"] == "Grundkonsultation (rev)"
 
@@ -109,11 +105,7 @@ def test_cid_happy_path_shape_and_values(client):
     assert Decimal(str(component["factor"])) == Decimal("10.1")
 
     # Provenance extension carries the record hash, verbatim.
-    hashes = [
-        e["valueString"]
-        for e in body["extension"]
-        if e["url"].endswith("/record-hash")
-    ]
+    hashes = [e["valueString"] for e in body["extension"] if e["url"].endswith("/record-hash")]
     assert hashes and len(hashes[0]) == 64  # sha-256 hex
 
 
@@ -151,9 +143,7 @@ def test_cid_as_of_returns_pit_version(client):
 def test_cid_version_beats_as_of(client):
     """version wins over as_of when both are supplied (documented precedence)."""
 
-    body = client.get(
-        f"{CID}/TARDOC/PIT.0001", params={"version": 2, "as_of": "2022-06-01"}
-    ).json()
+    body = client.get(f"{CID}/TARDOC/PIT.0001", params={"version": 2, "as_of": "2022-06-01"}).json()
     # as_of=2022 alone would pick v1; version=2 overrides it.
     assert body["version"] == "2"
     assert body["status"] == "active"

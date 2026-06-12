@@ -41,9 +41,10 @@ From the broad, fast base to the narrow, high-leverage apex:
    `httpx.MockTransport` (`services/mcp/tests/test_tools.py`): each tool returns the
    backend JSON **verbatim**, forwards the right path and query params, and a backend 404
    raises `httpx.HTTPStatusError` rather than fabricating a record. **MCP↔serving
-   integration tests that drive the real serving ASGI app in-process via
-   `httpx.ASGITransport` land this release** — the same offline doctrine (SQLite mirror,
-   stub embedder), no socket.
+   integration tests** (`services/mcp/tests/test_integration.py`) additionally drive the
+   real serving ASGI app in-process via `httpx.ASGITransport` — each tool proven against
+   real responses under the same offline doctrine (SQLite mirror, stub embedder), no
+   socket.
 5. **Architectural AST boundary test (the apex).** A static AST scan asserts no LLM client
    is importable on the value path. This is the mechanical enforcement of the inviolable
    rule and is described as its own gate below.

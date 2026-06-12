@@ -203,7 +203,9 @@ def test_list_order_identical_across_engines(serving_client):
 
     body = serving_client.get("/api/v1/tariffs").json()
     order = [(r["tariff_system"], r["tariff_code"]) for r in body]
-    assert order == [(r["tariff_system"], r["tariff_code"]) for r in _latest_by_key(_expected_records())]
+    assert order == [
+        (r["tariff_system"], r["tariff_code"]) for r in _latest_by_key(_expected_records())
+    ]
 
 
 def test_list_system_filter_parity(serving_client):
@@ -262,7 +264,9 @@ def test_get_latest_version_parity(serving_client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["version"] == 2
-    expected = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010")
+    expected = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010"
+    )
     assert body == expected
 
 
@@ -295,7 +299,9 @@ def test_decimal_scale_read_parity(serving_client):
 
     body = serving_client.get("/api/v1/tariffs").json()
     aa = next(r for r in body if r["tariff_code"] == "AA.00.0010")
-    expected = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010")
+    expected = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010"
+    )
     assert aa["tax_points"] == expected["tax_points"]  # 11.00 -> "11"
     assert aa["price_chf"] == expected["price_chf"]  # 12.30 -> "12.3"
 
@@ -311,7 +317,9 @@ def test_max_scale_and_lossy_record_parity(serving_client):
 
     body = serving_client.get("/api/v1/tariffs").json()
     maxr = next(r for r in body if r["tariff_code"] == "SCALE.MAX")
-    expected_max = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "SCALE.MAX")
+    expected_max = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "SCALE.MAX"
+    )
     assert maxr["tax_points"] == expected_max["tax_points"]  # 76.5000 -> "76.5"
     assert maxr["price_chf"] == expected_max["price_chf"]  # 12.34 -> "12.34"
 
@@ -348,7 +356,9 @@ def test_as_of_point_in_time_parity(serving_client):
     resp = serving_client.get("/api/v1/tariffs", params={"as_of": "2024-06-01"})
     assert resp.status_code == 200
     aa = next(r for r in resp.json() if r["tariff_code"] == "AA.00.0010")
-    expected = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010")
+    expected = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010"
+    )
     assert aa == expected
 
     # A get with as_of returns the same versioned record, full body, on both engines.
@@ -360,9 +370,7 @@ def test_as_of_point_in_time_parity(serving_client):
 def test_diff_parity(serving_client):
     """The v1->v2 diff of AA.00.0010 is identical across engines (full body)."""
 
-    resp = serving_client.get(
-        "/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 2}
-    )
+    resp = serving_client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 2})
     assert resp.status_code == 200
     body = resp.json()
     changed = {c["field"]: (c["from_value"], c["to_value"]) for c in body["changes"]}

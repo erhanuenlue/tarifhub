@@ -253,9 +253,7 @@ def to_charge_item_definition(
     )
 
 
-def to_code_system(
-    system: str, records: list[TariffRecord], *, count: int
-) -> CodeSystem:
+def to_code_system(system: str, records: list[TariffRecord], *, count: int) -> CodeSystem:
     """Map a window of a tariff system's latest-version records to ONE R4 CodeSystem.
 
     ``records`` is the (already paginated, ``tariff_code`` ascending) window the route

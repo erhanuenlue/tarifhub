@@ -260,9 +260,7 @@ def test_list_as_of_null_valid_from_is_beginning_of_time(client):
 
 
 def test_list_as_of_with_system_filter(client):
-    body = client.get(
-        "/api/v1/tariffs", params={"as_of": "2022-06-01", "system": "TARDOC"}
-    ).json()
+    body = client.get("/api/v1/tariffs", params={"as_of": "2022-06-01", "system": "TARDOC"}).json()
     assert {r["tariff_system"] for r in body} == {"TARDOC"}
     pit = next(r for r in body if r["tariff_code"] == "PIT.0001")
     assert pit["version"] == 1
@@ -304,9 +302,7 @@ def test_list_without_as_of_unchanged(client):
 
 
 def test_diff_v1_to_v2_lists_changed_fields(client):
-    resp = client.get(
-        "/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 2}
-    )
+    resp = client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 2})
     assert resp.status_code == 200
     body = resp.json()
     assert body["tariff_system"] == "TARDOC"
@@ -328,48 +324,36 @@ def test_diff_v1_to_v2_lists_changed_fields(client):
 
 
 def test_diff_changes_are_sorted_by_field_name(client):
-    body = client.get(
-        "/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 2}
-    ).json()
+    body = client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 2}).json()
     fields = [c["field"] for c in body["changes"]]
     assert fields == sorted(fields)
 
 
 def test_diff_identical_version_has_no_changes(client):
-    body = client.get(
-        "/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 2, "to": 2}
-    ).json()
+    body = client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 2, "to": 2}).json()
     assert body["changes"] == []
     assert body["from_record_hash"] == body["to_record_hash"]
 
 
 def test_diff_missing_from_version_returns_404(client):
-    resp = client.get(
-        "/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 99, "to": 2}
-    )
+    resp = client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 99, "to": 2})
     assert resp.status_code == 404
     assert "99" in resp.json()["detail"]
 
 
 def test_diff_missing_to_version_returns_404(client):
-    resp = client.get(
-        "/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 99}
-    )
+    resp = client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 99})
     assert resp.status_code == 404
     assert "99" in resp.json()["detail"]
 
 
 def test_diff_unknown_code_returns_404(client):
-    resp = client.get(
-        "/api/v1/tariffs/TARDOC/NOPE.NOPE/diff", params={"from": 1, "to": 2}
-    )
+    resp = client.get("/api/v1/tariffs/TARDOC/NOPE.NOPE/diff", params={"from": 1, "to": 2})
     assert resp.status_code == 404
 
 
 def test_diff_rejects_version_below_one(client):
-    resp = client.get(
-        "/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 0, "to": 2}
-    )
+    resp = client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 0, "to": 2})
     assert resp.status_code == 422
 
 
@@ -417,3 +401,25 @@ def test_explain_is_deterministic_byte_identical(client):
     a = client.get("/api/v1/explain", params={"code": "AA.00.0010"})
     b = client.get("/api/v1/explain", params={"code": "AA.00.0010"})
     assert a.content == b.content
+
+
+def test_search_offline_candidate_cap_bounds_scan(seeded_db_url):
+    """The offline ranker scans at most ``candidate_cap`` rows, taken in deterministic
+    (tariff_system, tariff_code) key order — the security cap on the dev/demo path."""
+    from tarifhub_ingest.embeddings.embedder import HashingEmbedder
+
+    from tarifhub_serving.db import Database
+    from tarifhub_serving.repository import ServingRepository
+
+    db = Database.from_url(seeded_db_url)
+    conn = db.connect()
+    try:
+        repo = ServingRepository(conn, db)
+        query_vector = HashingEmbedder().embed_query("Glukose")
+        capped = repo.search_offline(query_vector, limit=10, candidate_cap=1)
+        # First embedded key in (system, code) order: "EAL" < "TARDOC", "1234.00" first.
+        assert [(r.tariff_system.value, r.tariff_code) for r in capped] == [("EAL", "1234.00")]
+        uncapped = repo.search_offline(query_vector, limit=10)
+        assert len(uncapped) > 1
+    finally:
+        conn.close()

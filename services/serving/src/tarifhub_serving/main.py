@@ -3,12 +3,13 @@
 Every value returned is an unaltered, frozen, versioned record read straight from the
 system of record. No AI is on this value path. The only AI-adjacent seam is the
 semantic-search endpoint, which uses an embedder to RANK frozen rows by similarity —
-it never computes, alters, or fabricates a billing value. On SQLite (offline) semantic
-search is honestly unavailable (HTTP 501); it requires Postgres+pgvector.
+it never computes, alters, or fabricates a billing value. Search ranks via pgvector on
+Postgres and via a deterministic in-process cosine over the stored embeddings on the
+offline SQLite mirror (ADR-017); a dimension mismatch on Postgres fails closed (501).
 
 Import discipline: from ``tarifhub_ingest`` we import ONLY ``models.tariff_model`` and
 ``embeddings.embedder`` — never mappers, never anything that could pull an LLM client.
-This is enforced by ``tests/test_determinism_boundary.py``.
+This is enforced by ``tests/test_serving_boundary.py``.
 """
 
 from __future__ import annotations

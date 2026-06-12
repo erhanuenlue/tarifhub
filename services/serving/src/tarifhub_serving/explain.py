@@ -89,7 +89,9 @@ def build_explanation(code: str, records: list[TariffRecord]) -> str:
     version count, record-hash provenance). Labelled ``[deterministic]`` to mark that it
     is rule-generated, not AI-written. ``records`` is the full version list ordered by
     ``(tariff_system, version)`` ascending (the repository's order); the "current" record
-    is the highest version of the lexicographically-first system in that list.
+    is the highest version of the lexicographically-last system in that list (the
+    ``max`` over ``(tariff_system, version)`` — deterministic either way; only relevant
+    when an unscoped code exists in more than one system).
     """
 
     systems = sorted({r.tariff_system.value for r in records})

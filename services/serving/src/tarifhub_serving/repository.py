@@ -22,6 +22,11 @@ from tarifhub_ingest.models.tariff_model import Designation, TariffRecord, Tarif
 
 from tarifhub_serving.db import Database
 
+# Upper bound on rows the offline (SQLite) search fallback will scan and rank
+# in-process per request. Deterministic: candidates are taken in (system, code)
+# key order. Production search runs on Postgres/pgvector and never hits this.
+OFFLINE_SEARCH_CANDIDATE_CAP = 5000
+
 
 class ServingRepository:
     """Read-only persistence port for frozen canonical records."""
@@ -125,9 +130,7 @@ class ServingRepository:
         row = self._conn.execute(query, (system, code, version)).fetchone()
         return self._row_to_record(row) if row else None
 
-    def list_versions_by_code(
-        self, code: str, *, system: str | None = None
-    ) -> list[TariffRecord]:
+    def list_versions_by_code(self, code: str, *, system: str | None = None) -> list[TariffRecord]:
         """Return ALL versions of every ``(system, code)`` matching ``code``.
 
         Optionally scoped to a single ``system``. Deterministically ordered by
@@ -212,7 +215,12 @@ class ServingRepository:
         rows = self._conn.execute(query, (vector_literal, limit)).fetchall()
         return [self._row_to_record(row) for row in rows]
 
-    def search_offline(self, query_vector: list[float], limit: int) -> list[TariffRecord]:
+    def search_offline(
+        self,
+        query_vector: list[float],
+        limit: int,
+        candidate_cap: int = OFFLINE_SEARCH_CANDIDATE_CAP,
+    ) -> list[TariffRecord]:
         """Rank latest-version frozen rows by cosine similarity, computed in Python.
 
         The offline (SQLite) fallback: there is no pgvector, so we fetch the latest
@@ -222,6 +230,11 @@ class ServingRepository:
         Rows without an embedding, or whose stored dimension differs from the query
         vector's, are excluded — the ranker never fabricates a value, it only orders
         unaltered frozen rows.
+
+        ``candidate_cap`` bounds the in-process scan (the dev/demo path must not turn
+        into a CPU sink on a large mirror): at most that many candidate rows are
+        fetched, in deterministic ``(tariff_system, tariff_code)`` key order, before
+        ranking. Production search runs on Postgres/pgvector and never hits this path.
         """
 
         dim = len(query_vector)
@@ -235,9 +248,10 @@ class ServingRepository:
             " AND t.tariff_code = latest.tariff_code "
             " AND t.version = latest.max_version "
             "WHERE t.embedding IS NOT NULL "
-            "ORDER BY t.tariff_system, t.tariff_code"
+            "ORDER BY t.tariff_system, t.tariff_code "
+            f"LIMIT {self._ph}"
         )
-        rows = self._conn.execute(query).fetchall()
+        rows = self._conn.execute(query, (candidate_cap,)).fetchall()
 
         scored: list[tuple[float, str, str, Any]] = []
         for row in rows:
