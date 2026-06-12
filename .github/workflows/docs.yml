@@ -7,6 +7,11 @@ on:
     paths: ["docs/**", ".github/workflows/docs.yml"]
   workflow_dispatch:
 
+# Prove Node-24 compatibility on our schedule: GitHub force-switches JavaScript
+# actions to Node 24 on 2026-06-16 (mid-project). Remove after the switch.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 permissions:
   contents: read
   pages: write
@@ -20,8 +25,8 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
       - run: pip install mkdocs-material mkdocs-print-site-plugin
       - run: mkdocs build -f docs/mkdocs.yml --strict

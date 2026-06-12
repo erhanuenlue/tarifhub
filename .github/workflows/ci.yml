@@ -5,6 +5,11 @@ on:
   push: { branches: [main] }
   pull_request:
 
+# Prove Node-24 compatibility on our schedule: GitHub force-switches JavaScript
+# actions to Node 24 on 2026-06-16 (mid-project). Remove after the switch.
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   python:
     runs-on: ubuntu-latest
@@ -12,8 +17,8 @@ jobs:
       # Owner decision 2026-06-11: lockfiles are committed; CI never re-resolves.
       UV_FROZEN: "1"
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.2.0 # exact tag: astral-sh has no floating v8 alias yet
       - name: Lint + test (offline suite — SQLite mirror, stub embedder)
         run: |
           for svc in services/*/; do
@@ -56,8 +61,8 @@ jobs:
           --health-timeout 5s
           --health-retries 10
     steps:
-      - uses: actions/checkout@v4
-      - uses: astral-sh/setup-uv@v4
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.2.0 # exact tag: astral-sh has no floating v8 alias yet
       - name: Read parity (ingestion + serving) against Postgres 16 + pgvector
         run: |
           for svc in services/ingestion services/serving; do
@@ -68,8 +73,8 @@ jobs:
   console:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-node@v6
         with: { node-version: 22 }
       - name: Lint + build + test (when the console exists)
         run: |
@@ -88,10 +93,10 @@ jobs:
       contents: read
       pull-requests: read
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with: { fetch-depth: 0 }
       - name: gitleaks (secrets)
-        uses: gitleaks/gitleaks-action@v2
+        uses: gitleaks/gitleaks-action@v3
         env: { GITHUB_TOKEN: "${{ secrets.GITHUB_TOKEN }}" }
       - name: Trivy (vulns, misconfig — fail on HIGH/CRITICAL)
         uses: aquasecurity/trivy-action@master
@@ -99,14 +104,14 @@ jobs:
       - name: Syft SBOM (artifact per run)
         uses: anchore/sbom-action@v0
         with: { format: spdx-json, output-file: sbom.spdx.json }
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with: { name: sbom, path: sbom.spdx.json }
 
   docs:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
       - run: pip install mkdocs-material mkdocs-print-site-plugin
       - run: mkdocs build -f docs/mkdocs.yml --strict
@@ -116,7 +121,7 @@ jobs:
     runs-on: ubuntu-latest
     needs: [python, security]
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - name: Build every sub-system image (criterion 17 evidence)
         run: |
           for df in services/*/Dockerfile apps/*/Dockerfile; do
