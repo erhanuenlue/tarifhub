@@ -203,7 +203,9 @@ def test_list_order_identical_across_engines(serving_client):
 
     body = serving_client.get("/api/v1/tariffs").json()
     order = [(r["tariff_system"], r["tariff_code"]) for r in body]
-    assert order == [(r["tariff_system"], r["tariff_code"]) for r in _latest_by_key(_expected_records())]
+    assert order == [
+        (r["tariff_system"], r["tariff_code"]) for r in _latest_by_key(_expected_records())
+    ]
 
 
 def test_list_system_filter_parity(serving_client):
@@ -262,7 +264,9 @@ def test_get_latest_version_parity(serving_client):
     assert resp.status_code == 200
     body = resp.json()
     assert body["version"] == 2
-    expected = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010")
+    expected = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010"
+    )
     assert body == expected
 
 
@@ -295,7 +299,9 @@ def test_decimal_scale_read_parity(serving_client):
 
     body = serving_client.get("/api/v1/tariffs").json()
     aa = next(r for r in body if r["tariff_code"] == "AA.00.0010")
-    expected = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010")
+    expected = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010"
+    )
     assert aa["tax_points"] == expected["tax_points"]  # 11.00 -> "11"
     assert aa["price_chf"] == expected["price_chf"]  # 12.30 -> "12.3"
 
@@ -311,7 +317,9 @@ def test_max_scale_and_lossy_record_parity(serving_client):
 
     body = serving_client.get("/api/v1/tariffs").json()
     maxr = next(r for r in body if r["tariff_code"] == "SCALE.MAX")
-    expected_max = next(r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "SCALE.MAX")
+    expected_max = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "SCALE.MAX"
+    )
     assert maxr["tax_points"] == expected_max["tax_points"]  # 76.5000 -> "76.5"
     assert maxr["price_chf"] == expected_max["price_chf"]  # 12.34 -> "12.34"
 
@@ -336,18 +344,77 @@ def test_dates_read_parity(serving_client):
     assert aa["valid_to"] is None
 
 
-def test_search_contract_per_engine(serving_client, engine):
-    """On SQLite search is 501; on Postgres the stub embedder's 16 dims also 501.
+def test_as_of_point_in_time_parity(serving_client):
+    """?as_of= picks the version whose validity window covers the date, on both engines.
 
-    Either way the value path is never faked. The dimension-guard 501 on Postgres is the
-    in-scope confirmation that semantic search stays honest cross-engine.
+    AA.00.0010 v1 is valid 2024-01-01..2025-12-31; v2 carries no valid_to (open-ended)
+    and a later created_at but the SAME valid_from. For an as_of in 2024 BOTH versions'
+    windows cover the date, so the MAX(version) tie-break selects v2. The point this pins
+    cross-engine is the window predicate + version tie-break, identical on SQLite/Postgres.
+    """
+
+    resp = serving_client.get("/api/v1/tariffs", params={"as_of": "2024-06-01"})
+    assert resp.status_code == 200
+    aa = next(r for r in resp.json() if r["tariff_code"] == "AA.00.0010")
+    expected = next(
+        r for r in _latest_by_key(_expected_records()) if r["tariff_code"] == "AA.00.0010"
+    )
+    assert aa == expected
+
+    # A get with as_of returns the same versioned record, full body, on both engines.
+    got = serving_client.get("/api/v1/tariffs/TARDOC/AA.00.0010", params={"as_of": "2024-06-01"})
+    assert got.status_code == 200
+    assert got.json() == expected
+
+
+def test_diff_parity(serving_client):
+    """The v1->v2 diff of AA.00.0010 is identical across engines (full body)."""
+
+    resp = serving_client.get("/api/v1/tariffs/TARDOC/AA.00.0010/diff", params={"from": 1, "to": 2})
+    assert resp.status_code == 200
+    body = resp.json()
+    changed = {c["field"]: (c["from_value"], c["to_value"]) for c in body["changes"]}
+    # designation.de and designation.fr both changed v1->v2 in the parity seed.
+    assert changed["designation.de"] == ("Übungsbehandlung", "Übungsbehandlung (rev)")
+    assert changed["designation.fr"] == ("Thérapie", "Thérapie révisée")
+    # tax_points 10.50 -> 11.00, rendered in the canonical read form (10.5 -> 11).
+    assert changed["tax_points"] == ("10.5", "11")
+    # requires_review False -> True diffs as JSON booleans on both engines.
+    assert changed["requires_review"] == (False, True)
+    # Deterministic field-name order.
+    fields = [c["field"] for c in body["changes"]]
+    assert fields == sorted(fields)
+
+
+def test_explain_parity(serving_client):
+    """The explain payload (records + labelled deterministic text) matches across engines."""
+
+    resp = serving_client.get("/api/v1/explain", params={"code": "AA.00.0010"})
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["code"] == "AA.00.0010"
+    assert [(r["tariff_system"], r["version"]) for r in body["records"]] == [
+        ("TARDOC", 1),
+        ("TARDOC", 2),
+    ]
+    assert body["explanation"].startswith("[deterministic]")
+
+
+def test_search_contract_per_engine(serving_client, engine):
+    """On SQLite search now ranks in-process; on Postgres the stub's 16 dims still 501.
+
+    Either way the value path is never faked. On SQLite the offline fallback ranks stored
+    embeddings (the parity seed stores none, so the result is an empty ranked list, HTTP
+    200). On Postgres the dimension-guard 501 (16 != 1024) keeps search honest cross-engine.
     """
 
     resp = serving_client.get("/api/v1/search", params={"q": "glucose", "limit": 3})
-    assert resp.status_code == 501
     if engine.label == "sqlite":
-        assert resp.json()["detail"] == "semantic search requires Postgres+pgvector"
+        # Parity seed stores no embeddings -> no candidates -> empty ranked list, 200.
+        assert resp.status_code == 200
+        assert resp.json() == []
     else:
+        assert resp.status_code == 501
         assert "1024-dim embedder" in resp.json()["detail"]
 
 

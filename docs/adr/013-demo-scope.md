@@ -14,7 +14,7 @@ We limit the TarifGuard console demo to three interactions — master-detail (se
 
 ## Consequences
 - (+) A scope a reviewer can hold in their head; the explain panel demonstrates the ADR-012 de-identification seam cleanly, with AI output explicitly labelled. The console renders frozen records verbatim, so the inviolable rule — "No AI computes or mutates a billing value at serve time." — is untouched by L3.
-- (–) Two pieces are design scope at the MVP, not implemented: the review POST endpoint with its console review form, and the serving `/api/v1/explain` endpoint (the console explain UI and its de-identification module exist; MCP `explain_crosswalk` currently errors with 404 because the serving endpoint does not exist yet). Reject scope creep in review; revisit only after the dossier hand-in.
+- (–) One piece is design scope at the MVP, not implemented: the review POST endpoint with its console review form. Reject scope creep in review; revisit only after the dossier hand-in. *(Update 2026-06-12: the serving `/api/v1/explain` endpoint is live as a deterministic, record-grounded endpoint — [ADR-017](017-deterministic-search-fallback-explain.md); MCP `explain_crosswalk` now proxies it. The console's AI explain panel keeps its own labelled, de-identified seam unchanged.)*
 - (±) The shipped console additionally carries a small **coding-check** page (`apps/tarifguard/app/coding-check/`) — a demo extra beyond the three decided interactions; it reads frozen records only and adds no new seam. Acknowledged here so the decided scope and the shipped console match.
 
 *Lineage: refines the console portion of [legacy ADR-005](legacy/005-tarifguard-merge-and-mcp.md); scopes the L3 layer of [legacy ADR-006](legacy/006-four-layer-product.md).*

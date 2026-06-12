@@ -13,8 +13,8 @@ TarifHub ingests Swiss ambulatory tariff sources (BAG EAL XLSX, FHIR catalogues)
 | Container | Repo path | Layer | Responsibility |
 |-----------|-----------|-------|----------------|
 | Ingestion service | `services/ingestion/` | L0 | AI-assisted harmonisation pipeline: load → parse → map → validate → score → flag → freeze → store → audit |
-| Serving API (TarifCore) | `services/serving/` | L1 | Read-only REST: list/get tariffs, pgvector semantic search; no write path, no LLM client importable (AST-tested) |
-| MCP server (TarifMCP) | `services/mcp/` | L1 | `search_tariffs`, `get_tariff`, `explain_crosswalk` — read-only httpx proxies to the serving API (`explain_crosswalk` currently errors with 404: the serving endpoint is designed, not yet built) |
+| Serving API (TarifCore) | `services/serving/` | L1 | Read-only REST: list/get tariffs (incl. `?as_of=` point-in-time), version diff, deterministic semantic search (pgvector on Postgres, in-process cosine offline — [ADR-017](../adr/017-deterministic-search-fallback-explain.md)), record-grounded `/api/v1/explain`, FHIR R4 read adapter (ChargeItemDefinition/CodeSystem); no write path, no LLM client importable (AST-tested) |
+| MCP server (TarifMCP) | `services/mcp/` | L1 | `search_tariffs`, `get_tariff`, `explain_crosswalk` — read-only httpx proxies to the serving API, returning frozen records verbatim |
 | TarifGuard console | `apps/tarifguard/` | L3 | Master–detail search UI + labelled AI explain panel with server-side de-identification (the review form is designed, not yet implemented) |
 | Database | `db/` | — | PostgreSQL 16 + pgvector; `schema.sql` + forward-only migrations; the only contract between L0 and L1 |
 | Deployment | `deploy/` | — | docker-compose + Helm/k3d; container-first distribution evidence |

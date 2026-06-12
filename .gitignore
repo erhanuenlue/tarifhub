@@ -39,6 +39,7 @@ site/
 .vscode/
 .gstack/
 .claude/agent-memory/
+.claude/agent-memory-local/
 services/*/.claude/
 vault/.brain_sync_last
 
