@@ -4,7 +4,7 @@ description: The 9-phase multi-model shipping pipeline — plan-approval, TDD im
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
 
-Ship the requested work through the phased pipeline. **The first action of every phase is its emit command — before any other tool call of that phase.** **You (Fable 5) do only the jobs where quality compounds: the plan, the orchestration, and the merge-gate review.** Delegate the volume. Emit a dashboard event at every phase transition: `bash tools/shipboard/emit.sh <phase01-09> <running|pass|fail|skip> "<short detail>"` — never let an emit failure block the pipeline. Watch the board at `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
+Ship the requested work through the phased pipeline. **The first action of every phase is its emit command — before any other tool call of that phase.** **You (Fable 5) do only the jobs where quality compounds: the plan, the orchestration, and the merge-gate review.** Delegate the volume. Emit a dashboard event at every phase transition: `bash tools/shipboard/emit.sh <01-09> <running|pass|fail|skip> "<short detail>"` (the phase argument is the two-digit number, e.g. `emit.sh 03 running "pytest serving"`) — never let an emit failure block the pipeline. Watch the board at `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
 
 **Model discipline:** each agent's model is pinned in its config — never override it, never switch a model mid-task (prompt caches are model-scoped; a switch re-reads the whole context at full price). Hold the plan-quality bar ruthlessly: a wrong plan wastes every downstream token.
 
