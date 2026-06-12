@@ -73,6 +73,7 @@ nav:
       - "ADR-013 — TarifGuard console demo scope: master-detail, review form, e": adr/013-demo-scope.md
       - "ADR-014 — arc42-light retained as the documentation framework": adr/014-arc42-light.md
       - "ADR-015 — BAG ePL Spezialitätenliste (FHIR R5) ingestion": adr/015-epl-sl-fhir-ingestion.md
+      - "ADR-016 — Canonical Decimal scale contract (stored bytes == hashed bytes)": adr/016-decimal-scale-contract.md
   - AI-Assisted Method:
       - AI Tools & Workflow: method/ai-tools.md
       - Decision Matrix: method/decision-matrix.md

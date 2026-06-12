@@ -20,6 +20,7 @@ Each ADR is at most one page on the house template.
 | 013 | TarifGuard console demo limited to master-detail + review form + labelled explain panel; no auth, no patient data | Accepted | [013](../adr/013-demo-scope.md) |
 | 014 | arc42-light retained as the documentation framework over Diátaxis, pure C4+ADR, and Starlight | Accepted | [014](../adr/014-arc42-light.md) |
 | 015 | Ingest the BAG ePL Spezialitätenliste (FHIR R5 NDJSON) per reimbursed package, keyed by GTIN, retail price as the canonical value, money-only | Accepted | [015](../adr/015-epl-sl-fhir-ingestion.md) |
+| 016 | Quantize billing values to the canonical NUMERIC scales pre-freeze so stored bytes == hashed bytes on every engine; lossy values fail closed to review | Accepted | [016](../adr/016-decimal-scale-contract.md) |
 
 ## Legacy register
 
