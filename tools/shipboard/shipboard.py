@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Shipboard v8 — agent-harness trace dashboard for the /ship pipeline. One file, stdlib only.
+"""Shipboard v9 — agent-harness trace dashboard for the /ship pipeline. One file, stdlib only.
 
 Everything on the board is clickable: phases, agents, models, commits, ADRs, gate runs,
 tasks, alerts — each opens an inspector drawer with the full story behind the number
@@ -22,7 +22,7 @@ Usage:
   python3 tools/shipboard/shipboard.py --reset    # clear pipeline events
 Keys: 1–7 switch tabs · Esc closes the inspector.
 """
-import json, re, sys, time, pathlib, subprocess, datetime
+import json, re, sys, threading, time, pathlib, subprocess, datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -30,16 +30,12 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 SB = ROOT / ".shipboard"
 LOG = SB / "events.jsonl"
 SESSION = SB / "session.json"
+SESS_LIVE_S = 120        # transcript touched within this window → "live"
+SESS_IDLE_S = 1800       # transcripts idle longer than this aren't listed
 PORT = 8787
 
 CONTEXT_LIMIT = 1_000_000
 SUBMIT_DATE = datetime.date(2026, 7, 5)
-BLOCKS = [
-    (datetime.date(2026, 6, 10), datetime.date(2026, 6, 14), "Block 0 · Foundation"),
-    (datetime.date(2026, 6, 15), datetime.date(2026, 6, 21), "Block 1 · Source + services"),
-    (datetime.date(2026, 6, 22), datetime.date(2026, 6, 28), "Block 2 · Console + evidence"),
-    (datetime.date(2026, 6, 29), datetime.date(2026, 7, 4),  "Block 3 · Document + Fazit"),
-]
 PRICES = {"fable": (10.0, 50.0), "opus": (5.0, 25.0), "sonnet": (3.0, 15.0), "haiku": (1.0, 5.0)}
 PHASES = [
     ("01", "Plan", "approval gate · Fable 5"),
@@ -813,14 +809,8 @@ def project():
             preview = [l for l in today_file.read_text(encoding="utf-8").splitlines() if l.strip()][:26]
         except Exception:
             pass
-    blocks = []
-    for start, end, label in BLOCKS:
-        statee = "done" if today > end else ("now" if start <= today <= end else "next")
-        pct = 0
-        if statee == "now":
-            pct = round(100 * ((today - start).days + 1) / ((end - start).days + 1))
-        blocks.append({"label": label, "state": statee, "pct": pct,
-                       "range": f"{start.strftime('%d.%m')}–{end.strftime('%d.%m')}"})
+    # blocks are PROGRESS stages now — measured by cas_check (owner: no deadlines);
+    # only the Moodle submission date survives as days_left.
     flags = {
         "compose": (ROOT / "deploy" / "docker-compose.yml").exists(),
         "helm": any((ROOT / "deploy").rglob("Chart.yaml")) if (ROOT / "deploy").is_dir() else False,
@@ -839,8 +829,7 @@ def project():
                   "learnings": _count_lines(ROOT / "LEARNINGS.md", r"^(##|- )")},
         "services": _service_shape(),
         "flags": flags,
-        "cas": {"days_left": (SUBMIT_DATE - today).days, "blocks": blocks,
-                "block": next((b["label"] for b in blocks if b["state"] == "now"), "post-CAS")},
+        "cas": {"days_left": (SUBMIT_DATE - today).days},
     }
     _P.update({"ts": now, "data": data})
     return data
@@ -942,6 +931,116 @@ def compute_phases(ev, u, p, ghd):
                 break
     return phases, explicit
 
+_SESS_CACHE = {}         # path -> (mtime, size, summary)
+
+def _summarize_session(p, stt):
+    """Cheap head+tail summary of one main transcript; None if it's a sidechain/garbage."""
+    sid, cwd, branch, started = p.stem, "", "", ""
+    try:
+        with open(p, encoding="utf-8", errors="replace") as f:
+            head = f.read(4096)
+    except Exception:
+        return None
+    if '"isSidechain": true' in head or '"isSidechain":true' in head:
+        return None
+    for line in head.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            continue
+        sid = e.get("sessionId") or sid
+        cwd = cwd or e.get("cwd") or ""
+        branch = branch or e.get("gitBranch") or ""
+        if not started and e.get("timestamp"):
+            started = _local_hms(e.get("timestamp"))
+        if cwd and started:
+            break
+    model, last = "", ""
+    try:
+        with open(p, "rb") as f:
+            f.seek(max(0, stt.st_size - 65536))
+            tail = f.read().decode("utf-8", "replace")
+    except Exception:
+        tail = ""
+    for line in reversed(tail.splitlines()):
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            continue
+        if not last and e.get("timestamp"):
+            last = _local_hms(e["timestamp"])
+        if e.get("type") == "assistant":
+            m = (e.get("message") or {}).get("model")
+            if m:
+                model = _short(m)
+                if last:
+                    break
+    proj = pathlib.Path(cwd).name if cwd else (p.parent.name.split("-")[-1] if p.parent.name else "")
+    return {"id": sid or p.stem, "project": (proj or "?")[:28],
+            "branch": branch[:24], "started": started, "last": last, "model": model or "?"}
+
+def discover_sessions(limit=12):
+    """Machine-wide: recently-active Claude Code main transcripts across all projects."""
+    try:
+        tracked = (json.loads(SESSION.read_text()) or {}).get("transcript_path") or ""
+    except Exception:
+        tracked = ""
+    tracked_stem = pathlib.Path(tracked).stem if tracked else ""
+    root = None
+    if tracked:
+        ps = pathlib.Path(tracked).parents
+        if len(ps) >= 2:
+            root = ps[1]
+    if not (root and root.is_dir()):
+        root = pathlib.Path.home() / ".claude" / "projects"
+    if not root.is_dir():
+        return []
+    try:
+        files = list(root.glob("*/*.jsonl"))
+    except Exception:
+        return []
+    stt_of = {}
+    for p in files:
+        try:
+            stt_of[p] = p.stat()
+        except Exception:
+            pass
+    order = sorted(stt_of, key=lambda p: stt_of[p].st_mtime, reverse=True)
+    now, out, seen = time.time(), [], set()
+    for p in order:
+        stt = stt_of[p]
+        idle = now - stt.st_mtime
+        if idle > SESS_IDLE_S:
+            break
+        if stt.st_size < 1000:
+            continue
+        ck = _SESS_CACHE.get(str(p))
+        if ck and ck[0] == stt.st_mtime and ck[1] == stt.st_size:
+            summ = ck[2]
+        else:
+            summ = _summarize_session(p, stt)
+            if summ is None:
+                continue
+            _SESS_CACHE[str(p)] = (stt.st_mtime, stt.st_size, summ)
+        if summ["id"] in seen:
+            continue
+        seen.add(summ["id"])
+        row = dict(summ)
+        row["idle_s"] = int(idle)
+        row["live"] = idle <= SESS_LIVE_S
+        row["tracked"] = bool(tracked_stem) and p.stem == tracked_stem
+        out.append(row)
+        if len(out) >= limit:
+            break
+    out.sort(key=lambda x: (not x["tracked"], not x["live"], x["idle_s"]))
+    return out
+
 def state():
     ev = read_events()
     agents = [e for e in ev if e.get("kind") == "agent"]
@@ -992,7 +1091,7 @@ def state():
             "updated": time.strftime("%H:%M:%S"), "events": len(ev),
             "event_tail": ev[-40:][::-1], "feed": feed[:40],
             "usage": u, "project": p, "gh": ghd, "cas": cas,
-            "alerts": al[:8]}
+            "alerts": al[:8], "sessions": discover_sessions()}
 
 # ---------------- CAS structural floor (tools/cas_check.py, cached 60s) ----------------
 
@@ -1037,6 +1136,7 @@ def cas_floor():
                        if e["status"] in ("miss", "regression")],
                       key=lambda g: (0 if g["status"] == "regression" else 1, -g["w"]))[:20]
         data = {"generated": data["generated"], "block": data["block"],
+                "blocks": data.get("blocks", []),
                 "totals": data["totals"], "regressions": data["regressions"], "audit": audit,
                 "gaps": gaps,
                 "criteria": [{k: c[k] for k in ("c", "w", "name", "passed", "applicable", "due")}
@@ -1238,7 +1338,7 @@ h1 .slash{color:var(--sky)}
 .v.bump{animation:vbump .9s ease-out}
 .sparkdot{animation:pulse 1.4s infinite}
 .badge .dot{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--run);margin-right:6px;animation:pulse 1.4s infinite;vertical-align:1px}
-.mid{display:grid;grid-template-columns:1.6fr minmax(0,1fr);gap:12px;margin-bottom:12px}
+.mid{display:grid;grid-template-columns:1.6fr minmax(0,1fr);gap:12px;margin-bottom:12px;align-items:start}
 .alert{display:flex;gap:8px;font-size:12px;padding:6px 10px;border-radius:8px;margin:4px 0;font-family:'JetBrains Mono'}
 .alert.warn{background:rgba(251,191,36,.1);color:var(--run)} .alert.bad{background:rgba(248,113,113,.12);color:var(--fail)}
 .alert.none{background:rgba(52,211,153,.08);color:var(--ok)}
@@ -1352,10 +1452,11 @@ border:1px solid var(--edge);border-radius:10px;padding:10px 12px;overflow-x:aut
 .ghrow{display:flex;gap:10px;align-items:baseline;font-family:'JetBrains Mono';font-size:11.5px;color:var(--dim);
 padding:4px 8px;border-bottom:1px solid rgba(125,211,252,.07);cursor:pointer}
 .ghrow:hover{background:rgba(255,255,255,.05)}
-.ghrow .gt{color:var(--faint);min-width:78px}
+.ghrow>*{min-width:0}
+.ghrow .gt{color:var(--faint);min-width:78px;flex:0 0 auto}
 .ghrow b{color:#fff}
 .ghrow .gtitle{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1;min-width:0}
-.ghrow .fsrc{flex:0 0 auto;min-width:0;max-width:58%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;color:var(--faint)}
+.ghrow .fsrc{flex:0 0 auto;min-width:0;max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;text-align:right;color:var(--faint)}
 .opk{font-family:'JetBrains Mono';font-size:9.5px;letter-spacing:.05em;color:var(--cyan);min-width:74px;text-transform:uppercase}
 .hbar{display:flex;align-items:center;gap:8px;font-family:'JetBrains Mono';font-size:10.5px;color:var(--dim);margin:3px 0}
 .hbar .hn{min-width:86px;text-align:right;color:var(--faint)}
@@ -1376,6 +1477,22 @@ border:1px solid var(--edge);border-radius:9px;padding:10px 12px;white-space:pre
 max-height:340px;overflow-y:auto;margin:6px 0 12px}
 .itag{display:inline-block;font-family:'JetBrains Mono';font-size:10px;padding:2px 9px;border-radius:5px;
 background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);margin:0 6px 6px 0}
+/* live sessions panel (overview) */
+.srow{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono';font-size:11.5px;color:var(--dim);padding:5px 6px;border-bottom:1px solid rgba(125,211,252,.07)}
+.srow:last-child{border-bottom:none}
+.srow.me{background:rgba(125,211,252,.06);border-radius:7px}
+.sdot{width:8px;height:8px;border-radius:99px;background:var(--faint);flex:none}
+.sdot.on{background:var(--ok);animation:pulse 1.4s infinite}
+.sdot.idle{background:var(--run)}
+.sid{color:var(--paper);min-width:72px}
+.sproj{color:var(--cyan);min-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.smodel{color:var(--dim);margin-left:auto;white-space:nowrap}
+.sage{color:var(--faint);min-width:66px;text-align:right}
+.stag{font-family:'JetBrains Mono';font-size:9px;color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);border-radius:4px;padding:1px 6px;text-transform:uppercase;flex:none}
+/* overview command cards (tab summaries) */
+.tcard{cursor:pointer}
+.tcard:hover{border-color:rgba(125,211,252,.5)}
+.tcard .tv{font-family:'JetBrains Mono';font-size:14px;font-weight:600;margin-top:3px}
 </style></head><body><div class="wrap">
 <div class="top">
   <h1><span class="slash">/ship</span> shipboard</h1>
@@ -1399,10 +1516,21 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="cell"><div class="k">Context</div><div class="v" id="ctx">—</div><div class="gauge"><i id="ctxbar" style="width:0%"></i></div><div class="s" id="ctx2"></div></div>
     <div class="cell"><div class="k">Tokens in / out</div><div class="v" id="tok">—</div><div class="s" id="tok2"></div></div>
     <div class="cell"><div class="k">Est. cost (USD)</div><div class="v" id="cost">—</div><div class="s" id="cost2"></div></div>
-    <div class="cell"><div class="k">CAS countdown</div><div class="v" id="cas">—</div><div class="s" id="cas2"></div></div>
+    <div class="cell"><div class="k">CAS countdown</div><div class="v" id="casdl">—</div><div class="s" id="casdl2"></div></div>
   </div>
   <div class="rail" id="rail"></div>
   <div class="chips" id="chips" style="display:none"></div>
+  <div class="grid5" style="margin-bottom:12px">
+    <div class="cell tcard" onclick="showTab('pipeline')"><div class="k">Pipeline →</div><div class="tv" id="tc1">—</div><div class="s" id="tc1b"></div></div>
+    <div class="cell tcard" onclick="showTab('agents')"><div class="k">Agents →</div><div class="tv" id="tc2">—</div><div class="s" id="tc2b"></div></div>
+    <div class="cell tcard" onclick="showTab('project')"><div class="k">Project →</div><div class="tv" id="tc3">—</div><div class="s" id="tc3b"></div></div>
+    <div class="cell tcard" onclick="showTab('github')"><div class="k">GitHub →</div><div class="tv" id="tc4">—</div><div class="s" id="tc4b"></div></div>
+    <div class="cell tcard" onclick="showTab('cas')"><div class="k">CAS →</div><div class="tv" id="tc5">—</div><div class="s" id="tc5b"></div></div>
+  </div>
+  <div class="panel" style="margin-bottom:12px">
+    <div class="k">Live sessions — Claude Code across this machine <span class="s" id="sesscount"></span></div>
+    <div id="sesslist">—</div>
+  </div>
   <div class="mid">
     <div class="panel">
       <div class="k">Mission · in progress now</div>
@@ -1546,7 +1674,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
       <div id="ghruns">—</div>
     </div>
     <div class="panel">
-      <div class="k">Pull requests (all states) — click for details</div>
+      <div class="k">Pull requests · click for details</div>
       <div id="ghprs">—</div>
     </div>
   </div>
@@ -1569,11 +1697,11 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
 
 <div class="view" id="v-cas">
   <div class="grid5">
-    <div class="cell"><div class="k">Structural floor</div><div class="v" id="cas1">—</div><div class="s" id="cas1b"></div></div>
-    <div class="cell"><div class="k">Regressions</div><div class="v" id="cas2">—</div><div class="s" id="cas2b">ratchet: once passed, stays passed</div></div>
-    <div class="cell"><div class="k">Not yet due</div><div class="v" id="cas3">—</div><div class="s" id="cas3b"></div></div>
-    <div class="cell"><div class="k">Audit estimate</div><div class="v" id="cas4">—</div><div class="s" id="cas4b">run /cas-audit at block ends</div></div>
-    <div class="cell"><div class="k">Deadline</div><div class="v" id="cas5">—</div><div class="s" id="cas5b">Mon 6 Jul 00:00 · Gruppe K</div></div>
+    <div class="cell"><div class="k">Structural floor</div><div class="v" id="cf1">—</div><div class="s" id="cf1b"></div></div>
+    <div class="cell"><div class="k">Regressions</div><div class="v" id="cf2">—</div><div class="s" id="cf2b">ratchet: once passed, stays passed</div></div>
+    <div class="cell"><div class="k">Not yet due</div><div class="v" id="cf3">—</div><div class="s" id="cf3b"></div></div>
+    <div class="cell"><div class="k">Audit estimate</div><div class="v" id="cf4">—</div><div class="s" id="cf4b">run /cas-audit at block ends</div></div>
+    <div class="cell"><div class="k">Deadline</div><div class="v" id="cf5">—</div><div class="s" id="cf5b">Mon 6 Jul 00:00 · Gruppe K</div></div>
   </div>
   <div class="mid">
     <div class="panel">
@@ -1599,7 +1727,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   </div>
 </div>
 
-<div class="foot">shipboard v8.6 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify + grading anchors · keys: 1-8 tabs, Esc closes inspector</div>
+<div class="foot">shipboard v9 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify + grading anchors · keys: 1-8 tabs, Esc closes inspector</div>
 </div>
 <div id="ovl" onclick="closeInsp()"></div>
 <div id="insp"><div class="ih"><span class="it" id="it">inspector</span><span class="ix" onclick="closeInsp()">✕</span></div><div class="ib" id="ib">—</div></div>
@@ -1629,8 +1757,28 @@ document.addEventListener('keydown',e=>{
   const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github','7':'board','8':'cas'}[e.key];
   if(m) showTab(m);
 });
-// ---------- github tab ----------
-const ghWhen = t => t ? (t.slice(5,10).replace('-','.')+' '+t.slice(11,16)) : '';
+// ---------- live sessions panel (overview) ----------
+function fmtIdle(x){ x=x||0; return x<60? x+'s idle' : (x<3600? Math.floor(x/60)+'m idle' : Math.floor(x/3600)+'h idle'); }
+function renderSessions(s){
+  const el=document.getElementById('sesslist'); if(!el) return;
+  const ss=s.sessions||[];
+  const cc=document.getElementById('sesscount'); if(cc) cc.textContent = ss.length? '· '+ss.length+(ss.length===1?' session':' sessions') : '';
+  el.innerHTML = ss.length ? ss.map(x=>
+    '<div class="srow'+(x.tracked?' me':'')+'">'+
+    '<span class="sdot '+(x.live?'on':'idle')+'"></span>'+
+    '<span class="sid">'+esc((x.id||'').slice(0,8))+'</span>'+
+    '<span class="sproj">'+esc(x.project||'?')+(x.branch?' · '+esc(x.branch):'')+'</span>'+
+    '<span class="smodel">'+esc(x.model||'?')+'</span>'+
+    '<span class="sage">'+(x.live?'live':esc(fmtIdle(x.idle_s)))+'</span>'+
+    (x.tracked?'<span class="stag">this board</span>':'')+
+    '</div>').join('') : '<div class="empty">no active Claude sessions found</div>';
+}
+// ---------- github tab (all times LOCAL — gh returns UTC) ----------
+const ghWhen = t => { if(!t) return ''; const d=new Date(t); if(isNaN(d)) return '';
+  const p2=n=>String(n).padStart(2,'0');
+  return p2(d.getDate())+'.'+p2(d.getMonth()+1)+' '+p2(d.getHours())+':'+p2(d.getMinutes()); };
+const ghRel = t => { if(!t) return ''; const s=(Date.now()-new Date(t).getTime())/1e3;
+  if(isNaN(s)||s<0) return ''; return s<90?Math.round(s)+'s ago':(s<5400?Math.round(s/60)+'m ago':(s<172800?Math.round(s/3600)+'h ago':Math.round(s/86400)+'d ago')); };
 async function loadGitHub(){
   let g; try{ g = await (await fetch('/github')).json(); }catch(e){ return; }
   const r=g.repo||{};
@@ -1638,8 +1786,8 @@ async function loadGitHub(){
   document.getElementById('gh1b').textContent = r.name ? ((r.visibility||'')+' · '+((r.diskUsage||0)/1024).toFixed(1)+' MB') : (g.gh_ok?'':'gh unavailable — local git only');
   document.getElementById('gh2').textContent = g.current || '—';
   document.getElementById('gh2b').textContent = (r.defaultBranchRef?('default: '+r.defaultBranchRef.name+' · '):'')+(g.branches||[]).length+' local branches';
-  document.getElementById('gh3').textContent = r.pushedAt ? ghWhen(r.pushedAt) : '—';
-  document.getElementById('gh3b').textContent = r.url ? r.url.replace('https://','') : '';
+  document.getElementById('gh3').textContent = r.pushedAt ? ghRel(r.pushedAt) : '—';
+  document.getElementById('gh3b').textContent = (r.pushedAt?ghWhen(r.pushedAt)+' · ':'')+(r.url ? r.url.replace('https://','') : '');
   const open=(g.prs||[]).filter(p=>p.state==='OPEN'), merged=(g.prs||[]).filter(p=>p.state==='MERGED');
   document.getElementById('gh4').textContent = open.length+' open';
   document.getElementById('gh4b').textContent = merged.length+' merged · '+((g.prs||[]).length-open.length-merged.length)+' closed (last 15)';
@@ -1954,7 +2102,7 @@ async function tick(){
             document.getElementById('upd').textContent='connection lost — restart shipboard.py'; return; }
   S0=s;
   document.getElementById('upd').textContent='updated '+s.updated+' · '+s.events+' events';
-  const u=s.usage, p=s.project;
+  const u=s.usage, p=s.project, cas=s.cas;
   const sts = Object.values(s.phases).map(x=>x.status);
   const badge = document.getElementById('badge');
   if (sts.includes('fail')) { badge.textContent='ATTENTION'; badge.className='badge fail'; }
@@ -1981,9 +2129,9 @@ async function tick(){
   const split = u.per_model.slice(0,3).map(m=>m.short.split(' ')[0].toLowerCase()+' $'+m.cost.toFixed(0)).join(' · ');
   document.getElementById('cost2').textContent = u.turns ? (u.turns+' turns · '+u.side+' side-sessions'+(u.per_model.length>1?' · '+split:'')) : '';
   const dl=p.cas.days_left;
-  document.getElementById('cas').textContent = dl+' days';
-  document.getElementById('cas').style.color = dl<=7?'var(--fail)':(dl<=14?'var(--run)':'');
-  document.getElementById('cas2').textContent = p.cas.block;
+  document.getElementById('casdl').textContent = dl+' days';
+  document.getElementById('casdl').style.color = dl<=7?'var(--fail)':(dl<=14?'var(--run)':'');
+  document.getElementById('casdl2').textContent = cas&&cas.blocks ? (((cas.blocks.find(b=>b.state==='now')||{}).label)||'all blocks complete') : '';
   // rail — click → phase inspector
   document.getElementById('rail').innerHTML = PH.map(ph=>{
     const st=s.phases[ph[0]]||{status:'pending',detail:'',ts:'',src:''};
@@ -2007,6 +2155,28 @@ async function tick(){
   const freshTop = s.feed && s.feed[0] && s.feed[0].ts!==lastFeedTs && lastFeedTs!==null;
   document.getElementById('minifeed').innerHTML = (s.feed||[]).slice(0,5).map((e,i)=>feedRow(e, freshTop&&i===0)).join('')
     || '<div class="empty">dispatches, returns and phase emits stream here</div>';
+  renderSessions(s);
+  // command cards — one-line summaries of the other tabs
+  const passN=Object.values(s.phases).filter(x=>x.status==='pass').length;
+  const runPh=PH.find(ph=>(s.phases[ph[0]]||{}).status==='running');
+  const t1=document.getElementById('tc1');
+  t1.textContent = sts.includes('fail')?'ATTENTION':(sts.includes('running')?'RUNNING':(s.phases['09']&&s.phases['09'].status==='pass'?'SHIPPED':'IDLE'));
+  t1.style.color = sts.includes('fail')?'var(--fail)':(sts.includes('running')?'var(--run)':'var(--ok)');
+  document.getElementById('tc1b').textContent = passN+'/9 pass'+(runPh?(' · now: '+runPh[1]):'');
+  document.getElementById('tc2').textContent = s.active.length+' live';
+  document.getElementById('tc2b').textContent = (u.delegations||[]).length+' delegations · $'+u.cost_main.toFixed(0)+'/'+u.cost_side.toFixed(0)+' main/sub';
+  const nowBlk = cas&&cas.blocks ? (cas.blocks.find(b=>b.state==='now')||{}).label : '';
+  document.getElementById('tc3').textContent = nowBlk ? nowBlk.split('·')[0].trim() : '—';
+  document.getElementById('tc3b').textContent = 'journal '+(p.journal.today?'✓':'✗')+' · '+p.adrs.count+' ADRs · '+(p.git.dirty?p.git.dirty+' dirty':'clean');
+  const mainRun2=(s.gh&&s.gh.runs||[]).find(x=>x.br==='main');
+  const ciw=mainRun2?(mainRun2.st||'?'):'—';
+  const t4=document.getElementById('tc4'); t4.textContent=ciw;
+  t4.style.color=ciw==='success'?'var(--ok)':(ciw==='failure'?'var(--fail)':'var(--run)');
+  document.getElementById('tc4b').textContent=(s.gh?((s.gh.prs||[]).length+' open PRs'):'gh n/a');
+  const t5=document.getElementById('tc5');
+  t5.textContent = cas ? (cas.totals.passed+'/'+cas.totals.applicable) : '—';
+  t5.style.color = cas&&cas.regressions.length?'var(--fail)':'var(--ok)';
+  document.getElementById('tc5b').textContent = cas ? (cas.regressions.length+' regressions'+(cas.audit?(' · ≈'+cas.audit.total):'')) : 'checker n/a';
   document.getElementById('alerts').innerHTML = s.alerts.length
     ? s.alerts.map(a=>'<div class="alert '+a.lvl+'">&#9888; '+esc(a.msg)+'</div>').join('')
     : '<div class="alert none">all clear</div>';
@@ -2071,9 +2241,12 @@ async function tick(){
       '<td>'+(d.live?'<span style="color:var(--run)">⟲ live</span>':(d.done?'<span style="color:var(--ok)">✓ done'+(d.has_report?' ▸':'')+'</span>':'?'))+'</td></tr>').join('')
     || '<tr><td colspan="8">no delegations yet — dispatches appear here with model, duration and cost</td></tr>';
   // project tab
-  document.getElementById('blockNow').textContent=p.cas.block;
-  document.getElementById('blocks').innerHTML=p.cas.blocks.map(b=>'<div class="blk '+b.state+'"><b>'+esc(b.label)+'</b>'+b.range+
-    (b.state==='now'?'<div class="gauge"><i style="width:'+b.pct+'%"></i></div>':'')+'</div>').join('');
+  const blks=(cas&&cas.blocks)||[];
+  document.getElementById('blockNow').textContent=(blks.find(b=>b.state==='now')||{}).label||'all blocks complete';
+  document.getElementById('blocks').innerHTML=blks.map(b=>'<div class="blk '+b.state+'"><b>'+esc(b.label)+'</b>'+
+    b.passed+'/'+b.total+' elements'+
+    '<div class="gauge"><i style="width:'+(b.total?Math.round(100*b.passed/b.total):0)+'%"></i></div></div>').join('')
+    ||'<div class="s">progress from tools/cas_check.py</div>';
   document.getElementById('commits').innerHTML=p.git.commits.map(c=>{
     const h=(c.split(' · ')[0]||'').trim();
     return '<div class="lst clk" onclick="inspect(\'commit\',\''+esc(h)+'\')">'+esc(c)+'</div>';}).join('');
@@ -2088,17 +2261,16 @@ async function tick(){
   document.getElementById('flags').innerHTML=[['boundary test',F.boundary],['compose',F.compose],['helm',F.helm],['ci.yml',F.ci],['mkdocs',F.docs]]
     .map(x=>'<span class="flag '+(x[1]?'on':'off')+'">'+(x[1]?'✓':'✗')+' '+esc(x[0])+'</span>').join('');
   document.getElementById('ciruns').innerHTML=(gh&&gh.runs.length)?gh.runs.map(r=>'<div class="cirow"><span>'+esc(r.at)+'</span><span class="'+(r.st==='success'?'ok':(r.st==='failure'?'bad':'pend'))+'">'+esc(r.st)+'</span><span>'+esc(r.wf)+'</span><span>'+esc(r.br)+'</span></div>').join(''):'<div class="s">'+(gh?'none yet':'gh unavailable')+'</div>';
-  const cas=s.cas;
   if(cas){
-    setV('cas1', cas.totals.passed+'/'+cas.totals.applicable);
-    document.getElementById('cas1b').textContent='anchor elements present · Block '+cas.block;
-    const r2=document.getElementById('cas2'); r2.textContent=cas.regressions.length;
+    setV('cf1', cas.totals.passed+'/'+cas.totals.applicable);
+    document.getElementById('cf1b').textContent='anchor elements present · Block '+cas.block;
+    const r2=document.getElementById('cf2'); r2.textContent=cas.regressions.length;
     r2.style.color=cas.regressions.length?'var(--fail)':'var(--ok)';
-    document.getElementById('cas3').textContent=cas.totals.due;
-    document.getElementById('cas3b').textContent='unlock in later blocks';
-    document.getElementById('cas4').textContent=cas.audit?('≈'+cas.audit.total+'/100'):'—';
-    document.getElementById('cas4b').textContent=cas.audit?('audited '+cas.audit.date+' · estimate, not the grader'):'run /cas-audit at block ends';
-    document.getElementById('cas5').textContent=p.cas.days_left+' days';
+    document.getElementById('cf3').textContent=cas.totals.due;
+    document.getElementById('cf3b').textContent='unlock in later blocks';
+    document.getElementById('cf4').textContent=cas.audit?('≈'+cas.audit.total+'/100'):'—';
+    document.getElementById('cf4b').textContent=cas.audit?('audited '+cas.audit.date+' · estimate, not the grader'):'run /cas-audit at block ends';
+    document.getElementById('cf5').textContent=p.cas.days_left+' days';
     document.getElementById('casgaps').innerHTML=(cas.gaps&&cas.gaps.length)?cas.gaps.map(g=>
       '<div class="dlg" onclick="inspect(\'crit\',\''+g.c+'\')">'+(g.status==='regression'?'🔻':'⛔')+
       ' <b>'+String(g.c).padStart(2,'0')+'</b> ('+g.w+') '+esc(g.label)+
@@ -2193,6 +2365,18 @@ def demo():
     LOG.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
     print(f"demo run seeded → {LOG}")
 
+def _warm_loop():
+    """Background cache warmer: refresh the gh caches every 30s so the GitHub
+    tab and CI cells render instantly instead of blocking on first click."""
+    while True:
+        try:
+            _GH["ts"] = 0.0; gh_info()
+            _GHF["ts"] = 0.0; github_full()
+        except Exception:
+            pass
+        time.sleep(30)
+
+
 if __name__ == "__main__":
     if "--reset" in sys.argv:
         try:
@@ -2203,5 +2387,6 @@ if __name__ == "__main__":
         print("event log cleared"); sys.exit(0)
     if "--demo" in sys.argv:
         demo()
-    print(f"shipboard v8 → http://localhost:{PORT}")
+    threading.Thread(target=_warm_loop, daemon=True).start()
+    print(f"shipboard v9 → http://localhost:{PORT}")
     HTTPServer(("127.0.0.1", PORT), H).serve_forever()

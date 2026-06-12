@@ -1,5 +1,7 @@
 # 06 — Validation & distribution evidence (Block 2)
 
+> **Gate-01: pre-approved by the owner (13 Jun).** Produce and log the plan as usual (emit + plan report), then proceed without waiting for approval. STOP and ask only for: scope beyond this prompt, any freeze-line contact, a green-contract or ratchet breach, or a destructive operation.
+
 Read AGENTS.md and CLAUDE.md. This session produces the artifacts criteria 13, 14 and 17 score — the points teams routinely leave on the table. Almost no new features; maximum legibility.
 
 **Anchor rule that governs this whole session (official Bewertungskriterien):** levels are conjunctive — a top level is awarded only if *every* anchor element is present. For criterion 14 the anchors say it outright: *a screenshot or an unbacked "alle Tests grün" claim is the 1-point level*; full marks require **pipeline output, documented and interpreted in the report**. Screenshots illustrate; quoted output + interpretation score.

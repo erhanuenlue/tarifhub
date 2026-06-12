@@ -1,8 +1,10 @@
 # 05 — TarifGuard Console (Block 2)
 
+> **Gate-01: pre-approved by the owner (13 Jun).** Produce and log the plan as usual (emit + plan report), then proceed without waiting for approval. STOP and ask only for: scope beyond this prompt, any freeze-line contact, a green-contract or ratchet breach, or a destructive operation.
+
 Read AGENTS.md, CLAUDE.md and `.claude/rules/demo-frontend.md`, then plan before coding.
 
-Goal: the console at `apps/tarifguard` — the course Frontend block's shape (master-detail + form) carrying the product's trust story. Graders read code and screenshots; nobody will run this. Build accordingly: clean code and captured evidence over runtime polish.
+Goal: the console at `apps/tarifguard-demo` — the course Frontend block's shape (master-detail + form) carrying the product's trust story. Graders read code and screenshots; nobody will run this. Build accordingly: clean code and captured evidence over runtime polish.
 
 Scope, exactly four components:
 

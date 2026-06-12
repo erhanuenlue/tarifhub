@@ -1,0 +1,125 @@
+%Vorlage fuer Thesen an der FFHS
+\documentclass{ffhsthesis}
+
+\usepackage[utf8]{inputenc}
+
+\usepackage{setspace}
+\setstretch{1.5}
+\setlength{\parindent}{0pt} % Absatzeinzug auf 0 setzen wie in Word Vorlage
+
+\begin{document}
+
+\dokumentTyp{Disposition \\  Bachelor/Master-Thesis}
+\studiengang{XY}
+\title{Titel}
+\subtitle{(evt. Untertitel, Foto usw.)} % optional
+\author{Vorname und Name des/r Studenten/in}
+% \date{}
+\wohnort{Wohnort, Datum}
+%\referent{Name des Referenten\\ Titel\\Unterrichtetes Fach}
+\referent{Vorname Name\\ Titel\\Dozent für Fach}
+\eingereichtBei{Tobias Häberlein\\Departement Informatik\\Departementsleiter} 
+
+\maketitle
+
+\newpage
+\tableofcontents
+
+\newpage
+
+\startThesis % Befehl muss vor dem ersten chapter stehen (Seitennummerierung!)
+
+\chapter{Einleitung}
+
+Enthält die folgenden Punkte (kann im Text oder als separate Unterabschnitte angegeben werden):
+
+\begin{itemize}
+    \item Ausgangslage
+    \item Problemstellung
+    \item Zielsetzung
+    \item Abgrenzungen
+    \item Vorgehensweise
+\end{itemize}
+
+\chapter{Stand der Forschung/Technik}
+
+Enthält die folgenden Punkte (kann im Text oder als separate Unterabschnitte angegeben werden):
+\begin{itemize}
+    \item Übersicht über die relevante Literatur
+    \item Forschungslücken (siehe in der Leitlinie 7 Arten von Forschungslücken)
+    \item Forschungsfragen (siehe in der Leitlinie 5 Arten von Forschungslücken)
+\end{itemize}
+
+\chapter{Methoden und Vorgehen}
+Enthält die folgenden Punkte (kann im Text oder als separate Unterabschnitte angegeben werden):
+\begin{itemize}
+    \item Forschungsdesign
+    \item Datenerhebung und Datenanalyse
+    \item Ablauf der Untersuchung
+\end{itemize}
+
+\chapter{Erwartete Ergebnisse}
+
+\chapter{Methoden und Vorgehen}
+
+
+%\section{Überschrift 2}
+
+%\subsection{Überschrift 2}
+
+\newpage
+\chapter*{Abbildungsverzeichnis}
+\addcontentsline{toc}{chapter}{Abbildungsverzeichnis}
+
+\newpage
+\chapter*{Tabellenverzeichnis}
+\addcontentsline{toc}{chapter}{Tabellenverzeichnis}
+
+\newpage
+\chapter*{Literaturverzeichnis}
+\addcontentsline{toc}{chapter}{Literaturverzeichnis}
+
+\newpage
+\chapter*{Hilfsmittelverzeichnis}
+\addcontentsline{toc}{chapter}{Hilfsmittelverzeichnis}
+
+\begin{table}[h!]
+    \centering
+    \begin{tabular}{|p{5cm}|p{5cm}|p{4cm}|} \hline
+       \textbf{Welches Hilfsmittel wurde eingesetzt?} & \textbf{Wozu wurde das Hilfsmittel eingesetzt?}  & \textbf{Betroffene Stellen}\\ \hline
+        Bezahltes Lektorat & Rechtschreibkorrektur & Gesamtes Dokument \\ \hline
+        Google Translate & Übersetzung von Textpassagen & Kapitel 5.3, Seite 25-26 \\ \hline
+        ChatGPT & Kapitelstruktur & Kapitel 5, Seiten 23-39 \\ \hline
+         &  & \\ \hline
+    \end{tabular}
+  \label{tab:hilfsmittelverzeichnis}
+\end{table}
+
+\newpage
+\chapter*{Anhang}
+\addcontentsline{toc}{chapter}{Anhang}
+
+\newpage
+\chapter*{Selbstständigkeitserklärung}
+\addcontentsline{toc}{chapter}{Selbstständigkeitserklärung}
+
+Hiermit erkläre ich,
+\begin{itemize}
+    \item dass ich die vorliegende Arbeit selbstständig verfasst habe,
+    \item dass alle sinngemäss und wörtlich übernommenen Textstellen aus fremden Quellen kenntlich gemacht wurden,
+    \item dass alle mit Hilfsmitteln erbrachten Teile der Arbeit präzise deklariert wurden,
+    \item dass keine anderen als die im Hilfsmittelverzeichnis aufgeführten Hilfsmittel verwendet wurden,
+    \item dass das Thema, die Arbeit oder Teile davon nicht bereits Gegenstand eines Leistungsnachweises eines anderen Moduls waren, sofern dies nicht ausdrücklich mit der Referentin oder dem Referenten im Voraus vereinbart wurde,
+    \item dass ich mir bewusst bin, dass meine Arbeit elektronisch auf Plagiate und auf Drittautorschaft menschlichen oder technischen Ursprungs überprüft werden kann und ich hiermit der FFHS das Nutzungsrecht so weit einräume, wie es für diese Verwaltungshandlungen notwendig ist.
+\end{itemize}
+
+\vspace{4cm}
+\noindent
+\hrule \ \\[-0.5ex]
+(Ort, Datum, Unterschrift)
+\clearpage
+\newpage
+
+\end{document}
+
+

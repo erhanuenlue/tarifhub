@@ -39,16 +39,11 @@ NAMES = {1: "Use-Cases & Anforderungen", 2: "NfA nach SMART", 3: "Vision",
          13: "Unit-Tests", 14: "Test-Ergebnisse", 15: "KI-Werkzeuge",
          16: "KI-Services", 17: "Container-Sub-Systeme", 18: "Fazit"}
 
-# Block ends (Block 0..3); elements due in a later block report as "due", not "miss".
-BLOCK_END = {0: datetime.date(2026, 6, 14), 1: datetime.date(2026, 6, 21),
-             2: datetime.date(2026, 6, 28), 3: datetime.date(2026, 7, 5)}
-
-def cur_block(today=None):
-    t = today or datetime.date.today()
-    for b in (0, 1, 2):
-        if t <= BLOCK_END[b]:
-            return b
-    return 3
+# Blocks are PROGRESS stages, not calendar (owner works without deadlines, 13 Jun).
+# A block is complete when every element assigned to it passes; the current block is
+# the first incomplete one. Elements of later blocks report "due", not "miss".
+BLOCK_LABELS = {0: "Block 0 · Foundation", 1: "Block 1 · Source + services",
+                2: "Block 2 · Console + evidence", 3: "Block 3 · Document + Fazit"}
 
 # ---------------- primitives ----------------
 
@@ -189,13 +184,28 @@ def ELEMENTS():
 # ---------------- run ----------------
 
 def run(today=None):
-    block = cur_block(today)
-    rows = []
+    # pass 1: evaluate everything
+    raw = []
     for eid, crit, label, due, fn, ev in ELEMENTS():
         try:
             ok = bool(fn())
         except Exception:
             ok = False
+        raw.append((eid, crit, label, due, ok, ev))
+    # pass 2: derive the current block from PROGRESS (first block with a failing element)
+    block = 3
+    for b in (0, 1, 2, 3):
+        if any(due == b and not ok for _e, _c, _l, due, ok, _v in raw):
+            block = b
+            break
+    blocks = []
+    for b in (0, 1, 2, 3):
+        es = [(ok,) for _e, _c, _l, due, ok, _v in raw if due == b]
+        blocks.append({"b": b, "label": BLOCK_LABELS[b],
+                       "passed": sum(1 for (ok,) in es if ok), "total": len(es),
+                       "state": "done" if b < block else ("now" if b == block else "next")})
+    rows = []
+    for eid, crit, label, due, ok, ev in raw:
         status = "pass" if ok else ("due" if due > block else "miss")
         rows.append({"id": eid, "crit": crit, "label": label, "due": due,
                      "status": status, "evidence": ev})
@@ -219,7 +229,7 @@ def run(today=None):
                       "due": sum(1 for r in es if r["status"] == "due"),
                       "elements": es})
     data = {"generated": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "block": block,
+            "block": block, "blocks": blocks,
             "criteria": crits,
             "totals": {"passed": len(passed_now),
                        "applicable": sum(1 for r in rows if r["status"] in ("pass", "miss", "regression")),
