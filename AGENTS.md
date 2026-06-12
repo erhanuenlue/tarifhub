@@ -1,10 +1,25 @@
 # TarifHub — Project Facts (read first)
 
-Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (post-CAS) → L3 apps (demo now). **CAS capstone due 6 July 2026** — scope and grading strategy: the CAS Dossier at `../../02_CAS/TarifHub_CAS_Dossier_EN.md` in this bundle (copy it into `docs/` if this workspace moves out of the bundle).
+Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (post-CAS) → L3 apps (demo now). **CAS capstone due Mon 6 July 2026, 00:00** (submit as Gruppe K: PDF with clickable repo URL). Grading strategy lives in Erhan's corpus (CAS Dossier v3.1); the operative grading anchors every session must honour are below.
+
+## CAS grading anchors — operative (official Bewertungskriterien, 12 Jun 2026)
+
+Scoring is **conjunctive**: a criterion's level is awarded only if **all** of its anchors hold — one missing element drops the whole tier. 18 criteria / 100 pts (Spezifikation 15 · Entwurf 17 · Programmierung 22 · Validierung 16 · KI und Architektur 30). Language, framework and architecture style are free; a modular monolith is *gleichwertig* to distributed services. The non-obvious top-anchor requirements:
+
+- **Evidence standard (crit 14):** pipeline output **quoted and interpreted** in the report — a screenshot or an unbacked "all green" is the *1-point* anchor. Never present a screenshot as the evidence; it only illustrates.
+- **Learnings (crit 9):** every entry with a diff or commit ref, especially where AI suggestions were **accepted, corrected or rejected**.
+- **Spec shape (crits 1–3):** a marked core set of **3–5 Kernfunktionen** with actors + business benefit, stakeholders identified; ≥3 NfAs each with **Zielwert + Messverfahren + visible ADR link**; **one KI-Nutzen sentence per Kernfunktion** in the vision.
+- **Acceptance criteria (crit 11):** testable, per Kernfunktion, with **explicit cross-references to the NfAs**.
+- **Test strategy (crit 12):** must explicitly address **Tests der KI-Anteile** — guardrail behaviour and non-deterministic responses (our boundary test, gap-gate tests, fill-reuse determinism tests, named as such).
+- **AI-tools chapter (crit 15):** structured **by phase — Generierung · Review · Refactoring · Recherche** — each claim evidenced by prompts/diffs/commit refs; closes with a **complete Erklärung der Eigenständigkeit** (standard self-authored academic form; Erhan signs).
+- **Fazit (crit 18):** built on **three veto decisions ("nie an die KI delegiert") — concrete, justified, evidenced** — plus the transfer to future working practice. House vetoes: the freeze line · human gates over plans/merges · the journal/Fazit voice.
+- **Report-wide (crits 4/8/17):** a **durchgängiger roter Faden** Problemstellung→Lösung→Fazit; framework choice justified in the report (ADR-001); container/architecture style choice justified (ADR-002/006).
+
+**Full anchor text (all 18 criteria, all levels):** `docs/cas/bewertungskriterien-anker.md` — local working reference, **git-ignored** (course-internal material; this repo goes public in Block 3). Consult it whenever a criterion's exact level conditions matter.
 
 ## The one inviolable rule
 
-**No AI computes or mutates a billing value at serve time.** AI may run only (a) pre-freeze in `ai_map` (non-billing fields, structured output, temp 0) and (b) in explain/search seams that never alter values. Frozen records are immutable: SHA-256 `record_hash` over sorted canonical content; updates are new versions; `audit_log` is append-only. `test_determinism_boundary.py` (AST check: no LLM client importable on the value path) must stay green — CI fails otherwise.
+**No AI computes or mutates a billing value at serve time.** AI may run only (a) pre-freeze in `ai_map` (non-billing fields, schema-constrained structured output) and (b) in explain/search seams that never alter values. Frozen records are immutable: SHA-256 `record_hash` over sorted canonical content; updates are new versions; `audit_log` is append-only. `test_determinism_boundary.py` (AST check: no LLM client importable on the value path) must stay green — CI fails otherwise.
 
 ## Layout
 
@@ -12,7 +27,7 @@ Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assiste
 services/ingestion/      L0: adapters → parsers → map_raw → ai_map → validate → score → review → freeze
 services/serving/        L1 TarifCore: REST + FHIR R4, point-in-time + diff, pgvector search (read-only)
 services/mcp/            L1 TarifMCP: search_tariffs, get_tariff, explain_crosswalk (read-only proxies)
-apps/tarifguard/         L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel (kassenflow/meldepilot remain stubs)
+apps/tarifguard-demo/    L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel
 db/                      schema.sql + migrations (Postgres 16 + pgvector; SQLite mirror for offline tests)
 deploy/                  docker-compose.yml + helm/ (k3d for the CAS K8s proof)
 docs/                    arc42/ (12 chapters, MkDocs Material → the deliverable site) + adr/
@@ -21,7 +36,7 @@ vault/                   CAS evidence: daily/ journal, decision-matrix.md, fazit
 
 ## Stack
 
-Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude structured output temp 0 (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft → GHCR) · OpenTelemetry → Prometheus/Grafana + Sentry. ADR register: `docs/adr/` (13 decisions; ADR-01 Python-first, ADR-13 demo scope).
+Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft → GHCR) · OpenTelemetry → Prometheus/Grafana + Sentry. ADR register: `docs/adr/` (13 decisions; ADR-01 Python-first, ADR-13 demo scope).
 
 ## Commands
 
@@ -30,7 +45,7 @@ uv sync                                  # per service; uv is the package manage
 uv run pytest -q                         # offline by default: SQLite mirror + stub embedder, no containers
 uv run ruff check --fix . && uv run ruff format .
 docker compose up -d db                  # Postgres+pgvector when a test/dev task needs the real engine
-cd apps/tarifguard && npm run dev        # demo on :3000; npm test = Playwright smoke
+cd apps/tarifguard-demo && npm run dev   # demo on :3000; npm test = Playwright smoke
 mkdocs serve -f docs/mkdocs.yml          # the arc42 site
 python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (--demo seeds, --reset clears)
 ```
@@ -43,5 +58,5 @@ python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (-
 - German is the canonical designation language; FR/IT optional.
 - Console scope guards (ADR-13): master-detail + review form + explain panel, ~4 components, no auth, no patient data, no benchmarking. Reject scope creep in review.
 - **Graders review code and documentation only — nothing gets deployed or executed by them.** Evidence that exists only at runtime must be captured into `docs/` (screenshots, CI links, coverage figures, report tables). Distribution (criterion 17) is proven by Dockerfiles/compose/Helm + CI builds + captured screenshots, not by a live cluster.
-- **No Java, no JVM, anywhere — owner's decision, final.** The stack is Python + TypeScript (console) only; the rubric was refreshed 12 Jun 2026 — stack-neutral wording. The docs keep a "Modern application concepts" page (arc42 §8: DI, validation, persistence abstraction, observability, container-first — as implemented in Python, citing Modulplan Lehrmittel [5]). Never propose Quarkus/Java components for any reason, including rubric optics.
+- **No Java, no JVM, anywhere — owner's decision, final.** The stack is Python + TypeScript (console) only; the rubric is being refreshed to stack-neutral wording. The docs keep a "Modern application concepts" page (arc42 §8: DI, validation, persistence abstraction, observability, container-first — as implemented in Python, citing Modulplan Lehrmittel [5]). Never propose Quarkus/Java components for any reason, including rubric optics.
 - A merged change that decides something architectural → 5-line ADR in `docs/adr/`. A working session → journal entry in `vault/daily/` (the hook drafts it; curate it — this is graded CAS evidence).

@@ -19,3 +19,4 @@ site/
 lunr
 *.min.js
 wordcut.js
+docs/cas/
