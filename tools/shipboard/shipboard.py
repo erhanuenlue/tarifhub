@@ -30,6 +30,8 @@ ROOT = pathlib.Path(__file__).resolve().parents[2]
 SB = ROOT / ".shipboard"
 LOG = SB / "events.jsonl"
 SESSION = SB / "session.json"
+SESS_LIVE_S = 120        # transcript touched within this window → "live"
+SESS_IDLE_S = 1800       # transcripts idle longer than this aren't listed
 PORT = 8787
 
 CONTEXT_LIMIT = 1_000_000
@@ -942,6 +944,116 @@ def compute_phases(ev, u, p, ghd):
                 break
     return phases, explicit
 
+_SESS_CACHE = {}         # path -> (mtime, size, summary) ; head/tail reads cached by mtime
+
+def _summarize_session(p, stt):
+    """Cheap head+tail summary of one main transcript; None if it's a sidechain/garbage."""
+    sid, cwd, branch, started = p.stem, "", "", ""
+    try:
+        with open(p, encoding="utf-8", errors="replace") as f:
+            head = f.read(4096)
+    except Exception:
+        return None
+    if '"isSidechain": true' in head or '"isSidechain":true' in head:
+        return None                      # subagent sidechain, not a terminal session
+    for line in head.splitlines():
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            continue
+        sid = e.get("sessionId") or sid
+        cwd = cwd or e.get("cwd") or ""
+        branch = branch or e.get("gitBranch") or ""
+        if not started and e.get("timestamp"):
+            started = _local_hms(e.get("timestamp"))
+        if cwd and started:
+            break
+    model, last = "", ""
+    try:
+        with open(p, "rb") as f:
+            f.seek(max(0, stt.st_size - 65536))
+            tail = f.read().decode("utf-8", "replace")
+    except Exception:
+        tail = ""
+    for line in reversed(tail.splitlines()):
+        line = line.strip()
+        if not line.startswith("{"):
+            continue
+        try:
+            e = json.loads(line)
+        except Exception:
+            continue
+        if not last and e.get("timestamp"):
+            last = _local_hms(e["timestamp"])
+        if e.get("type") == "assistant":
+            m = (e.get("message") or {}).get("model")
+            if m:
+                model = _short(m)
+                if last:
+                    break
+    proj = pathlib.Path(cwd).name if cwd else (p.parent.name.split("-")[-1] if p.parent.name else "")
+    return {"id": sid or p.stem, "project": (proj or "?")[:28],
+            "branch": branch[:24], "started": started, "last": last, "model": model or "?"}
+
+def discover_sessions(limit=12):
+    """Machine-wide: recently-active Claude Code main transcripts across all projects."""
+    try:
+        tracked = (json.loads(SESSION.read_text()) or {}).get("transcript_path") or ""
+    except Exception:
+        tracked = ""
+    tracked_stem = pathlib.Path(tracked).stem if tracked else ""
+    root = None
+    if tracked:
+        ps = pathlib.Path(tracked).parents
+        if len(ps) >= 2:
+            root = ps[1]                 # ~/.claude/projects/<encoded>/<sid>.jsonl → projects root
+    if not (root and root.is_dir()):
+        root = pathlib.Path.home() / ".claude" / "projects"
+    if not root.is_dir():
+        return []
+    try:
+        files = list(root.glob("*/*.jsonl"))
+    except Exception:
+        return []
+    stt_of = {}
+    for p in files:
+        try:
+            stt_of[p] = p.stat()
+        except Exception:
+            pass
+    order = sorted(stt_of, key=lambda p: stt_of[p].st_mtime, reverse=True)
+    now, out, seen = time.time(), [], set()
+    for p in order:
+        stt = stt_of[p]
+        idle = now - stt.st_mtime
+        if idle > SESS_IDLE_S:
+            break                        # newest-first → everything after is older still
+        if stt.st_size < 1000:
+            continue
+        ck = _SESS_CACHE.get(str(p))
+        if ck and ck[0] == stt.st_mtime and ck[1] == stt.st_size:
+            summ = ck[2]
+        else:
+            summ = _summarize_session(p, stt)
+            if summ is None:
+                continue
+            _SESS_CACHE[str(p)] = (stt.st_mtime, stt.st_size, summ)
+        if summ["id"] in seen:
+            continue
+        seen.add(summ["id"])
+        row = dict(summ)
+        row["idle_s"] = int(idle)
+        row["live"] = idle <= SESS_LIVE_S
+        row["tracked"] = bool(tracked_stem) and p.stem == tracked_stem
+        out.append(row)
+        if len(out) >= limit:
+            break
+    out.sort(key=lambda x: (not x["tracked"], not x["live"], x["idle_s"]))
+    return out
+
 def state():
     ev = read_events()
     agents = [e for e in ev if e.get("kind") == "agent"]
@@ -981,7 +1093,7 @@ def state():
             "updated": time.strftime("%H:%M:%S"), "events": len(ev),
             "event_tail": ev[-40:][::-1], "feed": feed[:40],
             "usage": u, "project": p, "gh": ghd,
-            "alerts": alerts(u, p, phases, ghd)}
+            "alerts": alerts(u, p, phases, ghd), "sessions": discover_sessions()}
 
 # ---------------- detail (inspector API) ----------------
 
@@ -1287,6 +1399,18 @@ border:1px solid var(--edge);border-radius:9px;padding:10px 12px;white-space:pre
 max-height:340px;overflow-y:auto;margin:6px 0 12px}
 .itag{display:inline-block;font-family:'JetBrains Mono';font-size:10px;padding:2px 9px;border-radius:5px;
 background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);margin:0 6px 6px 0}
+/* live sessions panel (overview) */
+.srow{display:flex;align-items:center;gap:10px;font-family:'JetBrains Mono';font-size:11.5px;color:var(--dim);padding:5px 6px;border-bottom:1px solid rgba(125,211,252,.07)}
+.srow:last-child{border-bottom:none}
+.srow.me{background:rgba(125,211,252,.06);border-radius:7px}
+.sdot{width:8px;height:8px;border-radius:99px;background:var(--faint);flex:none}
+.sdot.on{background:var(--ok);animation:pulse 1.4s infinite}
+.sdot.idle{background:var(--run)}
+.sid{color:var(--paper);min-width:72px}
+.sproj{color:var(--cyan);min-width:130px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.smodel{color:var(--dim);margin-left:auto;white-space:nowrap}
+.sage{color:var(--faint);min-width:66px;text-align:right}
+.stag{font-family:'JetBrains Mono';font-size:9px;color:var(--ok);background:rgba(52,211,153,.12);border:1px solid rgba(52,211,153,.3);border-radius:4px;padding:1px 6px;text-transform:uppercase;flex:none}
 </style></head><body><div class="wrap">
 <div class="top">
   <h1><span class="slash">/ship</span> shipboard</h1>
@@ -1313,6 +1437,10 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   </div>
   <div class="rail" id="rail"></div>
   <div class="chips" id="chips" style="display:none"></div>
+  <div class="panel" style="margin-bottom:12px">
+    <div class="k">Live sessions — Claude Code across this machine <span class="s" id="sesscount"></span></div>
+    <div id="sesslist">—</div>
+  </div>
   <div class="mid">
     <div class="panel">
       <div class="k">Mission · in progress now</div>
@@ -1815,6 +1943,22 @@ function boardTask(i){
   document.getElementById('ovl').style.display='block';
   document.getElementById('insp').classList.add('on');
 }
+// ---------- live sessions panel (overview) ----------
+function fmtIdle(x){ x=x||0; return x<60? x+'s idle' : (x<3600? Math.floor(x/60)+'m idle' : Math.floor(x/3600)+'h idle'); }
+function renderSessions(s){
+  const el=document.getElementById('sesslist'); if(!el) return;
+  const ss=s.sessions||[];
+  const cc=document.getElementById('sesscount'); if(cc) cc.textContent = ss.length? '· '+ss.length+(ss.length===1?' session':' sessions') : '';
+  el.innerHTML = ss.length ? ss.map(x=>
+    '<div class="srow'+(x.tracked?' me':'')+'">'+
+    '<span class="sdot '+(x.live?'on':'idle')+'"></span>'+
+    '<span class="sid">'+esc((x.id||'').slice(0,8))+'</span>'+
+    '<span class="sproj">'+esc(x.project||'?')+(x.branch?' · '+esc(x.branch):'')+'</span>'+
+    '<span class="smodel">'+esc(x.model||'?')+'</span>'+
+    '<span class="sage">'+(x.live?'live':esc(fmtIdle(x.idle_s)))+'</span>'+
+    (x.tracked?'<span class="stag">this board</span>':'')+
+    '</div>').join('') : '<div class="empty">no active Claude sessions found</div>';
+}
 async function tick(){
   let s; try { s = await (await fetch('/state')).json(); }
   catch(e){ const b=document.getElementById('badge'); b.textContent='SERVER UNREACHABLE'; b.className='badge fail';
@@ -1871,6 +2015,7 @@ async function tick(){
     || (s.active.length? s.active.map(a=>'<div class="kitem doing dlgc" onclick="inspect(\'agent\',\''+esc(a.ts)+'\',\''+esc(a.agent)+'\')"><span class="dot"></span><b>'+esc(a.agent)+'</b>'+(a.desc?' — '+esc(a.desc):'')+'<span class="meta">'+elapsed(a.ts)+'</span></div>').join('')
     : '<div class="empty">no tracked task in progress — appears from the session’s task list (TaskCreate/TodoWrite)</div>');
   renderBoard(s);
+  renderSessions(s);
   const freshTop = s.feed && s.feed[0] && s.feed[0].ts!==lastFeedTs && lastFeedTs!==null;
   document.getElementById('minifeed').innerHTML = (s.feed||[]).slice(0,5).map((e,i)=>feedRow(e, freshTop&&i===0)).join('')
     || '<div class="empty">dispatches, returns and phase emits stream here</div>';
