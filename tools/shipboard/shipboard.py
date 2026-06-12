@@ -872,6 +872,19 @@ def compute_phases(ev, u, p, ghd):
         phases["08"] = {"status": "pass", "ts": "",
                         "detail": "implied — merge confirmed, and the report precedes the merge gate",
                         "src": "implied"}
+    # downstream completion supersedes a stale upstream 'running' — a session that
+    # skips a completion emit must not freeze the rail forever
+    order = [x[0] for x in PHASES]
+    for i, k in enumerate(order):
+        if phases[k]["status"] != "running" or not phases[k]["ts"]:
+            continue
+        for j in order[i + 1:]:
+            pj = phases[j]
+            if pj["status"] == "pass" and pj["ts"] and pj["ts"] > phases[k]["ts"]:
+                phases[k] = {"status": "pass", "ts": pj["ts"],
+                             "detail": f"implied — phase {j} passed after this started",
+                             "src": "implied"}
+                break
     return phases, explicit
 
 def state():
