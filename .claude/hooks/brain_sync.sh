@@ -6,6 +6,7 @@
 #    into "<OBSIDIAN_VAULT>/tarifhub/" (one-way: repo → vault; repo stays the source of truth).
 # Quiet, idempotent, never blocks.
 set -uo pipefail
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}" || exit 0
 
 # --debounce (Stop-hook mode): skip if rebuilt <5 min ago — keeps long sessions fresh
 # without churning every turn. SessionEnd invokes without the flag and always runs.

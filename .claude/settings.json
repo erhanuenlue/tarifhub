@@ -51,7 +51,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/guard_frozen.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard_frozen.sh"
           }
         ]
       },
@@ -60,7 +60,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/shipboard_emit.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/shipboard_emit.sh"
           }
         ]
       }
@@ -71,7 +71,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/format.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format.sh"
           }
         ]
       },
@@ -80,7 +80,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/shipboard_emit.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/shipboard_emit.sh"
           }
         ]
       }
@@ -90,7 +90,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/session_track.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
           }
         ]
       }
@@ -100,7 +100,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/session_track.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
           }
         ]
       }
@@ -110,7 +110,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/session_track.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
           }
         ]
       }
@@ -120,7 +120,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/brain_sync.sh --debounce"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/brain_sync.sh --debounce"
           }
         ]
       }
@@ -130,19 +130,19 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash .claude/hooks/journal_draft.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/journal_draft.sh"
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/brain_sync.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/brain_sync.sh"
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/vault_autocommit.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/vault_autocommit.sh"
           },
           {
             "type": "command",
-            "command": "bash .claude/hooks/session_track.sh"
+            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
           }
         ]
       }

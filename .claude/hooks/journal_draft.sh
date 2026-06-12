@@ -3,6 +3,7 @@
 # This produces the *raw material* for the rubric's 12-point "AI tools used and
 # described" criterion. Claude curates it at session end; Erhan owns the final text.
 set -uo pipefail
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}" || exit 0
 
 DIR="vault/daily"
 mkdir -p "$DIR"

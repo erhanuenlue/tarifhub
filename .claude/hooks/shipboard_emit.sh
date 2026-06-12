@@ -3,6 +3,7 @@
 # Registered for: PreToolUse + PostToolUse (matcher: Task — subagent launches) and SubagentStop.
 # Quiet, never blocks.
 set -u
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}" || exit 0
 mkdir -p .shipboard
 cat | python3 -c '
 import json, time, sys

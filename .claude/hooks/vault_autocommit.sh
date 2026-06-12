@@ -4,6 +4,7 @@
 # SCOPE IS HARD-LIMITED to vault/ and LEARNINGS.md — code NEVER travels through this
 # hook; it belongs to the /ship pipeline. Quiet, idempotent, never blocks.
 set -uo pipefail
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}" || exit 0
 
 git rev-parse --is-inside-work-tree >/dev/null 2>&1 || exit 0
 # never act mid-merge/rebase

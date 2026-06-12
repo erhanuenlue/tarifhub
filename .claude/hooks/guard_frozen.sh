@@ -3,6 +3,7 @@
 # The determinism promise is enforced, not requested. Matching paths require
 # Erhan to edit manually (or to consciously lift the guard for one change).
 set -euo pipefail
+cd "${CLAUDE_PROJECT_DIR:-$(git rev-parse --show-toplevel 2>/dev/null || echo .)}" || exit 0
 
 INPUT=$(cat)
 FILE=$(echo "$INPUT" | python3 -c "import sys, json; print(json.load(sys.stdin).get('tool_input', {}).get('file_path', ''))" 2>/dev/null || echo "")
