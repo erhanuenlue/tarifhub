@@ -15,7 +15,7 @@ The older environments (`TarifHub_Master/dev`, `tarifhub-fable`) are **supersede
 # macOS
 brew install uv gh k3d helm kubectl
 brew install --cask docker        # or Docker Desktop already installed
-npm install -g @anthropic-ai/claude-code@latest   # needs v2.1.170+ for Fable 5
+npm install -g @anthropic-ai/claude-code@latest   # latest stable
 gh auth login
 ```
 
@@ -63,10 +63,10 @@ What lands in the brain automatically: every ADR (architecture memory), every jo
 
 ```bash
 claude
-/model fable        # effort high (default). /model fable[medium] for routine sessions
+/model opus         # Opus 4.8 (orchestrator). Pinned in .claude/settings.json
 ```
 
-Note: Fable 5 is included free on Pro/Max only through 22 June 2026, then usage credits apply — plan the heavy build weeks accordingly (Blocks 0–1 of the CAS plan are the heavy ones; that timing works in your favour).
+Note: the orchestrator is Opus 4.8 (Fable 5 was used through 22 June 2026, when access ended). The model is pinned once in .claude/settings.json; switch with tools/switch_model.sh.
 
 ## 7. Session 1
 

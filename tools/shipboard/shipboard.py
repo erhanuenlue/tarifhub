@@ -38,18 +38,18 @@ CONTEXT_LIMIT = 1_000_000
 SUBMIT_DATE = datetime.date(2026, 7, 5)
 PRICES = {"fable": (10.0, 50.0), "opus": (5.0, 25.0), "sonnet": (3.0, 15.0), "haiku": (1.0, 5.0)}
 PHASES = [
-    ("01", "Plan", "approval gate · Fable 5"),
-    ("02", "Implement", "TDD · implementer · Opus 4.8"),
+    ("01", "Plan", "approval gate · Opus 4.8 · ultracode"),
+    ("02", "Implement", "TDD · implementer · Opus 4.8 · ultracode"),
     ("03", "Gates", "ruff + pytest · inline"),
     ("04", "Reviews", "verifier / determinism / security / codex"),
-    ("05", "Fix cycle", "orchestrated · Fable 5"),
+    ("05", "Fix cycle", "orchestrated · Opus 4.8 · ultracode"),
     ("06", "PR + CI", "gh + Actions · inline"),
     ("07", "Runtime", "E2E + logs · e2e-tester · Sonnet"),
-    ("08", "Report", "consolidated · Fable 5"),
+    ("08", "Report", "consolidated · Opus 4.8 · ultracode"),
     ("09", "Merge", "auto on green · fallback gate: Erhan"),
 ]
-PINS = {"implementer": "Opus 4.8", "e2e-tester": "Sonnet 4.6", "determinism-auditor": "Sonnet 4.6",
-        "security-reviewer": "Opus 4.8", "codex-reviewer": "Haiku 4.5", "verifier": "Fable 5"}
+PINS = {"implementer": "Opus 4.8", "e2e-tester": "Opus 4.8", "determinism-auditor": "Opus 4.8",
+        "security-reviewer": "Opus 4.8", "codex-reviewer": "gpt-5.5", "verifier": "Opus 4.8"}
 REVIEWER_AGENTS = ("verifier", "determinism-auditor", "security-reviewer", "codex-reviewer")
 AGENT_TOOLS = ("Task", "Agent")          # subagent tool name differs across Claude Code versions
 AGENT_PHASE = {"implementer": "02", "e2e-tester": "07"}
@@ -2359,7 +2359,7 @@ def demo():
         {"kind":"phase","phase":"02","status":"pass","detail":"2 implementers · 14 tests added","ts":now},
         {"kind":"phase","phase":"03","status":"pass","detail":"ruff clean · 87 passed","ts":now},
         {"kind":"phase","phase":"04","status":"running","detail":"verifier + determinism-auditor in flight","ts":now},
-        {"kind":"agent","phase":None,"status":"active","detail":"diff-vs-plan check","agent":"verifier","model":"Fable 5","ts":now},
+        {"kind":"agent","phase":None,"status":"active","detail":"diff-vs-plan check","agent":"verifier","model":"Opus 4.8","ts":now},
         {"kind":"agent","phase":None,"status":"active","detail":"freeze-line audit","agent":"determinism-auditor","model":"Sonnet 4.6","ts":now},
     ]
     LOG.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")

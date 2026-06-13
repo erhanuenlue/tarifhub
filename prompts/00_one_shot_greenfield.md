@@ -1,6 +1,6 @@
 # 00 — The one-shot greenfield prompt (reference)
 
-> How Fable 5 would prompt itself to build TarifHub from an empty directory in one autonomous session. Not the CAS route (that's 01–07, because graded evidence needs contemporaneous human curation) — this is the reference for outcome-prompting a whole system: lock the invariant and the product shape, define done as falsifiable evidence, grant autonomy with ADRs as after-the-fact accountability. Steps, stack and sequencing stay with the model.
+> How the orchestrator would prompt itself to build TarifHub from an empty directory in one autonomous session. Not the CAS route (that's 01–07, because graded evidence needs contemporaneous human curation) — this is the reference for outcome-prompting a whole system: lock the invariant and the product shape, define done as falsifiable evidence, grant autonomy with ADRs as after-the-fact accountability. Steps, stack and sequencing stay with the model.
 
 ---
 

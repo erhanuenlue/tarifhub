@@ -1,8 +1,9 @@
 ---
 name: implementer
-description: TDD implementation worker for /ship pipeline phases — writes the code volume on Opus 4.8 while Fable 5 plans, orchestrates and merge-gates. Receives a scoped task from an approved plan; tests first, then implementation, then green.
+description: TDD implementation worker for /ship pipeline phases — writes the code volume on Opus 4.8 while the orchestrator (Opus 4.8) plans, orchestrates and merge-gates. Receives a scoped task from an approved plan; tests first, then implementation, then green.
 tools: Read, Write, Edit, Bash, Grep, Glob
 model: opus
+effort: ultracode
 memory: project
 ---
 

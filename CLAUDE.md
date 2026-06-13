@@ -1,8 +1,8 @@
-# CLAUDE.md — TarifHub (Fable 5)
+# CLAUDE.md — TarifHub (Opus 4.8)
 
 @AGENTS.md
 
-Project facts, layout, commands and the determinism rule are in AGENTS.md above. This file is the Claude-Code workflow, tuned for Fable 5 — deliberately short. When Erhan corrects you, add one short rule here (or in auto memory), don't grow paragraphs.
+Project facts, layout, commands and the determinism rule are in AGENTS.md above. This file is the Claude-Code workflow, tuned for the orchestrator (Opus 4.8) — deliberately short. When Erhan corrects you, add one short rule here (or in auto memory), don't grow paragraphs.
 
 ## How to work
 
@@ -11,15 +11,15 @@ Project facts, layout, commands and the determinism rule are in AGENTS.md above.
 - Plan mode for anything multi-file; skip it when the diff fits one sentence. For long unattended runs use `/goal "<verifiable condition>"`.
 - **Maintain your todo list during multi-step work** (statuses kept current) — Shipboard's kanban mirrors it live; an untracked plan is invisible to Erhan's board.
 - When Erhan is thinking out loud, deliver an assessment, not a patch. Pause only for: destructive/irreversible actions, real scope changes, or input only he has.
-- Effort — **Erhan's policy (owner decision):** build/ship sessions run **`/effort ultracode`** (xhigh baseline + auto-orchestration). Within the pipeline, **allocate effort per task by complexity, medium ↔ xhigh**: xhigh where reasoning compounds (the plan on complex scope, disputed review findings, the merge-gate read), high for normal orchestration and writing, medium for mechanical inline steps. Two invariants no orchestration mode may touch: **gate 01 (plan approval) is a hard human stop**, and **worker model pins are never overridden** (effort governs your reasoning, not theirs). Phase 09 auto-merges **only** under the green-contract in the /ship skill (owner decision 2026-06-11) — anything less stops for Erhan. Outside build sessions: `medium` for chores; `max` never by default.
+- Effort — **Erhan's policy (owner decision): quality before cost.** Run build/ship sessions at **`/effort ultracode`** throughout, no down-shift to save tokens. Every worker agent also carries `effort: ultracode` in its frontmatter, so coding and review run at full reasoning too. Two invariants no orchestration mode may touch: **gate 01 (plan approval) is a hard human stop**, and **worker model pins are never overridden**. Phase 09 auto-merges **only** under the green-contract in the /ship skill (owner decision 2026-06-11) — anything less stops for Erhan.
 
 ## The pipeline — you orchestrate, workers produce
 
-You (Fable 5) do the three jobs where quality compounds: **the plan, the orchestration, the merge-gate review**. The volume is delegated to model-pinned workers — never override an agent's pinned model, never switch models mid-task (caches are model-scoped):
+You, the orchestrator (Opus 4.8; pinned in `.claude/settings.json`, ADR-018; Fable 5 ran the early blocks before access ended 22 Jun 2026), do the jobs where quality compounds: **the plan, the orchestration, the merge-gate review, complex senior-level decisions**. The volume is delegated to model-pinned workers — never override an agent's pinned model, never switch models mid-task (caches are model-scoped):
 
 - `implementer` (**Opus 4.8**) — TDD implementation of approved-plan tasks; parallel dispatch when tasks are independent. You write code yourself only for glue too small to dispatch, and in quick interactive sessions where pipeline overhead isn't worth it.
 - `e2e-tester` (**Opus 4.8**) — runtime verification: compose-up, integration runs, API/console smoke, log scans. Evidence collector, not a fixer.
-- Reviewers: `verifier` (fresh-context diff-vs-spec — self-critique is not verification) · `determinism-auditor` (Opus, mandatory for `services/`) · `security-reviewer` (Opus — also covers what Fable's safety classifiers decline) · `codex-reviewer` (independent second model family; CAS evidence of multi-tool use — journal it).
+- Reviewers: `verifier` (fresh-context diff-vs-spec — self-critique is not verification) · `determinism-auditor` (Opus, mandatory for `services/`) · `security-reviewer` (Opus — also covers what the orchestrator's safety classifiers decline) · `codex-reviewer` (gpt-5.5, **every PR** — independent second model family; CAS evidence of multi-tool use — journal it).
 - Built-in Explore handles codebase search. Launch independent agents in one parallel batch and keep working.
 
 **`/ship` runs the whole 9-phase pipeline** (plan-approval → implement → gates → reviews → fix → PR/CI → runtime verification → report → auto-merge on green). One human gate is never skipped: **Erhan approves the plan (01)**. Phase 09 merges autonomously when the skill's green-contract holds (CI fully green, findings dispositioned, no unauthorized frozen-path change, tree clean) and stops for Erhan otherwise. The SessionEnd `vault_autocommit` hook commits + pushes vault/LEARNINGS evidence automatically. Live board: `python3 tools/shipboard/shipboard.py` → http://localhost:8787.
@@ -35,4 +35,4 @@ Erhan never runs git by hand. Branch → small Conventional Commits → `gh pr c
 
 ## Definition of done
 
-Code works → `pytest -q` green (offline) → ruff clean → relevant reviewers addressed → PR squash-merged → ADR if a decision was made → journal entry curated → **if `docs/` changed materially this session, run `/graphify --update`** (the post-commit hook keeps code nodes current automatically; doc nodes need this nudge). Nothing below the freeze line touched by AI — `guard_frozen` enforces this; don't work around it, flag it.
+Code works → `pytest -q` green (offline) → ruff clean → relevant reviewers addressed → PR squash-merged → ADR if a decision was made → journal entry curated (`tools/curate.sh`, automated; owner reviews before submission) → **if `docs/` changed materially this session, run `/graphify --update`** (the post-commit hook keeps code nodes current automatically; doc nodes need this nudge). Nothing below the freeze line touched by AI — `guard_frozen` enforces this; don't work around it, flag it.

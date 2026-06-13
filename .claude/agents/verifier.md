@@ -3,6 +3,7 @@ name: verifier
 description: Fresh-context verification of finished work against its spec. Use after any non-trivial implementation, before PR. Reports gaps; does not fix.
 tools: Read, Grep, Glob, Bash
 model: inherit
+effort: ultracode
 memory: project
 ---
 

@@ -1,8 +1,9 @@
 ---
 name: security-reviewer
-description: Security review for diffs touching secrets handling, input parsing, the de-identification seam, or anything internet-facing. Runs on Opus (documented fallback for work Fable's safety classifiers may decline).
+description: Security review for diffs touching secrets handling, input parsing, the de-identification seam, or anything internet-facing. Runs on Opus (documented fallback for work the orchestrator's safety classifiers may decline).
 tools: Read, Grep, Glob, Bash
 model: opus
+effort: ultracode
 memory: project
 ---
 

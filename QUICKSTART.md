@@ -7,7 +7,7 @@ The operational runbook: machine setup → repo assembly → first session → t
 ```bash
 brew install uv gh k3d helm kubectl          # toolchain
 # Docker Desktop: install & start it
-npm install -g @anthropic-ai/claude-code@latest   # needs v2.1.170+ for Fable 5
+npm install -g @anthropic-ai/claude-code@latest   # latest stable
 gh auth login                                 # GitHub CLI
 ```
 
@@ -49,7 +49,7 @@ The board shows three layers: the **session strip** (status, context gauge vs th
 **Terminal B — the work:**
 ```bash
 claude
-/model fable
+/model opus
 /effort ultracode      # build/ship sessions: xhigh + auto-orchestration; effort floats per task (medium↔xhigh)
 # paste the full text of prompts/01_foundation_reconciliation.md (pick the "Option A" context line)
 ```
@@ -59,7 +59,7 @@ What happens, and where you're needed:
 1. Claude plans, then works (reconciliation audit → live `ai_map` → evidence). Watch the board.
 2. When it reports done with evidence, type **`/ship`**.
 3. **Phase 01 stops for you:** it presents the plan of what's being shipped — read it, correct it, approve it.
-4. Phases 02–08 run: Opus implements fixes if needed, gates, parallel reviews (verifier always; determinism for `services/`; security when relevant; **Codex on architectural diffs or when you say "include codex review"**), PR + CI, the runtime verification (Opus), the consolidated report.
+4. Phases 02–08 run: Opus implements fixes if needed, gates, parallel reviews (verifier always; determinism for `services/`; security when relevant; **Codex (gpt-5.5) on every PR**), PR + CI, the runtime verification (Opus), the consolidated report.
 5. **Phase 09 merges itself when the green-contract holds** (CI fully green incl. security, all findings dispositioned, no unauthorized frozen-path change, tree clean) and tells you what merged and why it qualified. Anything less **stops for you** with the failing condition named.
 6. Before closing: open `vault/daily/<today>.md` — curate the drafted journal entry to 3–6 honest lines. **This is graded material; 2 minutes, every working day.**
 

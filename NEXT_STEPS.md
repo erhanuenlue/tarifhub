@@ -2,95 +2,153 @@
 
 > The single file that answers "what do I do next?", no chat needed. Work whenever you
 > want; nothing here is scheduled except the school's submission deadline.
-> State of truth: Shipboard (key **8** = CAS floor) and `python3 tools/cas_check.py`.
+> State of truth: Shipboard (key **8** = CAS tab) and `python3 tools/cas_check.py`.
 
 ---
 
-## Where the project stands
+## Where the project stands (13 Jun)
 
-- ✅ Foundation, two real sources (EAL XLSX + ePL FHIR R5), parity, search tuning,
-  scale/fill-reuse hash-integrity, services + MCP: **PRs #1–#15 merged, CI green**.
-- ✅ Spec/design docs anchored to the official Bewertungskriterien; structural floor
-  **51/51**, ratchet armed in CI.
-- ⛔ Remaining build: console → validation evidence → final document. Three prompts.
+- Foundation, two real sources (EAL XLSX + ePL FHIR R5), parity, search tuning,
+  scale/fill-reuse hash-integrity, services + MCP: **PRs #1-#15 merged, CI green**.
+- CAS floor **51/52**, 0 regressions. Blocks measure progress, not dates:
+  Block 0 done 40/40 · Block 1 active 9/10 · Block 2 at 2/4 · Block 3 at 0/8.
+- Journal + fazit-note drafting is fully delegated to Codex gpt-5.5 (`tools/curate.sh`,
+  owner decision 13 Jun); the loop runs it at start, after every prompt, and after the
+  audit. The 5+ notes Block-1 miss fills itself. The only text you write yourself is
+  the Eigenständigkeitserklärung (step 5).
+- Quality before cost is law (ADR-018): the orchestrator is Opus 4.8 (Fable 5 ran the
+  early blocks; access ended 22 Jun) and **everything runs at `/effort ultracode`**, no
+  down-shift; every seat is Opus 4.8, Sonnet/Haiku banned. Codex gpt-5.5 (your Pro login,
+  verified 13 Jun) reviews EVERY PR, reviews the final document in prompt 07, curates the
+  journal, and writes a second opinion on each grade estimate. Effort map below.
+- Remaining build: console, validation evidence, final document. One manual session,
+  then the loop.
 
-## The remaining prompts · run in this order, one per session
+## Model and effort map (who runs what, at which effort)
 
-| # | Prompt file | What it produces | Unlocks |
+| Step | Who | Model | Effort |
 |---|---|---|---|
-| 1 | `prompts/05_tarifguard_console.md` | TarifGuard console (master-detail + review form + explain panel) + screenshots | criteria 1/4 console parts |
-| 2 | `prompts/06_validation_evidence.md` | Interpreted test results, NfA measured column (incl. p95), container run evidence, decision matrix | criteria 14, 17 captures |
-| 3 | `prompts/07_documentation_fazit.md` | AI-tools chapter (phase-structured), veto-Fazit, German summary; **submission PDF from the official FFHS LaTeX template** (`docs/latex_template/`), with journal excerpts + Fazit as chapters inside it; Pages site beside it; no em-dashes anywhere | criteria 15, 18 + submission package |
+| 01 Plan | orchestrator | Opus 4.8 | ultracode |
+| 02 Implement | implementer | Opus 4.8 | ultracode |
+| 03 Local gates | orchestrator | Opus 4.8 | ultracode |
+| 04 Review: verifier | verifier | Opus 4.8 (inherit) | ultracode |
+| 04 Review: determinism / security | determinism-auditor, security-reviewer | Opus 4.8 | ultracode |
+| 04 Review: independent | codex-reviewer | gpt-5.5 (Codex CLI) | Codex's own |
+| 05 Fix cycle | orchestrator | Opus 4.8 | ultracode |
+| 06 PR + CI | orchestrator | Opus 4.8 | ultracode |
+| 07 Runtime verify | e2e-tester | Opus 4.8 | ultracode |
+| 08 Report | orchestrator | Opus 4.8 | ultracode |
+| 09 Merge gate | orchestrator | Opus 4.8 | ultracode |
+| post: grade audit | grade-auditor | Opus 4.8 | ultracode |
+| post: curate + 2nd opinion | gpt-5.5 (Codex CLI) | gpt-5.5 | Codex's own |
 
-### Manual mode (a session at a time)
+Orchestrator effort is set by `/effort ultracode` (manual sessions) and by the loop's
+standing order (headless). Worker effort is pinned per agent in `.claude/agents/*.md`
+(`effort: ultracode`). Codex runs gpt-5.5 at its own configured effort on your Pro login.
+
+## TOMORROW, exactly
+
+### Step 0 · one-time, 2 minutes (if not already done)
+
+```
+cd ~/Documents/Tarif/tarifhub
+git status        # if it lists modified tools/prompts/agents files, commit them:
+git add -A && git commit -m "chore: board v9, loop runner, quality-before-cost seats, codex doc review" && git push
+```
+
+### Step 1 · prompt 05 manually (the dress rehearsal)
 
 ```
 Terminal B:  cd ~/Documents/Tarif/tarifhub && python3 tools/shipboard/shipboard.py
 Terminal A:  cd ~/Documents/Tarif/tarifhub && claude
              /effort ultracode
-             → paste the prompt file's content
-             → answer the one plan question (gate 01)
-             → walk away; it auto-merges on green
+             → paste the full content of prompts/05_tarifguard_console.md
 ```
 
-One prompt = one session. Exit after the ship report; fresh session for the next prompt.
+Gate-01 is pre-approved inside the prompt: the session logs its plan and proceeds on
+its own, auto-merges on green. You do not need to answer anything. It stops only for:
+freeze-line contact, scope beyond the prompt, a contract breach, or a destructive op.
 
-### Loop mode (optional, hands-off)
+While it runs: watch the board (Overview cards, Pipeline rail). When the ship report
+appears: `/exit`. Nothing else; the loop curates 05's journal when it starts.
+
+### Step 2 · glance (optional, 10 seconds)
+
+Board: CAS tab green? GitHub tab CI green? Done. Journal and fazit notes curate,
+commit and push themselves (gpt-5.5 via `tools/curate.sh`, automated everywhere);
+the pipeline is documented in the AI-tools chapter.
+
+### Step 3 · go-live trio (BEFORE starting the loop; the loop reaches prompt 07)
+
+In GitHub, in this order (also documented in `docs.yml`):
+
+1. repo Settings → Visibility → make **public**
+2. Settings → Environments → `github-pages` → allow branch `main`
+3. Settings → Actions → Variables → new repo variable `DEPLOY_PAGES = true`
+
+### Step 4 · the loop carries the rest
 
 ```
-cd ~/Documents/Tarif/tarifhub && bash tools/loop.sh
+cd ~/Documents/Tarif/tarifhub && bash tools/loop.sh 06 07
 ```
 
-Runs the remaining prompts back-to-back, headless. Between prompts it verifies the
-completion contract (PR merged · CI fully green · zero ratchet regressions · CAS floor
-non-decreasing) and **halts to you** with the reason if anything misses. You can stop it
-anytime; the board shows everything live either way.
+What it does, all automatic: curates 05's journal (catch-up) → runs prompt 06 →
+contract check → curate → runs prompt 07 (includes the Codex gpt-5.5 document review
+and the FFHS-LaTeX PDF build) → contract check → curate → **runs /cas-audit** (grade
+estimate → CAS tab) → **codex second opinion on the estimate** (disagreements and
+missed gaps → `vault/cas-audit/`) → final curate. Between prompts the completion contract
+(zero ratchet regressions · CAS floor non-decreasing · working tree clean · latest CI
+on main green) must hold, else it **halts to you with the printed reason**; fix what
+it names (or ask the orchestrator why) and rerun the printed command, it resumes from the halted
+prompt. Log: `.shipboard/loop.log` (tail -f friendly). The board shows everything
+live either way.
 
-## After each prompt (2 minutes, yours alone)
+### Step 5 · after the loop finishes (one manual thing in total)
 
-1. Read `vault/daily/<today>.md` and curate the journal draft into your own words.
-   **This is graded material in your voice. Never skip, never generate.**
-2. Drop one honest line into `vault/fazit-notes.md` (veto moments, surprises,
-   what you corrected). The CAS floor wants 5+ notes; this is today's only Block-1 miss.
-3. Glance at the board: CAS tab green? GitHub tab CI green? Done.
+The audit estimate is already on the CAS tab (the loop ran it). If it flags
+points-at-risk you care about: paste the gap row into a session and say "fix this,
+then /ship". Optional.
 
-## After prompt 06 and again after 07
+1. **Write your Eigenständigkeitserklärung** (the only text that is yours to write):
+   prompt 07's ship report names the file with the reserved page. Write your text
+   (name, place, date), rebuild the PDF with the one command the report gives you,
+   check the page renders.
+2. Before you upload: read the PDF once and edit whatever you want changed.
+   Everything is yours to override; nothing ships to Moodle except by your hand.
 
-- Type `/cas-audit` in any session → grade-auditor writes the dated estimate;
-  it appears on the CAS tab automatically. Fix what it ranks as points-at-risk.
+## Your remaining errands (only you can do these)
 
-## Your errands (only you can do these)
-
-- [ ] **Moodle:** upload the Problemstellung one-pager (condense Feasibility §2–3).
+- [x] Codex ready (verified 13 Jun: gpt-5.5, xhigh, headless OK)
+- [ ] **Moodle:** upload the Problemstellung one-pager (condense Feasibility §2-3).
 - [ ] **Moodle:** fill the Modulevaluation (closes 22 Jun).
-- [ ] **Before prompt 07, GitHub go-live trio** (also documented in `docs.yml`):
-      repo Settings → make **public** → Environments → `github-pages` → allow `main`
-      → Actions → Variables → `DEPLOY_PAGES=true`.
-- [ ] **Write your Eigenständigkeitserklärung** into the reserved page when prompt 07
-      hands it to you.
+- [ ] Go-live trio (step 3 above) before the loop.
+- [ ] Eigenständigkeitserklärung (step 5 above).
 - [ ] **Submission (deadline: Mon 6 Jul 2026, 00:00, Gruppe K):** upload the final PDF
-      (FFHS-template build, clickable repo URL inside) on the "Deployment & Abgabe"
-      assignment. Prompt 07's pre-flight checklist verifies everything first, including
-      a zero-em-dash sweep.
+      (FFHS-template build, clickable repo URL inside) on the "Projektarbeit:
+      Deployment & Abgabe" assignment. Prompt 07's pre-flight verifies everything
+      first, including the zero-em-dash sweep and the Codex review dispositions.
 
 ## Hard human floor (never delegated, by design)
 
-- **Protected billing-integrity code** (hashing, versioning, audit trail; internally called
-  the "freeze line"): a guard hook blocks every agent edit there. When a change is truly
-  needed, the session stops and asks you to approve the exact lines, like the one-line
-  audit fix you authorized on 11 Jun. You approve or refuse; nothing happens without you.
-- Journal + Fazit voice: drafted for you, written by you. Both appear as chapters inside
-  the architecture documentation and the submission PDF.
-- Eigenständigkeitserklärung: prompt 07 reserves the page; **you write the text yourself**
-  and sign (name, place, date).
+- **Protected billing-integrity code** (hashing, versioning, audit trail; internally
+  called the "freeze line"): a guard hook blocks every agent edit there. When a change
+  is truly needed, the session stops and asks you to approve the exact lines, like the
+  one-line audit fix you authorized on 11 Jun. Nothing happens there without you.
+- Final acceptance: the go-live decision, the Moodle submission and the
+  Eigenständigkeitserklärung. You can edit any text before submitting; nothing ships
+  except by your hand.
+- Eigenständigkeitserklärung: page reserved by prompt 07, text authored by you.
 - Moodle uploads and GitHub account settings.
 
 ## If something looks wrong
 
 - Board badge red / phase fail → click the phase, read the evidence.
-- CAS tab shows a 🔻 → a once-passing anchor element regressed; CI is already red on it;
-  paste the gap row's text into a session and say "fix this, then /ship".
-- Session feels stuck → ask Fable (Cowork) "is it still running?"; the worktree
+- CAS tab shows a regression marker → a once-passing anchor element regressed; CI is
+  already red on it; paste the gap row's text into a session and say "fix this, then
+  /ship".
+- Loop halted → read the printed reason (also in `.shipboard/loop.log`), fix, rerun
+  the printed command.
+- Session feels stuck → ask Claude (Cowork) "is it still running?"; the worktree
   heartbeat is the ground truth for background agents.
 
 ## Done means

@@ -1,6 +1,6 @@
-# prompts/ — the development prompt library (Fable 5)
+# prompts/ — the development prompt library (Opus 4.8)
 
-Seven prompts covering the road from today to submission, aligned to the course blocks and the CAS Dossier plan. They are **outcome prompts, not scripts**: Fable 5 performs best when given the goal, the constraints, and the verification — and degraded by step-by-step micromanagement written for older models. Edit the bracketed context lines; keep the constraint blocks.
+Seven prompts covering the road from today to submission, aligned to the course blocks and the CAS Dossier plan. They are **outcome prompts, not scripts**: the orchestrator performs best when given the goal, the constraints, and the verification — and degraded by step-by-step micromanagement written for older models. Edit the bracketed context lines; keep the constraint blocks.
 
 | # | Prompt | When | CAS criteria it feeds |
 |---|---|---|---|
@@ -18,7 +18,7 @@ Seven prompts covering the road from today to submission, aligned to the course 
 
 - Session start: Claude reads `AGENTS.md` + `CLAUDE.md` automatically. Don't re-paste project facts into prompts.
 - Every session ends with: tests green (quote output) → verifier on the diff → `/ship` if shippable → **journal entry curated** (criterion 15 raw material — non-negotiable).
-- `/ship` is the **9-phase multi-model pipeline** (Fable plans/orchestrates/gates · Opus implements, reviews and verifies runtime) with **one human gate: you approve the plan**. Phase 09 auto-merges when the skill's green-contract holds (CI fully green, findings dispositioned, no unauthorized frozen-path change, tree clean) — and stops for you otherwise. Build/ship sessions run **`/effort ultracode`**; Fable allocates its own effort per task (medium↔xhigh by complexity) inside the skill's contract — gate 01 and worker pins are invariant. Watch it live: `python3 tools/shipboard/shipboard.py` → :8787.
+- `/ship` is the **9-phase multi-model pipeline** (the orchestrator, ADR-018, plans/orchestrates/gates · Opus implements, reviews and verifies runtime · gpt-5.5 reviews every PR) with **one human gate: you approve the plan**. Phase 09 auto-merges when the skill's green-contract holds (CI fully green, findings dispositioned, no unauthorized frozen-path change, tree clean) — and stops for you otherwise. Build/ship sessions run at **`/effort ultracode`** (maximum reasoning, owner standing order); gate 01 and worker pins are invariant. Watch it live: `python3 tools/shipboard/shipboard.py` → :8787.
 - The freeze line is hook-enforced. If `guard_frozen` blocks something, the prompt's answer is "tell me why", never "work around it".
 - One session ≈ one prompt ≈ one mergeable outcome. Don't chain two prompts without a `/clear`.
-- If a session drifts or stalls: stop, `/clear`, re-run the same prompt with one added constraint naming the failure. Fable recovers better from a fresh start than from accumulated correction debt.
+- If a session drifts or stalls: stop, `/clear`, re-run the same prompt with one added constraint naming the failure. The orchestrator recovers better from a fresh start than from accumulated correction debt.

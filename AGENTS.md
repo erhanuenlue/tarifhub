@@ -12,7 +12,7 @@ Scoring is **conjunctive**: a criterion's level is awarded only if **all** of it
 - **Acceptance criteria (crit 11):** testable, per Kernfunktion, with **explicit cross-references to the NfAs**.
 - **Test strategy (crit 12):** must explicitly address **Tests der KI-Anteile** — guardrail behaviour and non-deterministic responses (our boundary test, gap-gate tests, fill-reuse determinism tests, named as such).
 - **AI-tools chapter (crit 15):** structured **by phase — Generierung · Review · Refactoring · Recherche** — each claim evidenced by prompts/diffs/commit refs; closes with a **complete Erklärung der Eigenständigkeit** (standard self-authored academic form; Erhan signs).
-- **Fazit (crit 18):** built on **three veto decisions ("nie an die KI delegiert") — concrete, justified, evidenced** — plus the transfer to future working practice. House vetoes: the freeze line · human gates over plans/merges · the journal/Fazit voice.
+- **Fazit (crit 18):** built on **three veto decisions ("nie an die KI delegiert") — concrete, justified, evidenced** — plus the transfer to future working practice. House vetoes: the freeze line · human gates over plans/merges · final acceptance (go-live, the Moodle submission and the Eigenständigkeitserklärung).
 - **Report-wide (crits 4/8/17):** a **durchgängiger roter Faden** Problemstellung→Lösung→Fazit; framework choice justified in the report (ADR-001); container/architecture style choice justified (ADR-002/006).
 
 **Full anchor text (all 18 criteria, all levels):** `docs/cas/bewertungskriterien-anker.md` — local working reference, **git-ignored** (course-internal material; this repo goes public in Block 3). Consult it whenever a criterion's exact level conditions matter.
@@ -52,10 +52,18 @@ python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (-
 
 ## Conventions
 
-- **Quality before cost (owner law, 13 Jun): every agent seat that exercises judgment or writes
-  anything runs Opus 4.8 or stronger (verifier inherits the orchestrator, Fable 5). Never downgrade
-  a model seat, an effort level or a review step to save tokens. Cost is reported on the board;
-  it is never an argument.**
+- **Grounding (Opus 4.8): never speculate about code you have not opened. If a file is referenced, read it before answering or editing. Investigate the relevant files before making claims about the codebase; a claim must trace to a tool result from this session.**
+- **Long runs (Opus 4.8): context auto-compacts as it fills, so do not stop early for token-budget reasons. As you approach the limit, save progress and state to a scratchpad (`.shipboard/loop-checkpoint.md` in loop runs) before the window refreshes, then continue.**
+
+- **Quality before cost (owner law, 13 Jun): the orchestrator (plan, orchestration, merge-gate,
+  complex senior-level decisions) is Opus 4.8 (Fable 5 ran the early blocks; access ended 22 Jun 2026); pinned once in
+  `.claude/settings.json` "model", switched with `tools/switch_model.sh` (ADR-018). Every other
+  seat that exercises judgment or writes anything runs Opus 4.8 (verifier inherits the
+  orchestrator). Sonnet and Haiku are banned from every seat. The independent second model family
+  is OpenAI gpt-5.5 via the owner's Codex Pro login: every PR review, the final document review,
+  journal curation, and a second opinion on each grade estimate. Never downgrade a model seat, an
+  effort level or a review step to save tokens. Cost is reported on the board; it is never an
+  argument.**
 
 - Conventional Commits; branch `feat/…|fix/…`; squash-merge green PRs only.
 - Env-only config (`TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY`). Without an API key, `ai_map` falls back to deterministic `map_raw` — tests rely on this.
@@ -65,4 +73,4 @@ python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (-
 - Console scope guards (ADR-13): master-detail + review form + explain panel, ~4 components, no auth, no patient data, no benchmarking. Reject scope creep in review.
 - **Graders review code and documentation only — nothing gets deployed or executed by them.** Evidence that exists only at runtime must be captured into `docs/` (screenshots, CI links, coverage figures, report tables). Distribution (criterion 17) is proven by Dockerfiles/compose/Helm + CI builds + captured screenshots, not by a live cluster.
 - **No Java, no JVM, anywhere — owner's decision, final.** The stack is Python + TypeScript (console) only; the rubric is being refreshed to stack-neutral wording. The docs keep a "Modern application concepts" page (arc42 §8: DI, validation, persistence abstraction, observability, container-first — as implemented in Python, citing Modulplan Lehrmittel [5]). Never propose Quarkus/Java components for any reason, including rubric optics.
-- A merged change that decides something architectural → 5-line ADR in `docs/adr/`. A working session → journal entry in `vault/daily/` (the hook drafts it; curate it — this is graded CAS evidence).
+- A merged change that decides something architectural → 5-line ADR in `docs/adr/`. A working session → journal entry in `vault/daily/` (the hook drafts it; `tools/curate.sh` rewrites it via Codex gpt-5.5 and appends fazit-note candidates, fully automated, owner decision 13 Jun; the pipeline is disclosed in the AI-tools chapter; the owner edits at his discretion before submission — this is graded CAS evidence).
