@@ -29,3 +29,7 @@
 ## 2026-06-13
 - Veto moment: I rejected parallel implementation worktrees and kept the console implementation in-orchestrator because the contract and brand layer were tightly coupled.
 - Correction: I accepted the grader and codex gpt-5.5 findings where my docs overclaimed deployed L2 intelligence and misstated SQLite search behaviour, then reconciled the report with the implemented system.
+
+## 2026-06-13
+- I rejected parallel implementation worktrees for the console because the contract and brand layer were tightly coupled, and kept the implementation in-orchestrator on Opus 4.8.
+- I corrected evidence claims when §10 and a screenshot contradicted ADR-017: SQLite search returned 200, while the live 501 came from the Postgres vector dimension guard.
