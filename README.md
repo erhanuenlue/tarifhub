@@ -1,30 +1,81 @@
-# tarifhub — development workspace (Opus 4.8)
+# TarifHub
 
-Swiss ambulatory tariff data platform: AI-assisted harmonisation above a deterministic freeze line, one versioned API below it, a thin TarifGuard demo on top. CAS capstone (FFHS, due 6 Jul 2026) and the seed of the commercial platform — same codebase.
+TarifHub is a Swiss ambulatory tariff data platform. It harmonises tariff sources once with AI assistance above a deterministic freeze line, then serves immutable, versioned records through a read-only API below it, with a thin demo console on top. It is the capstone project for the FFHS CAS (due 6 July 2026) and the seed of a commercial platform, on one codebase.
 
-**Read order for a new session:** `AGENTS.md` (facts) → `CLAUDE.md` (workflow) → `vault/` (CAS evidence status). Strategy/architecture documents live in the `tarifhub-fable5` folder this workspace ships inside (`../../`): CAS Dossier, Architecture v2, Feasibility v3, Business Plan v3.
+## The one inviolable rule
 
-## Quick start
+**No AI computes or mutates a billing value at serve time.** AI runs only pre-freeze (filling non-billing fields with schema-constrained structured output) and in explain/search seams that never alter a value. Frozen records are immutable: a SHA-256 `record_hash` over sorted canonical content, updates are new versions, and the audit log is append-only. A determinism boundary test (no LLM client is importable on the value path) keeps CI honest.
+
+## Architecture
+
+Four layers, decoupled by the freeze line:
+
+| Layer | What | Where |
+|-------|------|-------|
+| L0 ingestion | AI-assisted harmonisation: load, parse, map, validate, score, flag, freeze | `services/ingestion/` |
+| L1 serving (TarifCore) | Deterministic read API: REST + FHIR R4, point-in-time + diff, semantic search | `services/serving/` |
+| L1 MCP (TarifMCP) | Read-only tools (`search_tariffs`, `get_tariff`, `explain_crosswalk`) for AI agents | `services/mcp/` |
+| L3 console (TarifGuard) | Master-detail search, frozen-record detail, human review form, labelled AI explain panel | `apps/tarifguard/` |
+
+The database (`db/`, PostgreSQL 16 + pgvector, mirrored in SQLite for offline tests) is the only contract between L0 and L1. Deployment manifests (Docker Compose, Helm) live in `deploy/`.
+
+## Quick start (offline)
+
+The Python services run fully offline by default: a SQLite mirror plus a deterministic stub embedder, no containers, no network, no API key required.
 
 ```bash
-./SETUP.md  # read it — one-time machine setup (uv, docker, k3d, gh, claude)
-claude      # then paste FIRST_PROMPT.md for session 1
+# Per service: install and run the test suite
+cd services/serving && uv sync && uv run pytest -q
+cd ../ingestion    && uv sync && uv run pytest -q
+cd ../mcp          && uv sync && uv run pytest -q
+cd ../intelligence && uv sync && uv run pytest -q
+
+# The demo console (needs a running serving API; the offline smoke is self-contained)
+cd apps/tarifguard && npm install && npm test       # Vitest + offline Playwright smoke
+npm run dev                                          # http://localhost:3000
+
+# The documentation site
+mkdocs serve -f docs/mkdocs.yml                      # http://localhost:8000
 ```
 
-## What's deliberately NOT here
+`uv` is the package manager (not pip or poetry). To run against the real Postgres engine instead of the SQLite mirror, `docker compose -f deploy/docker-compose.yml up -d db` and set `TARIFHUB_DB_URL`.
 
-This setup was rebuilt lean for an orchestrator-plus-workers pipeline (June 2026; orchestrator now Opus 4.8, Fable 5 in the early blocks). Removed vs the earlier environments, on purpose:
+## Configuration
 
-- **No agent zoo** — 6 custom agents, each with one pinned job: two pipeline workers (`implementer` and `e2e-tester`, both Opus 4.8) and reviewers (verifier, determinism-auditor, security-reviewer, all Opus; codex-reviewer on gpt-5.5). The orchestrator (Opus 4.8) keeps the jobs where quality compounds: plan, orchestration, merge-gate. Built-in Explore covers search.
-- **A phased shipping pipeline with a live board** — `/ship` runs 9 phases (plan-approval → TDD implement → gates → reviews → fix → PR/CI → runtime E2E+logs → report → merge-confirmation) with exactly two human gates. **Shipboard** (`tools/shipboard/shipboard.py`, stdlib one-filer on :8787) visualises phases and active agents live, fed by the emit script + Task hooks — plus a **session/context/usage monitor**: session status, context gauge against the 1M window (with compaction warnings), cumulative tokens in/out, cache-hit rate, turns/prompts/tool-calls, and estimated cost per model (editable price table in the file), all parsed incrementally from the Claude Code transcript via the `session_track` hook. CAS-fit: phase 7 verifies against local compose instead of cloud staging, and every run generates journal-ready multi-model evidence (criterion 15).
-- **No graphify / knowledge-graph MCP** — context cost without payoff at this repo size. `.mcp.json` carries Context7 only; `gh` CLI covers GitHub; Playwright runs as a plain dev dependency.
-- **No hand-rolled memory system for Claude** — native auto memory handles its learnings. `vault/` exists for **graded CAS evidence** (journal, decision matrix, Fazit notes) — human-curated, contemporaneous.
-- **A living second brain instead of a static one** — the `brain_sync` SessionEnd hook regenerates `vault/00-index.md` (current map of every ADR, journal day, learning) and optionally mirrors the knowledge set into your Obsidian vault (`OBSIDIAN_VAULT` in `.env`). Open the repo in Obsidian and the architecture documents itself as you work. Publishing: `docs/mkdocs.yml` → GitHub Pages via `.github/workflows/docs.yml`, PDF via the print-site page. SETUP.md §4–5.
-- **No commands/ directory** — skills replaced commands (`/ship`, `/new-source`, `/cas-status`).
-- **A prompt library that respects the model** — `prompts/01–07` cover the road to submission as **outcome prompts** (goal, constraints, verification), one per block milestone. What's deliberately absent is the old style of prescriptive step-scripts, which degrade the orchestrator's output. `prompts/README.md` has the usage rules.
+Config is environment-only. Copy the example and fill in your own values:
 
-Three hooks only, each enforcing what instructions can't: `guard_frozen` (PreToolUse — the freeze line), `format` (PostToolUse — ruff/prettier), `journal_draft` (SessionEnd — CAS evidence skeleton).
+```bash
+cp .env.example .env
+```
 
-## The one rule
+| Variable | Purpose |
+|----------|---------|
+| `TARIFHUB_DB_URL` | Database URL. Defaults to a local SQLite mirror used by the offline tests. |
+| `TARIFHUB_REVIEW_THRESHOLD` | Confidence below which a record is flagged for human review (default `0.85`). |
+| `ANTHROPIC_API_KEY` | Enables the pre-freeze `ai_map` seam. Absent, ingestion falls back to the deterministic `map_raw` mapper (the tests rely on this fallback). |
+| `TARIFHUB_EMBEDDINGS` | `stub` (offline default) or `e5` (multilingual-e5, for real semantic search). |
+| `TARIFHUB_SAMPLE_DIR`, `TARIFHUB_AI_MODEL` | Optional overrides for the bundled sample sources and the harmoniser model id. |
+| `SERVING_BASE_URL` | Console and MCP: base URL of the serving API. Server-side only, never exposed to the browser. |
+| `INGEST_BASE_URL` | Console (optional): the ingestion review endpoint for the review form. Unset, the console serves its demo fixtures. |
 
-**No AI computes or mutates a billing value at serve time.** Everything else is negotiable; this is not. `tests/test_determinism_boundary.py` + `guard_frozen.sh` + the determinism-auditor agent enforce it at three layers.
+No real secret is committed anywhere in this repository; `.env*` files are git-ignored (only `.env.example` is tracked).
+
+## Documentation
+
+The architecture is documented as an arc42 site (MkDocs Material) under `docs/`, published to GitHub Pages from `.github/workflows/docs.yml` (live once the owner enables Pages, at `https://erhanuenlue.github.io/tarifhub/`). Architecture decisions are recorded in `docs/adr/`.
+
+## CAS scope (be honest)
+
+Graders review code and documentation only; nothing is deployed or executed by them, so runtime evidence is captured into `docs/`. The TarifGuard console is a deliberately small demo (master-detail, review form, explain panel): no authentication, no patient data, no benchmarking. The platform demonstrates the concepts; it is not a production billing system.
+
+## Stack
+
+Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end to end), PostgreSQL 16 + pgvector, Claude schema-constrained structured output (pre-freeze only), Next.js App Router (the console), Docker + Helm, GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft).
+
+## Development
+
+Contributors should read `AGENTS.md` (project facts, layout, commands, the determinism rule) and `CLAUDE.md` (the working pipeline), then `SETUP.md` / `QUICKSTART.md` for one-time machine setup.
+
+## License
+
+MIT. See [LICENSE](LICENSE).

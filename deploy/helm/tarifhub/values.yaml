@@ -139,8 +139,9 @@ postgres:
   port: 5432
   database: tarifhub
   username: tarifhub
-  # Demo default — override in production (e.g. via an existing Secret).
-  password: tarifhub
+  # Dev/demo default only. Production MUST override this: set .Values.postgres.password,
+  # or point the deployments at an externally managed Secret of the same name and key.
+  password: changeme-in-production
   storage: 5Gi
 
 ingress:
