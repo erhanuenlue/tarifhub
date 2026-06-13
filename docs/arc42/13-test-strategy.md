@@ -14,22 +14,22 @@ container and no API key. The per-use-case acceptance criteria these tests satis
 
 From the broad, fast base to the narrow, high-leverage apex:
 
-1. **Unit / mapping helpers.** Pure functions — `freeze` (hash over sorted canonical
-   content), the deterministic `map_raw`, validators, the confidence scorer, the
-   canonical-Decimal scale normalisation — are tested in isolation with fixed inputs.
+1. **Unit / mapping helpers.** Pure functions, namely `freeze` (hash over sorted canonical
+   content), the deterministic `map_raw`, validators, the confidence scorer and the
+   canonical-Decimal scale normalisation, are tested in isolation with fixed inputs.
    No I/O, no clock branching, no randomness; the pipeline is a pure function of sorted
    inputs by design ([§6](06-runtime-view.md)).
 2. **API contract (offline).** The serving REST surface is exercised through FastAPI's
    `TestClient` against a temp SQLite database seeded with frozen records
    (`services/serving/tests/test_api.py`, `conftest.py`): health, latest-version list,
    system filter, pagination edges, 404 on unknown keys, input-validation 422s, and the
-   search ranking and dimension-guard paths. The client reads the seeded DB via `TARIFHUB_DB_URL`
-   — the same env-only config production uses.
+   search ranking and dimension-guard paths. The client reads the seeded DB via `TARIFHUB_DB_URL`,
+   the same env-only config production uses.
 3. **Cross-engine read parity.** Every read endpoint is run against **both** SQLite and
    Postgres via the `engine` fixture, and each test asserts the endpoint's **full JSON
    body** equals an engine-independent expected snapshot
    (`services/serving/tests/test_read_parity.py`, mirrored for ingestion). Because both
-   engines must match the *same* snapshot, they match each other — SQLite-only blindness
+   engines must match the *same* snapshot, they match each other, so SQLite-only blindness
    becomes impossible to pass silently. This layer exists because Block-0 was burned twice
    by Postgres-vs-SQLite drift (a JSONB dict crashed `json.loads`; an `int` for a BOOLEAN
    column was rejected by psycopg), so the snapshots deliberately stress non-ASCII
@@ -42,7 +42,7 @@ From the broad, fast base to the narrow, high-leverage apex:
    backend JSON **verbatim**, forwards the right path and query params, and a backend 404
    raises `httpx.HTTPStatusError` rather than fabricating a record. **MCP↔serving
    integration tests** (`services/mcp/tests/test_integration.py`) additionally drive the
-   real serving ASGI app in-process via `httpx.ASGITransport` — each tool proven against
+   real serving ASGI app in-process via `httpx.ASGITransport`: each tool is proven against
    real responses under the same offline doctrine (SQLite mirror, stub embedder), no
    socket.
 5. **Architectural AST boundary test (the apex).** A static AST scan asserts no LLM client
@@ -53,25 +53,25 @@ From the broad, fast base to the narrow, high-leverage apex:
 
 `uv run pytest -q` in any service runs **fully offline**: a **SQLite mirror** of the
 canonical Postgres schema stands in for the database, and a deterministic **16-dim
-`HashingEmbedder` stub** stands in for multilingual-e5 — **zero network, no containers,
+`HashingEmbedder` stub** stands in for multilingual-e5, with **zero network, no containers,
 no `ANTHROPIC_API_KEY`**. Without an API key the AI seam (`ai_map`) falls back to
 deterministic `map_raw`, and the offline tests rely on exactly that fallback. Semantic
 search stays fully testable offline: on SQLite the serving layer ranks by an in-process
 deterministic cosine over the stored stub embeddings (same query path, same response
-shape as pgvector — ties broken by `(tariff_system, tariff_code)`), so the offline suite
+shape as pgvector, ties broken by `(tariff_system, tariff_code)`), so the offline suite
 exercises real ranked results without pgvector. The dimension-guard still applies on
 Postgres: an embedder whose dimension does not match the `vector(1024)` column makes
-search **fail closed with HTTP 501** rather than issue a doomed query — honest
-unavailability, never a faked result.
+search **fail closed with HTTP 501** rather than issue a doomed query, an honest
+unavailability and never a faked result.
 
 ## Postgres opt-in parity harness
 
 The real engine is opt-in. Setting `TARIFHUB_PG_TEST_URL` adds a `postgres` parameter to
 the `engine` fixture; its setup connects to that server **only** to `CREATE` a
 uniquely-named scratch database (`tarifhub_parity_<uuid>`), applies `db/schema.sql` into
-it, yields it to the test, and **drops it on teardown** — the shared dev `tarifhub`
-database is never written to. This is our **purpose-built equivalent of Testcontainers**
-— a per-run, throwaway, schema-provisioned database with deterministic teardown — built
+it, yields it to the test, and **drops it on teardown**, so the shared dev `tarifhub`
+database is never written to. This is our **purpose-built equivalent of Testcontainers**,
+a per-run, throwaway, schema-provisioned database with deterministic teardown, built
 directly on `psycopg` and `db/schema.sql`. **We do not use Testcontainers**; the harness
 is hand-rolled to keep the offline default container-free and the dependency surface
 minimal. In CI the `python-parity` job supplies the URL via a `pgvector/pgvector:pg16`
@@ -83,11 +83,11 @@ on every push and PR.
 The architectural guard is the apex test and the determinism acceptance from
 [§10](10-quality-requirements.md#acceptance-criteria). It parses each value-path module's
 AST and asserts that none imports `anthropic`, `openai`, `cohere`, `langchain` or
-`llama_index` — module level **or** inside a function:
+`llama_index`, at module level **or** inside a function:
 
 - `services/serving/tests/test_serving_boundary.py` scans the **entire** `tarifhub_serving`
   package, and additionally asserts the only `tarifhub_ingest` submodules it imports are
-  `models` and `embeddings` — never a mapper that could transitively pull an LLM client.
+  `models` and `embeddings`, never a mapper that could transitively pull an LLM client.
   (It is named `test_serving_boundary`, not `test_determinism_boundary`, because the latter
   filename is frozen by the `guard_frozen` hook.)
 - `services/ingestion/tests/test_determinism_boundary.py` scans the ingestion value path
@@ -103,46 +103,46 @@ green by construction, not by reviewer discipline.
 
 ## Tests der KI-Anteile
 
-The CAS rubric asks that the test strategy show **"Tests der KI-Anteile berücksichtigt"** —
+The CAS rubric asks that the test strategy show **"Tests der KI-Anteile berücksichtigt"**:
 that the AI parts are themselves tested, not just the deterministic majority. TarifHub's AI
 portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
 only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path
-for search. Its tests therefore fall into four families — a **guardrail** test of the
+for search. Its tests therefore fall into four families: a **guardrail** test of the
 boundary itself, **no-call** tests of the gap gate, **non-deterministic-output handling**
 tests of fill-reuse, and **fail-closed parsing** tests of the schema validation that treats
 model output as untrusted.
 
-#### 1 · Guardrail — the boundary itself
+#### 1 · Guardrail: the boundary itself
 
 The AST boundary tests are described in full above (*The determinism acceptance gate*):
 `services/serving/tests/test_serving_boundary.py`,
 `services/ingestion/tests/test_determinism_boundary.py` and
 `services/intelligence/tests/test_determinism_boundary.py`. This is the test *of* the AI
-boundary — the AI-portion test with the highest leverage, since a single failure proves a
+boundary, the AI-portion test with the highest leverage, since a single failure proves a
 model became reachable on a value path. Verifies **NfA-1** ([§10](10-quality-requirements.md)).
 
-#### 2 · Gap-gate — the no-call paths
+#### 2 · Gap-gate: the no-call paths
 
 `services/ingestion/tests/test_ai_mapper.py` proves the pipeline makes **zero** model calls
 when there is nothing to fill or no key is present:
 `test_gap_gate_skips_call_when_nothing_fillable`,
 `test_gap_gate_invokes_call_when_a_gap_exists` and
-`test_no_api_key_returns_deterministic_and_never_calls_parse`. The EAL live run — **0 API
-calls over 1,279 complete rows** ([§10](10-quality-requirements.md)) — is exactly this
+`test_no_api_key_returns_deterministic_and_never_calls_parse`. The EAL live run (**0 API
+calls over 1,279 complete rows**, [§10](10-quality-requirements.md)) is exactly this
 behaviour observed at scale.
 
-#### 3 · Fill-reuse — handling non-deterministic AI output
+#### 3 · Fill-reuse: handling non-deterministic AI output
 
 Live model output is **not** byte-stable across runs (the measured 55 re-versions,
 [§10](10-quality-requirements.md)); `services/ingestion/tests/test_fill_reuse.py` pins the
 mechanism that makes the pipeline reproducible anyway:
 `test_reuse_makes_zero_api_calls`, `test_keyless_reuse_still_skips`,
 `test_changed_content_takes_normal_path`, `test_refill_bypasses_reuse` and
-`test_audit_detail_carries_reuse_provenance` — with further byte-exactness legs in the same
+`test_audit_detail_carries_reuse_provenance`, with further byte-exactness legs in the same
 suite (e.g. `test_strip_to_prefill_reverses_a_category_fill_byte_exactly`). Verifies
 **NfA-2** ([§10](10-quality-requirements.md)).
 
-#### 4 · Schema-validation — fail-closed on untrusted model output
+#### 4 · Schema-validation: fail-closed on untrusted model output
 
 Model output is treated as untrusted input. `services/ingestion/tests/test_ai_mapper.py`
 asserts that refusals, empty strings and parse failures all degrade to the deterministic
@@ -154,7 +154,7 @@ and `services/ingestion/tests/test_mapper.py`'s
 unreachable for the seam to touch.
 
 All four families run in the **offline default suite** (no key, no network) and again in CI
-on every push — the AI portion is tested without ever needing the AI.
+on every push: the AI portion is tested without ever needing the AI.
 
 ## What CI runs per PR
 
@@ -166,7 +166,7 @@ From `.github/workflows/ci.yml`, on every push to `main` and every pull request:
 | `python-parity` | Spins a `pgvector/pgvector:pg16` service container and runs the ingestion + serving read-parity suites against real Postgres 16 + pgvector (`TARIFHUB_PG_TEST_URL` set). |
 | `console` | When `apps/tarifguard/package.json` exists: `npm ci` → `npm run lint` → `npm run build` → `npm run test --if-present`. |
 | `security` | `gitleaks` (secrets) → `Trivy` (fs scan, fail on HIGH/CRITICAL) → `Syft` SBOM (`spdx-json`, uploaded as an artifact). |
-| `docs` | `mkdocs build -f docs/mkdocs.yml --strict` — a broken link or nav entry fails the build. |
+| `docs` | `mkdocs build -f docs/mkdocs.yml --strict`: a broken link or nav entry fails the build. |
 | `images` | On `main` only, after `python` + `security`: builds every sub-system Docker image (criterion 17 distribution evidence). |
 
 Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision).
@@ -195,8 +195,8 @@ history.
 The TarifGuard console currently has lint, build and typecheck wired in CI; it ships **no
 automated component or Playwright smoke test yet** (`apps/tarifguard/package.json` defines
 no `test` script, so the CI `console` job's `npm run test --if-present` is a no-op today).
-Component tests are **planned**: they will assert the brand visual law — frozen values
+Component tests are **planned**: they will assert the brand visual law, namely that frozen values
 render in navy mono with version + truncated `record_hash` provenance chips, and every AI
-output renders inside its `.ai-content` "AI-generated — not a billing value" label, never
-restyled as a frozen value (ADR-013 scope). Until then the console is covered by the
+output renders inside its `.ai-content` labelled surface, marked as AI-generated content that
+is not a billing value, never restyled as a frozen value (ADR-013 scope). Until then the console is covered by the
 serving API contract tests it consumes plus manual smoke captured into `docs/evidence/`.

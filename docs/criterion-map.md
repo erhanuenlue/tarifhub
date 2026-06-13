@@ -1,24 +1,24 @@
-# Criterion Map — the grader's index
+# Criterion Map: the grader's index
 
-> Final state of the CAS Dossier §6 table: all 18 criteria → evidence artifact → location. Filled progressively; finalised at pre-flight.
+> Final state of the CAS Dossier §6 table: all 18 criteria mapped to an evidence artifact and its location in this repository. Finalised at pre-flight.
 
 | # | Criterion | Evidence artifact | Where |
 |---|-----------|-------------------|-------|
-| 1 | Key use-cases & functional requirements named | Use-case catalogue + FR table | [arc42/01 — use-case catalogue](arc42/01-introduction-goals.md#use-case-catalogue) |
-| 2 | Quality requirements specified SMART | NFR table | [arc42/10 — quality requirements](arc42/10-quality-requirements.md) |
-| 3 | Overall solution vision | Vision statement + solution strategy | [arc42/01](arc42/01-introduction-goals.md) · [arc42/04](arc42/04-solution-strategy.md) |
-| 4 | Solution approach & architecture, pictorial AND textual | C4 context/container/component diagrams + building-block tables | [arc42/05 — building block view](arc42/05-building-block-view.md) |
-| 5 | Design from multiple perspectives | Structure: C4 (arc42/05) · behaviour: 3 sequence scenarios + record-lifecycle state diagram (arc42/06) · interaction: use-case diagram (arc42/01) | [arc42/05](arc42/05-building-block-view.md) · [arc42/06](arc42/06-runtime-view.md) · [arc42/01](arc42/01-introduction-goals.md) |
-| 6 | DB model specified | ER diagram + schema | [arc42/05 — data model](arc42/05-building-block-view.md#data-model) + `db/schema.sql` |
-| 7 | — | — (filled progressively) | — |
-| 8 | „Konzepte des gewählten Frameworks und moderner Applikationsentwicklung sachgerecht eingesetzt — DI, REST-Schnittstellen, Konfiguration, Fehlerbehandlung" (12 Jun 2026 wording) | Concept-by-concept implementation map | [arc42/08 — modern application concepts](arc42/08-crosscutting-concepts.md#modern-application-concepts) |
-| 9 | — | Learnings register — every entry commit-ref'd; AI suggestions marked accepted/corrected/rejected | `LEARNINGS.md` (repo root) |
-| 10 | „Ist der Source-Code in einem Git-Repository verfügbar" | Public GitHub repository with full history; CI runs on every push and PR | GitHub repo (`repo_url`, see `mkdocs.yml`) + `.github/workflows/ci.yml` |
-| 11 | — | Acceptance criteria (G/W/T per UC) with explicit NfA cross-refs | [arc42/10 — acceptance criteria](arc42/10-quality-requirements.md#acceptance-criteria) |
-| 12 | — | Test strategy incl. explicit „Tests der KI-Anteile" subsection | [arc42/13 — test strategy](arc42/13-test-strategy.md) |
-| 13 | „Sind Unit-Tests programmiert" (Kernlogik inkl. Fehlerfälle, im Build) | 295 offline tests across 4 services incl. dedicated error-case suites; every core module > 80 % line coverage | [Test and pipeline results (arc42/10)](arc42/10-quality-requirements.md#test-and-pipeline-results) + `services/*/tests` |
+| 1 | Key use-cases and functional requirements named | Use-case catalogue and FR table | [arc42/01, use-case catalogue](arc42/01-introduction-goals.md#use-case-catalogue) |
+| 2 | Quality requirements specified SMART | NFR table | [arc42/10, quality requirements](arc42/10-quality-requirements.md) |
+| 3 | Overall solution vision | Vision statement and solution strategy | [arc42/01](arc42/01-introduction-goals.md) · [arc42/04](arc42/04-solution-strategy.md) |
+| 4 | Solution approach and architecture, pictorial and textual | C4 context/container/component diagrams and building-block tables | [arc42/05, building block view](arc42/05-building-block-view.md) |
+| 5 | Design from multiple perspectives | Structure: C4 (arc42/05). Behaviour: 3 sequence scenarios and a record-lifecycle state diagram (arc42/06). Interaction: use-case diagram (arc42/01) | [arc42/05](arc42/05-building-block-view.md) · [arc42/06](arc42/06-runtime-view.md) · [arc42/01](arc42/01-introduction-goals.md) |
+| 6 | DB model specified | ER diagram and schema | [arc42/05, data model](arc42/05-building-block-view.md#data-model) + `db/schema.sql` |
+| 7 | „Ist der Code lesbar, dokumentiert und nach Schichten und Modulen mit klaren Verantwortlichkeiten strukturiert" | Four services decomposed along the freeze line; one canonical `TariffRecord` end-to-end; type hints and module docstrings | [arc42/05, building block view](arc42/05-building-block-view.md) + `services/` + `db/schema.sql` |
+| 8 | „Konzepte des gewählten Frameworks und moderner Applikationsentwicklung sachgerecht eingesetzt (z. B. DI, REST-Schnittstellen, Konfiguration, Fehlerbehandlung)" (12 Jun 2026 wording) | Concept-by-concept implementation map | [arc42/08, modern application concepts](arc42/08-crosscutting-concepts.md#modern-application-concepts) |
+| 9 | „Sind die Erkenntnisse aus der Programmierung dokumentiert" | Learnings register, every entry commit-referenced; AI suggestions marked accepted/corrected/rejected | `LEARNINGS.md` (repo root) |
+| 10 | „Ist der Source-Code in einem Git-Repository verfügbar" | GitHub repository with full history; CI runs on every push and PR. Public visibility is enabled by the author at go-live (see Fazit, veto 3) | [github.com/erhanuenlue/tarifhub](https://github.com/erhanuenlue/tarifhub) + `.github/workflows/ci.yml` |
+| 11 | „Ist definiert, welches die Abnahmekriterien sind" | Acceptance criteria (Given/When/Then per use case) with explicit NfA cross-references | [arc42/10, acceptance criteria](arc42/10-quality-requirements.md#acceptance-criteria) |
+| 12 | „Ist spezifiziert, wie die Applikation getestet wird" | Test strategy including an explicit „Tests der KI-Anteile" subsection | [arc42/13, test strategy](arc42/13-test-strategy.md) |
+| 13 | „Sind Unit-Tests programmiert" (Kernlogik inkl. Fehlerfälle, im Build) | 295 offline tests across 4 services including dedicated error-case suites; every core module above 80 % line coverage | [Test and pipeline results (arc42/10)](arc42/10-quality-requirements.md#test-and-pipeline-results) + `services/*/tests` |
 | 14 | „Sind die Test-Ergebnisse dokumentiert" (Pipeline-Ausgabe, im Bericht interpretiert) | Quoted pytest summaries, coverage tables, determinism-boundary output and a diff example, each interpreted | [Test and pipeline results (arc42/10)](arc42/10-quality-requirements.md#test-and-pipeline-results) |
-| 15 | — | — (filled progressively) | — |
-| 16 | — | — (filled progressively) | — |
-| 17 | „Modularer Monolith oder verteilte Services … als Container lauffähig betrieben" (12 Jun 2026 wording) | Distributed services along the freeze line; Compose (8 containers) + k3d/Helm proof + CI image matrix; style justified (ADR-002/006/009) | [Deployment view (arc42/07)](arc42/07-deployment-view.md) + [distribution evidence](evidence/2026-06-13-distribution.md) |
-| 18 | — | — (filled progressively) | — |
+| 15 | „Wurden KI-unterstützende Werkzeuge verwendet und deren Nutzung beschrieben" | AI-tools chapter structured by phase (Generierung, Review, Refactoring, Recherche) with prompts, diffs and commit refs; decision matrix; journal excerpts; the Erklärung der Eigenständigkeit (reserved slot, final wording and signature by the author) | [method/ai-tools.md](method/ai-tools.md) · [method/decision-matrix.md](method/decision-matrix.md) · [method/journal.md](method/journal.md) |
+| 16 | „Wurden mit Hilfe der KI intelligente und flexible Services gebaut" | The `ai_map` fill-only seam, pgvector semantic search and read-only MCP tools; guardrails (freeze line, gap-gate) and a human-in-the-loop review queue | [arc42/05](arc42/05-building-block-view.md) · [arc42/08](arc42/08-crosscutting-concepts.md) · [arc42/06](arc42/06-runtime-view.md) |
+| 17 | „Modularer Monolith oder verteilte Services … als Container lauffähig betrieben" (12 Jun 2026 wording) | Distributed services along the freeze line; Compose (8 containers) plus a k3d/Helm proof plus the CI image matrix; style justified (ADR-002/006/009) | [Deployment view (arc42/07)](arc42/07-deployment-view.md) + [distribution evidence](evidence/2026-06-13-distribution.md) |
+| 18 | „Sind die Erfahrungen während der Projektarbeit mit KI-unterstützenden Werkzeugen als Fazit reflektiert" | Fazit: three veto decisions („nie an die KI delegiert"), measured observations, the central lesson, honest limits, and the transfer to future practice | [method/fazit.md](method/fazit.md) |

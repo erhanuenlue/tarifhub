@@ -1,29 +1,29 @@
 # 05 · building block view
 
-## Level 0 — system context
+## Level 0: system context
 
 ![C4 system context](../diagrams/c4-context.svg)
 
 TarifHub ingests Swiss ambulatory tariff sources (BAG EAL XLSX, FHIR catalogues), harmonises them once pre-freeze, and serves immutable frozen records to humans (TarifGuard console), machines (REST/FHIR clients) and AI assistants (MCP). All consumers read from the same deterministic serving layer; nothing downstream of the freeze line writes.
 
-## Level 1 — containers
+## Level 1: containers
 
 ![C4 container view](../diagrams/c4-container.svg)
 
 | Container | Repo path | Layer | Responsibility |
 |-----------|-----------|-------|----------------|
 | Ingestion service | `services/ingestion/` | L0 | AI-assisted harmonisation pipeline: load → parse → map → validate → score → flag → freeze → store → audit |
-| Serving API (TarifCore) | `services/serving/` | L1 | Read-only REST: list/get tariffs (incl. `?as_of=` point-in-time), version diff, deterministic semantic search (pgvector on Postgres, in-process cosine offline — [ADR-017](../adr/017-deterministic-search-fallback-explain.md)), record-grounded `/api/v1/explain`, FHIR R4 read adapter (ChargeItemDefinition/CodeSystem); no write path, no LLM client importable (AST-tested) |
-| MCP server (TarifMCP) | `services/mcp/` | L1 | `search_tariffs`, `get_tariff`, `explain_crosswalk` — read-only httpx proxies to the serving API, returning frozen records verbatim |
+| Serving API (TarifCore) | `services/serving/` | L1 | Read-only REST: list/get tariffs (incl. `?as_of=` point-in-time), version diff, deterministic semantic search (pgvector on Postgres, in-process cosine offline, [ADR-017](../adr/017-deterministic-search-fallback-explain.md)), record-grounded `/api/v1/explain`, FHIR R4 read adapter (ChargeItemDefinition/CodeSystem); no write path, no LLM client importable (AST-tested) |
+| MCP server (TarifMCP) | `services/mcp/` | L1 | `search_tariffs`, `get_tariff`, `explain_crosswalk`: read-only httpx proxies to the serving API, returning frozen records verbatim |
 | TarifGuard console | `apps/tarifguard/` | L3 | Four surfaces over the serving API: master-detail search, frozen-record detail, a human review form (the one write path, mocked pending the ingestion review endpoint), and a labelled AI explain panel with server-side de-identification |
-| Database | `db/` | — | PostgreSQL 16 + pgvector; `schema.sql` + forward-only migrations; the only contract between L0 and L1 |
-| Deployment | `deploy/` | — | docker-compose + Helm/k3d; container-first distribution evidence |
+| Database | `db/` | n/a | PostgreSQL 16 + pgvector; `schema.sql` + forward-only migrations; the only contract between L0 and L1 |
+| Deployment | `deploy/` | n/a | docker-compose + Helm/k3d; container-first distribution evidence |
 
 L2 (intelligence: rules, crosswalk reasoning) is post-CAS scope as a *feature*: an offline-tested scaffold exists at `services/intelligence/` (tarifiq: frozen rule table, combinability evaluation, TARMED↔TARDOC crosswalk), and the **MVP value path that is graded is L0 ingestion → L1 serving/MCP → L3 console**, which L2 is not part of. The scaffold is, however, packaged like every other sub-system (its own Dockerfile, compose service and Helm template), so it can be brought up alongside the stack for completeness; that deployment fact is shown in [§7](07-deployment-view.md). L2 stays read-only and post-freeze (it reads frozen facts from L1), so including its container never touches the value path.
 
-## Level 2 — ingestion service components
+## Level 2: ingestion service components
 
-![C4 component view — ingestion](../diagrams/c4-component-ingestion.svg)
+![C4 component view: ingestion](../diagrams/c4-component-ingestion.svg)
 
 The ingestion service is the only place where AI runs, and only at the `map` step.
 
@@ -33,22 +33,22 @@ The ingestion service is the only place where AI runs, and only at the `map` ste
 |-----------|-----------------------------------------------------------|----------------|
 | Adapters | `adapters/bag_eal.py` | Source-specific acquisition of raw BAG EAL rows |
 | Parsers | `parsers/xlsx_parser.py`, `parsers/fhir_parser.py` | Format-specific parsing into raw row dicts, each with a pinned parser version |
-| Mapper | `mappers/tariff_mapper.py` (`map_raw`) | Deterministic mapping to the canonical `TariffRecord` — owns **all billing values** |
+| Mapper | `mappers/tariff_mapper.py` (`map_raw`) | Deterministic mapping to the canonical `TariffRecord`; owns **all billing values** |
 | `ai_map` seam | `mappers/tariff_mapper.py` (`ai_map`, `AIRefinement`) | The **only live-AI point in the system**: fill-only on non-billing fields, deterministic gap-gate decides whether to call at all, structured output via `messages.parse`, deterministic fallback to `map_raw` without an API key |
 | Validator | `validators/tariff_validator.py` (`validate`, `ValidationResult`) | Schema and business-rule checks; failures fail closed into review |
 | Confidence scorer | `confidence/scorer.py` (`score`) | Deterministic harmonisation-confidence score per record |
 | Review routing | `ingestion/pipeline.py` (`requires_review`) | Flags records with confidence below `TARIFHUB_REVIEW_THRESHOLD` (default 0.85) or failed validation for human review |
 | Freeze | `versioning/freeze_record.py` (`freeze`, `compute_record_hash`, `verify`) | SHA-256 `record_hash` over sorted canonical content; freezing an already-frozen record raises `ValueError`; updates are new versions |
 | Audit | `audit/audit_logger.py` (`AuditLogger`) | Append-only lineage event per pipeline outcome |
-| Embedder | `embeddings/embedder.py` (`Embedder` protocol, `HashingEmbedder`, `get_embedder`) | Search embeddings only — never on the value path; deterministic hashing stub offline |
+| Embedder | `embeddings/embedder.py` (`Embedder` protocol, `HashingEmbedder`, `get_embedder`) | Search embeddings only, never on the value path; deterministic hashing stub offline |
 | Repository | `storage/tariff_repository.py`, `storage/db.py` | Persistence of frozen records + embeddings; idempotent on `record_hash` |
 | Pipeline orchestrator | `ingestion/pipeline.py` (`run_pipeline`) | Fixed stage order `load → parse → map → validate → score → flag → freeze → store → audit`; pure function of sorted inputs |
 
 ## Data model
 
-![ER model — tariff and audit_log](../diagrams/er-data-model.svg)
+![ER model: tariff and audit_log](../diagrams/er-data-model.svg)
 
-Two tables. `tariff` holds immutable versioned rows: `UNIQUE(tariff_system, tariff_code, version)` makes versions explicit, `record_hash UNIQUE` (SHA-256 over sorted canonical content) is the integrity anchor and idempotency key, and `embedding vector(1024)` carries the pgvector HNSW cosine index for semantic search. `audit_log` is append-only lineage, keyed by `record_hash` — every freeze and skipped re-ingest leaves an event.
+Two tables. `tariff` holds immutable versioned rows: `UNIQUE(tariff_system, tariff_code, version)` makes versions explicit, `record_hash UNIQUE` (SHA-256 over sorted canonical content) is the integrity anchor and idempotency key, and `embedding vector(1024)` carries the pgvector HNSW cosine index for semantic search. `audit_log` is append-only lineage, keyed by `record_hash`: every freeze and skipped re-ingest leaves an event.
 
 Canonical source of truth: `db/schema.sql` in the repository, mirrored in SQLite for offline tests. The field set is locked additive-only per [ADR-003](../adr/003-canonical-record-model.md); the Pydantic model (`models/tariff_model.py`, `TariffRecord`) is the same shape end-to-end.
 
@@ -58,7 +58,7 @@ The TarifGuard console (`apps/tarifguard/`, Next.js App Router with React and Ta
 
 The review form (`/review`) is the human-in-the-loop made operable, and it is the one place the console writes. A flagged record (one whose `requires_review` flag is set) shows the deterministic raw extract beside the `ai_map` proposal, field by field, with the harmonisation confidence and the proposing model named. The reviewer approves the proposal verbatim or corrects any non-billing field, and the record is frozen server-side; the billing values (`tax_points`, `price_chf`) are never AI-filled and stay certified throughout. This write path goes through the console's own API route (`app/api/review`), never the database and never `freeze()` directly. Because the ingestion review endpoint is design scope at the MVP (ADR-013), the route serves a fixture queue offline and simulates the server-side freeze with a genuine SHA-256 over the decided content, so the proposal-to-frozen transition is real in the interface; setting `INGEST_BASE_URL` switches it to the future ingestion endpoint with no change to the UI.
 
-Two boundaries are visible in the interface and enforced in code. The visual law (mirrored from `docs/brand/tokens.css`) renders every frozen value in navy JetBrains Mono with version and hash chips, and every AI output on a slate surface carrying its fixed guardrail label that it is not a billing value; the two are never blended in one element. The de-identification seam (ADR-012, `lib/deident.ts`) is the only sanctioned builder of any model-bound payload: the explain seam accepts a tariff code only, and any optional free-text context is scrubbed server-side and shown as an audit, never forwarded. Both boundaries are tested. Vitest component tests assert the law at the component level (frozen values carry the certified styling, the AI panel carries its labelled surface), and an offline Playwright smoke drives search to detail to a mocked review-freeze to explain, asserting in a real browser that frozen values resolve to navy and that the AI label is present. The console lints, builds, and passes both suites in CI (the `console` job in `.github/workflows/ci.yml`).
+Two boundaries are visible in the interface and enforced in code. The visual law (mirrored from `docs/brand/tokens.css`) renders every frozen value in navy JetBrains Mono with version and hash chips, and every AI output on a slate surface carrying its fixed guardrail label that it is not a billing value; the two are never blended in one element. The de-identification seam (ADR-012, `lib/deident.ts`) is the only sanctioned builder of any model-bound payload: the explain seam accepts a tariff code only, and any optional free-text context is scrubbed server-side and shown as an audit, never forwarded. Both boundaries are designed to be tested at the component level. Vitest component specs and an offline Playwright smoke (search to detail to a mocked review-freeze to explain, asserting in a real browser that frozen values resolve to navy and that the AI label is present) exist in the repository under `apps/tarifguard/tests` and `apps/tarifguard/e2e`. They are not yet wired to a `package.json` test script, so the CI `console` job (`.github/workflows/ci.yml`) currently lints, builds and typechecks the console and runs `npm run test --if-present` as a no-op; wiring the specs into CI is planned (ADR-013 demo scope). The honest current state of console testing is detailed in [§13](13-test-strategy.md#console-component-tests).
 
 ### Console screenshots
 

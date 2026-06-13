@@ -33,6 +33,8 @@ tarifhub_dev.db
 data/raw/
 site/
 .shipboard/
+# PDF build workspace (tarifhub-cas.pdf is reproducible via tools/build_pdf.py)
+build/
 
 # OS / editors
 .DS_Store
