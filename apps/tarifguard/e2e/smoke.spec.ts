@@ -32,6 +32,10 @@ test("search → detail → review (mocked) → explain, with the visual law int
   // 3. Review form: submit against the mocked write path; the proposal becomes a frozen record.
   await page.goto("/review");
   await expect(page.getByText(/Flagged for review/)).toBeVisible();
+  // The visual law in the review table: billing values stay certified (navy mono), never an
+  // editable input — even where AI proposed the surrounding non-billing fields.
+  await expect(page.getByText(/certified · not AI/i).first()).toBeVisible();
+  await expect(page.locator("table").locator(".value-certified").first()).toBeVisible();
   await page.getByRole("button", { name: /Approve proposal/ }).click();
   await expect(page.getByRole("heading", { name: "Frozen" })).toBeVisible();
   await expect(page.getByText(/v2/).first()).toBeVisible();

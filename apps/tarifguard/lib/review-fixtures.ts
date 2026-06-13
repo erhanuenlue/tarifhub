@@ -12,6 +12,9 @@
  */
 import type { ReviewItem } from "@/lib/api";
 
+// NOTE: `field` keys here (e.g. "designation.de") are the console's own contract. When the
+// real ingestion review endpoint lands, reconcile these with the ingestion field names
+// (the corrections map is keyed by them) — see app/api/review/route.ts.
 export const REVIEW_QUEUE: ReviewItem[] = [
   {
     tariff_system: "TARDOC",

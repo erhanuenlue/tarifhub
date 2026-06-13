@@ -62,6 +62,10 @@ export function ReviewForm() {
     setSubmitting(true);
     setError(null);
     const editable = active.fields.filter((f) => !f.billing);
+    // Only fields the reviewer actually changed are sent as corrections — an honest audit.
+    const changed = editable.filter(
+      (f) => (corrections[f.field] ?? f.proposal ?? "") !== (f.proposal ?? "")
+    );
     const decision: ReviewDecision = {
       tariff_system: active.tariff_system,
       tariff_code: active.tariff_code,
@@ -70,9 +74,7 @@ export function ReviewForm() {
       reviewer: "demo-reviewer",
       corrections:
         action === "correct"
-          ? Object.fromEntries(
-              editable.map((f) => [f.field, corrections[f.field] ?? f.proposal ?? ""])
-            )
+          ? Object.fromEntries(changed.map((f) => [f.field, corrections[f.field] ?? ""]))
           : undefined,
     };
     try {
@@ -141,7 +143,15 @@ export function ReviewForm() {
       {/* Active review */}
       <section>
         {result ? (
-          <FrozenResult result={result} onNext={() => setResult(null)} hasMore={queue.length > 0} />
+          <FrozenResult
+            result={result}
+            onNext={() => {
+              setResult(null);
+              setCorrections({});
+              setActiveKey(queue[0] ? keyOf(queue[0]) : null);
+            }}
+            hasMore={queue.length > 0}
+          />
         ) : active ? (
           <ReviewDetail
             item={active}

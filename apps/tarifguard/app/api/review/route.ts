@@ -8,12 +8,19 @@ import { findReviewItem, REVIEW_QUEUE } from "@/lib/review-fixtures";
 /**
  * The console's ONE write path. The review form GETs the queue here and POSTs an
  * approve/correct decision here; the freeze happens server-side. This handler never
- * touches a database and never calls freeze() directly — it proxies to the ingestion
- * review endpoint when INGEST_BASE_URL is configured, and otherwise serves the demo
- * fixtures and simulates the server-side freeze (a real SHA-256 over the decided content,
- * mirroring how ingestion freezes records). Building the actual ingestion endpoint is a
- * separate, freeze-line-adjacent task (ADR-013: design scope at the MVP).
+ * touches a database and never calls freeze() directly.
+ *
+ * Two modes, never mixed:
+ *   - INGEST_BASE_URL set  -> proxy to the ingestion review endpoint; surface its failures
+ *     (a configured backend erroring is a real failure, never masked as success).
+ *   - INGEST_BASE_URL unset -> offline demo: serve the fixture queue and simulate the
+ *     server-side freeze (a real SHA-256 over the decided content). Building the actual
+ *     ingestion endpoint is a separate, freeze-line-adjacent task (ADR-013: design scope).
  */
+
+// Billing values are frozen at ingest and are never AI-filled or human-corrected here.
+// Enforced server-side as defence in depth (the UI also hides them from the editor).
+const BILLING_FIELDS = new Set(["tax_points", "price_chf"]);
 
 function ingestBase(): string | null {
   const url = process.env.INGEST_BASE_URL?.trim();
@@ -22,18 +29,25 @@ function ingestBase(): string | null {
 
 export async function GET() {
   const base = ingestBase();
-  if (base) {
-    try {
-      const res = await fetch(`${base}/review/queue`, {
-        headers: { accept: "application/json" },
-        cache: "no-store",
+  if (!base) return NextResponse.json(REVIEW_QUEUE);
+  try {
+    const res = await fetch(`${base}/review/queue`, {
+      headers: { accept: "application/json" },
+      cache: "no-store",
+    });
+    const body = await res.json().catch(() => null);
+    if (!res.ok) {
+      return NextResponse.json(body ?? { error: `ingestion review queue -> ${res.status}` }, {
+        status: res.status,
       });
-      if (res.ok) return NextResponse.json(await res.json());
-    } catch {
-      // Fall through to fixtures if the ingestion endpoint is unreachable.
     }
+    return NextResponse.json(body);
+  } catch (err) {
+    return NextResponse.json(
+      { error: `ingestion review endpoint unreachable: ${String((err as Error).message)}` },
+      { status: 502 }
+    );
   }
-  return NextResponse.json(REVIEW_QUEUE);
 }
 
 export async function POST(req: NextRequest) {
@@ -52,38 +66,56 @@ export async function POST(req: NextRequest) {
   if (decision.action !== "approve" && decision.action !== "correct") {
     return NextResponse.json({ error: `unknown action '${decision.action}'` }, { status: 400 });
   }
-
-  const base = ingestBase();
-  if (base) {
-    try {
-      const res = await fetch(`${base}/review`, {
-        method: "POST",
-        headers: { accept: "application/json", "content-type": "application/json" },
-        body: JSON.stringify(decision),
-        cache: "no-store",
-      });
-      if (res.ok) return NextResponse.json(await res.json());
-      // A missing endpoint falls through to the local simulation below.
-    } catch {
-      // Network error -> simulate locally so the demo stays operable.
+  // The inviolable boundary, enforced server-side: a billing value is never corrected here.
+  if (decision.action === "correct" && decision.corrections) {
+    const offending = Object.keys(decision.corrections).filter((k) => BILLING_FIELDS.has(k));
+    if (offending.length > 0) {
+      return NextResponse.json(
+        { error: `billing values cannot be corrected: ${offending.join(", ")}` },
+        { status: 400 }
+      );
     }
   }
 
-  return NextResponse.json(simulateFreeze(decision));
+  const base = ingestBase();
+  if (!base) return NextResponse.json(simulateFreeze(decision));
+
+  // A configured backend: proxy and surface failures (never mask a write failure as success).
+  let res: Response;
+  try {
+    res = await fetch(`${base}/review`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify(decision),
+      cache: "no-store",
+    });
+  } catch (err) {
+    return NextResponse.json(
+      { error: `ingestion review endpoint unreachable: ${String((err as Error).message)}` },
+      { status: 502 }
+    );
+  }
+  const body = await res.json().catch(() => null);
+  if (!res.ok) {
+    return NextResponse.json(body ?? { error: `ingestion review -> ${res.status}` }, {
+      status: res.status,
+    });
+  }
+  return NextResponse.json(body);
 }
 
 /**
- * Stand in for the server-side freeze the future ingestion endpoint will perform. The new
- * version is prev + 1 and the new record_hash is a genuine SHA-256 over the decided
- * content (the same primitive ingestion uses), so the UI shows a real proposal→frozen
- * transition rather than a fake string.
+ * Stand in for the server-side freeze the future ingestion endpoint will perform (offline
+ * demo only). The new version is prev + 1 and the new record_hash is a genuine SHA-256 over
+ * the decided content, so the UI shows a real proposal→frozen transition rather than a fake
+ * string. (The real ingestion freeze hashes the full canonical record; this demo hash covers
+ * only the decision, which is sufficient to make the transition tangible.)
  */
 function simulateFreeze(decision: ReviewDecision): ReviewResult {
   const item = findReviewItem(decision.tariff_system, decision.tariff_code);
   const nextVersion = (item?.version ?? 1) + 1;
 
-  const corrections =
-    decision.action === "correct" ? decision.corrections ?? {} : {};
+  const corrections = decision.action === "correct" ? decision.corrections ?? {} : {};
   const canonical = JSON.stringify({
     system: decision.tariff_system,
     code: decision.tariff_code,

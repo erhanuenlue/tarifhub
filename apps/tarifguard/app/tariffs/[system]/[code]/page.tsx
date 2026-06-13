@@ -29,7 +29,9 @@ export default async function DetailPage({
   let crosswalkSystems: string[] = [];
   try {
     const explained = await getExplain(record.tariff_code);
-    versions = explained.records;
+    // Version history is this record's own system; cross-walk lists the OTHER systems the
+    // same code appears in (explain returns every system for the code).
+    versions = explained.records.filter((r) => r.tariff_system === record.tariff_system);
     crosswalkSystems = Array.from(
       new Set(explained.records.map((r) => r.tariff_system))
     ).filter((s) => s !== record.tariff_system);

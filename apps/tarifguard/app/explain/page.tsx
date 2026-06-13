@@ -1,6 +1,6 @@
 "use client";
 
-import { type FormEvent, useState } from "react";
+import { type FormEvent, useCallback, useEffect, useState } from "react";
 
 import { AiContent } from "@/components/brand";
 import { DisclaimerBanner } from "@/components/DisclaimerBanner";
@@ -22,15 +22,16 @@ export default function ExplainPage() {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
 
-  async function runExplain(event: FormEvent) {
-    event.preventDefault();
+  const runExplainFor = useCallback(async (codeValue: string, contextValue: string) => {
+    const c = codeValue.trim();
+    if (!c) return;
     setLoading(true);
     setError(null);
     try {
       const res = await fetch("/api/explain", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ code: code.trim(), context: context.trim() || undefined }),
+        body: JSON.stringify({ code: c, context: contextValue.trim() || undefined }),
       });
       const body = (await res.json()) as ExplainData;
       setData(body);
@@ -40,7 +41,21 @@ export default function ExplainPage() {
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  function runExplain(event: FormEvent) {
+    event.preventDefault();
+    void runExplainFor(code, context);
   }
+
+  // Deep link from the detail panel's cross-walk hint: /explain?code=... prefills and runs.
+  useEffect(() => {
+    const linked = new URLSearchParams(window.location.search).get("code");
+    if (linked) {
+      setCode(linked);
+      void runExplainFor(linked, "");
+    }
+  }, [runExplainFor]);
 
   return (
     <div className="space-y-6">
