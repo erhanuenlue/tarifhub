@@ -152,12 +152,24 @@ in one paste once the current loop has finished and the tree is clean:
 ```
 cd ~/Documents/Tarif/tarifhub
 B=~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub
-cp $B/prompts/08_ai_se_framework.md $B/prompts/09_diagrams.md $B/prompts/10_slide_deck.md $B/prompts/11_cas_score.md prompts/
+# prompts 08-11 are already committed; this adds prompt 12 + the three reviewed bridge components
+cp $B/prompts/12_approval_bridge.md prompts/
+mkdir -p .claude/hooks
+cp $B/approval_bridge/approval_gate.sh   .claude/hooks/approval_gate.sh
+cp $B/approval_bridge/notify_telegram.sh .claude/hooks/notify_telegram.sh
+cp $B/approval_bridge/approval_telegram.py tools/approval_telegram.py
+chmod +x .claude/hooks/approval_gate.sh .claude/hooks/notify_telegram.sh
 cp $B/NEXT_STEPS.md ./NEXT_STEPS.md
-git add prompts/08_ai_se_framework.md prompts/09_diagrams.md prompts/10_slide_deck.md prompts/11_cas_score.md NEXT_STEPS.md
-git commit -m "docs: prompts 08 (framework) + 09 (diagrams) + 10 (deck) + 11 (independent CAS scoring)" && git push
-caffeinate -is nohup bash tools/loop.sh 08 09 10 11 >> .shipboard/loop.log 2>&1 &
+git add prompts/12_approval_bridge.md .claude/hooks/approval_gate.sh .claude/hooks/notify_telegram.sh tools/approval_telegram.py NEXT_STEPS.md
+git commit -m "chore(approval-bridge): gate hook + telegram daemon + notifier + prompt 12 (no-op until APPROVALS_ON=1)" && git push
+caffeinate -is nohup bash tools/loop.sh 08 09 10 12 11 >> .shipboard/loop.log 2>&1 &
+tail -f .shipboard/loop.log
 ```
+
+The bridge components ship as a hard no-op (the gate allows everything unless `APPROVALS_ON=1`,
+the notifier is silent unless the Telegram env vars are set), so committing and running them changes
+nothing about how this loop behaves. Prompt 12 wires them into the board and documents them; turning
+approvals live is the separate owner toggle in Step 8.
 
 08 folds the AI-SE framework write-up into the architecture docs (and has the AI-tools chapter name
 the full tool set: Claude Code, Codex gpt-5.5, Eraser MCP) and leaves diagram placeholders; this is
@@ -168,10 +180,13 @@ text), then rebuilds the PDF. 10 builds the minimalist Reveal.js deck (`docs/pre
 for your 5-minute school talk, reusing 09's diagrams, with speaker notes and a per-slide time budget.
 11 is the new one: an independent dual-blind CAS score (see Step 7).
 
-Order matters: 10 reuses 09's diagrams and 11 scores the finished docs, so keep `08 09 10 11`. Eraser
-only, no Mermaid; if the Eraser MCP is ever unreachable, 09 stops and names the diagram rather than
-substituting, rerun when it is back. Open the deck after the loop with
-`open docs/presentation/index.html`; press **S** for the speaker-notes view while you rehearse.
+12 wires the approval bridge into the dashboard, fixes the Loop-tab Recent-log overflow, and
+documents the bridge inside the framework chapter (crit 15 tool set, crit 18 human floor). Order
+matters: 10 reuses 09's diagrams, 12 documents into the post-08 chapter, and 11 scores the finished
+docs last, so keep `08 09 10 12 11`. Eraser only, no Mermaid; if the Eraser MCP is ever unreachable,
+09 stops and names the diagram rather than substituting, rerun when it is back. Open the deck after
+the loop with `open docs/presentation/index.html`; press **S** for the speaker-notes view while you
+rehearse.
 
 ### Step 7 · independent scoring and gap-closing (the last build before submission)
 
@@ -199,6 +214,41 @@ How to use it to close gaps:
 
 The CAS tab's audit-estimate column remains the at-a-glance read; the scorecard is the detailed,
 two-grader version behind it.
+
+### Step 8 · turn the approval bridge on (optional, after the loop, your secrets)
+
+Prompt 12 has already shipped the bridge as a no-op. To make it live you do two manual things, none
+of which I can do for you (they involve your own Telegram bot token and chat id, which never enter
+the repo):
+
+1. **Create the Telegram bot.** In Telegram, message `@BotFather`, send `/newbot`, follow the prompts,
+   and copy the bot token. Then message `@userinfobot` (or `@RawDataBot`) to get your numeric chat id.
+   Put both in a local `.env` beside the repo (it is gitignored):
+
+   ```
+   TG_BOT_TOKEN=123456:ABC...your-token
+   TG_CHAT_ID=987654321
+   ```
+
+2. **Start the bridge and run the loop in approval mode.** In one terminal start the daemon, in
+   another launch the loop with approvals on and the default permission mode (not bypass):
+
+   ```
+   # terminal C, the Telegram bridge
+   set -a; source .env; set +a
+   nohup python3 tools/approval_telegram.py >> .shipboard/tg.log 2>&1 &
+
+   # terminal A, a loop run that asks before sensitive actions
+   set -a; source .env; set +a
+   APPROVALS_ON=1 caffeinate -is bash tools/loop.sh <prompts>
+   ```
+
+When the loop hits a merge-to-main, a destructive git command, or a go-public action it now pauses,
+posts an Approve/Deny card to the dashboard Approvals panel AND your Telegram, and continues on the
+first tap from either side. No tap within nine minutes denies and halts, exactly like today. Leave
+`APPROVALS_ON` unset (the default) and the loop behaves exactly as it does now. The phase-1
+notifications (a Telegram ping on halt or finish) work as soon as the `.env` is present, even with
+approvals off.
 
 ## Your remaining errands (only you can do these)
 
