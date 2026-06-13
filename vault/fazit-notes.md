@@ -17,3 +17,7 @@
 ## 2026-06-13
 - I did not delegate the billing-value guard to AI: codex gpt-5.5 found the client-only guard, I accepted the finding and added server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 0524f9a).
 - I corrected an AI-backed documentation overclaim before submission evidence: the L2 intelligence service is containerised and runs, but remains post-CAS and outside the graded MVP value path (commit 080c9e0).
+
+## 2026-06-13
+- I rejected parallel implementation worktrees for the console and kept the tightly-coupled contract and brand implementation in-orchestrator.
+- I corrected my own crit-17 overclaim: L2 intelligence is containerised and runs, but the rules feature stays post-CAS and outside the graded MVP value path.
