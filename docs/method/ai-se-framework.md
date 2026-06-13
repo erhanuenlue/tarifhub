@@ -184,7 +184,7 @@ before it proceeds, so a red pipeline halts the automation. The pipeline rationa
 
 ![The CI/CD pipeline](../img/diagrams/cicd-pipeline.png)
 
-> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and test with the boundary tests, security with secrets, vulnerabilities and SBOM, the docs strict build, and the anchor ratchet); on main, an images job builds every container as criterion-17 evidence, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
+> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the anchor ratchet); on main, an images job builds every container as criterion-17 evidence, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
 
 ## 7. Independent second-model review
 

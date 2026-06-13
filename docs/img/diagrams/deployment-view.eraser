@@ -38,5 +38,5 @@ Serving > Postgres
 MCP > Serving
 Intelligence > Serving
 Console > Serving
-Build > GHCR
+Build > GHCR: build evidence (push not yet wired)
 GHCR > Cluster: pulled by Helm

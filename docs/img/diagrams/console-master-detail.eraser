@@ -10,7 +10,7 @@ Detail [icon: file-text, color: purple, label: "Detail: certified value + versio
 Explain [icon: message-square, color: purple, label: "Explain panel (labelled: AI-generated, not a billing value)"]
 ReviewForm [icon: edit, color: orange, label: "Review form: raw extract vs ai_map proposal (the one write path)"]
 BFF [icon: server, color: green, label: "BFF POST /api/review (server-side; billing fields rejected 400)"]
-FreezeSrv [icon: lock, color: red, label: "Ingestion /review: freeze server-side"]
+FreezeSrv [icon: lock, color: red, label: "Server-side freeze (offline-simulated now; future ingestion /review when INGEST_BASE_URL set)"]
 NewVersion [icon: layers, color: green, label: "New frozen version (prev + 1) + new SHA-256 record_hash"]
 
 Search > Detail: select [color: gray]

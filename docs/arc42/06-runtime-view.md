@@ -20,7 +20,7 @@ Three scenarios show the architecture at work: the deterministic harmonisation p
 
 ![L0 data flow from source to frozen record to serve](../img/diagrams/data-flow-ingestion.png)
 
-> **Figure: The end-to-end data flow.** Source adapters, parse, map_raw, the ai_map seam (gap-gated, non-billing fields only), validate, score, the review gate with its human-review branch, freeze with the SHA-256 record hash, the idempotent store and append-only audit, and the read-only serving hand-off.
+> **Figure: The end-to-end data flow.** Source adapters, parse, map_raw, the ai_map seam (gap-gated, non-billing fields only), validate, score, and the requires_review flag, then a deterministic freeze (every record freezes, the flag carried, never gated by a human) with the SHA-256 record hash, the idempotent store and append-only audit, and the read-only serving hand-off. Flagged frozen records enter the review queue, where a human review creates a new version.
 
 ## Scenario 2: semantic search through serving
 
