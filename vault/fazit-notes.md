@@ -37,3 +37,7 @@
 ## 2026-06-13
 - Veto moment: I rejected parallel implementation worktrees and kept the console work in-orchestrator on Opus 4.8 because the contract and brand layer were tightly coupled.
 - Correction: The grader and re-read passes changed two documented claims: L2 intelligence was not part of the graded deployed value path, and SQLite `/search` returns 200 rather than refusing offline search.
+
+## 2026-06-13
+- I rejected codex's reversed-freeze-line finding because the diagram expressed the AI-touchable versus immutable-value-path split, not the layer stack.
+- I corrected the data-flow diagram after codex showed that human review happens after deterministic freeze into a new version, not as a gate before freezing.
