@@ -1,0 +1,21 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title TarifGuard console: master-detail and the review write path
+direction down
+colorMode pastel
+typeface clean
+
+Search [icon: search, color: purple, label: "Search (master list): semantic and code search over frozen records"]
+Detail [icon: file-text, color: purple, label: "Detail: certified value + version/hash chips + provenance + labelled AI note"]
+Explain [icon: message-square, color: purple, label: "Explain panel (labelled: AI-generated, not a billing value)"]
+ReviewForm [icon: edit, color: orange, label: "Review form: raw extract vs ai_map proposal (the one write path)"]
+BFF [icon: server, color: green, label: "BFF POST /api/review (server-side; billing fields rejected 400)"]
+FreezeSrv [icon: lock, color: red, label: "Ingestion /review: freeze server-side"]
+NewVersion [icon: layers, color: green, label: "New frozen version (prev + 1) + new SHA-256 record_hash"]
+
+Search > Detail: select [color: gray]
+Detail > Explain: explain [color: gray]
+Detail > ReviewForm: open flagged record [color: gray]
+ReviewForm > BFF: approve or correct (non-billing only) [color: orange]
+BFF > FreezeSrv > NewVersion [color: green]
+NewVersion > Search: appears as latest [color: gray]

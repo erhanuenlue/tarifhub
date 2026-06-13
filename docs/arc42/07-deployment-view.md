@@ -13,6 +13,10 @@ Each box in the [building-block view](05-building-block-view.md) maps to exactly
 The boundary that matters is the **freeze line**: everything left of it runs pre-freeze and
 may use AI; everything right of it is the deterministic value path and ships no LLM client.
 
+![Deployment topology: k3d Kubernetes (Helm) and CI/CD](../img/diagrams/deployment-view.png)
+
+> **Figure: The deployment topology.** The Helm chart for the k3d Kubernetes proof: an nginx ingress in front of the ingestion, serving, MCP, console, and TarifIQ workloads over a Postgres-plus-pgvector store, with two optional L3 stubs off by default. CI builds every image as criterion-17 evidence and a gated workflow deploys the docs to Pages; local development uses docker-compose with the database and an optional MinIO.
+
 | Sub-system | Layer | Image | Port | Side of freeze line |
 |---|---|---|---|---|
 | `ingestion` | L0 harmonisation | `tarifhub-ingestion` | (batch) | write, pre-freeze (AI seam lives here) |

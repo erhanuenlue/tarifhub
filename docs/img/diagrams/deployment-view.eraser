@@ -1,0 +1,42 @@
+// diagramType: cloud-architecture-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title Deployment view: k3d Kubernetes (Helm) and CI/CD
+direction down
+colorMode pastel
+typeface clean
+
+Ingress [icon: globe, color: blue, label: "nginx Ingress: tarifhub.local (/api, /ingest, /mcp), tarifguard.local, tarifiq.local"]
+
+Cluster [color: blue, label: "k3d cluster (Helm chart tarifhub)"] {
+  Ingestion [icon: server, color: orange, label: "ingestion x1 :8000 (L0, pre-freeze)"]
+  Serving [icon: server, color: green, label: "serving x2 :8000 (L1, read-only)"]
+  MCP [icon: search, color: green, label: "mcp x1 :8090 (L1, read-only)"]
+  Console [icon: monitor, color: purple, label: "tarifguard x2 :3000 (L3)"]
+  Intelligence [icon: cpu, color: blue, label: "intelligence x2 :8070 (L2 TarifIQ)"]
+  Postgres [icon: database, color: green, label: "postgres x1 :5432 (pgvector pg16) + PVC 5Gi + db Secret"]
+  Optional [color: gray, label: "optional, off by default"] {
+    Kassenflow [icon: box, color: gray, label: "kassenflow :3001"]
+    Meldepilot [icon: box, color: gray, label: "meldepilot :3002"]
+  }
+}
+
+CICD [color: gray, label: "CI/CD (GitHub Actions)"] {
+  Build [icon: package, color: gray, label: "images job: docker build all Dockerfiles :ci (criterion 17 evidence)"]
+  GHCR [icon: package, color: gray, label: "ghcr.io/tarifhub/* (intended registry, Helm image source)"]
+  Pages [icon: book, color: gray, label: "GitHub Pages (mkdocs --strict, gated deploy)"]
+}
+
+LocalDev [icon: box, color: gray, label: "Local dev: docker-compose db (pgvector) + optional minio"]
+
+Ingress > Serving
+Ingress > Ingestion
+Ingress > MCP
+Ingress > Console
+Ingress > Intelligence
+Ingestion > Postgres
+Serving > Postgres
+MCP > Serving
+Intelligence > Serving
+Console > Serving
+Build > GHCR
+GHCR > Cluster: pulled by Helm

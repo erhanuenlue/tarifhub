@@ -1,0 +1,26 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title CI/CD pipeline (GitHub Actions)
+direction right
+colorMode pastel
+typeface clean
+
+Trigger [shape: oval, color: blue, icon: git-branch, label: "push to main or pull_request"]
+Jobs [color: gray, label: "ci.yml: six jobs in parallel"] {
+  Python [icon: check-circle, color: blue, label: "python: ruff + pytest + determinism boundary + coverage"]
+  Parity [icon: database, color: blue, label: "python-parity: read tests vs Postgres 16 + pgvector"]
+  Console [icon: monitor, color: purple, label: "console: Node 22 lint, build, Playwright"]
+  Security [icon: shield, color: red, label: "security: gitleaks + Trivy HIGH/CRITICAL + Syft SBOM"]
+  Docs [icon: book, color: blue, label: "docs: mkdocs build --strict"]
+  Anchors [icon: bar-chart-2, color: blue, label: "cas-anchors: cas_check.py --ci ratchet"]
+}
+Images [icon: package, color: gray, label: "images (needs python + security, main only): docker build all 7 Dockerfiles :ci (criterion 17)"]
+GHCR [icon: package, color: gray, label: "ghcr.io/tarifhub/* (intended registry; automated push not yet wired)"]
+PagesBuild [icon: book, color: gray, label: "docs.yml build: mkdocs --strict then Pages artifact"]
+PagesDeploy [icon: globe, color: green, label: "deploy-pages (gated: DEPLOY_PAGES == true)"]
+
+Trigger > Jobs
+Jobs > Images: on main [color: gray]
+Images > GHCR [color: gray]
+Trigger > PagesBuild: docs changes on main [color: gray]
+PagesBuild > PagesDeploy [color: green]

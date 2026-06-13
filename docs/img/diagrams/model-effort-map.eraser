@@ -1,0 +1,25 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title Model and effort map: which seat runs which model at which effort
+direction down
+colorMode pastel
+typeface clean
+
+Claude [color: "#7c3aed", label: "Claude Code: Opus 4.8 (pinned claude-opus-4-8, ADR-018), effort ultracode"] {
+  Orchestrator [icon: command, color: "#7c3aed", label: "Orchestrator: plan, gates, fix, PR, report, merge-gate (inline 01,03,05,06,08,09)"]
+  Implementer [icon: code, color: "#7c3aed", label: "implementer xN: TDD implementation (02)"]
+  Verifier [icon: search, color: "#7c3aed", label: "verifier: diff vs plan (04, inherits orchestrator)"]
+  Determinism [icon: lock, color: "#7c3aed", label: "determinism-auditor: services/ (04, conditional)"]
+  SecuritySeat [icon: shield, color: "#7c3aed", label: "security-reviewer: secrets, parsing, API (04, conditional)"]
+  E2E [icon: play, color: "#7c3aed", label: "e2e-tester: runtime verification (07)"]
+  Grade [icon: bar-chart-2, color: "#7c3aed", label: "grade-auditor: CAS grade estimate"]
+}
+Codex [color: "#10a37f", label: "OpenAI Codex: gpt-5.5 (owner Codex Pro login), independent second model family"] {
+  CodexReview [icon: eye, color: "#10a37f", label: "codex-reviewer: every PR review (04)"]
+  DocReview [icon: file-text, color: "#10a37f", label: "final document and PDF review"]
+  Curate [icon: edit, color: "#10a37f", label: "journal curation (tools/curate.sh)"]
+  SecondOpinion [icon: check-circle, color: "#10a37f", label: "grade second opinion (/cas-audit)"]
+}
+Banned [shape: oval, color: red, icon: x, label: "Banned from every seat: Sonnet, Haiku (quality before cost, owner law)"]
+
+Orchestrator > CodexReview: every PR gets an independent second-family review [color: gray]

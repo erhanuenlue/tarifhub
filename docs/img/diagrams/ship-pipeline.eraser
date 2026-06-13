@@ -1,0 +1,20 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title The /ship 9-phase pipeline (seat and model per phase)
+direction right
+colorMode pastel
+typeface clean
+
+P1 [shape: diamond, color: red, icon: user, label: "01 Plan, HUMAN GATE (orchestrator, Opus 4.8): Erhan approves"]
+P2 [icon: code, color: blue, label: "02 Implement (implementer xN, Opus 4.8): TDD"]
+P3 [icon: check-circle, color: blue, label: "03 Local gates (orchestrator): ruff + pytest"]
+P4 [icon: users, color: blue, label: "04 Reviews, parallel: verifier + codex-reviewer (gpt-5.5); determinism + security conditional"]
+P5 [icon: tool, color: blue, label: "05 Fix cycle (orchestrator): rank, route, re-run"]
+P6 [icon: git-pull-request, color: blue, label: "06 PR + CI (orchestrator): boundary test visible in run log"]
+P7 [icon: play, color: blue, label: "07 Runtime verification (e2e-tester, Opus 4.8): compose-up, smoke"]
+P8 [icon: file-text, color: blue, label: "08 Full report (orchestrator): plus CAS anchor delta"]
+P9 [shape: diamond, color: green, icon: git-merge, label: "09 Merge, auto only on the green-contract, else STOP for Erhan"]
+
+P1 > P2 > P3 > P4 > P5 > P6 > P7 > P8 > P9
+P4 > P5: findings [color: gray]
+P6 > P5: CI red [color: orange]

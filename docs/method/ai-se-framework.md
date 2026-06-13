@@ -21,7 +21,7 @@ the engineering was genuinely multi-tool, not a single chat window.
 |---|---|---|
 | Claude Code (Opus 4.8; Fable 5 ran the early blocks before access ended 22 June 2026) | Orchestrator and worker agents: plan, implement, verify, review, document. | `.claude/` (agents, hooks, skills, settings), `CLAUDE.md` |
 | OpenAI Codex CLI (gpt-5.5) | Independent second model family: reviews every pull request, reviews the assembled document, writes a second opinion on each grade estimate, and curates the journal. | `codex-reviewer` agent, `tools/curate.sh` |
-| Eraser MCP | Diagram-as-code generation: a described layout becomes Eraser source, rendered and committed as a static file. | `.mcp.json` (`@eraserlabs/eraser-mcp`), `docs/diagrams/` |
+| Eraser MCP | Diagram-as-code generation: a described layout becomes Eraser source, rendered and committed as a static file. | `.mcp.json` (`@eraserlabs/eraser-mcp`), `docs/img/diagrams/` |
 
 Two supporting tools complete the picture: Context7 (Model Context Protocol server) fetches current
 library and SDK documentation so framework claims trace to live sources rather than a training
@@ -31,10 +31,9 @@ visible to another's, which the Review evidence in the [companion chapter](ai-to
 
 <a id="fig-four-layer"></a>
 
-> **Figure (diagram placeholder, rendered in prompt 09).**
-> Caption: TarifHub's four layers (L0 harmonisation, L1 deterministic serving, L2 rules,
-> L3 apps) with the AI seam confined to L0 and the freeze line between L0 and L1.
-> Prompt 09 replaces this block with the rendered diagram `../diagrams/ai-se-four-layer.svg` (alt text: "The four-layer architecture and the freeze line").
+![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
+
+> **Figure: TarifHub's four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) sits below the line; L1 deterministic serving, L2 rules, and L3 apps sit above it. The single AI seam is confined to L0, and no AI computes or mutates a billing value at serve time.
 
 ## 1. Project setup as reproducible context
 
@@ -90,17 +89,15 @@ Codex login and reviews every pull request (section 7).
 
 <a id="fig-ship-pipeline"></a>
 
-> **Figure (diagram placeholder, rendered in prompt 09).**
-> Caption: The nine phases of `/ship`, from plan approval (gate 01, a human stop) to
-> green-contract merge (phase 09, autonomous only when the contract holds).
-> Prompt 09 replaces this block with the rendered diagram `../diagrams/ai-se-ship-pipeline.svg` (alt text: "The nine-phase /ship pipeline").
+![The nine-phase /ship pipeline](../img/diagrams/ship-pipeline.png)
+
+> **Figure: The nine phases of `/ship`.** From plan approval (gate 01, a human stop) through TDD implementation, local gates, parallel multi-model reviews, the fix cycle, PR and CI, and runtime verification, to the consolidated report and green-contract merge (phase 09, autonomous only when the contract holds). Each phase names its seat and pinned model.
 
 <a id="fig-model-effort"></a>
 
-> **Figure (diagram placeholder, rendered in prompt 09).**
-> Caption: The model-and-effort map: which seat runs which model at which effort
-> (orchestrator and workers on Claude Code at ultracode, the independent reviewer on gpt-5.5).
-> Prompt 09 replaces this block with the rendered diagram `../diagrams/ai-se-model-effort.svg` (alt text: "Model and effort map per seat").
+![Model and effort map per seat](../img/diagrams/model-effort-map.png)
+
+> **Figure: The model and effort map.** Which seat runs which model at which effort: the orchestrator and every worker run on Claude Code (Opus 4.8) at ultracode, and the independent reviewer runs on OpenAI gpt-5.5. Sonnet and Haiku are excluded from every seat by policy.
 
 ## 4. Loop engineering
 
@@ -121,10 +118,9 @@ generated prompt to disk so it remains inspectable and vetoable, and checkpointi
 
 <a id="fig-loop"></a>
 
-> **Figure (diagram placeholder, rendered in prompt 09).**
-> Caption: The closed loop: read state, write the next prompt, run `/ship`, check the
-> between-step contract, checkpoint, repeat or halt to the owner.
-> Prompt 09 replaces this block with the rendered diagram `../diagrams/ai-se-loop.svg` (alt text: "The autonomous loop").
+![The autonomous loop](../img/diagrams/loop-engineering.png)
+
+> **Figure: The closed loop.** Read state, choose the pacing (fixed interval or self-paced), run the next prompt through `/ship`, check the between-step completion contract, checkpoint, then repeat or halt to the owner with the failing reason.
 
 ## 5. Autonomous quality gates
 
@@ -160,17 +156,15 @@ isolated commit with the diff shown first. The worked record is in the
 
 <a id="fig-quality-gates"></a>
 
-> **Figure (diagram placeholder, rendered in prompt 09).**
-> Caption: The autonomous quality gates: the fitness ratchet, the freeze-line guard, the
-> green-contract, and the secret gate, and what each one blocks.
-> Prompt 09 replaces this block with the rendered diagram `../diagrams/ai-se-quality-gates.svg` (alt text: "The autonomous quality gates").
+![The autonomous quality gates](../img/diagrams/quality-gates.png)
+
+> **Figure: The autonomous quality gates.** The freeze-line guard hook, the fitness ratchet, the secret gate, and the boundary tests, then the four-condition green-contract that governs autonomous merge, and what each one blocks.
 
 <a id="fig-freeze-line"></a>
 
-> **Figure (diagram placeholder, rendered in prompt 09).**
-> Caption: The freeze line: the AI seam in L0 above it, the immutable hashed records and the
-> deterministic serving path below it, with the two enforcement points (hook and boundary test).
-> Prompt 09 replaces this block with the rendered diagram `../diagrams/ai-se-freeze-line.svg` (alt text: "The freeze line and its enforcement").
+![The freeze line and its enforcement](../img/diagrams/freeze-line-boundary.png)
+
+> **Figure: The freeze line.** Above it, the AI seam (ai_map) and the read-only search and explain seams that never alter a value; below it, the immutable hashed records and the deterministic serving path. Two enforcement points, the pre-tool guard hook and the boundary test, hold the line.
 
 ## 6. The CI/CD pipeline
 
@@ -179,7 +173,7 @@ GitHub Actions enforces the same standards a reviewer would, on every push and p
 boundary tests printed visibly in the log, a secrets scan (gitleaks), a vulnerability and SBOM scan
 (Trivy and Syft), and a dedicated ratchet job (`cas-anchors`) that runs the fitness function in
 read-only mode (`python3 tools/cas_check.py --ci`) and fails only on a regression. Container images
-build and publish on the main branch as the distribution evidence for criterion 17. The
+are built on the main branch as the distribution evidence for criterion 17. The
 documentation site builds under strict mode and deploys to GitHub Pages
 (`.github/workflows/docs.yml`), gated behind an explicit permission so publication is a deliberate
 act. CI is also the loop's backstop: the between-step contract requires the latest run to be green
@@ -188,10 +182,9 @@ before it proceeds, so a red pipeline halts the automation. The pipeline rationa
 
 <a id="fig-cicd"></a>
 
-> **Figure (diagram placeholder, rendered in prompt 09).**
-> Caption: The CI/CD pipeline: lint, test, boundary tests, secrets, vulnerabilities, SBOM, the
-> anchor ratchet, image build and publish, and the gated Pages deploy.
-> Prompt 09 replaces this block with the rendered diagram `../diagrams/ai-se-cicd.svg` (alt text: "The CI/CD pipeline").
+![The CI/CD pipeline](../img/diagrams/cicd-pipeline.png)
+
+> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and test with the boundary tests, security with secrets, vulnerabilities and SBOM, the docs strict build, and the anchor ratchet); on main, an images job builds every container as criterion-17 evidence, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
 
 ## 7. Independent second-model review
 
@@ -224,9 +217,9 @@ by the models from the contemporaneous record, then reviewed by me.
 
 Diagrams are generated the same way. A dedicated diagram tool (the Eraser MCP, configured in
 `.mcp.json`) turns a described layout into Eraser diagram-as-code, renders it, and the pipeline
-commits the result as a static file under `docs/diagrams/`, embedded with a caption (prompt 09
-owns this rendering step, which is why this chapter carries diagram placeholders rather than
-images). Nothing in the repository or the submission PDF depends on a live diagram service at read
+commits the result as a static PNG under `docs/img/diagrams/` with its diagram-as-code source
+beside it, embedded with a caption (every figure in this chapter was produced by exactly this
+step). Nothing in the repository or the submission PDF depends on a live diagram service at read
 time; the rendered files are checked in, so the documentation is self-contained and reproducible.
 This makes diagramming a first-class, autonomous step in the loop rather than a manual afterthought,
 and it is the third external tool family in the workflow, alongside Claude Code and the independent

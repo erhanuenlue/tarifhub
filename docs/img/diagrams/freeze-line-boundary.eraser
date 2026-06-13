@@ -1,0 +1,29 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title The freeze line: what AI may touch vs the immutable value path
+direction down
+colorMode pastel
+typeface clean
+
+AISeams [color: orange, label: "AI MAY RUN HERE: pre-freeze and read-only seams (never alters a billing value)"] {
+  ai_map [icon: cpu, color: yellow, label: "ai_map: non-billing fields only, schema-constrained, human-in-the-loop"]
+  Search [icon: search, color: orange, label: "Vector search (pgvector): ranks frozen rows, read-only"]
+  Explain [icon: message-square, color: orange, label: "Explain: record-grounded text, read-only"]
+}
+FREEZE [shape: parallelogram, color: red, icon: lock, label: "FREEZE LINE: no AI computes or mutates a billing value at serve time"]
+ValuePath [color: green, label: "IMMUTABLE VALUE PATH: deterministic, no LLM client"] {
+  Frozen [icon: lock, color: green, label: "Frozen record: SHA-256 record_hash over sorted canonical content"]
+  Versions [icon: layers, color: green, label: "Updates create new versions (records never mutated)"]
+  Audit [icon: book, color: green, label: "audit_log (append-only)"]
+  Serve [icon: server, color: green, label: "Serving returns stored values verbatim"]
+}
+Guard [shape: hexagon, color: red, icon: shield, label: "guard_frozen hook (PreToolUse): blocks AI edits to versioning, audit, applied migrations, boundary test"]
+Boundary [shape: hexagon, color: red, icon: check-circle, label: "Boundary tests (CI): AST proves no LLM client on the value path"]
+
+ai_map > FREEZE: proposes non-billing fields [color: gray]
+FREEZE > Frozen: freeze [color: red]
+Frozen > Serve
+Search > Serve: read-only ranking [color: gray]
+Explain > Serve: read-only [color: gray]
+Guard > FREEZE: enforces [color: red]
+Boundary > ValuePath: enforces [color: red]

@@ -1,0 +1,21 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title TarifHub four-layer architecture and the freeze line
+direction down
+colorMode pastel
+typeface clean
+
+Above [color: green, label: "Above the freeze line: deterministic, read-only (no AI on the value path)"] {
+  L3 [color: purple, icon: monitor, label: "L3 Apps: TarifGuard console (read-only demo)"]
+  L2 [color: blue, icon: git-merge, label: "L2 Rules: TarifIQ billing-rules engine (post-CAS)"]
+  L1 [color: green, icon: server, label: "L1 Serving: TarifCore (REST, FHIR R4, diff, search) + TarifMCP, read-only"]
+}
+FREEZE [shape: parallelogram, color: red, icon: lock, label: "FREEZE LINE: no AI computes or mutates a billing value at serve time"]
+Below [color: orange, label: "Below the freeze line: AI-assisted harmonisation (pre-freeze only)"] {
+  L0 [color: orange, icon: zap, label: "L0 Harmonisation: adapters, parsers, ai_map (single AI seam), validate, score, review, freeze (SHA-256 record_hash)"]
+}
+
+L3 > L2: depends on [color: gray]
+L2 > L1: reads [color: gray]
+Above > FREEZE [color: red]
+FREEZE > Below [color: red]

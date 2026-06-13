@@ -1,0 +1,24 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title L0 data flow: source to frozen record to serve
+direction right
+colorMode pastel
+typeface clean
+
+Source [icon: download, color: orange, label: "Source adapters: BAG EAL (xlsx), ePL (FHIR R5)"]
+Parse [icon: file-text, color: orange, label: "parse"]
+MapRaw [icon: map, color: orange, label: "map_raw: deterministic, owns billing values (tax_points, price_chf)"]
+AiMap [icon: cpu, color: yellow, label: "ai_map: single AI seam, gap-gate, non-billing only; falls back to map_raw without a key"]
+Validate [icon: check-circle, color: orange, label: "validate"]
+Score [icon: bar-chart-2, color: orange, label: "score: confidence 0 to 1"]
+Review [shape: diamond, color: orange, icon: eye, label: "requires_review? confidence below threshold or errors"]
+Human [shape: oval, color: purple, icon: user, label: "Human review (TarifGuard): approve or correct non-billing"]
+Freeze [icon: lock, color: red, label: "freeze: SHA-256 record_hash"]
+Store [icon: database, color: green, label: "store (idempotent) + audit_log (append-only)"]
+Serve [icon: server, color: green, label: "L1 serving (read-only): REST, FHIR R4, diff, search"]
+
+Source > Parse > MapRaw > AiMap > Validate > Score > Review
+Review > Freeze: pass [color: green]
+Review > Human: flagged [color: orange]
+Human > Freeze: approved [color: purple]
+Freeze > Store > Serve
