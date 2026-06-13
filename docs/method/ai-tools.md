@@ -33,6 +33,22 @@ determinism boundary test) and halts the agent rather than letting it work aroun
 These hooks are not decoration: in this project a hook stopped a real bad edit (recorded
 under Review below).
 
+A second governance-by-tooling mechanism sits on top of the freeze-line guard: the approval bridge,
+the human-in-the-loop layer of the tool set. A `PreToolUse` hook (`.claude/hooks/approval_gate.sh`)
+classifies each Bash action and, for the sensitive cases (a push to `main`, a merge, a destructive
+git command, a publish), enqueues an approval request under `.shipboard/approvals/` and blocks until
+a human decides. The decision can come from either of two surfaces over one shared queue: an
+Approvals panel on the `/ship` dashboard (Approve and Deny buttons, with a count badge in the
+header), or a Telegram bot (`tools/approval_telegram.py`) that sends the same request with inline
+buttons. They share a single decision file, so the first writer wins and the other surface reflects
+it; every request and decision is logged to `.shipboard/approvals/log.jsonl`. The bridge is
+fail-safe and opt-in: it is a hard no-op unless `APPROVALS_ON=1`, and if no decision arrives within
+the timeout it denies, so the worst case is the project's existing safe halt rather than an ungated
+action. Where `guard_frozen` is a hard stop at the freeze line, the approval bridge turns the other
+human-floor lines (merges, publishes) from halt-and-rerun into pause-tap-resume, routed and logged
+rather than asserted (the framework view is in [the framework chapter](ai-se-framework.md), section
+10).
+
 ## Generierung
 
 Generation is where AI produced first drafts of code, docs and diagrams, always behind a

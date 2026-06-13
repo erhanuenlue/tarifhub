@@ -65,9 +65,9 @@ progress. The mode analysis behind these prompts (vibe versus spec-driven versus
 
 One human gate is built into the prompt itself. A pre-approved plan header lets the session log its
 plan and proceed, while still stopping for anything outside the prompt's scope, the protected code,
-or a destructive operation; the `.claude/hooks/approval_gate.sh` hook enforces the plan stop where
-it is not pre-approved. This is how a single pasted prompt becomes an autonomous, bounded unit of
-work. The companion chapter shows where this discipline caught a real error: an orchestrator brief
+or a destructive operation. Where a sensitive action does need a human mid-run, the approval bridge
+(section 10) routes it for an explicit decision instead of letting it run unseen. This is how a
+single pasted prompt becomes an autonomous, bounded unit of work. The companion chapter shows where this discipline caught a real error: an orchestrator brief
 that asserted the wrong HTTP status propagated into three files before a fresh-context verifier
 checked the actual code path (see [Review evidence](ai-tools.md)).
 
@@ -204,8 +204,13 @@ A single-file, dependency-free dashboard (`tools/shipboard/shipboard.py`) makes 
 legible. It reads explicit pipeline events, the session transcript, the git and GitHub state, the
 vault, and the fitness function, and presents them as tabs: the pipeline rail, per-agent activity
 and cost, the project and CI state, the grading floor, and a Loop tab showing run milestones plus
-live agent activity. The guiding rule is that the board never asserts a state it cannot show
-evidence for; it says "unknown" rather than inventing progress, which is what lets me trust it
+live agent activity. The Loop tab also carries the approval bridge: an Approvals panel, with a
+count badge in the header, that lists any side-effectful action waiting on a human and resolves it
+with an Approve or Deny button. It is one queue with two surfaces, the panel and a Telegram bot
+(`tools/approval_telegram.py`), sharing a single decision file so the first writer wins and the
+other surface reflects it within one refresh tick; every request and decision is appended to
+`.shipboard/approvals/log.jsonl`. The guiding rule is that the board never asserts a state it cannot
+show evidence for; it says "unknown" rather than inventing progress, which is what lets me trust it
 while the loop runs unattended. The product's own runtime observability is a separate concern,
 recorded in [ADR-011](../adr/011-opentelemetry-observability.md).
 
@@ -236,7 +241,18 @@ Some decisions are never delegated, by design, not by limitation. No AI touches 
 boundary without my explicit line-by-line approval. Plan approval (gate 01) and the merge
 green-contract (phase 09) sit under human judgment. Final acceptance, the go-live decision, the
 Moodle submission, and the declaration of independent work stay with me. The framework is built so
-that autonomy increases up to these lines and stops cleanly at them. These vetoes are stated and
+that autonomy increases up to these lines and stops cleanly at them.
+
+The approval bridge upgrades how these lines are held at runtime. Before it, an unattended run could
+only stop hard and wait to be rerun; with it, a sensitive action (a push to `main`, a merge, a
+destructive git command, a publish) is paused, routed to me on the dashboard or by Telegram, and
+resumed on a tap, so the human floor becomes a routed and logged control rather than an asserted one.
+A `PreToolUse` hook (`.claude/hooks/approval_gate.sh`) classifies the action and blocks until a
+decision arrives. It is fail-safe and opt-in: a hard no-op unless `APPROVALS_ON=1`, and if no
+decision arrives within the timeout it denies, so the worst case is exactly the safe halt that
+already existed. Enabling live approvals is itself a deliberate owner step (the default permission
+mode, `APPROVALS_ON=1`, and the Telegram daemon running), recorded in `NEXT_STEPS.md`; the
+unattended loop ships with the gate off, so its behaviour is unchanged. These vetoes are stated and
 justified in the [Fazit](fazit.md) (criterion 18).
 
 ## Transfer to future practice

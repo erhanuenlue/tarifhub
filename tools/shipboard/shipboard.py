@@ -1097,6 +1097,49 @@ def loop_state():
         except Exception: pass
     return out
 
+def approvals():
+    """Read the approval-bridge queue (.shipboard/approvals/) for the dashboard panel.
+    Pure read; decisions are written by POST /approve|/deny here and by the Telegram daemon.
+    decided/<id>.json is the single source of truth, so a pending request whose id already
+    has a decision shows as resolved (whichever surface got there first)."""
+    q = SB / "approvals"
+    out = {"pending": [], "decided": [], "count": 0}
+    if not q.exists():
+        return out
+    pend_dir, dec_dir = q / "pending", q / "decided"
+    decided = {}
+    if dec_dir.exists():
+        for f in dec_dir.glob("*.json"):
+            try: decided[f.stem] = json.loads(f.read_text(encoding="utf-8"))
+            except Exception: continue
+    # Request metadata. Live pending/*.json (glob skips dotfiles + .done by design); the gate
+    # archives consumed requests as pending/.<id>.done, which still carries risk + summary so a
+    # resolved row keeps its context.
+    archive = {}
+    if pend_dir.exists():
+        for f in pend_dir.iterdir():
+            if f.name.startswith(".") and f.name.endswith(".done"):   # gate archive: .<id>.done
+                rid = f.name[1:-5]
+                try: archive[rid] = json.loads(f.read_text(encoding="utf-8"))
+                except Exception: pass
+        for f in sorted(pend_dir.glob("*.json")):
+            rid = f.stem
+            if rid in decided:               # decided before the gate archived it
+                continue
+            try: m = json.loads(f.read_text(encoding="utf-8"))
+            except Exception: continue
+            out["pending"].append({"id": rid, "ts": m.get("ts", ""), "risk": m.get("risk", "action"),
+                                   "summary": m.get("summary", ""), "tool": m.get("tool_name", "")})
+    out["pending"].sort(key=lambda r: r["id"])
+    for rid in sorted(decided):
+        d, m = decided[rid], archive.get(rid, {})
+        out["decided"].append({"id": rid, "decision": d.get("decision", "?"), "via": d.get("via", "?"),
+                               "by": d.get("by", ""), "ts": d.get("ts", ""),
+                               "risk": m.get("risk", ""), "summary": m.get("summary", "")})
+    out["decided"] = out["decided"][-12:]    # bound the resolved list
+    out["count"] = len(out["pending"])
+    return out
+
 def state():
     ev = read_events()
     agents = [e for e in ev if e.get("kind") == "agent"]
@@ -1199,7 +1242,8 @@ def state():
             "updated": time.strftime("%H:%M:%S"), "events": len(ev),
             "event_tail": ev[-40:][::-1], "feed": feed[:40],
             "usage": u, "project": p, "gh": ghd, "cas": cas,
-            "alerts": al[:8], "sessions": discover_sessions(), "loop": loop_state()}
+            "alerts": al[:8], "sessions": discover_sessions(), "loop": loop_state(),
+            "approvals": approvals()}
 
 # ---------------- CAS structural floor (tools/cas_check.py, cached 60s) ----------------
 
@@ -1407,6 +1451,12 @@ body{margin:0;padding:22px 30px;background:radial-gradient(1100px 600px at 75% -
 min-height:100vh;font-family:Inter,system-ui,sans-serif;color:var(--paper)}
 .wrap{max-width:1560px;margin:0 auto}
 .empty{font-size:12px;color:var(--faint);padding:10px;border:1px dashed rgba(125,211,252,.2);border-radius:9px;line-height:1.5}
+/* approval bridge (loop tab) */
+.atag{font-family:'JetBrains Mono';font-size:10px;letter-spacing:.06em;text-transform:uppercase;min-width:96px;flex:0 0 auto}
+.abtn{font-family:'JetBrains Mono';font-size:11px;font-weight:600;padding:2px 11px;border-radius:7px;cursor:pointer;border:1px solid var(--edge);background:var(--card);color:var(--dim);flex:0 0 auto}
+.abtn.ok{color:var(--ok);border-color:rgba(52,211,153,.5)} .abtn.no{color:var(--fail);border-color:rgba(248,113,113,.5)}
+.abtn:hover{filter:brightness(1.35)}
+.apprhdr{cursor:pointer}
 h1{font-size:26px;font-weight:800;margin:0;display:inline-block}
 h1 .slash{color:var(--sky)}
 .top{display:flex;align-items:center;gap:18px;margin-bottom:16px;flex-wrap:wrap}
@@ -1605,6 +1655,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
 <div class="top">
   <h1><span class="slash">/ship</span> shipboard</h1>
   <span class="badge idle" id="badge">IDLE</span>
+  <span class="badge run apprhdr" id="apprbadge" onclick="showTab('loop')" style="display:none">0 approvals</span>
   <span class="upd" id="upd"></span>
   <div class="tabs">
     <div class="tab on" data-v="overview">Overview<span class="kbd">1</span></div>
@@ -1856,6 +1907,11 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   <div class="panel" style="margin-bottom:12px">
     <div class="k">Loop timeline — tools/loop.sh milestones</div>
     <div id="looptl">—</div>
+  </div>
+  <div class="panel" id="apprpanel" style="margin-bottom:12px">
+    <div class="k">Approvals — human-in-the-loop gate <span class="s" id="apprhint"></span></div>
+    <div id="apprpending" style="margin-top:6px">—</div>
+    <div id="apprdecided" style="margin-top:8px"></div>
   </div>
   <div class="mid">
     <div class="panel">
@@ -2180,6 +2236,8 @@ function timeline(dl){
   el.innerHTML=svg+'</svg>';
 }
 async function resetRun(){ if(confirm('Clear pipeline run state (events.jsonl + sensed phases)?')) await fetch('/reset',{method:'POST'}); }
+async function decide(id, act){ try{ await fetch('/'+act,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({id:id})}); }catch(e){} tick(); }
+document.addEventListener('click',e=>{ const b=e.target.closest&&e.target.closest('button[data-appr]'); if(b) decide(b.getAttribute('data-id'), b.getAttribute('data-appr')); });
 function dlgRow(d){
   const m=d.model?' <span class="meta">'+esc(d.model)+'</span>':'';
   const tail=d.live?' <span class="meta" style="color:var(--run)">⟲ live '+elapsed(d.ts)+'</span>'
@@ -2231,6 +2289,25 @@ function renderLoop(s){
   }
   const tail=document.getElementById('looptail'); if(tail) tail.textContent=(L.tail||[]).join('\n')||'—';
   const cp=document.getElementById('loopcp'); if(cp) cp.textContent=L.checkpoint||'(no checkpoint written yet)';
+  // approval bridge queue (one queue, two surfaces: this panel + the Telegram bot)
+  const A=s.approvals||{pending:[],decided:[],count:0};
+  const pe=document.getElementById('apprpending');
+  if(pe){ pe.innerHTML = (A.pending&&A.pending.length) ? A.pending.map(r=>
+    '<div class="ghrow"><span class="gt">'+esc((r.ts||'').slice(11,19))+'</span>'+
+    '<span class="fk running atag">'+esc(r.risk||'action')+'</span>'+
+    '<span style="flex:1;min-width:0">'+esc(r.summary||r.tool||r.id)+'</span>'+
+    '<button class="abtn ok" data-appr="approve" data-id="'+esc(r.id)+'">Approve</button>'+
+    '<button class="abtn no" data-appr="deny" data-id="'+esc(r.id)+'">Deny</button></div>'
+    ).join('') : '<div class="empty">no requests waiting — the gate is a hard no-op unless APPROVALS_ON=1</div>';
+  }
+  const de=document.getElementById('apprdecided');
+  if(de){ de.innerHTML = (A.decided&&A.decided.length) ? A.decided.slice().reverse().map(r=>
+    '<div class="ghrow"><span class="gt">'+esc((r.ts||'').slice(11,19))+'</span>'+
+    '<span class="fk '+(r.decision==='allow'?'pass':'fail')+' atag">'+esc(r.decision)+'</span>'+
+    '<span style="flex:1;min-width:0">'+esc(r.summary||r.id)+'</span>'+
+    '<span class="fsrc">via '+esc(r.via||'?')+'</span></div>'
+    ).join('') : ''; }
+  const ah=document.getElementById('apprhint'); if(ah) ah.textContent = A.count ? (A.count+' waiting') : '';
 }
 function renderBoard(s){
   const el=document.getElementById('boardcols'); if(!el) return;
@@ -2289,6 +2366,8 @@ async function tick(){
   else if (s.phases['09'] && s.phases['09'].status==='pass') { badge.textContent='SHIPPED'; badge.className='badge ok'; }
   else if (u.session.status==='active') { badge.innerHTML='<span class="dot"></span>SESSION ACTIVE'; badge.className='badge run'; }
   else { badge.textContent='IDLE'; badge.className='badge idle'; }
+  const ab=document.getElementById('apprbadge'); const ac=(s.approvals&&s.approvals.count)||0;
+  if(ab){ ab.style.display = ac? '' : 'none'; ab.textContent = ac+' approval'+(ac===1?'':'s')+' waiting'; }
   const idle = u.idle_sec>120 ? ' · idle '+fdur(u.idle_sec) : ' · live';
   document.getElementById('sess').textContent = u.tracked ? (u.session.status.toUpperCase()+(u.session.id?' · '+u.session.id:'')) : 'not tracked';
   document.getElementById('sess2').innerHTML = (u.t0?('since '+esc(u.t0)+(u.sess_secs?' ('+fdur(u.sess_secs)+')':'')):'')+
@@ -2518,6 +2597,42 @@ class H(BaseHTTPRequestHandler):
         self.send_header("Content-Length", str(len(body)))
         self.end_headers()
         self.wfile.write(body)
+    def _decide(self, decision):
+        """Record an approval-bridge decision from the dashboard. Idempotent and
+        first-writer-wins via an atomic exclusive create: if decided/<id>.json already exists
+        (the Telegram bot or a prior click got there first) the create fails and we return what
+        stands, so both surfaces converge on the same decision even across processes."""
+        try:
+            ln = max(0, int(self.headers.get("Content-Length") or 0))
+        except ValueError:
+            ln = 0
+        try:
+            rid = (json.loads(self.rfile.read(ln) or b"{}") or {}).get("id", "")
+        except Exception:
+            rid = ""
+        if not isinstance(rid, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}", rid):
+            self.send_response(400); self.send_header("Content-Length", "0"); self.end_headers()
+            return
+        q = SB / "approvals"; dec_dir = q / "decided"; dec_dir.mkdir(parents=True, exist_ok=True)
+        dpath = dec_dir / f"{rid}.json"
+        ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+        rec = {"id": rid, "decision": decision, "via": "dashboard", "by": "erhan", "ts": ts}
+        try:
+            with open(dpath, "x", encoding="utf-8") as fh:   # atomic O_EXCL: only the first writer wins
+                fh.write(json.dumps(rec))
+            try:
+                with (q / "log.jsonl").open("a", encoding="utf-8") as lf:
+                    lf.write(json.dumps({"ts": ts, "event": decision, "id": rid, "via": "dashboard"}) + "\n")
+            except Exception:
+                pass
+        except FileExistsError:                              # Telegram or a prior click already decided
+            try: rec = json.loads(dpath.read_text(encoding="utf-8"))
+            except Exception: rec = {"id": rid, "decision": "?", "via": "?"}
+        body = json.dumps(rec).encode()
+        self.send_response(200); self.send_header("Content-Type", "application/json")
+        self.send_header("Content-Length", str(len(body))); self.end_headers()
+        self.wfile.write(body)
+
     def do_POST(self):
         if self.path == "/reset":
             try:
@@ -2528,6 +2643,10 @@ class H(BaseHTTPRequestHandler):
             _T["sensed"] = {}
             self.send_response(200); self.send_header("Content-Length", "2"); self.end_headers()
             self.wfile.write(b"ok")
+        elif self.path == "/approve":
+            self._decide("allow")
+        elif self.path == "/deny":
+            self._decide("deny")
         else:
             self.send_response(404); self.end_headers()
 
