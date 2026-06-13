@@ -15,7 +15,8 @@
 #   1. zero CAS ratchet regressions          (tools/cas_check.py --ci)
 #   2. CAS floor non-decreasing              (totals.passed vs start of step)
 #   3. clean working tree                    (the session merged its own PR)
-#   4. latest CI run on main = success       (gh run list)
+#   4. no secret leak                        (gitleaks, or key-shaped grep fallback)
+#   5. latest CI run on main = success       (gh run list)
 #
 # Log: .shipboard/loop.log (also tail -f friendly while the board runs).
 
@@ -53,6 +54,19 @@ contract() {
     local dirt; dirt=$(git --no-optional-locks status --porcelain 2>/dev/null \
         | grep -v -e ' \.shipboard/' -e ' tools/cas_baseline\.json$' || true)
     [ -z "$why" ] && [ -n "$dirt" ] && why="working tree not clean (session did not finish its merge): $(echo "$dirt" | head -3 | tr '\n' ' ')"
+    # Local secret gate (public-repo safety): catch a leak immediately, before it can
+    # ride a fast loop into a public repo, independent of CI timing. gitleaks if present,
+    # else a key-shaped grep over tracked files. CI's gitleaks job is the backstop.
+    if [ -z "$why" ]; then
+        if command -v gitleaks >/dev/null 2>&1; then
+            gitleaks detect --no-banner -r /tmp/.gl.json >/dev/null 2>&1 || why="gitleaks found a secret (see /tmp/.gl.json) — do not push public"
+        else
+            local hit; hit=$(git --no-optional-locks grep -nIE \
+                "sk-ant-[A-Za-z0-9]|sk-[A-Za-z0-9]{20}|ghp_[A-Za-z0-9]{36}|AKIA[0-9A-Z]{16}|-----BEGIN [A-Z ]*PRIVATE KEY-----" \
+                -- ':!*.example' ':!prompts/*' ':!tools/loop.sh' 2>/dev/null | head -1 || true)
+            [ -n "$hit" ] && why="possible secret in tracked file: ${hit%%:*} — do not push public"
+        fi
+    fi
     if [ -z "$why" ] && command -v gh >/dev/null 2>&1; then
         local ci; ci=$(gh run list --branch main -L 1 --json conclusion -q '.[0].conclusion' 2>/dev/null || echo "")
         [ -n "$ci" ] && [ "$ci" != "success" ] && why="latest CI on main is '$ci', not success"
