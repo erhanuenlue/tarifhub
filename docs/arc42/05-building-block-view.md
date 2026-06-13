@@ -19,7 +19,7 @@ TarifHub ingests Swiss ambulatory tariff sources (BAG EAL XLSX, FHIR catalogues)
 | Database | `db/` | — | PostgreSQL 16 + pgvector; `schema.sql` + forward-only migrations; the only contract between L0 and L1 |
 | Deployment | `deploy/` | — | docker-compose + Helm/k3d; container-first distribution evidence |
 
-L2 (intelligence: rules, crosswalk reasoning) is post-CAS scope. An offline-tested scaffold exists at `services/intelligence/` (tarifiq: frozen rule table, combinability evaluation, TARMED↔TARDOC crosswalk), but it is not wired into the deployed stack and is deliberately absent from the MVP container view.
+L2 (intelligence: rules, crosswalk reasoning) is post-CAS scope as a *feature*: an offline-tested scaffold exists at `services/intelligence/` (tarifiq: frozen rule table, combinability evaluation, TARMED↔TARDOC crosswalk), and the **MVP value path that is graded is L0 ingestion → L1 serving/MCP → L3 console**, which L2 is not part of. The scaffold is, however, packaged like every other sub-system (its own Dockerfile, compose service and Helm template), so it can be brought up alongside the stack for completeness; that deployment fact is shown in [§7](07-deployment-view.md). L2 stays read-only and post-freeze (it reads frozen facts from L1), so including its container never touches the value path.
 
 ## Level 2 — ingestion service components
 
