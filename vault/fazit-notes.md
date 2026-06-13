@@ -45,3 +45,7 @@
 ## 2026-06-13
 - Veto moment: I rejected parallel implementation worktrees for PR #16 because the TarifGuard console was one tightly-coupled contract and brand layer, and I kept the implementation in-orchestrator on Opus 4.8.
 - Correction: codex gpt-5.5 twice caught evidence or artifact claims that first-pass verification missed: the deck was not fully offline until fonts were vendored, and the data-flow diagram wrongly showed human review gating freeze.
+
+## 2026-06-13
+- I rejected the AI suggestion to split implementation into parallel worktrees and kept the console work in-orchestrator because the contract and brand layer were tightly coupled.
+- Codex gpt-5.5 caught false offline and diagram claims that my first-pass verifier and my own checks missed, so I corrected the artifacts and kept the diffs traceable.
