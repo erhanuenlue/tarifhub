@@ -53,3 +53,7 @@
 ## 2026-06-13
 - I rejected the AI suggestion to split console implementation into parallel worktrees and kept the work in one Opus 4.8 orchestrator path because the contract and brand layer were tightly coupled.
 - The independent gpt-5.5 CAS scoring pass found the phantom `parsers/fhir_parser.py` reference that the Opus pass had accepted, so I recorded it as a point-lift item instead of treating one model's full score as enough.
+
+## 2026-06-13
+- Final acceptance stayed owner-only: both graders found the unsigned Eigenstaendigkeitserklaerung as the largest C15 gap, and I recorded it as owner-only rather than letting AI close it.
+- Independent model review changed the work: codex gpt-5.5 found the false offline deck claim and the phantom `parsers/fhir_parser.py` doc reference that first-pass review missed.
