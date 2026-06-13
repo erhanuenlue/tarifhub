@@ -3,6 +3,10 @@
     "context7": {
       "command": "npx",
       "args": ["-y", "@upstash/context7-mcp"]
+    },
+    "eraser": {
+      "command": "npx",
+      "args": ["-y", "@eraserlabs/eraser-mcp"]
     }
   }
 }

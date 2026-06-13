@@ -52,4 +52,6 @@ vault/.brain_sync_last
 .obsidian/
 graphify-out/
 .claude/worktrees/
+# Eraser MCP render scratchpad (diagram deliverables are committed under docs/img/diagrams/)
+.eraser/
 docs/cas/bewertungskriterien-anker.md
