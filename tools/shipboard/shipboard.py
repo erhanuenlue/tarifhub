@@ -22,7 +22,7 @@ Usage:
   python3 tools/shipboard/shipboard.py --reset    # clear pipeline events
 Keys: 1–7 switch tabs · Esc closes the inspector.
 """
-import json, re, sys, threading, time, pathlib, subprocess, datetime
+import json, os, re, sys, threading, time, pathlib, subprocess, datetime
 from http.server import HTTPServer, BaseHTTPRequestHandler
 from urllib.parse import urlparse, parse_qs
 
@@ -2599,11 +2599,13 @@ class H(BaseHTTPRequestHandler):
         self.wfile.write(body)
     def _decide(self, decision):
         """Record an approval-bridge decision from the dashboard. Idempotent and
-        first-writer-wins via an atomic exclusive create: if decided/<id>.json already exists
-        (the Telegram bot or a prior click got there first) the create fails and we return what
-        stands, so both surfaces converge on the same decision even across processes."""
+        first-writer-wins: the decision file is published by an atomic, exclusive os.link from a
+        fully-written temp file, so a reader (the gate) never sees a half-written file and a later
+        writer (a second click) cannot overwrite it — the standing decision is returned instead.
+        Only a request the queue actually knows (pending, archived, or already decided) is acted on,
+        so a blind id cannot mint an orphan decision."""
         try:
-            ln = max(0, int(self.headers.get("Content-Length") or 0))
+            ln = min(max(0, int(self.headers.get("Content-Length") or 0)), 65536)
         except ValueError:
             ln = 0
         try:
@@ -2613,21 +2615,30 @@ class H(BaseHTTPRequestHandler):
         if not isinstance(rid, str) or not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._+:-]{0,127}", rid):
             self.send_response(400); self.send_header("Content-Length", "0"); self.end_headers()
             return
-        q = SB / "approvals"; dec_dir = q / "decided"; dec_dir.mkdir(parents=True, exist_ok=True)
+        q = SB / "approvals"; pend_dir, dec_dir = q / "pending", q / "decided"
+        dec_dir.mkdir(parents=True, exist_ok=True)
         dpath = dec_dir / f"{rid}.json"
+        known = dpath.exists() or (pend_dir / f"{rid}.json").exists() or (pend_dir / f".{rid}.done").exists()
+        if not known:                                        # decide only on a request we actually have
+            self.send_response(404); self.send_header("Content-Length", "0"); self.end_headers()
+            return
         ts = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
         rec = {"id": rid, "decision": decision, "via": "dashboard", "by": "erhan", "ts": ts}
+        tmp = dec_dir / f".{rid}.{os.getpid()}.tmp"
         try:
-            with open(dpath, "x", encoding="utf-8") as fh:   # atomic O_EXCL: only the first writer wins
-                fh.write(json.dumps(rec))
+            tmp.write_text(json.dumps(rec), encoding="utf-8")
+            os.link(tmp, dpath)                              # atomic + exclusive: first writer wins, content complete
             try:
                 with (q / "log.jsonl").open("a", encoding="utf-8") as lf:
                     lf.write(json.dumps({"ts": ts, "event": decision, "id": rid, "via": "dashboard"}) + "\n")
             except Exception:
                 pass
-        except FileExistsError:                              # Telegram or a prior click already decided
+        except FileExistsError:                              # a prior click or the Telegram bot already decided
             try: rec = json.loads(dpath.read_text(encoding="utf-8"))
             except Exception: rec = {"id": rid, "decision": "?", "via": "?"}
+        finally:
+            try: tmp.unlink()
+            except OSError: pass
         body = json.dumps(rec).encode()
         self.send_response(200); self.send_header("Content-Type", "application/json")
         self.send_header("Content-Length", str(len(body))); self.end_headers()

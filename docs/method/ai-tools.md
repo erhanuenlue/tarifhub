@@ -40,8 +40,10 @@ git command, a publish), enqueues an approval request under `.shipboard/approval
 a human decides. The decision can come from either of two surfaces over one shared queue: an
 Approvals panel on the `/ship` dashboard (Approve and Deny buttons, with a count badge in the
 header), or a Telegram bot (`tools/approval_telegram.py`) that sends the same request with inline
-buttons. They share a single decision file, so the first writer wins and the other surface reflects
-it; every request and decision is logged to `.shipboard/approvals/log.jsonl`. The bridge is
+buttons. They share a single decision file, which the dashboard publishes atomically (an exclusive
+link), so it is never half-read, the first writer wins, and a later tap on either surface returns the
+standing decision. The gate appends each request and the decision it enforces to
+`.shipboard/approvals/log.jsonl`. The bridge is
 fail-safe and opt-in: it is a hard no-op unless `APPROVALS_ON=1`, and if no decision arrives within
 the timeout it denies, so the worst case is the project's existing safe halt rather than an ungated
 action. Where `guard_frozen` is a hard stop at the freeze line, the approval bridge turns the other

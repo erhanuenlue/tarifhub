@@ -207,8 +207,9 @@ and cost, the project and CI state, the grading floor, and a Loop tab showing ru
 live agent activity. The Loop tab also carries the approval bridge: an Approvals panel, with a
 count badge in the header, that lists any side-effectful action waiting on a human and resolves it
 with an Approve or Deny button. It is one queue with two surfaces, the panel and a Telegram bot
-(`tools/approval_telegram.py`), sharing a single decision file so the first writer wins and the
-other surface reflects it within one refresh tick; every request and decision is appended to
+(`tools/approval_telegram.py`), sharing a single decision file that the dashboard publishes
+atomically, so a later tap on either surface returns the standing decision and the other reflects it
+within one refresh tick; the gate appends each request and the decision it enforces to
 `.shipboard/approvals/log.jsonl`. The guiding rule is that the board never asserts a state it cannot
 show evidence for; it says "unknown" rather than inventing progress, which is what lets me trust it
 while the loop runs unattended. The product's own runtime observability is a separate concern,
