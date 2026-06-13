@@ -49,3 +49,7 @@
 ## 2026-06-13
 - I rejected the AI suggestion to split implementation into parallel worktrees and kept the console work in-orchestrator because the contract and brand layer were tightly coupled.
 - Codex gpt-5.5 caught false offline and diagram claims that my first-pass verifier and my own checks missed, so I corrected the artifacts and kept the diffs traceable.
+
+## 2026-06-13
+- I rejected the AI suggestion to split console implementation into parallel worktrees and kept the work in one Opus 4.8 orchestrator path because the contract and brand layer were tightly coupled.
+- The independent gpt-5.5 CAS scoring pass found the phantom `parsers/fhir_parser.py` reference that the Opus pass had accepted, so I recorded it as a point-lift item instead of treating one model's full score as enough.
