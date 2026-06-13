@@ -15,7 +15,7 @@ TarifHub ingests Swiss ambulatory tariff sources (BAG EAL XLSX, FHIR catalogues)
 | Ingestion service | `services/ingestion/` | L0 | AI-assisted harmonisation pipeline: load → parse → map → validate → score → flag → freeze → store → audit |
 | Serving API (TarifCore) | `services/serving/` | L1 | Read-only REST: list/get tariffs (incl. `?as_of=` point-in-time), version diff, deterministic semantic search (pgvector on Postgres, in-process cosine offline — [ADR-017](../adr/017-deterministic-search-fallback-explain.md)), record-grounded `/api/v1/explain`, FHIR R4 read adapter (ChargeItemDefinition/CodeSystem); no write path, no LLM client importable (AST-tested) |
 | MCP server (TarifMCP) | `services/mcp/` | L1 | `search_tariffs`, `get_tariff`, `explain_crosswalk` — read-only httpx proxies to the serving API, returning frozen records verbatim |
-| TarifGuard console | `apps/tarifguard/` | L3 | Master–detail search UI + labelled AI explain panel with server-side de-identification (the review form is designed, not yet implemented) |
+| TarifGuard console | `apps/tarifguard/` | L3 | Four surfaces over the serving API: master-detail search, frozen-record detail, a human review form (the one write path, mocked pending the ingestion review endpoint), and a labelled AI explain panel with server-side de-identification |
 | Database | `db/` | — | PostgreSQL 16 + pgvector; `schema.sql` + forward-only migrations; the only contract between L0 and L1 |
 | Deployment | `deploy/` | — | docker-compose + Helm/k3d; container-first distribution evidence |
 
@@ -51,3 +51,33 @@ The ingestion service is the only place where AI runs, and only at the `map` ste
 Two tables. `tariff` holds immutable versioned rows: `UNIQUE(tariff_system, tariff_code, version)` makes versions explicit, `record_hash UNIQUE` (SHA-256 over sorted canonical content) is the integrity anchor and idempotency key, and `embedding vector(1024)` carries the pgvector HNSW cosine index for semantic search. `audit_log` is append-only lineage, keyed by `record_hash` — every freeze and skipped re-ingest leaves an event.
 
 Canonical source of truth: `db/schema.sql` in the repository, mirrored in SQLite for offline tests. The field set is locked additive-only per [ADR-003](../adr/003-canonical-record-model.md); the Pydantic model (`models/tariff_model.py`, `TariffRecord`) is the same shape end-to-end.
+
+## Level 3: TarifGuard console components
+
+The TarifGuard console (`apps/tarifguard/`, Next.js App Router with React and Tailwind) is the platform's trust surface, and it computes nothing of its own: every billing value it shows is an unaltered frozen record relayed from the serving API. It has four components, scoped by [ADR-013](../adr/013-demo-scope.md). The master list (`/search`) runs semantic search (`GET /api/v1/search`) and code or system browse (`GET /api/v1/tariffs`); each result opens the detail panel (`/tariffs/{system}/{code}`), which renders the certified value with its version and truncated `record_hash` chips, the validity window, the source provenance link, the deterministic version history, and a cross-walk hint where the same code exists in another system. The explain panel (`/explain`) calls the deterministic `GET /api/v1/explain` with a tariff code only, and presents the record-grounded explanation on a clearly labelled AI surface. A small coding-check page, accepted in ADR-013 as a demo extra, looks up pasted positions structurally (existence, review flag, validity window) and computes no combinability verdict.
+
+The review form (`/review`) is the human-in-the-loop made operable, and it is the one place the console writes. A flagged record (one whose `requires_review` flag is set) shows the deterministic raw extract beside the `ai_map` proposal, field by field, with the harmonisation confidence and the proposing model named. The reviewer approves the proposal verbatim or corrects any non-billing field, and the record is frozen server-side; the billing values (`tax_points`, `price_chf`) are never AI-filled and stay certified throughout. This write path goes through the console's own API route (`app/api/review`), never the database and never `freeze()` directly. Because the ingestion review endpoint is design scope at the MVP (ADR-013), the route serves a fixture queue offline and simulates the server-side freeze with a genuine SHA-256 over the decided content, so the proposal-to-frozen transition is real in the interface; setting `INGEST_BASE_URL` switches it to the future ingestion endpoint with no change to the UI.
+
+Two boundaries are visible in the interface and enforced in code. The visual law (mirrored from `docs/brand/tokens.css`) renders every frozen value in navy JetBrains Mono with version and hash chips, and every AI output on a slate surface carrying its fixed guardrail label that it is not a billing value; the two are never blended in one element. The de-identification seam (ADR-012, `lib/deident.ts`) is the only sanctioned builder of any model-bound payload: the explain seam accepts a tariff code only, and any optional free-text context is scrubbed server-side and shown as an audit, never forwarded. Both boundaries are tested. Vitest component tests assert the law at the component level (frozen values carry the certified styling, the AI panel carries its labelled surface), and an offline Playwright smoke drives search to detail to a mocked review-freeze to explain, asserting in a real browser that frozen values resolve to navy and that the AI label is present. The console lints, builds, and passes both suites in CI (the `console` job in `.github/workflows/ci.yml`).
+
+### Console screenshots
+
+Master list: search over frozen records, with certified values in navy mono and version plus hash chips.
+
+![TarifGuard master list](../img/console/master-list.png)
+
+Frozen-record detail: the certified value, provenance, multilingual designation, and the AI-assisted harmonisation disclosed as a labelled note, never as a value.
+
+![TarifGuard detail panel](../img/console/detail-provenance.png)
+
+Review form: the raw extract beside the `ai_map` proposal, with billing values certified and excluded from AI editing.
+
+![TarifGuard review form](../img/console/review-form.png)
+
+The approve action, where a proposal becomes a frozen record with a new version and a real SHA-256 record hash.
+
+![TarifGuard review freeze](../img/console/review-frozen.png)
+
+Explain panel: a record-grounded explanation on the labelled AI surface; the input is a tariff code only.
+
+![TarifGuard explain panel](../img/console/explain-panel.png)

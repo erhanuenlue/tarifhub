@@ -1,44 +1,41 @@
-import type { TariffRecord } from "@/lib/api";
+import Link from "next/link";
+
+import { CertifiedValue, HashChip, ReviewPill, SystemBadge, VersionChip } from "@/components/brand";
+import { primaryValue, type TariffRecord } from "@/lib/api";
 
 /**
- * Renders one frozen tariff record. Values (tax points, price) are shown exactly as
- * returned by serving — this component formats layout, never numbers.
+ * One frozen record in the master list. Values (tax points, price) are shown exactly as
+ * returned by serving — this component formats layout, never numbers. The whole card is
+ * the master→detail link.
  */
 export function TariffCard({ record, rank }: { record: TariffRecord; rank?: number }) {
+  const { value, unit } = primaryValue(record);
+  const href = `/tariffs/${encodeURIComponent(record.tariff_system)}/${encodeURIComponent(
+    record.tariff_code
+  )}`;
   return (
-    <article className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
-      <div className="flex items-baseline justify-between">
-        <h3 className="font-mono text-sm font-semibold text-slate-900">
-          {rank ? <span className="mr-2 text-slate-400">#{rank}</span> : null}
-          {record.tariffSystem} {record.tariffCode}
-        </h3>
-        {record.requiresReview ? (
-          <span className="rounded bg-amber-100 px-2 py-0.5 text-xs text-amber-800">
-            requires review
-          </span>
-        ) : null}
+    <Link
+      href={href}
+      className="block rounded-lg border border-line bg-card p-4 transition hover:border-sky hover:shadow-sm"
+    >
+      <div className="flex items-baseline justify-between gap-2">
+        <div className="flex items-center gap-2">
+          {rank ? <span className="font-mono text-xs text-muted">#{rank}</span> : null}
+          <SystemBadge system={record.tariff_system} />
+          <span className="font-mono text-sm font-semibold text-navy">{record.tariff_code}</span>
+        </div>
+        {record.requires_review ? <ReviewPill /> : null}
       </div>
 
-      <p className="mt-1 text-sm text-slate-700">
-        {record.designationDe || record.designationFr || record.designationIt || "—"}
-      </p>
+      <p className="mt-2 line-clamp-2 text-sm text-body">{record.designation.de || "—"}</p>
 
-      <dl className="mt-3 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-slate-600">
-        <dt className="text-slate-400">Tax points</dt>
-        <dd>{record.taxPoints ?? "—"}</dd>
-        <dt className="text-slate-400">Price (CHF)</dt>
-        <dd>{record.priceChf ?? "—"}</dd>
-        <dt className="text-slate-400">Valid</dt>
-        <dd>
-          {record.validFrom ?? "—"} → {record.validTo ?? "open"}
-        </dd>
-        <dt className="text-slate-400">Source version</dt>
-        <dd>{record.sourceVersion ?? "—"}</dd>
-      </dl>
-
-      <p className="mt-3 truncate font-mono text-[10px] text-slate-300" title={record.recordHash}>
-        hash {record.recordHash}
-      </p>
-    </article>
+      <div className="mt-3 flex items-center justify-between gap-2">
+        <CertifiedValue value={value} unit={unit} ariaLabel="current value" />
+        <span className="flex items-center gap-2">
+          <VersionChip version={record.version} />
+          <HashChip hash={record.record_hash} />
+        </span>
+      </div>
+    </Link>
   );
 }

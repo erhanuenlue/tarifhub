@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 252 56" fill="none" role="img" aria-label="tarifhub">
+  <!-- TarifHub - Primary Convergence Wordmark (light backgrounds) -->
+  <!-- DNA: three fragmented data streams converge into one hub node, one clean output. -->
+
+  <!-- Data streams: cyan / sky / blue -->
+  <path d="M4 10 C24 10 34 23 50 28" stroke="#06B6D4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M4 28 L50 28" stroke="#0EA5E9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M4 46 C24 46 34 33 50 28" stroke="#3B82F6" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Origin dots (fragmented sources) -->
+  <circle cx="4" cy="10" r="2.2" fill="#06B6D4"/>
+  <circle cx="4" cy="28" r="2.2" fill="#0EA5E9"/>
+  <circle cx="4" cy="46" r="2.2" fill="#3B82F6"/>
+
+  <!-- Hub node -->
+  <rect x="50" y="22.5" width="11" height="11" rx="3" fill="#0EA5E9"/>
+
+  <!-- Single clean output -->
+  <line x1="61" y1="28" x2="72" y2="28" stroke="#0EA5E9" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="67" cy="28" r="1.6" fill="#0EA5E9"/>
+
+  <!-- Wordmark: tarif (Inter Light 300) + hub (Inter Bold 700) -->
+  <text font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="30" x="80" y="37" letter-spacing="0.3">
+    <tspan font-weight="300" fill="#0C4A6E">tarif</tspan><tspan font-weight="700" fill="#0EA5E9">hub</tspan>
+  </text>
+</svg>

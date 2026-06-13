@@ -14,7 +14,7 @@ Produce an honest CAS status check — evidence-based, no optimism.
    - determinism test green: run it
    - two sources harmonised end-to-end (which fixtures/tests prove it?)
    - arc42 site builds: `mkdocs build -f docs/mkdocs.yml --strict`
-   - console: `apps/tarifguard-demo` lints/builds + component/smoke tests pass + **screenshot set present in `docs/img/console/`**
+   - console: `apps/tarifguard` lints/builds + component/smoke tests pass + **screenshot set present in `docs/img/console/`**
    - captured distribution evidence: compose-up screenshot + CI image-build matrix green (code-only review — runtime proofs don't count, captures do)
    - "Modern application concepts" page exists in arc42 §8 and opens with the criterion-8 wording verbatim
 3. **Anchor audit — run `python3 tools/cas_check.py` (single source of truth) and include its table.** It measures the structural floor of all 18 criteria with evidence paths and flags ratchet regressions. Then add the judgment items the checker cannot see: roter Faden across chapter openings? prose specific rather than generic? diagrams consistent with text? (Full judgment tier: `/cas-audit`.)

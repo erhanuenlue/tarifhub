@@ -1,22 +1,14 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import {
-  checkCoding,
-  getTariff,
-  ServingError,
-  type CodingFlag,
-  type CodingPosition,
-} from "@/lib/api";
+import { getTariff, ServingError, type CodingFlag, type CodingPosition } from "@/lib/api";
 
 /**
  * Server-side proxy for the coding-check screen.
  *
- * Combinability/validation is a DETERMINISTIC, backend-owned concern: this handler
- * prefers the serving `POST /api/v1/coding-check` endpoint and relays its flags
- * verbatim. If that endpoint is not present in the running serving build, it falls
- * back to a structural lookup of each position via GET /api/v1/tariffs/{system}/{code}
- * — reporting only frozen-record facts (found / requires-review / outside validity).
- * Neither path computes a billing value or a combinability verdict in the app.
+ * Serving exposes no combinability endpoint, so this is a STRUCTURAL check only: each
+ * position is looked up via GET /api/v1/tariffs/{system}/{code} and reported with
+ * frozen-record facts — found / requires-review / outside-validity — plus the certified
+ * value relayed verbatim. No combinability verdict and no billing value are computed here.
  */
 export async function POST(req: NextRequest) {
   let positions: CodingPosition[];
@@ -29,52 +21,64 @@ export async function POST(req: NextRequest) {
   if (positions.length === 0) {
     return NextResponse.json({ error: "no positions supplied" }, { status: 400 });
   }
+  // Bound the fan-out (each position is one upstream lookup) and validate element shape.
+  if (positions.length > 50) {
+    return NextResponse.json({ error: "too many positions (max 50)" }, { status: 400 });
+  }
+  const wellFormed = positions.every(
+    (p) => p && typeof p.system === "string" && typeof p.code === "string"
+  );
+  if (!wellFormed) {
+    return NextResponse.json(
+      { error: "each position needs a string system and code" },
+      { status: 400 }
+    );
+  }
 
+  const today = new Date().toISOString().slice(0, 10);
+  const flags: CodingFlag[] = [];
   try {
-    const flags = await checkCoding(positions);
-    return NextResponse.json({ source: "serving", flags });
-  } catch (err) {
-    // 404/405 => combinability endpoint not in this build: degrade to per-position lookup.
-    if (err instanceof ServingError && (err.status === 404 || err.status === 405)) {
-      const flags = await structuralFallback(positions);
-      return NextResponse.json({ source: "structural-fallback", flags });
+    for (const position of positions) {
+      flags.push(await checkPosition(position, today));
     }
+  } catch (err) {
     const status = err instanceof ServingError ? 502 : 500;
     return NextResponse.json({ error: String((err as Error).message) }, { status });
   }
+  return NextResponse.json({ source: "structural", flags });
 }
 
-/** Frozen-record structural checks only — no combinability logic lives here. */
-async function structuralFallback(positions: CodingPosition[]): Promise<CodingFlag[]> {
-  const today = new Date().toISOString().slice(0, 10);
-  const results: CodingFlag[] = [];
-  for (const position of positions) {
-    try {
-      const record = await getTariff(position.system, position.code);
-      const outsideValidity =
-        (record.validFrom !== null && record.validFrom > today) ||
-        (record.validTo !== null && record.validTo < today);
-      results.push({
-        position,
-        found: true,
-        requiresReview: record.requiresReview,
-        outsideValidity,
-        messages: [],
-        record,
-      });
-    } catch (err) {
-      if (err instanceof ServingError && err.status === 404) {
-        results.push({
-          position,
-          found: false,
-          requiresReview: false,
-          outsideValidity: false,
-          messages: ["no frozen record for this system/code"],
-        });
-      } else {
-        throw err;
-      }
+async function checkPosition(position: CodingPosition, today: string): Promise<CodingFlag> {
+  try {
+    const record = await getTariff(position.system, position.code);
+    const outside =
+      (record.valid_from !== null && record.valid_from > today) ||
+      (record.valid_to !== null && record.valid_to < today);
+    const messages: string[] = [];
+    if (record.requires_review) messages.push("flagged for human review");
+    if (outside) {
+      messages.push(
+        `outside validity window (${record.valid_from ?? "—"} → ${record.valid_to ?? "open"})`
+      );
     }
+    return {
+      position,
+      found: true,
+      requires_review: record.requires_review,
+      outside_validity: outside,
+      record,
+      messages,
+    };
+  } catch (err) {
+    if (err instanceof ServingError && err.status === 404) {
+      return {
+        position,
+        found: false,
+        requires_review: false,
+        outside_validity: false,
+        messages: ["no frozen record for this system/code"],
+      };
+    }
+    throw err;
   }
-  return results;
 }

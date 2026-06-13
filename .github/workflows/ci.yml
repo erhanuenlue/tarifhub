@@ -88,8 +88,13 @@ jobs:
       - name: Lint + build + test (when the console exists)
         run: |
           if [ -f apps/tarifguard/package.json ]; then
-            # test runs --if-present: the Playwright smoke lands with the console build block
-            cd apps/tarifguard && npm ci && npm run lint && npm run build && npm run test --if-present
+            cd apps/tarifguard
+            npm ci
+            npm run lint
+            npm run build
+            # The Playwright smoke needs a browser; install only chromium (with OS deps).
+            npx playwright install --with-deps chromium
+            npm run test --if-present
           else
             echo "console not yet scaffolded — skipping"
           fi

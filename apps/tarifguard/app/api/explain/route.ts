@@ -1,46 +1,49 @@
 import { NextRequest, NextResponse } from "next/server";
 
-import { explain, ServingError } from "@/lib/api";
+import { getExplain, ServingError } from "@/lib/api";
 import { buildExplainPayload } from "@/lib/deident";
 
 /**
- * Server-side proxy for the /explain screen.
+ * Server-side proxy for the explain panel.
  *
- * This is the de-identification choke point. Raw user input is scrubbed by
- * lib/deident.ts BEFORE anything is forwarded; only the de-identified payload reaches
- * the serving explanation endpoint (whose LLM seam is routed via AWS Bedrock EU /
- * Google Vertex AI EU). The returned explanation is grounded in frozen records and
- * never invents a value.
+ * The backend explain seam takes a TARIFF CODE ONLY: the code is forwarded to the
+ * deterministic GET /api/v1/explain endpoint, which grounds its explanation in frozen
+ * records and never invents a value. A code carries no patient data.
+ *
+ * The de-identification boundary (ADR-012, lib/deident.ts) is demonstrated here: any
+ * optional free-text clinical context is scrubbed by lib/deident.ts and returned ONLY as
+ * an audit (what was redacted). It is NEVER forwarded to the explanation endpoint — the
+ * explanation is grounded in the code's frozen records, not in free text.
  */
 export async function POST(req: NextRequest) {
-  let input: { code?: string; question?: string; context?: string };
+  let input: { code?: string; context?: string };
   try {
     input = await req.json();
   } catch {
     return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
   }
 
-  // The ONLY place an LLM-bound payload is built (AGENTS.md rule 7).
-  const { payload, redactions } = buildExplainPayload(input);
+  const code = input.code?.trim();
+  if (!code) {
+    return NextResponse.json({ error: "missing tariff code" }, { status: 400 });
+  }
+
+  // The de-identification checkpoint: the optional context is scrubbed for the audit and
+  // never leaves the server. Only the bare code reaches the backend explain seam.
+  const { payload, redactions } = buildExplainPayload({ context: input.context });
+  const deident = { scrubbed: payload.context ?? null, redactions };
 
   try {
-    const result = await explain(payload);
-    // Echo what was redacted so the UI can prove de-identification happened.
-    return NextResponse.json({ ...result, redactions, sentPayload: payload });
+    const result = await getExplain(code);
+    return NextResponse.json({ ...result, deident });
   } catch (err) {
-    if (err instanceof ServingError && (err.status === 404 || err.status === 405)) {
+    if (err instanceof ServingError && err.status === 404) {
       return NextResponse.json(
-        {
-          error:
-            "the deterministic explanation endpoint (/api/v1/explain) is not available " +
-            "in this serving build yet",
-          redactions,
-          sentPayload: payload,
-        },
-        { status: 501 }
+        { error: `no frozen record for code ${code}`, deident },
+        { status: 404 }
       );
     }
     const status = err instanceof ServingError ? 502 : 500;
-    return NextResponse.json({ error: String((err as Error).message) }, { status });
+    return NextResponse.json({ error: String((err as Error).message), deident }, { status });
   }
 }

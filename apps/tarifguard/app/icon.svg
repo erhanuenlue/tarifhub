@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 96 96" fill="none" role="img" aria-label="TarifHub app icon">
+  <!-- TarifHub - Square App Icon / Favicon -->
+  <!-- Convergence motif, centered, on the deep-navy brand tile. -->
+
+  <!-- App tile -->
+  <rect x="0" y="0" width="96" height="96" rx="22" fill="#0C4A6E"/>
+
+  <!-- Data streams: cyan / sky / blue (dark-surface accents) -->
+  <path d="M22 30 C34 30 41 42 49 48" stroke="#22D3EE" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 48 L49 48" stroke="#38BDF8" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M22 66 C34 66 41 54 49 48" stroke="#60A5FA" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"/>
+
+  <!-- Origin dots -->
+  <circle cx="22" cy="30" r="3" fill="#22D3EE"/>
+  <circle cx="22" cy="48" r="3" fill="#38BDF8"/>
+  <circle cx="22" cy="66" r="3" fill="#60A5FA"/>
+
+  <!-- Hub node (white focal point) -->
+  <rect x="49" y="41" width="14" height="14" rx="4" fill="#FFFFFF"/>
+
+  <!-- Single clean output -->
+  <line x1="63" y1="48" x2="76" y2="48" stroke="#FFFFFF" stroke-width="3.2" stroke-linecap="round"/>
+  <circle cx="71" cy="48" r="2" fill="#FFFFFF"/>
+</svg>
