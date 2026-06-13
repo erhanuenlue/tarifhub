@@ -16,6 +16,7 @@ node_modules/
 out/
 playwright-report/
 test-results/
+.playwright-mcp/
 
 # Env & secrets — never committed
 .env

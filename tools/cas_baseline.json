@@ -14,6 +14,8 @@
   "13.count",
   "13.errors",
   "14.coverage",
+  "14.interpret",
+  "14.output",
   "16.guardrails",
   "16.hitl",
   "16.roles",
@@ -22,6 +24,7 @@
   "17.dockerfiles",
   "17.helm",
   "17.justify",
+  "18.material",
   "2.adr",
   "2.count",
   "2.messverfahren",
@@ -52,5 +55,5 @@
   "9.file",
   "9.refs"
  ],
- "updated": "2026-06-12 17:35:39"
+ "updated": "2026-06-13 13:24:47"
 }
