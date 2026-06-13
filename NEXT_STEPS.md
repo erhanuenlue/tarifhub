@@ -6,29 +6,29 @@
 
 ---
 
-## DO THIS FIRST (14 Jun) · recover the halted 06/07 loop
+## WHERE WE ARE (14 Jun) · the core build is DONE
 
-The 06/07 loop halted, but the cause is benign: prompt 06 finished all its work and
-committed it (PR #18, CI green), then the `brain_sync` hook regenerated
-`vault/00-index.md` at session end (only a timestamp bump and derived counts). That
-regen landed after the session's commits, so it sat uncommitted and the loop's
-clean-tree contract counted it as dirt and stopped before merging. No work was lost.
+Prompts 06 and 07 are both merged. `cas_check` is **62/62** (all 18 criteria structurally
+present, ratchet green): crit 13/14 evidence, crit 17 deployment, the crit-15 AI-tools
+chapter, the crit-18 Fazit, and the crit-10 repo URL are all in. The **83-page FFHS PDF
+builds** (`python3 tools/build_pdf.py` -> `build/pdf/tarifhub-cas.pdf`), em-dash sweep is
+clean, `mkdocs --strict` passes, CI is green. What remains is the docs-polish loop (Step 6:
+08/09/10/11) and your own veto items (Erklaerung, freeze, Moodle upload).
 
-Fixed durably: `vault/00-index.md` is now excluded from the loop's clean-tree contract
-(it is auto-generated, "do not edit by hand," like `.shipboard/` and the ratchet
-baseline that were already excluded). To recover, paste this once:
+The loop halted twice on benign vault-journal churn (the curate/brain_sync hooks rewrite
+`vault/00-index.md` and `vault/daily/*` at session end, landing uncommitted after the
+session's commits). Fixed durably: the whole hook-managed `vault/` tree is now excluded
+from the loop's clean-tree contract. If you see that halt again, it is never lost work,
+just clear it:
 
 ```
 cd ~/Documents/Tarif/tarifhub
-git add vault/00-index.md tools/loop.sh NEXT_STEPS.md
-git commit -m "fix(loop): exclude auto-generated vault/00-index.md from clean-tree contract; commit session-end index"
-caffeinate -is nohup bash tools/loop.sh 06 07 >> .shipboard/loop.log 2>&1 &
-tail -f .shipboard/loop.log
+git add tools/loop.sh vault/
+git commit -m "fix(loop): exclude hook-managed vault/ tree from clean-tree contract; commit session-end journal"
 ```
 
-The rerun re-enters prompt 06, which now only has to push the branch, wait for green CI,
-and merge PR #18 (phase 09), then it runs prompt 07. Watch the board's Loop tab. When it
-finishes cleanly, continue with Step 6 below (prompts 08/09/10).
+Prompt 07 is already merged at 62/62, so there is nothing to re-run for it. Go straight to
+Step 6 below to build the framework chapter, diagrams, deck, and the independent score.
 
 ---
 
@@ -142,31 +142,63 @@ then /ship". Optional.
 2. Before you upload: read the PDF once and edit whatever you want changed.
    Everything is yours to override; nothing ships to Moodle except by your hand.
 
-### Step 6 · docs polish loop (after the 06/07 loop finishes)
+### Step 6 · docs polish + independent scoring loop (after the 06/07 loop finishes)
 
-Three more prompts add the AI-SE framework chapter, the Eraser diagrams, and the presentation deck.
-They live in `prompts/08_ai_se_framework.md`, `prompts/09_diagrams.md`, and
-`prompts/10_slide_deck.md`. They are in the bundle; apply and run them in one paste once the current
-loop has finished and the tree is clean:
+Four prompts add the AI-SE framework chapter, the Eraser diagrams, the presentation deck, and a final
+independent score. They live in `prompts/08_ai_se_framework.md`, `prompts/09_diagrams.md`,
+`prompts/10_slide_deck.md`, and `prompts/11_cas_score.md`. They are in the bundle; apply and run them
+in one paste once the current loop has finished and the tree is clean:
 
 ```
 cd ~/Documents/Tarif/tarifhub
-cp ~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub/prompts/08_ai_se_framework.md prompts/
-cp ~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub/prompts/09_diagrams.md prompts/
-cp ~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub/prompts/10_slide_deck.md prompts/
-git add prompts/08_ai_se_framework.md prompts/09_diagrams.md prompts/10_slide_deck.md && git commit -m "docs: prompts 08 (AI-SE framework) + 09 (Eraser diagrams) + 10 (Reveal.js deck)" && git push
-caffeinate -is nohup bash tools/loop.sh 08 09 10 >> .shipboard/loop.log 2>&1 &
+B=~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub
+cp $B/prompts/08_ai_se_framework.md $B/prompts/09_diagrams.md $B/prompts/10_slide_deck.md $B/prompts/11_cas_score.md prompts/
+cp $B/NEXT_STEPS.md ./NEXT_STEPS.md
+git add prompts/08_ai_se_framework.md prompts/09_diagrams.md prompts/10_slide_deck.md prompts/11_cas_score.md NEXT_STEPS.md
+git commit -m "docs: prompts 08 (framework) + 09 (diagrams) + 10 (deck) + 11 (independent CAS scoring)" && git push
+caffeinate -is nohup bash tools/loop.sh 08 09 10 11 >> .shipboard/loop.log 2>&1 &
 ```
 
 08 folds the AI-SE framework write-up into the architecture docs (and has the AI-tools chapter name
-the full tool set: Claude Code, Codex gpt-5.5, Eraser MCP) and leaves diagram placeholders; 09
-renders the diagrams with Eraser (MCP, logged in) to committed SVG/PNG and embeds them, then rebuilds
-the PDF; 10 builds the minimalist Reveal.js deck (`docs/presentation/index.html`) for your 5-minute
-school talk, reusing 09's diagrams, with speaker notes and a per-slide time budget. Eraser only, no
-Mermaid. If the Eraser MCP is ever unreachable, 09 stops and names the diagram rather than
-substituting; rerun when it is back. Run order matters: 10 depends on 09's diagrams, so keep
-`08 09 10`. Open the deck after the loop with `open docs/presentation/index.html`; press **S** in the
-browser for the speaker-notes view while you rehearse.
+the full tool set: Claude Code, Codex gpt-5.5, Eraser MCP) and leaves diagram placeholders; this is
+also what fills most of the open crit-15 (KI-Werkzeuge) gaps: the KI chapter, the phase structure,
+the prompt/diff/commit evidence, and the Eigenständigkeit explanation. 09 renders the diagrams with
+Eraser (MCP, logged in) to committed SVG/PNG and embeds them (crit-4 architecture in picture and
+text), then rebuilds the PDF. 10 builds the minimalist Reveal.js deck (`docs/presentation/index.html`)
+for your 5-minute school talk, reusing 09's diagrams, with speaker notes and a per-slide time budget.
+11 is the new one: an independent dual-blind CAS score (see Step 7).
+
+Order matters: 10 reuses 09's diagrams and 11 scores the finished docs, so keep `08 09 10 11`. Eraser
+only, no Mermaid; if the Eraser MCP is ever unreachable, 09 stops and names the diagram rather than
+substituting, rerun when it is back. Open the deck after the loop with
+`open docs/presentation/index.html`; press **S** for the speaker-notes view while you rehearse.
+
+### Step 7 · independent scoring and gap-closing (the last build before submission)
+
+Prompt 11 produces, in `vault/cas-audit/`, two independent scorecards against the official anchor
+rubric (`docs/cas/bewertungskriterien-anker.md`): one from Opus 4.8, one from gpt-5.5 via Codex, each
+scoring all 18 criteria blind to the other as a hostile grader, lowest defensible score, every score
+tied to an anchor quote and an evidence path. The reconciliation file `vault/cas-audit/scorecard.md`
+diffs them: per-criterion `Opus | gpt-5.5 | Δ`, both totals out of 100, and a ranked **point-lift
+list** of what to fix for the most points.
+
+This is advisory by design and never gates the loop: `cas_check.py` stays the only deterministic
+floor, and no number from prompt 11 ever feeds the ratchet, the green-contract, or the submitted PDF.
+The scorecard is your internal map, not something the grader sees.
+
+How to use it to close gaps:
+
+1. Read `vault/cas-audit/scorecard.md`. Trust the **divergences** most: where the two graders
+   disagree by more than a point is exactly where a real grader could read it either way, so a small
+   wording or evidence change moves the score.
+2. For each criterion you choose to chase, paste its row plus the named fix into a session and say
+   "fix this, then /ship". These are normal build sessions (Gate-01 pre-approved), so they merge on
+   green like any other.
+3. Re-run prompt 11 (`bash tools/loop.sh 11`) to confirm the lift and refresh the scorecard. Stop
+   when the cheap points are banked; do not chase the asymptote or teach-to-the-test the wording.
+
+The CAS tab's audit-estimate column remains the at-a-glance read; the scorecard is the detailed,
+two-grader version behind it.
 
 ## Your remaining errands (only you can do these)
 
