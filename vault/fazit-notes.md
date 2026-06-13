@@ -41,3 +41,7 @@
 ## 2026-06-13
 - I rejected codex's reversed-freeze-line finding because the diagram expressed the AI-touchable versus immutable-value-path split, not the layer stack.
 - I corrected the data-flow diagram after codex showed that human review happens after deterministic freeze into a new version, not as a gate before freezing.
+
+## 2026-06-13
+- Veto moment: I rejected parallel implementation worktrees for PR #16 because the TarifGuard console was one tightly-coupled contract and brand layer, and I kept the implementation in-orchestrator on Opus 4.8.
+- Correction: codex gpt-5.5 twice caught evidence or artifact claims that first-pass verification missed: the deck was not fully offline until fonts were vendored, and the data-flow diagram wrongly showed human review gating freeze.
