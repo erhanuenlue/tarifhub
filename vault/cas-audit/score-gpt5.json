@@ -1,0 +1,192 @@
+{
+  "grader": "gpt-5.5",
+  "date": "2026-06-13",
+  "total": 86,
+  "max": 100,
+  "criteria": {
+    "1": {
+      "max": 5,
+      "points": 5,
+      "anchor": "Drei bis fünf Kernfunktionen als Use-Cases mit Akteuren und fachlichem Nutzen; Stakeholder identifiziert; Anforderungen eindeutig und widerspruchsfrei.",
+      "evidence": "docs/arc42/01-introduction-goals.md#use-case-catalogue",
+      "rationale": "Fünf Kernfunktionen sind als Use-Cases mit Actor, Trigger, Outcome und FR-Bezug beschrieben; Stakeholder sind tabellarisch benannt.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "2": {
+      "max": 5,
+      "points": 5,
+      "anchor": "Mindestens drei NfA, jede mit messbarem Zielwert und Messverfahren; Bezug zu den Architekturentscheidungen erkennbar (ADR).",
+      "evidence": "docs/arc42/10-quality-requirements.md#quality-goals-smart-nfrs",
+      "rationale": "Sechs NfA sind mit Zielwert, Messverfahren, Messwert und mehrheitlich ADR-Bezug spezifiziert.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "3": {
+      "max": 5,
+      "points": 5,
+      "anchor": "Klare Problemstellung; Vision mit Zielgruppe, realem oder plausiblem Bedürfnis und Abgrenzung; je ein Satz zum KI-Nutzen pro Kernfunktion.",
+      "evidence": "docs/arc42/01-introduction-goals.md#vision",
+      "rationale": "Problemstellung, Zielgruppen, Bedürfnis, Abgrenzung und KI-Nutzen je Kernfunktion stehen explizit auf der Seite.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "4": {
+      "max": 7,
+      "points": 4,
+      "anchor": "C4-Ebenen 1 und 2 (oder gleichwertige Sichten) vorhanden; Begründung des Architekturstils teilweise; kleinere Inkonsistenzen zwischen Bild und Text; roter Faden mehrheitlich erkennbar, einzelne Brüche.",
+      "evidence": "docs/arc42/05-building-block-view.md#level-0-system-context",
+      "rationale": "C4-Sichten, Text und ADR-Begründung sind stark, aber es gibt kleinere Konsistenzbrüche und der Top-Anker ist konjunktiv nicht risikofrei.",
+      "misses": [
+        "C4/Text-Konsistenz nicht vollständig: §5 nennt `parsers/fhir_parser.py`, im Service-Layout ist kein solcher Parser vorhanden.",
+        "Der durchgängige rote Faden ist mehrheitlich erkennbar, aber für die volle Stufe nicht ohne Restzweifel erfüllt."
+      ]
+    },
+    "5": {
+      "max": 7,
+      "points": 4,
+      "anchor": "Zwei Perspektiven mit Diagramm und Text abgedeckt.",
+      "evidence": "docs/arc42/05-building-block-view.md#level-1-containers; docs/arc42/06-runtime-view.md#scenario-1-harmonise-to-freeze; docs/arc42/01-introduction-goals.md#use-case-catalogue",
+      "rationale": "Struktur und Verhalten sind mit Diagramm und Text belegt; die Interaktionsperspektive ist nicht voll als Schnittstellen-Vertrag/OpenAPI-Sicht ausgearbeitet.",
+      "misses": [
+        "Interaktion ist im Mapping als Use-Case-Diagramm belegt, nicht als Schnittstellen-Vertrag oder OpenAPI-Sicht mit Diagramm und erläuterndem Text.",
+        "Damit sind nicht alle drei Perspektiven jeweils im Rubriksinn vollständig abgedeckt."
+      ]
+    },
+    "6": {
+      "max": 3,
+      "points": 3,
+      "anchor": "Relationales Modell vollständig inkl. Migrations-Skripten; Einsatz der Vektor-Datenbank dokumentiert.",
+      "evidence": "docs/arc42/05-building-block-view.md#data-model; db/schema.sql",
+      "rationale": "ER-Modell, `schema.sql`, Migrationen und `embedding vector(1024)` samt HNSW/pgvector sind dokumentiert.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "7": {
+      "max": 7,
+      "points": 7,
+      "anchor": "Einheitliche Struktur mit klaren Verantwortlichkeiten; sprechende Namen; Dokumentation an nicht-trivialen Stellen; Modulgrenzen im Code konsistent zum Entwurf.",
+      "evidence": "docs/arc42/05-building-block-view.md#level-1-containers; services/",
+      "rationale": "Die Services und Pakete folgen den beschriebenen Schichten; zentrale Module haben sprechende Namen und nicht-triviale Kommentare/Docstrings.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "8": {
+      "max": 10,
+      "points": 10,
+      "anchor": "Framework-Mittel durchgehend idiomatisch (Dependency Injection, externalisierte Konfiguration, einheitliche Fehlerbehandlung, Validierung); Framework-Wahl im Bericht begründet.",
+      "evidence": "docs/arc42/08-crosscutting-concepts.md#modern-application-concepts",
+      "rationale": "FastAPI DI, Pydantic-Validierung, Env-Konfiguration, HTTPException/422-Fehler und Python-first-Begründung sind direkt beschrieben.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "9": {
+      "max": 3,
+      "points": 3,
+      "anchor": "Konkrete Erkenntnisse mit Belegen (Diffs oder Commit-Referenzen), insbesondere wo KI-Vorschläge angenommen, korrigiert oder verworfen wurden.",
+      "evidence": "LEARNINGS.md#learnings",
+      "rationale": "Das Register nennt konkrete Projektfehler mit PR/SHA und markiert AI accepted, corrected oder rejected.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "10": {
+      "max": 2,
+      "points": 2,
+      "anchor": "Repository-URL im Bericht, Repository zugänglich, Quellcode vollständig.",
+      "evidence": "docs/index.md#tarifhub-architecture-documentation",
+      "rationale": "Die Abgabeseite verlinkt `github.com/erhanuenlue/tarifhub`; der lokale Checkout enthält den Quellcode und CI-Dateien.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "11": {
+      "max": 5,
+      "points": 5,
+      "anchor": "Prüfbare Abnahmekriterien pro Kernfunktion, inkl. Bezug zu den Qualitätsanforderungen (Kriterium 2).",
+      "evidence": "docs/arc42/10-quality-requirements.md#acceptance-criteria",
+      "rationale": "Die Tabelle formuliert Given/When/Then pro Use Case und verknüpft jede Zeile mit NfA-Referenzen.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "12": {
+      "max": 5,
+      "points": 5,
+      "anchor": "Teststufen (Unit, Integration, ggf. Ende-zu-Ende) mit Werkzeugen benannt und begründet; Tests der KI-Anteile berücksichtigt (z. B. Guardrail-Verhalten, Umgang mit nicht-deterministischen Antworten).",
+      "evidence": "docs/arc42/13-test-strategy.md#tests-der-ki-anteile",
+      "rationale": "Unit, API, Cross-Engine, MCP und CI sind begründet; KI-Anteile sind über Boundary, Gap-Gate, Fill-Reuse und Fail-Closed Tests abgedeckt.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "13": {
+      "max": 3,
+      "points": 3,
+      "anchor": "Tests decken die Kernlogik ab, inkl. Fehlerfälle; Tests laufen im Build durch.",
+      "evidence": "docs/arc42/10-quality-requirements.md#unit-and-contract-tests-offline-suite; services/*/tests",
+      "rationale": "295 Tests, Fehlerfälle, Boundary-Tests und CI-Ausführung sind dokumentiert und die Testdateien existieren im Repository.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "14": {
+      "max": 3,
+      "points": 3,
+      "anchor": "Ergebnisse nachvollziehbar dokumentiert (Testbericht oder Pipeline-Ausgabe) und im Bericht interpretiert.",
+      "evidence": "docs/arc42/10-quality-requirements.md#test-and-pipeline-results",
+      "rationale": "Pytest-, Coverage-, Boundary- und Pipeline-Ausgaben werden zitiert und unmittelbar interpretiert.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "15": {
+      "max": 12,
+      "points": 7,
+      "anchor": "Einsatz pro Phase beschrieben; Belege nur teilweise; Erklärung der Eigenständigkeit vorhanden.",
+      "evidence": "docs/method/ai-tools.md#generierung; docs/method/ai-tools.md#erklaerung-der-eigenstaendigkeit",
+      "rationale": "Generierung, Review, Refactoring und Recherche sind belegt, aber die Erklärung der Eigenständigkeit ist ausdrücklich nur Platzhalter.",
+      "misses": [
+        "Die Erklärung der Eigenständigkeit ist nicht final vom Owner formuliert und nicht unterschrieben.",
+        "Die Top-Stufe verlangt eine vollständige Erklärung gemäss Aufgabenstellung."
+      ]
+    },
+    "16": {
+      "max": 6,
+      "points": 6,
+      "anchor": "Mindestens zwei KI-Rollen substanziell in der Lösung (z. B. LLM-gestützte Verarbeitung plus Embedding-Suche oder Agent); Guardrails greifen; wo sinnvoll Human-in-the-Loop.",
+      "evidence": "docs/arc42/10-quality-requirements.md#harmonisation-results; docs/arc42/06-runtime-view.md#scenario-2-semantic-search-through-serving",
+      "rationale": "LLM-gestütztes `ai_map`, Embedding-Suche, Boundary-Guardrails und Review-Queue/Human-in-the-Loop sind schriftlich und mit Ergebnissen belegt.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "17": {
+      "max": 5,
+      "points": 5,
+      "anchor": "Klare Modul- bzw. Service-Grenzen konsistent zum Entwurf; Lösung lauffähig per Compose oder Kubernetes; Wahl des Stils (modularer Monolith oder verteilt) begründet.",
+      "evidence": "docs/arc42/07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose; docs/evidence/2026-06-13-distribution.md#2-full-stack-runs-under-docker-compose",
+      "rationale": "Service-Grenzen, Compose-Lauffähigkeit, k3d/Helm-Proof und Stilbegründung entlang der Freeze-Line sind dokumentiert.",
+      "misses": [
+        "Keine, höchste Stufe erreicht."
+      ]
+    },
+    "18": {
+      "max": 7,
+      "points": 4,
+      "anchor": "Reflexion vorhanden, teilweise generisch; Veto-Entscheidungen benannt, aber ohne Belegtiefe.",
+      "evidence": "docs/method/fazit.md#three-veto-decisions-nie-an-die-ki-delegiert",
+      "rationale": "Das Fazit ist substanziell und nennt drei Vetos, aber die Belegtiefe ist nicht für alle drei gleich stark abgeschlossen.",
+      "misses": [
+        "Veto 3 betrifft Go-live, Moodle-Abgabe und Eigenständigkeitserklärung und ist vor Abgabe nur als nicht delegierte Absicht belegbar.",
+        "Die Top-Stufe verlangt drei konkret begründete und belegte Veto-Entscheidungen; diese Belegtiefe ist nicht durchgehend gleich belastbar."
+      ]
+    }
+  }
+}
