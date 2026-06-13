@@ -48,11 +48,14 @@ contract() {
     python3 tools/cas_check.py --ci >/dev/null 2>&1 || why="CAS ratchet regression (tools/cas_check.py --ci failed)"
     local after; after=$(floor_passed)
     [ -z "$why" ] && [ "$after" -lt "$before" ] && why="CAS floor decreased ($before → $after)"
-    # live-state files the loop/board write themselves never count as dirt:
-    # .shipboard/ (gitignored in the repo) and the ratchet baseline (board writes it
-    # asynchronously when the floor grows; the growth itself is validated above).
+    # live-state files the loop/board/hooks generate never count as dirt:
+    # .shipboard/ (gitignored), the ratchet baseline (board writes it asynchronously when
+    # the floor grows; the growth itself is validated above), and vault/00-index.md (the
+    # brain_sync hook regenerates it at session end, including a minute-resolution
+    # timestamp, so it can land uncommitted after the session's own commits; the vault
+    # autocommit hook carries it on the next session end).
     local dirt; dirt=$(git --no-optional-locks status --porcelain 2>/dev/null \
-        | grep -v -e ' \.shipboard/' -e ' tools/cas_baseline\.json$' || true)
+        | grep -v -e ' \.shipboard/' -e ' tools/cas_baseline\.json$' -e ' vault/00-index\.md$' || true)
     [ -z "$why" ] && [ -n "$dirt" ] && why="working tree not clean (session did not finish its merge): $(echo "$dirt" | head -3 | tr '\n' ' ')"
     # Local secret gate (public-repo safety): catch a leak immediately, before it can
     # ride a fast loop into a public repo, independent of CI timing. gitleaks if present,

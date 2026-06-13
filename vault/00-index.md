@@ -1,6 +1,6 @@
 # tarifhub — knowledge index (auto-generated)
 
-> Rebuilt by the `brain_sync` hook at every session end (2026-06-13 13:00). Do not edit by hand — edit the sources.
+> Rebuilt by the `brain_sync` hook at every session end (2026-06-13 14:00). Do not edit by hand — edit the sources.
 
 ## Decisions (ADRs)
 
@@ -34,10 +34,10 @@
 
 - [[vault-rules|Vault rules — what feeds which criterion]]
 - [[decision-matrix|Decision matrix — Vibe vs Spec-Driven vs Agentic]]
-- [[fazit-notes|Fazit notes (raw, running)]] — 3 observations
+- [[fazit-notes|Fazit notes (raw, running)]] — 5 observations
 - [[LEARNINGS|LEARNINGS.md (criterion 9)]] — 19 items
 
 ## Architecture (source of truth)
 
 - arc42: [[01-introduction-goals|§1]] · [[02-constraints|§2]] · [[03-context-scope|§3]] · [[04-solution-strategy|§4]] · [[05-building-block-view|§5]] · [[06-runtime-view|§6]] · [[07-deployment-view|§7]] · [[08-crosscutting-concepts|§8]] · [[09-architecture-decisions|§9]] · [[10-quality-requirements|§10]] · [[11-risks-technical-debt|§11]] · [[12-glossary|§12]] · [[13-test-strategy|§13]]  — site: `mkdocs serve -f docs/mkdocs.yml`
-- Last docs change: 2026-06-13 · feat(console): Block-05 TarifGuard console (master-detail, review form, explain panel) (#16)
+- Last docs change: 2026-06-13 · fix(docs): resolve review findings (crit-17 consistency + search wording)

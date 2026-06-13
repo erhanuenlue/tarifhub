@@ -6,6 +6,32 @@
 
 ---
 
+## DO THIS FIRST (14 Jun) · recover the halted 06/07 loop
+
+The 06/07 loop halted, but the cause is benign: prompt 06 finished all its work and
+committed it (PR #18, CI green), then the `brain_sync` hook regenerated
+`vault/00-index.md` at session end (only a timestamp bump and derived counts). That
+regen landed after the session's commits, so it sat uncommitted and the loop's
+clean-tree contract counted it as dirt and stopped before merging. No work was lost.
+
+Fixed durably: `vault/00-index.md` is now excluded from the loop's clean-tree contract
+(it is auto-generated, "do not edit by hand," like `.shipboard/` and the ratchet
+baseline that were already excluded). To recover, paste this once:
+
+```
+cd ~/Documents/Tarif/tarifhub
+git add vault/00-index.md tools/loop.sh NEXT_STEPS.md
+git commit -m "fix(loop): exclude auto-generated vault/00-index.md from clean-tree contract; commit session-end index"
+caffeinate -is nohup bash tools/loop.sh 06 07 >> .shipboard/loop.log 2>&1 &
+tail -f .shipboard/loop.log
+```
+
+The rerun re-enters prompt 06, which now only has to push the branch, wait for green CI,
+and merge PR #18 (phase 09), then it runs prompt 07. Watch the board's Loop tab. When it
+finishes cleanly, continue with Step 6 below (prompts 08/09/10).
+
+---
+
 ## Where the project stands (13 Jun)
 
 - Foundation, two real sources (EAL XLSX + ePL FHIR R5), parity, search tuning,
@@ -115,6 +141,32 @@ then /ship". Optional.
    check the page renders.
 2. Before you upload: read the PDF once and edit whatever you want changed.
    Everything is yours to override; nothing ships to Moodle except by your hand.
+
+### Step 6 · docs polish loop (after the 06/07 loop finishes)
+
+Three more prompts add the AI-SE framework chapter, the Eraser diagrams, and the presentation deck.
+They live in `prompts/08_ai_se_framework.md`, `prompts/09_diagrams.md`, and
+`prompts/10_slide_deck.md`. They are in the bundle; apply and run them in one paste once the current
+loop has finished and the tree is clean:
+
+```
+cd ~/Documents/Tarif/tarifhub
+cp ~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub/prompts/08_ai_se_framework.md prompts/
+cp ~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub/prompts/09_diagrams.md prompts/
+cp ~/Documents/Claude/Projects/Tarif/tarifhub-fable5/06_Dev/tarifhub/prompts/10_slide_deck.md prompts/
+git add prompts/08_ai_se_framework.md prompts/09_diagrams.md prompts/10_slide_deck.md && git commit -m "docs: prompts 08 (AI-SE framework) + 09 (Eraser diagrams) + 10 (Reveal.js deck)" && git push
+caffeinate -is nohup bash tools/loop.sh 08 09 10 >> .shipboard/loop.log 2>&1 &
+```
+
+08 folds the AI-SE framework write-up into the architecture docs (and has the AI-tools chapter name
+the full tool set: Claude Code, Codex gpt-5.5, Eraser MCP) and leaves diagram placeholders; 09
+renders the diagrams with Eraser (MCP, logged in) to committed SVG/PNG and embeds them, then rebuilds
+the PDF; 10 builds the minimalist Reveal.js deck (`docs/presentation/index.html`) for your 5-minute
+school talk, reusing 09's diagrams, with speaker notes and a per-slide time budget. Eraser only, no
+Mermaid. If the Eraser MCP is ever unreachable, 09 stops and names the diagram rather than
+substituting; rerun when it is back. Run order matters: 10 depends on 09's diagrams, so keep
+`08 09 10`. Open the deck after the loop with `open docs/presentation/index.html`; press **S** in the
+browser for the speaker-notes view while you rehearse.
 
 ## Your remaining errands (only you can do these)
 
