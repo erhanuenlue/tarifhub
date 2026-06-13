@@ -1049,6 +1049,54 @@ def discover_sessions(limit=12):
     out.sort(key=lambda x: (not x["tracked"], not x["live"], x["idle_s"]))
     return out
 
+def loop_state():
+    """Parse .shipboard/loop.log into a structured view of the headless loop run.
+    Pure read of the log the loop tees to; no process control."""
+    lp = SB / "loop.log"
+    out = {"running": False, "status": "idle", "started": "", "prompts": [],
+           "events": [], "tail": [], "checkpoint": ""}
+    if not lp.exists():
+        return out
+    try:
+        lines = lp.read_text(encoding="utf-8", errors="replace").splitlines()
+    except Exception:
+        return out
+    out["tail"] = lines[-40:]
+    cur = None
+    for ln in lines:
+        hms = ln[:8] if len(ln) >= 8 and ln[2] == ":" else ""
+        msg = ln[9:] if hms else ln
+        low = msg.lower()
+        if msg.startswith("loop start"):
+            out["started"] = hms; out["status"] = "running"; out["prompts"] = []
+            out["events"].append({"ts": hms, "kind": "start", "text": msg})
+        elif msg.startswith("── prompt") or msg.startswith("── prompt"):
+            num = "".join(c for c in msg.split("prompt", 1)[-1].strip()[:2] if c.isdigit())
+            cur = {"n": num, "started": hms, "done": False, "halt": "", "text": msg}
+            out["prompts"].append(cur); out["status"] = "running"
+            out["events"].append({"ts": hms, "kind": "prompt", "text": msg})
+        elif "complete · contract green" in msg or "✓ prompt" in msg:
+            if cur: cur["done"] = True; cur["finished"] = hms
+            out["events"].append({"ts": hms, "kind": "ok", "text": msg})
+        elif msg.startswith("HALT") or low.startswith("halt"):
+            if cur: cur["halt"] = msg
+            out["status"] = "halted"
+            out["events"].append({"ts": hms, "kind": "halt", "text": msg})
+        elif "catch-up" in low or "curat" in low:
+            out["events"].append({"ts": hms, "kind": "curate", "text": msg})
+        elif "cas-audit" in low or "second opinion" in low:
+            out["events"].append({"ts": hms, "kind": "audit", "text": msg})
+        elif msg.startswith("loop done"):
+            out["status"] = "done"
+            out["events"].append({"ts": hms, "kind": "done", "text": msg})
+    out["running"] = out["status"] == "running"
+    out["events"] = out["events"][-30:]
+    cp = SB / "loop-checkpoint.md"
+    if cp.exists():
+        try: out["checkpoint"] = cp.read_text(encoding="utf-8", errors="replace")[-2000:]
+        except Exception: pass
+    return out
+
 def state():
     ev = read_events()
     agents = [e for e in ev if e.get("kind") == "agent"]
@@ -1151,7 +1199,7 @@ def state():
             "updated": time.strftime("%H:%M:%S"), "events": len(ev),
             "event_tail": ev[-40:][::-1], "feed": feed[:40],
             "usage": u, "project": p, "gh": ghd, "cas": cas,
-            "alerts": al[:8], "sessions": discover_sessions()}
+            "alerts": al[:8], "sessions": discover_sessions(), "loop": loop_state()}
 
 # ---------------- CAS structural floor (tools/cas_check.py, cached 60s) ----------------
 
@@ -1567,6 +1615,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="tab" data-v="github">GitHub<span class="kbd">6</span></div>
     <div class="tab" data-v="board">Board<span class="kbd">7</span></div>
     <div class="tab" data-v="cas">CAS<span class="kbd">8</span></div>
+    <div class="tab" data-v="loop">Loop<span class="kbd">9</span></div>
   </div>
 </div>
 
@@ -1787,7 +1836,28 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   </div>
 </div>
 
-<div class="foot">shipboard v9 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify + grading anchors · keys: 1-8 tabs, Esc closes inspector</div>
+<div class="view" id="v-loop">
+  <div class="grid3" style="margin-bottom:12px">
+    <div class="cell"><div class="k">Loop status</div><div class="v" id="lp1">—</div><div class="s" id="lp1b"></div></div>
+    <div class="cell"><div class="k">Current prompt</div><div class="v" id="lp2">—</div><div class="s" id="lp2b"></div></div>
+    <div class="cell"><div class="k">Prompts done</div><div class="v" id="lp3">—</div><div class="s" id="lp3b">06 → 07 → audit</div></div>
+  </div>
+  <div class="panel" style="margin-bottom:12px">
+    <div class="k">Loop timeline — tools/loop.sh milestones</div>
+    <div id="looptl">—</div>
+  </div>
+  <div class="mid">
+    <div class="panel">
+      <div class="k">Recent log (.shipboard/loop.log)</div>
+      <pre class="jl" id="looptail" style="max-height:340px;overflow:auto">—</pre>
+    </div>
+    <div class="panel">
+      <div class="k">Checkpoint (.shipboard/loop-checkpoint.md)</div>
+      <pre class="jl" id="loopcp" style="max-height:340px;overflow:auto">—</pre>
+    </div>
+  </div>
+</div>
+<div class="foot">shipboard v9 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify + grading anchors · keys: 1-9 tabs, Esc closes inspector</div>
 </div>
 <div id="ovl" onclick="closeInsp()"></div>
 <div id="insp"><div class="ih"><span class="it" id="it">inspector</span><span class="ix" onclick="closeInsp()">✕</span></div><div class="ib" id="ib">—</div></div>
@@ -1814,7 +1884,7 @@ document.querySelectorAll('.tab').forEach(el=>el.onclick=()=>showTab(el.dataset.
 document.addEventListener('keydown',e=>{
   if(e.target.tagName==='INPUT'||e.target.tagName==='TEXTAREA') return;
   if(e.key==='Escape') closeInsp();
-  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github','7':'board','8':'cas'}[e.key];
+  const m={'1':'overview','2':'pipeline','3':'agents','4':'project','5':'graphs','6':'github','7':'board','8':'cas','9':'loop'}[e.key];
   if(m) showTab(m);
 });
 // ---------- live sessions panel (overview) ----------
@@ -2113,6 +2183,27 @@ function feedRow(e, fresh){
   return '<div class="feedrow'+(fresh?' fresh':'')+'"'+onc+'><span class="ft">'+esc(e.ts)+'</span><span class="fk '+esc(cls)+'">'+esc(lbl)+'</span><span>'+body+'</span><span class="fsrc">'+esc(e.src||'')+'</span></div>';
 }
 // ---------- board tab (reflective task board, tab 7) ----------
+function renderLoop(s){
+  const L=s.loop; if(!L) return;
+  const stMap={running:'var(--run)',done:'var(--ok)',halted:'var(--fail)',idle:'var(--faint)'};
+  const st=L.status||'idle';
+  const e1=document.getElementById('lp1'); if(e1){ e1.textContent=st; e1.style.color=stMap[st]||''; }
+  const e1b=document.getElementById('lp1b'); if(e1b) e1b.textContent=L.started?('started '+L.started):'no run yet';
+  const ps=L.prompts||[]; const cur=ps.filter(p=>!p.done&&!p.halt).slice(-1)[0]||ps.slice(-1)[0];
+  const e2=document.getElementById('lp2'); if(e2) e2.textContent=cur?('prompt '+(cur.n||'?')):'—';
+  const e2b=document.getElementById('lp2b'); if(e2b) e2b.textContent=cur?(cur.halt?'HALTED':(cur.done?'done':'running')):'';
+  const done=ps.filter(p=>p.done).length;
+  const e3=document.getElementById('lp3'); if(e3) e3.textContent=done+'/'+(ps.length||0);
+  const tl=document.getElementById('looptl');
+  if(tl){ const ev=L.events||[];
+    tl.innerHTML=ev.length? ev.map(x=>{
+      const c=x.kind==='ok'?'var(--ok)':(x.kind==='halt'?'var(--fail)':(x.kind==='done'?'var(--ok)':(x.kind==='prompt'?'var(--sky)':'var(--dim)')));
+      return '<div class="ghrow"><span class="gt">'+esc(x.ts||'')+'</span><span style="color:'+c+'">'+esc(x.text||'')+'</span></div>';
+    }).join('') : '<div class="empty">no loop activity yet — start with bash tools/loop.sh</div>';
+  }
+  const tail=document.getElementById('looptail'); if(tail) tail.textContent=(L.tail||[]).join('\n')||'—';
+  const cp=document.getElementById('loopcp'); if(cp) cp.textContent=L.checkpoint||'(no checkpoint written yet)';
+}
 function renderBoard(s){
   const el=document.getElementById('boardcols'); if(!el) return;
   const u=s.usage||{}, todos=u.todos||[], dels=u.delegations||[], phs=s.phases||{};
@@ -2212,6 +2303,7 @@ async function tick(){
     || (s.active.length? s.active.map(a=>'<div class="kitem doing dlgc" onclick="inspect(\'agent\',\''+esc(a.ts)+'\',\''+esc(a.agent)+'\')"><span class="dot"></span><b>'+esc(a.agent)+'</b>'+(a.desc?' — '+esc(a.desc):'')+'<span class="meta">'+elapsed(a.ts)+'</span></div>').join('')
     : '<div class="empty">no tracked task in progress — appears from the session’s task list (TaskCreate/TodoWrite)</div>');
   renderBoard(s);
+  renderLoop(s);
   const freshTop = s.feed && s.feed[0] && s.feed[0].ts!==lastFeedTs && lastFeedTs!==null;
   document.getElementById('minifeed').innerHTML = (s.feed||[]).slice(0,5).map((e,i)=>feedRow(e, freshTop&&i===0)).join('')
     || '<div class="empty">dispatches, returns and phase emits stream here</div>';
