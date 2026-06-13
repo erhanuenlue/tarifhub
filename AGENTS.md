@@ -27,7 +27,7 @@ Scoring is **conjunctive**: a criterion's level is awarded only if **all** of it
 services/ingestion/      L0: adapters → parsers → map_raw → ai_map → validate → score → review → freeze
 services/serving/        L1 TarifCore: REST + FHIR R4, point-in-time + diff, pgvector search (read-only)
 services/mcp/            L1 TarifMCP: search_tariffs, get_tariff, explain_crosswalk (read-only proxies)
-apps/tarifguard-demo/    L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel
+apps/tarifguard/         L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel
 db/                      schema.sql + migrations (Postgres 16 + pgvector; SQLite mirror for offline tests)
 deploy/                  docker-compose.yml + helm/ (k3d for the CAS K8s proof)
 docs/                    arc42/ (12 chapters, MkDocs Material → the deliverable site) + adr/
@@ -45,7 +45,7 @@ uv sync                                  # per service; uv is the package manage
 uv run pytest -q                         # offline by default: SQLite mirror + stub embedder, no containers
 uv run ruff check --fix . && uv run ruff format .
 docker compose up -d db                  # Postgres+pgvector when a test/dev task needs the real engine
-cd apps/tarifguard-demo && npm run dev   # demo on :3000; npm test = Playwright smoke
+cd apps/tarifguard && npm run dev        # console on :3000; npm test = Vitest + Playwright smoke
 mkdocs serve -f docs/mkdocs.yml          # the arc42 site
 python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (--demo seeds, --reset clears)
 ```

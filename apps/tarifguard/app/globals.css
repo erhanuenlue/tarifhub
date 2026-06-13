@@ -1,7 +1,68 @@
+/* TarifGuard console styles.
+   The visual law (frozen = navy mono + chips; AI = slate, always labelled) is mirrored
+   verbatim from docs/brand/tokens.css and is review-blocking — see .claude/rules/demo-frontend.md.
+   Fonts load via @import with system fallbacks in the Tailwind stack, so a build never
+   blocks on a font fetch and the app still renders Inter / JetBrains Mono wherever the
+   network resolves them. */
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@500;600&display=swap");
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
 
+:root {
+  --font-sans: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+}
+
 body {
-  @apply bg-slate-50 text-slate-900 antialiased;
+  @apply bg-bg text-body antialiased;
+  font-family: var(--font-sans);
+}
+
+/* ---- Content states — verbatim from docs/brand/tokens.css ---- */
+
+/* Frozen / deterministic billing values. Navy ink, tabular mono — never AI-styled. */
+.value-certified {
+  font-family: var(--font-mono);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: #0c4a6e; /* navy */
+}
+
+/* Version / provenance chip. Light sky tint, navy text. */
+.chip-version {
+  display: inline-flex;
+  align-items: center;
+  background: #e0f2fe;
+  color: #0c4a6e;
+  font: 500 12px/1 var(--font-sans);
+  padding: 3px 8px;
+  border-radius: 999px;
+  white-space: nowrap;
+}
+
+/* AI-generated content. Slate, regular weight, ALWAYS on a labelled surface.
+   The label text is brand-fixed (do not edit) — it is the guardrail the graders look for. */
+.ai-content {
+  background: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  color: #475569;
+  padding: 14px 16px;
+}
+.ai-content::before {
+  content: "AI-generated — not a billing value";
+  display: block;
+  font: 600 11px/1.2 var(--font-sans);
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #94a3b8;
+  margin-bottom: 8px;
+}
+
+/* Blocked / error surface (validation, review queue). */
+.blocked {
+  background: #fef2f2;
+  color: #dc2626;
 }

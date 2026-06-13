@@ -5,9 +5,9 @@ import { NavBar } from "@/components/NavBar";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "TarifGuard",
+  title: "TarifGuard Console",
   description:
-    "Practice-facing front end over the deterministic TarifHub serving API: tariff search, coding checks, and de-identified explanations.",
+    "Master-detail over the deterministic TarifHub serving API: tariff search, frozen-record detail, a human review form, and a labelled AI explain panel.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -15,7 +15,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
     <html lang="en">
       <body>
         <NavBar />
-        <main className="mx-auto max-w-4xl px-4 py-8">{children}</main>
+        <main className="mx-auto max-w-5xl px-4 py-8">{children}</main>
       </body>
     </html>
   );
