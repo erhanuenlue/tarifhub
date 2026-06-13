@@ -24,6 +24,13 @@ may use AI; everything right of it is the deterministic value path and ships no 
 | `db` | data | `pgvector/pgvector:pg16` | 5432 | system of record |
 | `minio` | object store | `minio/minio` | 9000/9001 | raw source artifacts (ADR-007) |
 
+The **graded MVP value path is L0 ingestion → L1 serving/MCP → L3 console**, over the
+database. The L2 `intelligence` service and the L3 `kassenflow`/`meldepilot` apps are
+post-CAS-scope scaffolds ([§5](05-building-block-view.md)); they are packaged like every
+other sub-system so the chart and Compose can bring up the full topology, but they sit
+outside the MVP value path (`kassenflow`/`meldepilot` ship `enabled: false` in the chart).
+All read-side sub-systems, in or out of the MVP path, stay post-freeze and ship no LLM client.
+
 ## Style choice: distributed services along the freeze line
 
 The CAS rubric treats a **modular monolith** as *gleichwertig* (equally valid) to

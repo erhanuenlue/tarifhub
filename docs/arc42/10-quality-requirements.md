@@ -44,8 +44,10 @@ designation and an inverted validity window (`test_validator.py`); the mapper's 
 fail closed to `None` on unparseable money, a `bool`, or a non-ISO date rather than guess
 (`test_mapper_coercion.py`); the freeze hash refuses a double-freeze and `verify` returns
 `False` for an unfrozen record (`test_freeze_record.py`); the DB facades reject an
-unsupported URL scheme (`test_storage_db.py`, `test_serving_db.py`); and offline search
-refuses on SQLite rather than fake a pgvector ranking (`test_repository.py`). What this
+unsupported URL scheme (`test_storage_db.py`, `test_serving_db.py`); and the pgvector
+search method refuses to run on SQLite rather than fake a ranking, so the `/search`
+endpoint falls back to the deterministic in-process cosine instead (`test_repository.py`,
+with the offline ranking and the Postgres dimension-guard 501 pinned in `test_api.py`). What this
 output **excludes** by design: it is the offline suite, so it does not exercise live
 Claude output (tested separately, see *Tests der KI-Anteile* in [§13](13-test-strategy.md))
 or the real Postgres engine (the `python-parity` job).
