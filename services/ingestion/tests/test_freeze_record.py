@@ -8,7 +8,12 @@ from decimal import Decimal
 import pytest
 
 from tarifhub_ingest.models.tariff_model import Designation, TariffRecord, TariffSystem
-from tarifhub_ingest.versioning.freeze_record import compute_record_hash, freeze, verify
+from tarifhub_ingest.versioning.freeze_record import (
+    _canonical,  # noqa: PLC2701 — exercising the canonicaliser's edge branches directly
+    compute_record_hash,
+    freeze,
+    verify,
+)
 
 # Pinned digest of GOLDEN_RECORD. If this changes, the hashing rule changed — which
 # is a breaking change to the integrity contract and must be deliberate.
@@ -68,3 +73,34 @@ def test_double_freeze_is_rejected():
     frozen = freeze(golden_record())
     with pytest.raises(ValueError):
         freeze(frozen)
+
+
+def test_verify_returns_false_for_an_unfrozen_record():
+    """A record with no stored hash never verifies (the verify-before-trust gate)."""
+
+    assert verify(golden_record()) is False
+
+
+def test_canonical_normalises_enum_to_its_value():
+    """A (non-str) Enum canonicalises to its ``.value`` — the stable form the hash sees.
+
+    A plain ``Enum`` is used deliberately: ``TariffSystem`` is a ``str`` subclass and so
+    is normalised by the string branch, leaving the dedicated Enum branch this asserts.
+    """
+
+    import enum
+
+    class _Color(enum.Enum):
+        RED = "red"
+
+    assert _canonical(_Color.RED) == "red"
+
+
+def test_canonical_falls_back_to_str_for_exotic_types():
+    """An unhandled type is stringified rather than crashing the integrity hash."""
+
+    class _Weird:
+        def __str__(self) -> str:
+            return "weird-value"
+
+    assert _canonical(_Weird()) == "weird-value"

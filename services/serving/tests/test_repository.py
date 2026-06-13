@@ -2,10 +2,20 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import date, datetime, timezone
 from decimal import Decimal
 
-from tarifhub_serving.repository import _parse_metadata, _row_to_record  # noqa: PLC2701
+import pytest
+
+from tarifhub_serving.db import Database
+from tarifhub_serving.repository import (  # noqa: PLC2701
+    ServingRepository,
+    _cosine_similarity,
+    _parse_embedding,
+    _parse_metadata,
+    _row_to_record,
+    _text_to_date,
+)
 
 
 def _base_row(metadata):
@@ -60,3 +70,36 @@ def test_parse_metadata_variants():
     assert _parse_metadata("") == {}
     assert _parse_metadata('{"a": 1}') == {"a": 1}
     assert _parse_metadata({"a": 1}) == {"a": 1}
+
+
+def test_parse_embedding_none_and_empty_are_none():
+    assert _parse_embedding(None) is None
+    assert _parse_embedding("") is None
+
+
+def test_parse_embedding_decodes_both_storage_forms():
+    """Postgres returns a native sequence; SQLite a JSON string — both decode to floats."""
+
+    assert _parse_embedding([1, 2, 3]) == [1.0, 2.0, 3.0]
+    assert _parse_embedding("[0.5, 0.25]") == [0.5, 0.25]
+
+
+def test_cosine_similarity_zero_vector_is_zero():
+    """A zero-norm vector yields 0.0, never a divide-by-zero."""
+
+    assert _cosine_similarity([0.0, 0.0], [1.0, 1.0]) == 0.0
+
+
+def test_text_to_date_passes_through_date_and_handles_none():
+    assert _text_to_date(date(2026, 1, 2)) == date(2026, 1, 2)
+    assert _text_to_date(None) is None
+    assert _text_to_date("2026-01-02T00:00:00") == date(2026, 1, 2)
+
+
+def test_search_by_embedding_refuses_without_postgres():
+    """On SQLite there is no pgvector; the repository raises rather than fake a ranking."""
+
+    db = Database.from_url("sqlite:///:memory:")
+    repo = ServingRepository(db.connect(), db)
+    with pytest.raises(RuntimeError, match="requires Postgres"):
+        repo.search_by_embedding([0.1, 0.2, 0.3, 0.4], limit=5)
