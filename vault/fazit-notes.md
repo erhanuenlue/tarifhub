@@ -21,3 +21,7 @@
 ## 2026-06-13
 - I rejected parallel implementation worktrees for the console and kept the tightly-coupled contract and brand implementation in-orchestrator.
 - I corrected my own crit-17 overclaim: L2 intelligence is containerised and runs, but the rules feature stays post-CAS and outside the graded MVP value path.
+
+## 2026-06-13
+- I did not delegate the freeze line, value-path safety or final acceptance to AI; the billing guard correction in 0524f9a shows why server-side gates stayed human-owned.
+- The biggest correction was evidence honesty: I accepted review findings where the draft overclaimed deployment scope or SQLite search behaviour, then reconciled the docs in 080c9e0 instead of defending the first draft.
