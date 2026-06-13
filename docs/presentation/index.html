@@ -1,0 +1,408 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TarifHub: engineered with an auto-loop (5-minute talk)</title>
+  <link rel="icon" href="data:,">
+
+  <!-- Reveal.js core, vendored locally (pinned 5.1.0) so the deck renders fully offline:
+       no live service at read time, the same principle the docs and diagrams follow. -->
+  <link rel="stylesheet" href="reveal/reveal.css">
+  <!-- Brand fonts vendored locally (Inter + JetBrains Mono, SIL OFL 1.1, latin subset,
+       variable weight) so the deck renders fully offline: no CDN at read time. See fonts/LICENSE.txt -->
+
+  <style>
+    @font-face {
+      font-family: "Inter";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("fonts/inter-latin.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "JetBrains Mono";
+      font-style: normal;
+      font-weight: 100 800;
+      font-display: swap;
+      src: url("fonts/jetbrainsmono-latin.woff2") format("woff2");
+    }
+
+    /* ---- TarifHub brand tokens (mirrors docs/brand/tokens.css) ---- */
+    :root {
+      --sky:   #0EA5E9;   /* single accent */
+      --navy:  #0C4A6E;   /* ink / headlines / frozen values */
+      --blue:  #2563EB;
+      --body:  #475569;   /* slate body text */
+      --muted: #94A3B8;
+      --line:  #E2E8F0;
+      --bg:    #FFFFFF;
+      --font-sans: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    /* ---- minimalist layout ---- */
+    .reveal { font-family: var(--font-sans); color: var(--body); font-weight: 400; }
+    .reveal-viewport { background: var(--bg); }
+
+    .reveal .slides { text-align: left; }
+    .reveal section { line-height: 1.4; }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: var(--font-sans);
+      color: var(--navy);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin: 0 0 0.4em 0;
+      text-transform: none;
+    }
+    .reveal h1 { font-size: 2.5rem; }
+    .reveal h2 { font-size: 2.0rem; }
+    .reveal h3 { font-size: 1.3rem; }
+
+    /* eyebrow / kicker label above the headline */
+    .kicker {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--navy);   /* eyebrow is running text, not a logotype: keep WCAG-AA ink, sky stays a non-text accent */
+      margin: 0 0 0.5em 0;
+    }
+    /* short accent rule */
+    .rule { width: 64px; height: 4px; background: var(--sky); border: 0; margin: 0.1em 0 0.7em 0; border-radius: 2px; }
+
+    .reveal ul { list-style: none; margin: 0.3em 0 0 0; padding: 0; }
+    .reveal ul li {
+      position: relative;
+      padding-left: 1.15em;
+      margin: 0 0 0.5em 0;
+      font-size: 1.25rem;
+      color: var(--body);
+    }
+    .reveal ul li::before {
+      content: "";
+      position: absolute; left: 0; top: 0.62em;
+      width: 0.42em; height: 0.42em; border-radius: 50%;
+      background: var(--sky);
+    }
+    .reveal strong { color: var(--navy); font-weight: 600; }
+    .reveal .mono, .reveal code { font-family: var(--font-mono); font-size: 0.92em; color: var(--navy); }
+
+    /* two-column: text left, figure right */
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; align-items: center; }
+    .cols.wide-fig { grid-template-columns: 0.85fr 1.15fr; }
+    .figure { text-align: center; }
+    .figure img {
+      max-height: 560px; max-width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: #fff;
+    }
+    .figure.shot img { border-radius: 10px; box-shadow: 0 1px 0 var(--line); }
+    .caption { font-size: 0.8rem; color: var(--body); margin-top: 0.5em; }
+
+    /* title slide */
+    .title-wrap { text-align: left; }
+    .wordmark { font-size: 4.2rem; font-weight: 300; color: var(--navy); letter-spacing: -0.03em; line-height: 1; }
+    .wordmark b { font-weight: 700; color: var(--sky); }
+    .tagline { font-size: 1.6rem; color: var(--body); margin: 0.5em 0 0 0; font-weight: 400; }
+    .byline { font-size: 1.0rem; color: var(--body); margin-top: 1.6em; font-family: var(--font-mono); }
+
+    /* a textual "visual" for the problem slide */
+    .converge {
+      display: flex; align-items: center; gap: 0.6em;
+      font-family: var(--font-mono); font-size: 1.15rem; color: var(--navy);
+      margin-top: 0.6em; flex-wrap: wrap;
+    }
+    .converge .arrow { color: var(--sky); font-weight: 600; }
+    .converge .out { color: var(--navy); font-weight: 600; border-bottom: 3px solid var(--sky); }
+
+    .lead { font-size: 1.5rem; color: var(--body); }
+    .big-quote { font-size: 1.9rem; color: var(--navy); font-weight: 600; line-height: 1.25; }
+
+    /* footer brand chip + progress accent */
+    .reveal .progress { color: var(--sky); height: 4px; }
+    .reveal .slide-number { background: transparent; color: var(--body); font-family: var(--font-mono); }
+    .footer { position: fixed; bottom: 14px; left: 24px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--body); z-index: 30; }
+    .footer b { color: var(--navy); font-weight: 600; }
+    .footer i { color: var(--sky); font-style: normal; }
+  </style>
+</head>
+
+<body>
+  <div class="footer"><b>tarif</b><i>hub</i> &nbsp;·&nbsp; FFHS CAS AI-Assisted SE</div>
+
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- 1 · TITLE -->
+      <section data-transition="fade">
+        <div class="title-wrap">
+          <div class="wordmark">tarif<b>hub</b></div>
+          <p class="tagline">Swiss ambulatory tariff data, made trustworthy.</p>
+          <hr class="rule" style="margin-top:1em;">
+          <p class="byline">Erhan Ünlü &nbsp;·&nbsp; FFHS CAS AI-Assisted Software Engineering &nbsp;·&nbsp; 13 June 2026</p>
+        </div>
+        <aside class="notes">
+          [~15s] Good morning. This is TarifHub: it takes messy Swiss outpatient tariff data and
+          turns it into something you can actually trust. I am Erhan. In five minutes I want to
+          show you the idea, and more importantly, how it was engineered with an auto-loop.
+        </aside>
+      </section>
+
+      <!-- 2 · THE PROBLEM -->
+      <section data-transition="fade">
+        <p class="kicker">The problem</p>
+        <h2>Tariff data you cannot trust is worthless.</h2>
+        <hr class="rule">
+        <ul>
+          <li>Many sources, four languages, constant new versions</li>
+          <li>A billing value must be exact, traceable, reproducible</li>
+          <li><strong>Trust, meaning determinism, is the product</strong></li>
+        </ul>
+        <div class="converge">
+          <span>3 sources</span><span class="arrow">·</span><span>4 languages</span>
+          <span class="arrow">·</span><span>N versions</span>
+          <span class="arrow">&rarr;</span><span class="out">1 certified value</span>
+        </div>
+        <aside class="notes">
+          [~30s] Tariffs arrive from several authorities, in German, French and Italian, and they
+          change constantly. A billing value has to be exact and reproducible: the same input must
+          always give the same output, and you must be able to prove it later. So trust is not a
+          feature here, it is the whole product. One cautionary moment: an AI scaffold once used the
+          wrong field contract and rendered every value as a dash. Reading both sides of the wire
+          caught it, not a test. Determinism is the point.
+        </aside>
+      </section>
+
+      <!-- 3 · THE IDEA -->
+      <section data-transition="fade">
+        <p class="kicker">The idea</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>Four layers.<br>One freeze line.</h2>
+            <hr class="rule">
+            <ul>
+              <li>L0 harmonise: AI-assisted, pre-freeze</li>
+              <li><strong>Freeze line</strong>: records become immutable, hashed</li>
+              <li>L1 to L3 serving: fully deterministic</li>
+            </ul>
+          </div>
+          <div class="figure">
+            <img src="../img/diagrams/four-layer-architecture.png" alt="The four-layer architecture and the freeze line">
+          </div>
+        </div>
+        <aside class="notes">
+          [~35s] The architecture is four layers split by one line, the freeze line. Below it, layer
+          zero harmonises raw data, and that is the only place AI is allowed to run, before freezing,
+          on non-billing fields. At the line, every record is frozen: a SHA-256 hash over its
+          canonical content, updates are new versions, the audit log is append-only. Above the line,
+          serving is deterministic, read-only. The one rule that defines the whole system: no AI ever
+          computes or mutates a billing value at serve time. The freeze line is the trust guarantee.
+        </aside>
+      </section>
+
+      <!-- 4 · HOW I STARTED -->
+      <section data-transition="fade">
+        <p class="kicker">How I started</p>
+        <h2>An empty repo and a definition of done.</h2>
+        <hr class="rule">
+        <ul>
+          <li>Not a backlog: a falsifiable <strong>"done"</strong></li>
+          <li>Outcome prompts, not step-by-step scripts</li>
+          <li>One human gate: I approve the plan</li>
+        </ul>
+        <aside class="notes">
+          [~25s] I did not start with a task list. I started with two checked-in control files, the
+          project facts and the workflow, plus outcome prompts. Each prompt states the goal, the
+          constraints, and the verification that proves done, and deliberately leaves out the steps.
+          Modern models do better with a falsifiable target than with a script written for an older
+          model. The only thing I always keep for myself is approving the plan.
+        </aside>
+      </section>
+
+      <!-- 5 · HOW IT WAS DEVELOPED -->
+      <section data-transition="fade">
+        <p class="kicker">How it was built</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>/ship: a multi-model assembly line.</h2>
+            <hr class="rule">
+            <ul>
+              <li>Orchestrator plans, workers build test-first</li>
+              <li>An <strong>independent model</strong> reviews every PR</li>
+              <li>Nine phases, one human gate: the plan</li>
+            </ul>
+          </div>
+          <div class="figure">
+            <img src="../img/diagrams/ship-pipeline.png" alt="The nine-phase /ship pipeline">
+          </div>
+        </div>
+        <aside class="notes">
+          [~35s] The build runs through a pipeline called ship, nine phases from plan approval to
+          merge. The work is split by where quality compounds. An orchestrator, Claude Opus 4.8,
+          plans and judges; worker agents implement test-first and collect runtime evidence. Then a
+          second, independent model family, OpenAI gpt-5.5, reviews every single pull request,
+          because a Claude-reviewed Claude diff shares blind spots. Twenty pull requests were merged
+          this way, each one reviewed by that second family.
+        </aside>
+      </section>
+
+      <!-- 6 · AUTO-LOOP (headline) -->
+      <section data-transition="fade">
+        <p class="kicker">The headline</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>The machine writes its own next step.</h2>
+            <hr class="rule">
+            <ul>
+              <li>Fixed loop: replays a known list</li>
+              <li><strong>Self-prompting loop</strong>: optimises a moving target</li>
+              <li>Runs unattended; checkpoints its state</li>
+            </ul>
+          </div>
+          <div class="figure">
+            <img src="../img/diagrams/loop-engineering.png" alt="The autonomous self-prompting loop">
+          </div>
+        </div>
+        <aside class="notes">
+          [~40s] This is the headline of the project. There are two loops. The fixed loop runs a
+          known list of prompts back to back, like replaying a recording. The self-prompting loop
+          goes further: each iteration reads the current state, writes the next task as a prompt by
+          itself, runs it through ship, checks a contract, and repeats until a measurable goal is
+          reached. The difference matters: the fixed list replays, the self-prompting loop optimises
+          whatever is most valuable now. It only works because done is machine-checkable. Without
+          that gradient, self-prompting just drifts.
+        </aside>
+      </section>
+
+      <!-- 7 · THE GATES (intellectual core) -->
+      <section data-transition="fade">
+        <p class="kicker">The intellectual core</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>Autonomy is safe because the boundary is enforced.</h2>
+            <hr class="rule">
+            <ul>
+              <li>Fitness ratchet: ~60 checks, never regress</li>
+              <li>Freeze-line guard plus a boundary test</li>
+              <li>Green-contract: merge only on full green</li>
+            </ul>
+          </div>
+          <div class="figure">
+            <img src="../img/diagrams/quality-gates.png" alt="The autonomous quality gates">
+          </div>
+        </div>
+        <aside class="notes">
+          [~45s] This is the intellectual core. Four gates let the loop run hard and still stay safe.
+          One: a deterministic fitness function expresses done as about sixty machine-checkable
+          elements, with a committed baseline that only ratchets up, today at 63 of 63. Once an
+          element passes it must keep passing, or CI fails. Two: the freeze line is guarded by a
+          pre-tool hook that blocks any edit below it, plus a test that asserts no model client is
+          even importable on the value path. Three: the green-contract governs autonomous merge, CI
+          green, findings dispositioned, no unauthorised frozen-path change, clean tree, anything
+          less stops for me. Four: a secret gate on every iteration. The agent can run hard
+          everywhere else precisely because this line cannot be crossed silently.
+        </aside>
+      </section>
+
+      <!-- 8 · QUALITY & CI/CD -->
+      <section data-transition="fade">
+        <p class="kicker">Quality and CI/CD</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>Every change passes the gates a reviewer would.</h2>
+            <hr class="rule">
+            <ul>
+              <li>A second model family reviews every PR</li>
+              <li>Full CI: lint, tests, boundary, secrets, SBOM</li>
+              <li>Docs and diagrams generated by the loop</li>
+            </ul>
+          </div>
+          <div class="figure">
+            <img src="../img/diagrams/cicd-pipeline.png" alt="The CI/CD pipeline">
+          </div>
+        </div>
+        <aside class="notes">
+          [~25s] CI runs the same gates a reviewer would, on every push: lint, the full test suite,
+          the determinism boundary tests, secrets and SBOM scans. The numbers are concrete: the e5
+          query-prefix fix lifted cross-lingual recall at five from 0.833 to 0.917. Every diagram
+          here was generated by the pipeline and committed as a static file.
+        </aside>
+      </section>
+
+      <!-- 9 · THE DASHBOARD -->
+      <section data-transition="fade">
+        <p class="kicker">Observable end to end</p>
+        <h3>The whole system is inspectable while it runs.</h3>
+        <div class="figure shot" style="margin-top:0.3em;">
+          <img src="../img/shipboard-overview.png" alt="Shipboard: the live /ship pipeline dashboard" style="max-height:500px;">
+          <p class="caption">Shipboard: the live /ship pipeline, per-agent cost, and the CAS grading floor. Captured while this deck was being built.</p>
+        </div>
+        <aside class="notes">
+          [~20s] One dependency-free dashboard makes the system legible: it reads real pipeline
+          events, git state, and the fitness function. Its rule is that it never asserts a state it
+          cannot show evidence for; it says unknown rather than invent progress. That is what lets me
+          trust it while the loop runs unattended.
+        </aside>
+      </section>
+
+      <!-- 10 · WHAT I LEARNED / TRANSFER -->
+      <section data-transition="fade">
+        <p class="kicker">What I learned</p>
+        <p class="big-quote">An enforced, tested definition of done is what makes AI autonomy trustworthy.</p>
+        <hr class="rule">
+        <ul>
+          <li>Give the system a gradient it can measure</li>
+          <li>And boundaries it cannot cross</li>
+          <li>The method is now a reusable framework</li>
+        </ul>
+        <aside class="notes">
+          [~20s] The most useful outcome is not this project, it is the method, packaged as a
+          reusable framework: a bootstrap prompt that scaffolds a new project with its gates,
+          dashboard, and loop. The lesson generalises: give the system a gradient it can measure and
+          boundaries it cannot cross, and it carries the work.
+        </aside>
+      </section>
+
+      <!-- 11 · CLOSE -->
+      <section data-transition="fade">
+        <div class="title-wrap">
+          <div class="wordmark" style="font-size:3.0rem;">Thank you.</div>
+          <hr class="rule" style="margin-top:0.8em;">
+          <ul style="margin-top:0.6em;">
+            <li>Code: <span class="mono">github.com/erhanuenlue/tarifhub</span></li>
+            <li>Docs: the arc42 and AI-method site (MkDocs)</li>
+            <li><strong>Built above a freeze line you can trust.</strong></li>
+          </ul>
+        </div>
+        <aside class="notes">
+          [~10s] Thank you. The code is public, the docs are the deliverable, and one rule defines it
+          all: no AI mutates a billing value at serve time. Questions welcome.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Reveal.js runtime + speaker-notes plugin, vendored locally (offline-safe) -->
+  <script src="reveal/reveal.js"></script>
+  <script src="reveal/plugin/notes/notes.js"></script>
+  <script>
+    Reveal.initialize({
+      hash: true,
+      transition: 'fade',
+      transitionSpeed: 'fast',
+      controls: true,
+      progress: true,
+      slideNumber: 'c/t',
+      width: 1280,
+      height: 720,
+      margin: 0.07,
+      plugins: [ RevealNotes ]
+    });
+  </script>
+</body>
+</html>

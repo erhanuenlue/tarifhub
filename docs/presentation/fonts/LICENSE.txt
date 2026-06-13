@@ -1,0 +1,22 @@
+Vendored brand fonts for the TarifHub presentation deck
+========================================================
+
+Two font files are bundled here so the deck renders fully offline (no CDN at
+read time), consistent with the project rule that nothing depends on a live
+service at read time:
+
+  inter-latin.woff2          Inter (variable, latin subset)
+                             Copyright (c) The Inter Project Authors
+                             https://github.com/rsms/inter
+
+  jetbrainsmono-latin.woff2  JetBrains Mono (variable, latin subset)
+                             Copyright (c) JetBrains s.r.o.
+                             https://github.com/JetBrains/JetBrainsMono
+
+Both families are licensed under the SIL Open Font License, Version 1.1.
+Full license text: https://openfontlicense.org (OFL 1.1).
+
+Under the OFL these fonts may be bundled, embedded and redistributed freely,
+including in this repository and the resulting submission PDF. The files were
+obtained from Google Fonts (fonts.gstatic.com), latin subset, variable weight.
+They are not sold, and the reserved font names are not modified.
