@@ -72,6 +72,8 @@ for i in "${!PROMPTS[@]}"; do
     [ -z "$f" ] && { say "HALT: no prompt file for '$n'"; exit 1; }
     before=$(floor_passed)
     say "── prompt $n: $f (floor $before)"
+    : > .shipboard/events.jsonl 2>/dev/null || true   # fresh pipeline rail per prompt
+                                                       # (emits are also session-gated in the board)
     if [ -n "${LOOP_CMD:-}" ]; then
         $CLAUDE_CMD || { say "HALT: prompt $n command failed (exit $?)"; exit 1; }
     else

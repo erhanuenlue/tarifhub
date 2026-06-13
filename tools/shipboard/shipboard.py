@@ -573,7 +573,7 @@ def parse_transcript():
                     "started": sess.get("started", ""),
                     "last_activity": sess.get("last_activity", ""),
                     "compactions": sess.get("compactions", 0)},
-        "t0": t["t0"], "idle_sec": idle, "sess_secs": sess_secs,
+        "t0": t["t0"], "t0iso": t["t0iso"], "idle_sec": idle, "sess_secs": sess_secs,
         "healed": bool(t.get("healed") and t.get("mainfile")),
         "ctx": t["ctx"], "ctx_limit": CONTEXT_LIMIT,
         "ctx_pct": round(100.0 * t["ctx"] / CONTEXT_LIMIT, 1) if t["ctx"] else 0.0,
@@ -881,11 +881,19 @@ def _phid(v):
 def compute_phases(ev, u, p, ghd):
     phases = {x[0]: {"status": "pending", "detail": "", "ts": "", "src": ""} for x in PHASES}
     explicit = set()
+    # Only trust phase emits from the CURRENT session. events.jsonl is not reset between
+    # /ship runs, so emits from a prior run (e.g. yesterday's PR) must not paint this run's
+    # rail; for the live run we fall back to sensing + gh below. Gate by the session start
+    # (t0iso, UTC ISO); if unknown, accept all (backward-safe).
+    t0iso = (u.get("t0iso") or "")
     for e in ev:
         ph = _phid(e.get("phase"))
         if e.get("kind") == "phase" and ph in phases:
+            ets = e.get("ts", "") or ""
+            if t0iso and ets and ets < t0iso:
+                continue                      # stale emit from a previous run
             phases[ph] = {"status": e.get("status", "?"), "detail": e.get("detail", ""),
-                          "ts": (e.get("ts", "") or "")[11:19] or e.get("ts", ""), "src": "emit"}
+                          "ts": ets[11:19] or ets, "src": "emit"}
             explicit.add(ph)
     for ph, st in (u.get("sensed") or {}).items():
         if ph in phases and ph not in explicit:
@@ -1051,6 +1059,58 @@ def state():
         elif a.get("status") == "done":
             active.pop(a.get("agent"), None)
     u = parse_transcript()
+    # Hook-sourced delegations: surface subagents from the Task/Agent hooks even when
+    # sidechain attribution fails or the transcript path yields none (e.g. pre-/ship
+    # build work, background agents). Transcript rows are richer (cost/tokens), so they
+    # win on dedup; hook rows fill the gap so the Agents table + timeline never hide a
+    # subagent the hooks already saw. Cost/token columns stay "—" until attribution lands.
+    _existing = {(d.get("agent", ""), (d.get("ts", "") or "")[:5]) for d in u["delegations"]}
+    HOOK_LIVE_CUTOFF = 600     # an "active" with no "done" older than this = finished, not live
+                               # (background agents rarely fire the done hook)
+    HOOK_MAX_AGE = 7200        # ignore hook events older than 2h: events.jsonl is not reset
+                               # between /ship runs, so this drops prior-run/prior-day noise
+
+    def _ev_age(ts):           # seconds since this UTC-ISO event; None if unparseable
+        try:
+            t = ts.replace("Z", "").split(".")[0]
+            dt = datetime.datetime.fromisoformat(t).replace(tzinfo=datetime.timezone.utc)
+            return (datetime.datetime.now(datetime.timezone.utc) - dt).total_seconds()
+        except Exception:
+            return None
+
+    _open, _hook_rows = {}, []          # _open: agent -> FIFO queue of open rows
+    for a in agents:                                  # chronological agent hook events
+        ag = a.get("agent") or "subagent"
+        ts = a.get("ts", "") or ""
+        age = _ev_age(ts)
+        if age is not None and age > HOOK_MAX_AGE:    # prior run / prior day → skip
+            continue
+        hms = ts[11:19] if len(ts) >= 19 else ts
+        st = a.get("status")
+        if st == "active":
+            row = {"agent": ag, "desc": a.get("detail", "") or "", "ts": hms,
+                   "done": False, "done_ts": "", "live": True, "age": age,
+                   "model": a.get("model") or PINS.get(ag, ""),
+                   "dur_s": None, "cost": None, "tin": None, "tout": None,
+                   "has_report": False, "src": "hook"}
+            _open.setdefault(ag, []).append(row)
+            _hook_rows.append(row)
+        elif st == "done":
+            q = _open.get(ag) or []
+            row = q.pop(0) if q else None             # FIFO: oldest open of this agent
+            if row is not None:
+                row["done"], row["live"], row["done_ts"] = True, False, hms
+                row["dur_s"] = _dursec(row["ts"], hms)
+    # Expire dangling "active" rows: no done + older than the live cutoff = finished,
+    # duration unknown. Only genuinely recent dispatches stay live.
+    for row in _hook_rows:
+        if row["live"] and (row.get("age") is None or row["age"] > HOOK_LIVE_CUTOFF):
+            row["live"], row["done"] = False, True
+    for r in _hook_rows:
+        r.pop("age", None)
+    _add = [r for r in _hook_rows if (r["agent"], r["ts"][:5]) not in _existing]
+    if _add:
+        u["delegations"] = _add[::-1] + u["delegations"]   # newest-first, matches table order
     p = project()
     ghd = gh_info()
     phases, _ = compute_phases(ev, u, p, ghd)

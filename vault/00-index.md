@@ -1,6 +1,6 @@
 # tarifhub — knowledge index (auto-generated)
 
-> Rebuilt by the `brain_sync` hook at every session end (2026-06-13 10:27). Do not edit by hand — edit the sources.
+> Rebuilt by the `brain_sync` hook at every session end (2026-06-13 11:52). Do not edit by hand — edit the sources.
 
 ## Decisions (ADRs)
 
@@ -40,4 +40,4 @@
 ## Architecture (source of truth)
 
 - arc42: [[01-introduction-goals|§1]] · [[02-constraints|§2]] · [[03-context-scope|§3]] · [[04-solution-strategy|§4]] · [[05-building-block-view|§5]] · [[06-runtime-view|§6]] · [[07-deployment-view|§7]] · [[08-crosscutting-concepts|§8]] · [[09-architecture-decisions|§9]] · [[10-quality-requirements|§10]] · [[11-risks-technical-debt|§11]] · [[12-glossary|§12]] · [[13-test-strategy|§13]]  — site: `mkdocs serve -f docs/mkdocs.yml`
-- Last docs change: 2026-06-12 · chore: shipboard v9, progress blocks, loop runner, gate pre-approvals
+- Last docs change: 2026-06-13 · feat(console): Block-05 TarifGuard console (master-detail, review form, explain panel) (#16)
