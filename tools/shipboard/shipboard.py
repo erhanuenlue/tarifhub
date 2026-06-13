@@ -1860,11 +1860,11 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
   <div class="mid">
     <div class="panel">
       <div class="k">Recent log (.shipboard/loop.log)</div>
-      <pre class="jl" id="looptail" style="max-height:340px;overflow:auto">—</pre>
+      <pre class="jl" id="looptail" style="max-height:340px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere">—</pre>
     </div>
     <div class="panel">
       <div class="k">Checkpoint (.shipboard/loop-checkpoint.md)</div>
-      <pre class="jl" id="loopcp" style="max-height:340px;overflow:auto">—</pre>
+      <pre class="jl" id="loopcp" style="max-height:340px;overflow:auto;white-space:pre-wrap;overflow-wrap:anywhere">—</pre>
     </div>
   </div>
 </div>

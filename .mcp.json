@@ -2,11 +2,20 @@
   "mcpServers": {
     "context7": {
       "command": "npx",
-      "args": ["-y", "@upstash/context7-mcp"]
+      "args": [
+        "-y",
+        "@upstash/context7-mcp"
+      ]
     },
     "eraser": {
       "command": "npx",
-      "args": ["-y", "@eraserlabs/eraser-mcp"]
+      "args": [
+        "-y",
+        "@eraserlabs/eraser-mcp"
+      ],
+      "env": {
+        "ERASER_API_TOKEN": "${ERASER_API_TOKEN}"
+      }
     }
   }
 }
