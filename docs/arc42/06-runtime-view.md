@@ -18,6 +18,10 @@ Three scenarios show the architecture at work: the deterministic harmonisation p
 6. **Store + audit.** The repository inserts the immutable row (skipping when the hash already exists) and `AuditLogger` appends one event per record: `freeze` or `freeze_skipped_idempotent`.
 7. **Idempotency.** Re-running on identical sources yields an identical hash set, so every record is skipped and the audit trail records exactly that.
 
+![L0 data flow from source to frozen record to serve](../img/diagrams/data-flow-ingestion.png)
+
+> **Figure: The end-to-end data flow.** Source adapters, parse, map_raw, the ai_map seam (gap-gated, non-billing fields only), validate, score, and the requires_review flag, then a deterministic freeze (every record freezes, the flag carried, never gated by a human) with the SHA-256 record hash, the idempotent store and append-only audit, and the read-only serving hand-off. Flagged frozen records enter the review queue, where a human review creates a new version.
+
 ## Scenario 2: semantic search through serving
 
 `GET /api/v1/search` (`services/serving/src/tarifhub_serving/main.py`) ranks frozen records by cosine similarity to the embedded query. The path is strictly read-only and fails closed rather than degrading silently.

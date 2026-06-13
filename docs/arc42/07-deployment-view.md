@@ -13,6 +13,10 @@ Each box in the [building-block view](05-building-block-view.md) maps to exactly
 The boundary that matters is the **freeze line**: everything left of it runs pre-freeze and
 may use AI; everything right of it is the deterministic value path and ships no LLM client.
 
+![Deployment topology: k3d Kubernetes (Helm) and CI/CD](../img/diagrams/deployment-view.png)
+
+> **Figure: The deployment topology.** The Helm chart for the k3d Kubernetes proof: an nginx ingress in front of the ingestion, serving, MCP, console, and TarifIQ workloads over a Postgres-plus-pgvector store, with two optional L3 stubs off by default. CI builds every image as criterion-17 evidence and a gated workflow deploys the docs to Pages; local development uses docker-compose with the database and an optional MinIO.
+
 | Sub-system | Layer | Image | Port | Side of freeze line |
 |---|---|---|---|---|
 | `ingestion` | L0 harmonisation | `tarifhub-ingestion` | (batch) | write, pre-freeze (AI seam lives here) |
@@ -77,6 +81,11 @@ naming to docker.io/library/tarifhub-tarifguard:ci    done
 containers" property is proven by the pipeline, not asserted. The serving image is built
 from the repo root because it vendors the sibling `ingestion` package (the canonical
 `TariffRecord` + embedder), keeping one model end-to-end.
+
+This image build is one stage of the wider CI/CD and quality-gate machinery that governs the
+AI-assisted build: lint and tests, the determinism boundary tests, secrets and vulnerability
+scans, and the anchor ratchet. That machinery and the `/ship` pipeline it sits inside are
+described in [the AI-SE framework chapter](../method/ai-se-framework.md).
 
 ## Evidence 2: the full stack runs under Compose
 

@@ -8,7 +8,11 @@ The concept that cuts across every layer is the determinism boundary:
 
 > **No AI computes or mutates a billing value at serve time.**
 
-It is enforced structurally, not by convention: AST boundary tests (`services/ingestion/tests/test_determinism_boundary.py`, `services/serving/tests/test_serving_boundary.py`) fail CI if an LLM client becomes importable on the value path, and a write-guard hook (`.claude/hooks/guard_frozen.sh`) protects `versioning/`, `audit/` and applied migrations. Everything below assumes this boundary.
+![The freeze line and its enforcement](../img/diagrams/freeze-line-boundary.png)
+
+> **Figure: The determinism boundary.** Above the freeze line, the pre-freeze ai_map seam and the read-only search and explain seams; below it, the immutable hashed records and the deterministic serving path. The pre-tool guard hook and the AST boundary tests are the two enforcement points.
+
+It is enforced structurally, not by convention: AST boundary tests (`services/ingestion/tests/test_determinism_boundary.py`, `services/serving/tests/test_serving_boundary.py`) fail CI if an LLM client becomes importable on the value path, and a write-guard hook (`.claude/hooks/guard_frozen.sh`) protects `versioning/`, `audit/` and applied migrations. Everything below assumes this boundary. The full set of autonomous quality gates that lets AI assistance run hard above this line while never crossing it (the freeze-line guard, the fitness ratchet and the merge green-contract) is described in [the AI-SE framework chapter](../method/ai-se-framework.md).
 
 ## Modern application concepts
 

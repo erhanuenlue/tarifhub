@@ -1,0 +1,29 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title Loop engineering: the closed-loop /ship runner
+direction down
+colorMode pastel
+typeface clean
+
+Start [shape: oval, color: green, icon: play, label: "Start tools/loop.sh: prompt list, headless claude -p, ultracode"]
+Pace [shape: diamond, color: blue, icon: clock, label: "Pacing?"]
+Fixed [icon: clock, color: blue, label: "/loop 5m: fixed interval"]
+Auto [icon: repeat, color: blue, label: "/loop without interval: model self-paces"]
+Run [icon: package, color: blue, label: "Run next prompt then /ship (gate-01 pre-approved in the prompt file)"]
+Contract [shape: diamond, color: orange, icon: shield, label: "Completion contract: ratchet ok, floor non-decreasing, tree clean, no secret, CI on main green"]
+Checkpoint [icon: save, color: blue, label: "Checkpoint .shipboard/loop-checkpoint.md"]
+More [shape: diamond, color: blue, icon: list, label: "More prompts?"]
+Halt [shape: oval, color: red, icon: alert-octagon, label: "HALT to owner with the failing reason"]
+Done [shape: oval, color: green, icon: check, label: "Post-loop: /cas-audit, codex second opinion, curate journal"]
+
+Start > Pace
+Pace > Fixed
+Pace > Auto
+Fixed > Run
+Auto > Run
+Run > Contract
+Contract > Halt: any condition fails [color: red]
+Contract > Checkpoint: all hold [color: green]
+Checkpoint > More
+More > Run: yes [color: green]
+More > Done: no [color: green]

@@ -1,0 +1,26 @@
+// diagramType: flowchart-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title Autonomous quality gates and what each one blocks
+direction down
+colorMode pastel
+typeface clean
+
+Change [shape: oval, color: blue, icon: edit, label: "AI proposes an edit"]
+Guard [shape: hexagon, color: red, icon: shield, label: "guard_frozen (PreToolUse): blocks edits to versioning, audit, applied migrations, boundary test"]
+Commit [icon: git-commit, color: blue, label: "Commit and open PR"]
+CI [color: gray, label: "CI gates (run in parallel)"] {
+  Ratchet [shape: hexagon, color: red, icon: bar-chart-2, label: "Fitness ratchet cas_check.py: floor of 63 anchors must never regress"]
+  Secret [shape: hexagon, color: red, icon: key, label: "Secret gate: gitleaks + Trivy HIGH/CRITICAL + Syft SBOM"]
+  BoundaryTest [shape: hexagon, color: red, icon: lock, label: "Boundary tests: AST proves no LLM client on the value path"]
+}
+Green [shape: diamond, color: green, icon: check-circle, label: "Green-contract (phase 09): CI green, findings resolved, no frozen-path change, clean tree"]
+Merge [shape: oval, color: green, icon: git-merge, label: "Auto-merge"]
+Stop [shape: oval, color: red, icon: alert-octagon, label: "STOP for owner"]
+
+Change > Guard
+Guard > Commit: allowed [color: green]
+Guard > Stop: blocked [color: red]
+Commit > CI
+CI > Green
+Green > Merge: all four hold [color: green]
+Green > Stop: any condition fails [color: red]

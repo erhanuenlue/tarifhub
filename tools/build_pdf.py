@@ -53,6 +53,7 @@ ARC42 = [
 ]
 
 METHOD = [
+    "method/ai-se-framework.md",
     "method/ai-tools.md",
     "method/decision-matrix.md",
     "method/journal.md",

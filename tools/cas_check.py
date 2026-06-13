@@ -29,6 +29,7 @@ BASELINE = ROOT / "tools" / "cas_baseline.json"
 ARC = ROOT / "docs" / "arc42"
 MET = ROOT / "docs" / "method"
 DIA = ROOT / "docs" / "diagrams"
+DIMG = ROOT / "docs" / "img" / "diagrams"
 
 WEIGHTS = {1: 5, 2: 5, 3: 5, 4: 7, 5: 7, 6: 3, 7: 7, 8: 10, 9: 3, 10: 2,
            11: 5, 12: 5, 13: 3, 14: 3, 15: 12, 16: 6, 17: 5, 18: 7}
@@ -115,6 +116,10 @@ def ELEMENTS():
     a(("4.c4l2", 4, "C4 Container (L2)", 0, lambda: (DIA / "c4-container.svg").exists(), str(DIA / "c4-container.svg")))
     a(("4.styleadr", 4, "Architekturstil per ADR", 0, lambda: glob1("docs/adr/002-*.md") is not None, "docs/adr/002-*"))
     a(("4.adrs", 4, "ADRs für wichtigste Entscheidungen (≥10)", 0, lambda: nglob("docs/adr/0*.md") >= 10, "docs/adr/"))
+    a(("4.diagrams", 4, "Eraser-Architekturdiagramme vorhanden + eingebettet", 3,
+       lambda: all((DIMG / f"{n}.png").exists() and (f"img/diagrams/{n}.png" in corpus)
+                   for n in ("four-layer-architecture", "freeze-line-boundary", "data-flow-ingestion", "deployment-view")),
+       "docs/img/diagrams/*.png + arc42 embeds"))
     # 5 — Perspektiven
     a(("5.struktur", 5, "Struktur: Komponenten-Diagramm", 0, lambda: nglob("docs/diagrams/c4-component-*.svg") >= 1, "docs/diagrams/c4-component-*"))
     a(("5.verhalten", 5, "Verhalten: Sequenz/Runtime", 0, lambda: nglob("docs/diagrams/seq-*.svg") + nglob("docs/diagrams/runtime-*.svg") >= 2, "docs/diagrams/seq-*,runtime-*"))

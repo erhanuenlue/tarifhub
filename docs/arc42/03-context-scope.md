@@ -8,6 +8,10 @@ result read-only to three consumer classes: PIS/HIS systems (REST/FHIR), AI agen
 and console users (TarifGuard). **No patient data crosses the boundary** in either direction:
 inputs are public federal tariff lists, outputs are frozen tariff records.
 
+![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
+
+> **Figure: The four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) lies below the freeze line; L1 serving, L2 rules, and L3 apps lie above it. The line is the boundary this context view protects: AI may shape records in L0, but every value L1 serves is frozen and read-only.
+
 | Communication partner | Interface | Data exchanged | Use cases |
 | --- | --- | --- | --- |
 | BAG Analysenliste publication | XLSX download → EAL adapter | tariff positions, tax points, DE/FR/IT designations | UC-01 |

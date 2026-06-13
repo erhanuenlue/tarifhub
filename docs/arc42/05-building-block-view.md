@@ -21,6 +21,10 @@ TarifHub ingests Swiss ambulatory tariff sources (BAG EAL XLSX, FHIR catalogues)
 
 L2 (intelligence: rules, crosswalk reasoning) is post-CAS scope as a *feature*: an offline-tested scaffold exists at `services/intelligence/` (tarifiq: frozen rule table, combinability evaluation, TARMED↔TARDOC crosswalk), and the **MVP value path that is graded is L0 ingestion → L1 serving/MCP → L3 console**, which L2 is not part of. The scaffold is, however, packaged like every other sub-system (its own Dockerfile, compose service and Helm template), so it can be brought up alongside the stack for completeness; that deployment fact is shown in [§7](07-deployment-view.md). L2 stays read-only and post-freeze (it reads frozen facts from L1), so including its container never touches the value path.
 
+![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
+
+> **Figure: The four layers and the freeze line.** A freeze-line-aware view of the same containers: the L0 ingestion pipeline below the line, and the L1 serving and MCP read paths, the L2 rules scaffold, and the L3 console above it. No AI runs on the value path above the line.
+
 ## Level 2: ingestion service components
 
 ![C4 component view: ingestion](../diagrams/c4-component-ingestion.svg)
@@ -53,6 +57,10 @@ Two tables. `tariff` holds immutable versioned rows: `UNIQUE(tariff_system, tari
 Canonical source of truth: `db/schema.sql` in the repository, mirrored in SQLite for offline tests. The field set is locked additive-only per [ADR-003](../adr/003-canonical-record-model.md); the Pydantic model (`models/tariff_model.py`, `TariffRecord`) is the same shape end-to-end.
 
 ## Level 3: TarifGuard console components
+
+![TarifGuard console master-detail and the review write path](../img/diagrams/console-master-detail.png)
+
+> **Figure: The console master-detail and the one write path.** Search opens the frozen-record detail and the labelled explain panel; the review form is the single place the console writes, and an approval is frozen server-side as a new version with a new record hash. Billing values are never AI-filled and stay certified throughout.
 
 The TarifGuard console (`apps/tarifguard/`, Next.js App Router with React and Tailwind) is the platform's trust surface, and it computes nothing of its own: every billing value it shows is an unaltered frozen record relayed from the serving API. It has four components, scoped by [ADR-013](../adr/013-demo-scope.md). The master list (`/search`) runs semantic search (`GET /api/v1/search`) and code or system browse (`GET /api/v1/tariffs`); each result opens the detail panel (`/tariffs/{system}/{code}`), which renders the certified value with its version and truncated `record_hash` chips, the validity window, the source provenance link, the deterministic version history, and a cross-walk hint where the same code exists in another system. The explain panel (`/explain`) calls the deterministic `GET /api/v1/explain` with a tariff code only, and presents the record-grounded explanation on a clearly labelled AI surface. A small coding-check page, accepted in ADR-013 as a demo extra, looks up pasted positions structurally (existence, review flag, validity window) and computes no combinability verdict.
 

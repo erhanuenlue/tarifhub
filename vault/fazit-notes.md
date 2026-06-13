@@ -33,3 +33,7 @@
 ## 2026-06-13
 - I rejected parallel implementation worktrees for the console because the contract and brand layer were tightly coupled, and kept the implementation in-orchestrator on Opus 4.8.
 - I corrected evidence claims when §10 and a screenshot contradicted ADR-017: SQLite search returned 200, while the live 501 came from the Postgres vector dimension guard.
+
+## 2026-06-13
+- Veto moment: I rejected parallel implementation worktrees and kept the console work in-orchestrator on Opus 4.8 because the contract and brand layer were tightly coupled.
+- Correction: The grader and re-read passes changed two documented claims: L2 intelligence was not part of the graded deployed value path, and SQLite `/search` returns 200 rather than refusing offline search.
