@@ -5,7 +5,7 @@ Each ADR is at most one page on the house template.
 
 | # | Decision | Status | ADR |
 |---|----------|--------|-----|
-| 001 | Build the entire core (L0–L2) in Python 3.12 + FastAPI; Next.js only at L3 | Accepted | [001](../adr/001-python-first-core.md) |
+| 001 | Build the entire core (L0-L2) in Python 3.12 + FastAPI; Next.js only at L3 | Accepted | [001](../adr/001-python-first-core.md) |
 | 002 | Split services along the freeze line: ingestion (write, pre-freeze) and serving (read, post-freeze) share only the database contract | Accepted | [002](../adr/002-freeze-line-decomposition.md) |
 | 003 | Use one canonical, versioned, immutable record model with a locked, additive-only field set | Accepted | [003](../adr/003-canonical-record-model.md) |
 | 004 | Freeze reviewed records under a SHA-256 content hash with append-only audit-log lineage | Accepted | [004](../adr/004-freeze-content-hash-lineage.md) |
@@ -21,7 +21,7 @@ Each ADR is at most one page on the house template.
 | 014 | arc42-light retained as the documentation framework over Diátaxis, pure C4+ADR, and Starlight | Accepted | [014](../adr/014-arc42-light.md) |
 | 015 | Ingest the BAG ePL Spezialitätenliste (FHIR R5 NDJSON) per reimbursed package, keyed by GTIN, retail price as the canonical value, money-only | Accepted | [015](../adr/015-epl-sl-fhir-ingestion.md) |
 | 016 | Quantize billing values to the canonical NUMERIC scales pre-freeze so stored bytes == hashed bytes on every engine; lossy values fail closed to review | Accepted | [016](../adr/016-decimal-scale-contract.md) |
-| 017 | Search ranks offline via deterministic in-process cosine on SQLite (pgvector on Postgres); `/api/v1/explain` is live, deterministic and record-grounded — no LLM on the serve path | Accepted | [017](../adr/017-deterministic-search-fallback-explain.md) |
+| 017 | Search ranks offline via deterministic in-process cosine on SQLite (pgvector on Postgres); `/api/v1/explain` is live, deterministic and record-grounded, with no LLM on the serve path | Accepted | [017](../adr/017-deterministic-search-fallback-explain.md) |
 
 ## Legacy register
 

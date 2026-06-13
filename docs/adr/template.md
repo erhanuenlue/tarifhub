@@ -1,4 +1,4 @@
-# ADR-0XX — Title (decision, not topic)
+# ADR-0XX: Title (decision, not topic)
 
 *Status: Proposed | Accepted | Superseded by ADR-0YY · Date: YYYY-MM-DD · Decider: Erhan (+ AI-assisted analysis)*
 
@@ -9,8 +9,8 @@ What forces are at play? Two to four sentences. Name the constraint that makes t
 One sentence, active voice: "We use X for Y."
 
 ## Alternatives weighed
-- **Option B** — why not, in one line.
-- **Option C** — why not, in one line.
+- **Option B**: why not, in one line.
+- **Option C**: why not, in one line.
 
 ## Consequences
 - (+) What this buys.

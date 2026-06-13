@@ -1,4 +1,4 @@
-# Cross-lingual ranked-retrieval eval — e5 query/passage prefix (2026-06-11)
+# Cross-lingual ranked-retrieval eval: e5 query/passage prefix (2026-06-11)
 
 Live evaluation of the multilingual-e5 **query-prefix fix** (`feat/fr-search-ranking`)
 against the Block-0 baseline. Block-0's pgvector proof
@@ -10,7 +10,7 @@ prefix. The fix routes queries through `embed_query` (`"query: "`).
 
 ## Method
 
-- **Harness:** `tools/search_eval/eval.py` — embeds each labelled query both ways via the
+- **Harness:** `tools/search_eval/eval.py` embeds each labelled query both ways via the
   repo's own `get_embedder`, ranks with the same pgvector cosine SQL the serving API
   uses (`ServingRepository.search_by_embedding`), top-5.
 - **Corpus:** EAL only, **1 279 frozen records** (1 279/1 279 carry a 1024-dim
@@ -27,14 +27,14 @@ prefix. The fix routes queries through `embed_query` (`"query: "`).
 
 ## Results
 
-### Run A — `--prefix passage` (faithful Block-0 baseline)
+### Run A: `--prefix passage` (faithful Block-0 baseline)
 
 | id | lang | query | expected | rank | top-5 codes |
 |----|------|-------|----------|------|-------------|
 | hematocrite_fr | fr | hématocrite | 1375 | 3 | 1369, 6204.6, 1375, 6204.55, 1240.1 |
 | haematokrit_de | de | Hämatokrit | 1375 | 1 | 1375, 6204.55, 6204.56, 1369, 6204.6 |
-| ematocrito_it | it | ematocrito | 1375 | — | 1769, 1567, 1240.1, 1426, 3482 |
-| hematocrit_en | en | hematocrit blood test | 1375 | — | 1405, 1369, 1363, 1422, 1279 |
+| ematocrito_it | it | ematocrito | 1375 | miss | 1769, 1567, 1240.1, 1426, 3482 |
+| hematocrit_en | en | hematocrit blood test | 1375 | miss | 1405, 1369, 1363, 1422, 1279 |
 | glucose_de | de | Glukose im Blut | 1356 | 2 | 1356.01, 1356, 1363.01, 1359, 1363 |
 | glucose_fr | fr | glucose sanguin | 1356 | 1 | 1356, 1356.01, 1355, 1471, 1267 |
 | glucosio_it | it | glicemia | 1356 | 3 | 1356.01, 1355, 1356, 1471, 6233.6 |
@@ -46,14 +46,14 @@ prefix. The fix routes queries through `embed_query` (`"query: "`).
 
 **MRR@5 = 0.681 · recall@5 = 0.833 (n=12)**
 
-### Run B — `--prefix query` (the fix)
+### Run B: `--prefix query` (the fix)
 
 | id | lang | query | expected | rank | top-5 codes |
 |----|------|-------|----------|------|-------------|
 | hematocrite_fr | fr | hématocrite | 1375 | 2 | 1372.01, 1375, 1372, 1371, 1374 |
 | haematokrit_de | de | Hämatokrit | 1375 | 1 | 1375, 1372, 1372.01, 1371, 1396 |
 | ematocrito_it | it | ematocrito | 1375 | 3 | 1567, 1761, 1375, 1426, 3398 |
-| hematocrit_en | en | hematocrit blood test | 1375 | — | 1372.01, 1371, 1372, 1374, 1363.01 |
+| hematocrit_en | en | hematocrit blood test | 1375 | miss | 1372.01, 1371, 1372, 1374, 1363.01 |
 | glucose_de | de | Glukose im Blut | 1356 | 3 | 1472, 1356.01, 1356, 1359, 1363.01 |
 | glucose_fr | fr | glucose sanguin | 1356 | 2 | 1356.01, 1356, 1355, 1363.01, 1471 |
 | glucosio_it | it | glicemia | 1356 | 2 | 1356.01, 1356, 1472, 1355, 1363.01 |
@@ -71,27 +71,27 @@ prefix. The fix routes queries through `embed_query` (`"query: "`).
 |------|-------|----------|--------------|------------|---|
 | fr | hématocrite | 1375 | 3 | 2 | better |
 | fr | glucose sanguin | 1356 | 1 | 2 | worse |
-| fr | vitamine D | 1006 | 1 | 1 | — |
-| fr | cortisol | 1240.1 | 1 | 1 | — |
+| fr | vitamine D | 1006 | 1 | 1 | same |
+| fr | cortisol | 1240.1 | 1 | 1 | same |
 | it | ematocrito | 1375 | miss | 3 | **recovered** |
 | it | glicemia | 1356 | 3 | 2 | better |
-| de | Hämatokrit | 1375 | 1 | 1 | — |
+| de | Hämatokrit | 1375 | 1 | 1 | same |
 | de | Glukose im Blut | 1356 | 2 | 3 | worse |
 | de | Langzeitzucker HbA1c | 1363 | 1 | 2 | worse |
 | en | HDL cholesterol | 1410.1 | 1 | 2 | worse |
-| en | vitamin D blood test | 1006 | 1 | 1 | — |
-| en | hematocrit blood test | 1375 | miss | miss | — |
+| en | vitamin D blood test | 1006 | 1 | 1 | same |
+| en | hematocrit blood test | 1375 | miss | miss | same |
 
 ## Trade-off analysis
 
 The fix is a **deliberate trade-off, not a uniform win**:
 
 - **recall@5 +0.084** (0.833 → 0.917): the cross-lingual goal. Both Italian misses are
-  recovered — `glicemia → 1356` was already a top-5 hit and `ematocrito → 1375` moves
+  recovered: `glicemia → 1356` was already a top-5 hit and `ematocrito → 1375` moves
   from **outside** the top-5 into rank 3. The headline French case `hématocrite → 1375`
   improves **3 → 2**. This is exactly the Block-0 problem (cross-lingual queries failing
   to surface the right record) getting measurably better.
-- **MRR@5 −0.084** (0.681 → 0.597): several rank-1 hits slip to rank 2–3, pulling the
+- **MRR@5 −0.084** (0.681 → 0.597): several rank-1 hits slip to rank 2-3, pulling the
   mean reciprocal rank down even though more records are *found*.
 
 **What the rank-2/3 slips actually are (verified against the dev DB, read-only):**
@@ -101,15 +101,15 @@ The fix is a **deliberate trade-off, not a uniform win**:
   **byte-identical German designation**: 1356 and 1356.01 are both *"Glukose"*; 1363 and
   1363.01 are both *"Hämoglobin A1c"*; 1410.1 and 1410.01 are both *"HDL-Cholesterin"*.
   When the e5 query embedding ranks 1356.01 above 1356, the user still sees the correct
-  analyte at the top — the "wrong" rank-1 is the same test under a sibling code. These
+  analyte at the top: the "wrong" rank-1 is the same test under a sibling code. These
   slips are presentation-neutral for the search use case.
 - **One genuine non-variant intrusion.** `glucose_de` (DE 2 → 3) is *not* purely
   cosmetic: the new rank-1 is **1472** = *"Insulininduzierte Hypoglykämie: Bestimmung von
-  6 Glucose- und 6 Cortisol-Werten"* — a compound provocation-test panel, not a Glukose
+  6 Glucose- und 6 Cortisol-Werten"*, a compound provocation-test panel, not a Glukose
   variant. The `"query: "` prefix pulled this multi-analyte panel above the plain Glukose
   record. This is a real (if minor) precision regression on that one query.
 - **Hematocrit still not rank 1.** Under the fix, `hématocrite → 1375` reaches rank 2 but
-  the rank-1 is **1372.01** = *"Hämatogramm III: …, Hämatokrit, …"* — a broad haematogram
+  the rank-1 is **1372.01** = *"Hämatogramm III: …, Hämatokrit, …"*, a broad haematogram
   panel whose passage text literally contains "Hämatokrit". The exact record 1375
   (*"Hämatokrit, zentrifugiert"*) loses to the panel because the panel's indexed passage
   text mentions the term while 1375's does not carry the FR/IT designation in its passage.
@@ -118,14 +118,14 @@ The fix is a **deliberate trade-off, not a uniform win**:
 ## Decision
 
 **Ship the `"query: "` prefix.** It is the *correct* use of multilingual-e5 (the model is
-trained for the query/passage asymmetry), and cross-lingual recall — the exact Block-0
-defect — improves (+0.084 recall@5, both IT misses recovered, French headline 3 → 2). The
+trained for the query/passage asymmetry), and cross-lingual recall, the exact Block-0
+defect, improves (+0.084 recall@5, both IT misses recovered, French headline 3 → 2). The
 MRR@5 dip is dominated by same-name `.01` variant swaps that are cosmetic for search; the
 single real precision regression (1472 on `glucose_de`) and the persistent hematocrit
 rank-2 are tracked, not blocking.
 
 **Open follow-up (documented, not in this PR):** `hématocrite → 1375` is still not rank 1
-because the indexed **passage text** is `"{system} {code} {designation_de}"` — German only.
+because the indexed **passage text** is `"{system} {code} {designation_de}"`, German only.
 Extending the passage to include the FR/IT designations (and the broader-vs-exact panel
 disambiguation) and **re-embedding** the corpus is the next lever. That is explicitly out
 of scope here (it requires re-embedding all stored vectors); this PR ships the e5-correct

@@ -4,6 +4,7 @@
   "1.diagram",
   "1.kern",
   "1.stakeholder",
+  "10.url",
   "11.gwt",
   "11.nfaref",
   "12.ai",
@@ -16,6 +17,10 @@
   "14.coverage",
   "14.interpret",
   "14.output",
+  "15.chapter",
+  "15.erklaerung",
+  "15.evidence",
+  "15.phases",
   "16.guardrails",
   "16.hitl",
   "16.roles",
@@ -24,7 +29,10 @@
   "17.dockerfiles",
   "17.helm",
   "17.justify",
+  "18.chapter",
   "18.material",
+  "18.transfer",
+  "18.vetoes",
   "2.adr",
   "2.count",
   "2.messverfahren",
@@ -55,5 +63,5 @@
   "9.file",
   "9.refs"
  ],
- "updated": "2026-06-13 13:24:47"
+ "updated": "2026-06-13 15:39:19"
 }

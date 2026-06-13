@@ -1,4 +1,4 @@
-# TarifCore Serving — Real PostgreSQL + pgvector Evidence
+# TarifCore Serving: Real PostgreSQL + pgvector Evidence
 
 **Date:** 2026-06-11  
 **Branch:** feat/block0-completion  
@@ -54,7 +54,7 @@ GET /health  →  HTTP 200
 
 ---
 
-## 4. Record list — deterministic ordering
+## 4. Record list: deterministic ordering
 
 ### GET /api/v1/tariffs?limit=3
 
@@ -69,7 +69,7 @@ HTTP 200
 
 ### GET /api/v1/tariffs?system=EAL&limit=3
 
-Returns identical first three records — same deterministic order when filtered to the only system present (EAL).
+Returns identical first three records, the same deterministic order when filtered to the only system present (EAL).
 
 ---
 
@@ -117,7 +117,7 @@ Verified:
 
 ---
 
-## 6. Semantic search — multilingual-e5-large via pgvector HNSW
+## 6. Semantic search: multilingual-e5-large via pgvector HNSW
 
 ### 6a. German query: "Glukose im Blut"
 
@@ -133,7 +133,7 @@ GET /api/v1/search?q=Glukose%20im%20Blut&limit=5  →  HTTP 200
 | 4    | 1359     | Glukose-Belastung       | Chemie   | 7.80       |
 | 5    | 1363     | Hämoglobin A1c          | Chemie   | 16.00      |
 
-**Result:** Glucose analyses rank 1–2; glucose tolerance test at rank 4; HbA1c (a glycaemic marker) ranks 3 and 5. Semantically coherent.
+**Result:** Glucose analyses rank 1-2; glucose tolerance test at rank 4; HbA1c (a glycaemic marker) ranks 3 and 5. Semantically coherent.
 
 ### 6b. French query: "hématocrite"
 
@@ -149,7 +149,7 @@ GET /api/v1/search?q=h%C3%A9matocrite&limit=5  →  HTTP 200
 | 4    | 6204.55   | Hämophilien                    | Genetik     | 315.00     |
 | 5    | 1240.1    | Cortisol                       | Chemie      | 17.40      |
 
-**Result:** The exact hematocrit record (1375, "Hämatokrit, zentrifugiert") appears at rank 3. Ranks 1, 2, 4 are hematology-related (heme prefix). Note: the query prefix "hémat-" causes near-miss ranking rather than first-place — acceptable multilingual behaviour but hematocrit is not rank 1.
+**Result:** The exact hematocrit record (1375, "Hämatokrit, zentrifugiert") appears at rank 3. Ranks 1, 2, 4 are hematology-related (heme prefix). Note: the query prefix "hémat-" causes near-miss ranking rather than first-place, acceptable multilingual behaviour but hematocrit is not rank 1.
 
 ### 6c. Cross-lingual English: "vitamin D blood test"
 
@@ -165,7 +165,7 @@ GET /api/v1/search?q=vitamin%20D%20blood%20test&limit=5  →  HTTP 200
 | 4    | 3422   | Diphtherie-Toxin             | Mikrobio | 162.00     |
 | 5    | 1410.1 | HDL-Cholesterin              | Chemie   | 2.90       |
 
-**Result:** Cross-lingual success — English "vitamin D blood test" correctly surfaces Vitamin D (1006) at rank 1 and 1,25-Dihydroxy-Vitamin D (1000) at rank 2, with no German in the query. Ranks 3–4 are noise ("Toxin" in the embedding space, possibly from "test" overlap). multilingual-e5-large cross-lingual capability confirmed.
+**Result:** Cross-lingual success. English "vitamin D blood test" correctly surfaces Vitamin D (1006) at rank 1 and 1,25-Dihydroxy-Vitamin D (1000) at rank 2, with no German in the query. Ranks 3-4 are noise ("Toxin" in the embedding space, possibly from "test" overlap). multilingual-e5-large cross-lingual capability confirmed.
 
 ---
 
@@ -194,8 +194,8 @@ Result: **No matches.** Log contains only INFO-level uvicorn access lines plus t
 | Search (EN) "vitamin D blood test"       | PASS   | Vitamin D rank 1; 1,25-Dihydroxy-VitD rank 2; cross-lingual confirmed  |
 | Log scan (errors/secrets)                | PASS   | No errors, no tracebacks, no credentials in output                      |
 
-**One partial finding:** French "hématocrite" query — the exact hematocrit record surfaces at rank 3, not rank 1. The embeddings for "hémat-" prefix terms (Haemopexin, Hämophilien) score higher than the centrifuge-specific hematocrit record. This is a search-quality observation, not a failure of the serving infrastructure or embedding pipeline.
+**One partial finding:** French "hématocrite" query: the exact hematocrit record surfaces at rank 3, not rank 1. The embeddings for "hémat-" prefix terms (Haemopexin, Hämophilien) score higher than the centrifuge-specific hematocrit record. This is a search-quality observation, not a failure of the serving infrastructure or embedding pipeline.
 
 ---
 
-*Evidence captured by e2e-tester agent on 2026-06-11. Serving process started with `TARIFHUB_EMBEDDINGS=e5` + ephemeral `sentence-transformers>=2.7`; db container left running as instructed.*
+*Evidence captured by e2e-tester agent on 2026-06-11. Serving process started with `TARIFHUB_EMBEDDINGS=e5` plus ephemeral `sentence-transformers>=2.7`; db container left running as instructed.*

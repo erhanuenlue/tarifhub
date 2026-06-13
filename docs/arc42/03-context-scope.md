@@ -4,7 +4,7 @@
 
 The system boundary separates two roles. **L0** ingests public BAG publications (no other
 upstream) and harmonises them into the canonical `TariffRecord`. **L1** serves the frozen
-result read-only to three consumer classes — PIS/HIS systems (REST/FHIR), AI agents (MCP),
+result read-only to three consumer classes: PIS/HIS systems (REST/FHIR), AI agents (MCP),
 and console users (TarifGuard). **No patient data crosses the boundary** in either direction:
 inputs are public federal tariff lists, outputs are frozen tariff records.
 
@@ -22,7 +22,7 @@ inputs are public federal tariff lists, outputs are frozen tariff records.
 
 The L0 ingestion layer harmonises public Swiss ambulatory tariff publications into the
 canonical `TariffRecord`. Each source is wired as an adapter (format reader) feeding the
-deterministic mapper. Raw artifacts live under `data/raw/` (gitignored — never committed);
+deterministic mapper. Raw artifacts live under `data/raw/` (gitignored, never committed);
 their SHA-256 is recorded so a grader can verify provenance from the code/docs alone.
 
 | Source | Format | URL | Update cadence | Licence / re-use | Raw artifact |

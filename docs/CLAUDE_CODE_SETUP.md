@@ -1,4 +1,4 @@
-# CLAUDE CODE SETUP — what is wired into this repo
+# CLAUDE CODE SETUP: what is wired into this repo
 
 A concise map of the Claude Code development setup: every file, what it does, the
 review loop, and the autonomous git flow. For install/first-session steps see
@@ -18,10 +18,10 @@ are frozen, versioned, hashed records (`AGENTS.md`, rules 1–2).
 | `.claude/agents/codex-reviewer.md` | Subagent that delegates the diff to **Codex** (codex-plugin-cc / `codex exec`); read-only; returns findings. |
 | `.claude/agents/determinism-auditor.md` | Subagent that runs the determinism-boundary tests + scans for LLM imports on value paths + checks frozen paths in the diff. |
 | `.claude/agents/security-reviewer.md` | Subagent for secrets/injection/deps + the patient **de-identification boundary** (rule 7) + the read-only contract. |
-| `.claude/commands/ship.md` | `/ship` — the autonomous branch→commit→push→PR→review→merge flow. |
-| `.claude/commands/review-codex.md` | `/review-codex` — independent Codex review of the current diff (no merge). |
-| `.claude/commands/new-source.md` | `/new-source` — scaffold an ingestion adapter (pre-freeze; follows the parser + source-loader pattern). |
-| `.claude/commands/arc42-update.md` | `/arc42-update` — sync `docs/arc42/*` (+ an ADR) with a change, rebuild the MkDocs site. |
+| `.claude/commands/ship.md` | `/ship`: the autonomous branch→commit→push→PR→review→merge flow. |
+| `.claude/commands/review-codex.md` | `/review-codex`: independent Codex review of the current diff (no merge). |
+| `.claude/commands/new-source.md` | `/new-source`: scaffold an ingestion adapter (pre-freeze; follows the parser + source-loader pattern). |
+| `.claude/commands/arc42-update.md` | `/arc42-update`: sync `docs/arc42/*` (+ an ADR) with a change, rebuild the MkDocs site. |
 | `scripts/bootstrap-github.sh` | `gh repo create tarifhub --private --source=. --remote=origin --push` + branch protection on `main`. (gh local-only.) |
 | `scripts/ship.sh` | The git/gh mechanics behind `/ship`: branch, Conventional Commit, push, PR, Codex review, `--merge`. |
 | `scripts/setup-claude-code.sh` | Installs Codex CLI + codex-plugin-cc, graphify (+git hook + Obsidian export), mattpocock/skills; notes context7 via `.mcp.json`. |
@@ -30,20 +30,20 @@ are frozen, versioned, hashed records (`AGENTS.md`, rules 1–2).
 
 ## The hooks (the determinism guardrails)
 
-- **PreToolUse** (`Edit|Write|MultiEdit`) → `guard_frozen.sh`. Blocks any agent — orchestrator
-  or subagent — from editing frozen/protected paths. Exit 2 surfaces a clear message.
+- **PreToolUse** (`Edit|Write|MultiEdit`) → `guard_frozen.sh`. Blocks any agent, orchestrator
+  or subagent, from editing frozen/protected paths. Exit 2 surfaces a clear message.
 - **Stop** → runs `pytest -q` in **ingestion** and **intelligence**, plus an explicit run of
   the **determinism-boundary tests**. If red, the task is not done.
 - **SubagentStop** → runs the determinism-boundary tests so a *parallel* subagent can't finish
   across a broken freeze line. This is what makes `/ultracode` safe here.
 
-(Serving is Python too: its determinism gate is `uv run pytest tests/test_determinism_boundary.py`
-— the same Python AST check that runs in **ingestion** and **serving**, asserting no LLM client is
+(Serving is Python too: its determinism gate is `uv run pytest tests/test_determinism_boundary.py`,
+the same Python AST check that runs in **ingestion** and **serving**, asserting no LLM client is
 importable on the value path. Run in CI as a pre-PR gate.)
 
 ## The review loop (Codex reviews every PR)
 
-Cadence: **per PR / per logical task**, not per keystroke — automated by `/ship`.
+Cadence: **per PR / per logical task**, not per keystroke, automated by `/ship`.
 
 ```
 write (Claude, Opus 4.8)
@@ -60,7 +60,7 @@ write (Claude, Opus 4.8)
 
 Codex is the independent reviewer: a *different* model family catches what the author's model
 misses. If Codex isn't installed, `/review-codex` says so and points at
-`scripts/setup-claude-code.sh` — it never silently substitutes a Claude-only review.
+`scripts/setup-claude-code.sh`; it never silently substitutes a Claude-only review.
 
 ## The autonomous git flow (you never run git by hand)
 
@@ -71,7 +71,7 @@ Claude Code performs **all** git/gh operations (`AGENTS.md`). Two scripts encaps
   check, linear history, no force-push, conversation resolution) and enable squash auto-merge.
 - **`scripts/ship.sh`** (per task): validates the Conventional Commit subject, runs the fast
   determinism tests, derives a `type/slug` branch, commits, pushes, opens the PR, triggers the
-  Codex review (writes `.codex-review.md`), and — with `--merge` — squash-merges and deletes
+  Codex review (writes `.codex-review.md`), and, with `--merge`, squash-merges and deletes
   the branch once checks pass.
 
 > **Sandbox caveat:** `gh`, `claude`, and `codex` are **not** in the build sandbox/CI. Every

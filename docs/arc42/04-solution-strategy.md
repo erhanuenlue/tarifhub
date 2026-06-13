@@ -1,6 +1,6 @@
 # 04 · solution strategy
 
-The load-bearing decision is the **freeze line**. AI-assisted harmonisation runs strictly *before* it (the `ai_map` seam: structured output, fill-only on non-billing fields, deterministic gap-gate and fallback); everything *below* it — freezing, versioning, serving — is deterministic and read-only. The line is physical, not conventional: it is a process boundary between two services, and it enforces the rule:
+The load-bearing decision is the **freeze line**. AI-assisted harmonisation runs strictly *before* it (the `ai_map` seam: structured output, fill-only on non-billing fields, deterministic gap-gate and fallback); everything *below* it (freezing, versioning, serving) is deterministic and read-only. The line is physical, not conventional: it is a process boundary between two services, and it enforces the rule:
 
 > **No AI computes or mutates a billing value at serve time.**
 
@@ -15,6 +15,6 @@ The load-bearing decision is the **freeze line**. AI-assisted harmonisation runs
 
 How the quality goals are reached:
 
-- **Determinism** — an AST boundary test in CI asserts no LLM client is importable on the value path; guard hooks protect the frozen modules.
-- **Reproducibility** — content-hash idempotency: re-ingesting identical source content yields the same `record_hash`, never a duplicate.
-- **Auditability** — every state change is appended to an immutable `audit_log`; frozen records carry their lineage.
+- **Determinism:** an AST boundary test in CI asserts no LLM client is importable on the value path; guard hooks protect the frozen modules.
+- **Reproducibility:** content-hash idempotency: re-ingesting identical source content yields the same `record_hash`, never a duplicate.
+- **Auditability:** every state change is appended to an immutable `audit_log`; frozen records carry their lineage.
