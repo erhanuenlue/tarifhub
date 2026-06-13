@@ -33,7 +33,7 @@ mkdir -p .shipboard
 SETTINGS_MODEL=$(python3 -c 'import json;print(json.load(open(".claude/settings.json")).get("model",""))' 2>/dev/null || true)
 LOOP_MODEL="${LOOP_MODEL:-${SETTINGS_MODEL:-claude-opus-4-8}}"
 QUALITY_PREFIX="Owner standing order (quality before cost): run at ultracode effort throughout, maximum reasoning, do not down-shift to save tokens. This is a long unattended run: your context auto-compacts, so do not stop early for token-budget reasons, and checkpoint progress and state to .shipboard/loop-checkpoint.md before continuing."
-CLAUDE_CMD="${LOOP_CMD:-claude -p --model $LOOP_MODEL --permission-mode acceptEdits --max-turns 400}"
+CLAUDE_CMD="${LOOP_CMD:-claude -p --model $LOOP_MODEL --permission-mode bypassPermissions --max-turns 400}"
 
 say() { printf '%s %s\n' "$(date '+%H:%M:%S')" "$*" | tee -a "$LOG"; }
 
@@ -93,7 +93,7 @@ for i in "${!PROMPTS[@]}"; do
     else
         claude -p "$QUALITY_PREFIX
 
-$(cat "$f")" --model "$LOOP_MODEL" --permission-mode acceptEdits --max-turns 400 2>&1 | tee -a "$LOG"
+$(cat "$f")" --model "$LOOP_MODEL" --permission-mode bypassPermissions --max-turns 400 2>&1 | tee -a "$LOG"
         rc=${PIPESTATUS[0]}
         [ "$rc" -ne 0 ] && { say "HALT: prompt $n session exited $rc"; exit 1; }
     fi
@@ -106,7 +106,7 @@ say "post-loop: running /cas-audit (grade estimate → CAS tab)"
 if [ -n "${LOOP_CMD:-}" ]; then
     $CLAUDE_CMD || say "note: audit step failed (dry mode)"
 else
-    claude -p "$AUDIT_PROMPT" --model "$LOOP_MODEL" --permission-mode acceptEdits --max-turns 120 2>&1 | tee -a "$LOG" || say "note: audit session failed, run /cas-audit in any session instead"
+    claude -p "$AUDIT_PROMPT" --model "$LOOP_MODEL" --permission-mode bypassPermissions --max-turns 120 2>&1 | tee -a "$LOG" || say "note: audit session failed, run /cas-audit in any session instead"
 fi
 # Independent second opinion on the grade estimate (owner decision 13 Jun): gpt-5.5
 # reads the Opus auditor's report + the criterion map and flags disagreements/missed gaps.
