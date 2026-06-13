@@ -19,27 +19,19 @@ person's head. Two files act as the context set loaded into every session:
 repository, any session starts from the same constraints, and a grader can read exactly
 the rules the AI was given.
 
-The orchestration spine is the `/ship` 9-phase pipeline: plan approval, TDD implementation,
-structural gates, multi-reviewer waves, fix cycles, PR and CI, runtime verification,
-report, and auto-merge on a green contract. Two stops are never skipped: the human plan
-approval at gate 01, and the merge green-contract at phase 09 (CI fully green, every
-finding dispositioned, no unauthorised frozen-path change, working tree clean). Anything
-short of that contract halts for the owner.
-
-Work runs on model-pinned seats so that quality compounds where it matters and no seat is
-silently downgraded. The orchestrator is Opus 4.8 (Fable 5 ran the early blocks, and the orchestrator was pinned to Opus 4.8 for the later blocks per ADR-018); the `implementer` is Opus 4.8; the `verifier` runs in fresh
-context against the spec; the `determinism-auditor` and `security-reviewer` are Opus; and the
-`codex-reviewer` is OpenAI gpt-5.5, present as the independent second model family that
-reviews every PR. Sonnet and Haiku are banned from every seat. The point of the second family
-is that a defect invisible to one model's blind spots is often visible to another's.
-
-Hooks are the layer where the AI's own tooling governs the AI. `guard_frozen` blocks any
-edit below the freeze line (`versioning/`, `audit/`, the determinism boundary test) and
-halts the agent rather than letting it work around the rule. `vault_autocommit` commits the
-journal draft at session end so the evidence trail is contemporaneous. The `cas-anchors` CI
-job is a ratchet that fails the build if a graded criterion regresses, and the graphify
-post-commit hook keeps the knowledge graph current. These are not decoration: in this project
-a hook stopped a real bad edit (recorded under Review below).
+The full system view of that apparatus, the `/ship` pipeline and its green-contract, the
+model-pinned seats, the autonomous loop, the quality gates and the freeze-line guard, the
+CI/CD pipeline, the independent second model, the dashboard, and the human floor, is
+documented in the companion chapter
+[AI-Assisted Software Engineering: the framework](ai-se-framework.md), which also names the
+complete external tool set: Claude Code, the OpenAI Codex CLI, and the Eraser MCP. This
+chapter is the worked, phase-structured evidence behind that framework: the prompts, diffs
+and commits, organised by Generierung, Review, Refactoring and Recherche. The one mechanism
+worth restating here, because its catches recur below, is governance by tooling: a pre-tool
+hook (`guard_frozen`) blocks any edit below the freeze line (`versioning/`, `audit/`, the
+determinism boundary test) and halts the agent rather than letting it work around the rule.
+These hooks are not decoration: in this project a hook stopped a real bad edit (recorded
+under Review below).
 
 ## Generierung
 

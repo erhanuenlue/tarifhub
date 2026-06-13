@@ -79,7 +79,9 @@ nav:
       - "ADR-015 — BAG ePL Spezialitätenliste (FHIR R5) ingestion": adr/015-epl-sl-fhir-ingestion.md
       - "ADR-016 — Canonical Decimal scale contract (stored bytes == hashed bytes)": adr/016-decimal-scale-contract.md
       - "ADR-017 — Deterministic search fallback; record-grounded explain endpoint": adr/017-deterministic-search-fallback-explain.md
+      - "ADR-018 — Orchestrator model lifecycle (Fable 5, then Opus 4.8)": adr/018-orchestrator-model-lifecycle.md
   - AI-Assisted Method:
+      - The AI-SE Framework: method/ai-se-framework.md
       - AI Tools & Workflow: method/ai-tools.md
       - Decision Matrix: method/decision-matrix.md
       - Journal (excerpts): method/journal.md

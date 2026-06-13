@@ -78,6 +78,11 @@ containers" property is proven by the pipeline, not asserted. The serving image 
 from the repo root because it vendors the sibling `ingestion` package (the canonical
 `TariffRecord` + embedder), keeping one model end-to-end.
 
+This image build is one stage of the wider CI/CD and quality-gate machinery that governs the
+AI-assisted build: lint and tests, the determinism boundary tests, secrets and vulnerability
+scans, and the anchor ratchet. That machinery and the `/ship` pipeline it sits inside are
+described in [the AI-SE framework chapter](../method/ai-se-framework.md).
+
 ## Evidence 2: the full stack runs under Compose
 
 `docker compose --profile services --profile apps up -d` brings up eight independent
