@@ -1842,6 +1842,17 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     <div class="cell"><div class="k">Current prompt</div><div class="v" id="lp2">—</div><div class="s" id="lp2b"></div></div>
     <div class="cell"><div class="k">Prompts done</div><div class="v" id="lp3">—</div><div class="s" id="lp3b">06 → 07 → audit</div></div>
   </div>
+  <div class="mid" style="margin-bottom:12px">
+    <div class="panel">
+      <div class="k">Live now — current session activity <span class="s" id="lpphase"></span></div>
+      <div class="s" id="lpmission" style="margin:4px 0 8px">—</div>
+      <div id="lpfeed">—</div>
+    </div>
+    <div class="panel">
+      <div class="k">Tool activity (this session)</div>
+      <div id="lptools">—</div>
+    </div>
+  </div>
   <div class="panel" style="margin-bottom:12px">
     <div class="k">Loop timeline — tools/loop.sh milestones</div>
     <div id="looptl">—</div>
@@ -2200,6 +2211,23 @@ function renderLoop(s){
       const c=x.kind==='ok'?'var(--ok)':(x.kind==='halt'?'var(--fail)':(x.kind==='done'?'var(--ok)':(x.kind==='prompt'?'var(--sky)':'var(--dim)')));
       return '<div class="ghrow"><span class="gt">'+esc(x.ts||'')+'</span><span style="color:'+c+'">'+esc(x.text||'')+'</span></div>';
     }).join('') : '<div class="empty">no loop activity yet — start with bash tools/loop.sh</div>';
+  }
+  // Live now: reuse the transcript-derived feed/mission/phase the board already parses,
+  // because headless `claude -p` does not stream intermediate steps to loop.log.
+  const u=s.usage||{};
+  const ph=Object.entries(s.phases||{}).find(([k,v])=>v.status==='running');
+  const e4=document.getElementById('lpphase'); if(e4) e4.textContent=ph?('phase '+ph[0]+' running'):'';
+  const mi=document.getElementById('lpmission'); if(mi) mi.textContent=u.mission||'(mission appears from the session prompt)';
+  const fe=document.getElementById('lpfeed');
+  if(fe){ const fd=(s.feed||[]).slice(0,8);
+    fe.innerHTML=fd.length? fd.map(e=>feedRow(e,false)).join('') : '<div class="empty">no live activity captured this tick</div>';
+  }
+  const th=document.getElementById('lptools');
+  if(th){ const items=(u.toolhist||[]);
+    th.innerHTML=items.length? items.map(([name,n])=>{
+      const w=Math.max(6,Math.round(160*n/(items[0][1]||1)));
+      return '<div class="ghrow"><span class="gt" style="min-width:200px">'+esc(name)+'</span><span style="display:inline-block;height:8px;width:'+w+'px;background:var(--sky);border-radius:3px"></span><span class="s" style="margin-left:6px">'+n+'</span></div>';
+    }).join('') : '<div class="empty">tool calls appear here</div>';
   }
   const tail=document.getElementById('looptail'); if(tail) tail.textContent=(L.tail||[]).join('\n')||'—';
   const cp=document.getElementById('loopcp'); if(cp) cp.textContent=L.checkpoint||'(no checkpoint written yet)';
