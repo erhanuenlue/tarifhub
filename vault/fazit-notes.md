@@ -9,3 +9,7 @@
 ## 2026-06-13
 - Veto moment: I rejected parallel implementation worktrees for Block-05 and kept the tightly-coupled console contract and brand truth-up in the orchestrator.
 - Correction: codex gpt-5.5 found the client-only billing-field guard that earlier AI reviews missed, and I accepted the finding by adding server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 0524f9a).
+
+## 2026-06-13
+- Veto: I did not delegate the tightly-coupled console implementation to parallel worktrees, and kept the contract and brand layer in-orchestrator on Opus 4.8.
+- Correction: codex gpt-5.5 found that earlier AI review under-weighted the client-only billing guard, and I accepted the finding by adding server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 0524f9a).
