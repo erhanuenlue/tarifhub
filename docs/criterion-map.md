@@ -13,12 +13,12 @@
 | 7 | — | — (filled progressively) | — |
 | 8 | „Konzepte des gewählten Frameworks und moderner Applikationsentwicklung sachgerecht eingesetzt — DI, REST-Schnittstellen, Konfiguration, Fehlerbehandlung" (12 Jun 2026 wording) | Concept-by-concept implementation map | [arc42/08 — modern application concepts](arc42/08-crosscutting-concepts.md#modern-application-concepts) |
 | 9 | — | Learnings register — every entry commit-ref'd; AI suggestions marked accepted/corrected/rejected | `LEARNINGS.md` (repo root) |
-| 10 | — | — (filled progressively) | — |
+| 10 | „Ist der Source-Code in einem Git-Repository verfügbar" | Public GitHub repository with full history; CI runs on every push and PR | GitHub repo (`repo_url`, see `mkdocs.yml`) + `.github/workflows/ci.yml` |
 | 11 | — | Acceptance criteria (G/W/T per UC) with explicit NfA cross-refs | [arc42/10 — acceptance criteria](arc42/10-quality-requirements.md#acceptance-criteria) |
 | 12 | — | Test strategy incl. explicit „Tests der KI-Anteile" subsection | [arc42/13 — test strategy](arc42/13-test-strategy.md) |
-| 13 | — | — (filled progressively) | — |
-| 14 | — | — (filled progressively) | — |
+| 13 | „Sind Unit-Tests programmiert" (Kernlogik inkl. Fehlerfälle, im Build) | 295 offline tests across 4 services incl. dedicated error-case suites; every core module > 80 % line coverage | [Test and pipeline results (arc42/10)](arc42/10-quality-requirements.md#test-and-pipeline-results) + `services/*/tests` |
+| 14 | „Sind die Test-Ergebnisse dokumentiert" (Pipeline-Ausgabe, im Bericht interpretiert) | Quoted pytest summaries, coverage tables, determinism-boundary output and a diff example, each interpreted | [Test and pipeline results (arc42/10)](arc42/10-quality-requirements.md#test-and-pipeline-results) |
 | 15 | — | — (filled progressively) | — |
 | 16 | — | — (filled progressively) | — |
-| 17 | „Modularer Monolith oder verteilte Services … als Container lauffähig betrieben" (12 Jun 2026 wording) | — (filled progressively) | — |
+| 17 | „Modularer Monolith oder verteilte Services … als Container lauffähig betrieben" (12 Jun 2026 wording) | Distributed services along the freeze line; Compose (8 containers) + k3d/Helm proof + CI image matrix; style justified (ADR-002/006/009) | [Deployment view (arc42/07)](arc42/07-deployment-view.md) + [distribution evidence](evidence/2026-06-13-distribution.md) |
 | 18 | — | — (filled progressively) | — |
