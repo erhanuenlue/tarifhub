@@ -123,7 +123,7 @@ def convert_svg(src: Path) -> Path:
     """Convert an SVG to PDF (cached in build/img) and return the PDF path."""
     IMGDIR.mkdir(parents=True, exist_ok=True)
     out = IMGDIR / (src.stem + ".pdf")
-    if not out.exists():
+    if not out.exists() or src.stat().st_mtime > out.stat().st_mtime:
         r = sh(["rsvg-convert", "-f", "pdf", "-o", str(out), str(src)])
         if r.returncode != 0:
             print(f"  ! svg->pdf failed for {src.name}: {r.stderr.strip()}", file=sys.stderr)
@@ -223,11 +223,13 @@ PREAMBLE = r"""
 \usepackage[hidelinks]{hyperref}
 \hypersetup{breaklinks=true}
 \usepackage{xurl}
+\usepackage{microtype}
 \providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
 \providecommand{\passthrough}[1]{#1}
 \providecommand{\pandocbounded}[1]{#1}
 \setlength{\emergencystretch}{3em}
 \sloppy
+\AtBeginDocument{\special{pdf:minorversion 7}}
 % The class loads babel as [english,ngerman] (German active). Switch the document
 % to English so auto-generated labels and hyphenation render in English. The class
 % file itself is never edited; this override lives entirely in the build preamble.
