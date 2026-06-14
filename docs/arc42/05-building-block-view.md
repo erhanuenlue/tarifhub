@@ -29,9 +29,7 @@ L2 (intelligence: rules, crosswalk reasoning) is post-CAS scope as a *feature*: 
 
 ![C4 component view: ingestion](../diagrams/c4-component-ingestion.svg)
 
-The ingestion service is the only place where AI runs, and only at the `map` step.
-
-> **No AI computes or mutates a billing value at serve time.**
+The ingestion service is the only place where AI runs, and only at the `map` step, consistent with the value-path invariant: no AI computes or mutates a billing value at serve time.
 
 | Component | Module (under `services/ingestion/src/tarifhub_ingest/`) | Responsibility |
 |-----------|-----------------------------------------------------------|----------------|

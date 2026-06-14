@@ -1,14 +1,12 @@
 # Test Strategy
 
 How TarifHub is tested, as actually implemented. The strategy serves one architectural
-promise above all: **no AI computes or mutates a billing value at serve time**, and a
+promise above all: no AI computes or mutates a billing value at serve time, and a
 served value is provably the value that was reviewed and frozen. The tests are therefore
-arranged as a pyramid whose apex is not a UI click-test but an *architectural* AST guard,
+arranged as a pyramid whose apex is an architectural AST guard rather than an end-to-end UI test,
 and whose foundation is an offline-by-default contract suite that needs no network, no
 container and no API key. The per-use-case acceptance criteria these tests satisfy are in
 [§10](10-quality-requirements.md#acceptance-criteria).
-
-> **No AI computes or mutates a billing value at serve time.**
 
 ## The test pyramid
 
@@ -46,8 +44,8 @@ From the broad, fast base to the narrow, high-leverage apex:
    real responses under the same offline doctrine (SQLite mirror, stub embedder), no
    socket.
 5. **Architectural AST boundary test (the apex).** A static AST scan asserts no LLM client
-   is importable on the value path. This is the mechanical enforcement of the inviolable
-   rule and is described as its own gate below.
+   is importable on the value path. This is the mechanical enforcement of the value-path invariant
+   and is described as its own gate below.
 
 ## Offline by default
 

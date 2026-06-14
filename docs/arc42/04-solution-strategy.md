@@ -1,8 +1,6 @@
 # Solution Strategy
 
-The load-bearing decision is the **freeze line**. AI-assisted harmonisation runs strictly *before* it (the `ai_map` seam: structured output, fill-only on non-billing fields, deterministic gap-gate and fallback); everything *below* it (freezing, versioning, serving) is deterministic and read-only. The line is physical, not conventional: it is a process boundary between two services, and it enforces the rule:
-
-> **No AI computes or mutates a billing value at serve time.**
+The load-bearing decision is the **freeze line**. AI-assisted harmonisation runs strictly *before* it (the `ai_map` seam: structured output, fill-only on non-billing fields, deterministic gap-gate and fallback); everything *below* it (freezing, versioning, serving) is deterministic and read-only. The line is physical, not conventional: it is a process boundary between two services, and it enforces the value-path invariant that no AI computes or mutates a billing value at serve time.
 
 | Decision | Rationale | ADR |
 |----------|-----------|-----|

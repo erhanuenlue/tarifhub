@@ -1,8 +1,6 @@
 # Constraints
 
-Constraints TarifHub must satisfy as given; they bound every decision in chapters 04 to 09. The first is the architectural constraint everything else serves:
-
-> **No AI computes or mutates a billing value at serve time.**
+Constraints TarifHub must satisfy as given; they bound every decision in chapters 04 to 09. The first is the architectural constraint everything else serves: the value-path invariant, that no AI computes or mutates a billing value at serve time, established as the determinism boundary in §8 (Crosscutting Concepts).
 
 | # | Constraint | Rationale |
 |---|------------|-----------|

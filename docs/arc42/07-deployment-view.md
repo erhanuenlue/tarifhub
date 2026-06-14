@@ -40,7 +40,7 @@ All read-side sub-systems, in or out of the MVP path, stay post-freeze and ship 
 The CAS rubric treats a **modular monolith** as equally valid as
 **distributed services**; the choice must simply be justified. TarifHub chooses distributed
 services, decomposed along the freeze line ([ADR-002](../adr/002-freeze-line-decomposition.md)):
-the one inviolable rule ("no AI computes or mutates a billing value at serve time") becomes a
+the value-path invariant ("no AI computes or mutates a billing value at serve time") becomes a
 *process boundary* rather than a convention inside one process. The serving image physically
 ships no LLM client, so the AST boundary test plus the image contents enforce the rule
 mechanically, and the read side scales, deploys and fails independently of the AI-rich write

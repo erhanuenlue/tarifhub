@@ -114,7 +114,7 @@ services/intelligence/tests/test_determinism_boundary.py 2 passed in 0.01s
 value-path module and prove that no LLM client (`anthropic`, `openai`, `cohere`,
 `langchain`, `llama_index`) is importable on it, module level or inside a function, and
 that serving may import only `models` and `embeddings` from the ingestion package. Green
-here means the platform's one inviolable rule is enforced **structurally**: a model cannot
+here means the platform's value-path invariant is enforced **structurally**: a model cannot
 reach a billing value because the import graph cannot reach a model, so the guarantee holds
 by construction rather than by reviewer vigilance. What this **excludes** is the runtime
 dimension: it is an import-graph proof, not a runtime assertion, so runtime non-mutation is covered separately
@@ -268,7 +268,7 @@ above as the contemporaneous evidence that motivated the change.
 
 This property is now **live-measured**: a full-export reuse leg with a deliberately invalid
 key froze **0 of 10 299** records (any model call would have failed → drift → `frozen > 0`,
-so `frozen = 0` is airtight zero-API proof), 29 % faster than the first ingest. See the
+so `frozen = 0` is a zero-API proof), 29 % faster than the first ingest. See the
 [live fill-reuse proof](../evidence/2026-06-12-sl-live-ingest.md#addendum-2026-06-12-live-fill-reuse-proof).
 
 ### Per-source comparative summary

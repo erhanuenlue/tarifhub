@@ -13,7 +13,7 @@ the apparatus and the worked evidence.
 
 The workflow is reproducible because its rules are version-controlled, not held in a
 person's head. Two files act as the context set loaded into every session:
-`AGENTS.md` pins the project facts, the layout, the one inviolable determinism rule
+`AGENTS.md` pins the project facts, the layout, the value-path invariant
 ("no AI computes or mutates a billing value at serve time") and the model policy;
 `CLAUDE.md` pins the orchestration workflow on top of it. Because both are checked into the
 repository, any session starts from the same constraints, and a grader can read exactly

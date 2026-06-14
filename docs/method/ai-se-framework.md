@@ -39,7 +39,7 @@ visible to another's, which the Review evidence in the [companion chapter](ai-to
 
 The repository carries its own operating manual, so any session starts from the same ground
 truth. Two control files do the work. `AGENTS.md` holds the project facts: the four-layer
-architecture, the stack, the one inviolable rule (no AI computes or mutates a billing value at
+architecture, the stack, the value-path invariant (no AI computes or mutates a billing value at
 serve time), and the conventions. `CLAUDE.md` holds the workflow: how to take tasks, when to plan,
 and the effort policy. Because both are checked into the repository, every session starts from the
 same constraints and a grader can read exactly the rules the AI was given.
@@ -149,7 +149,7 @@ This is the core idea: an enforced, tested boundary is what makes increasing aut
 - A secret gate runs on every loop iteration (gitleaks, with a key-shaped grep fallback) so no
   credential can ride the loop into a public repository, independent of CI timing.
 
-The freeze-line guard is not theory: in the first real Postgres run it blocked an edit to
+The freeze-line guard has a concrete record: in the first real Postgres run it blocked an edit to
 `audit/audit_logger.py` below the line, the work halted, and I authorized exactly one line in an
 isolated commit with the diff shown first. The worked record is in the
 [companion chapter](ai-tools.md).

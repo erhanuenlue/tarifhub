@@ -19,13 +19,13 @@ One trustworthy machine interface to ambulatory tariff data, in its three elemen
 - **Need:** one versioned, provenance-carrying interface where a *served value is provably the value that was reviewed and frozen*, replacing per-vendor parsing and hand-reconciled version transitions with a single auditable source.
 - **Scope:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, benchmarking, and the review POST loop (design scope only).
 
-> **No AI computes or mutates a billing value at serve time.**
+Across all of this, no AI computes or mutates a billing value at serve time; this is the value-path invariant established in §8 (Crosscutting Concepts).
 
 ### AI value per core function
 
 - **UC-01 (harmonise):** fill-only AI gap-filling of non-billing fields pre-freeze through a single seam with structured output ([ADR-005](../adr/005-single-ai-seam.md)).
 - **UC-03 (freeze):** freeze seals AI contributions with provenance (`ai_model`, `ai_fields` recorded in metadata) into immutable, hash-verifiable versions. AI work becomes auditable, never silently mutable.
-- **UC-04 (serve deterministically):** deliberately zero AI. The value path is provably LLM-free, enforced by an AST boundary test in CI; the determinism guarantee *is* the feature.
+- **UC-04 (serve deterministically):** deliberately zero AI. The value path is provably LLM-free, enforced by an AST boundary test in CI, so the determinism guarantee is itself a verified property of the deliverable.
 - **UC-06 (find):** multilingual-e5 embeddings give cross-lingual DE/FR/IT retrieval over frozen records; ML ranks, never alters, the served values.
 - **UC-09 (explain):** a labelled, de-identified AI explanation seam that can never change a served value.
 

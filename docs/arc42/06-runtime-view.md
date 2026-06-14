@@ -1,8 +1,6 @@
 # Runtime View
 
-Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (design level, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`.
-
-> **No AI computes or mutates a billing value at serve time.**
+Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (design level, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`. Across all three, the value-path invariant holds: no AI computes or mutates a billing value at serve time, the determinism boundary established in §8 (Crosscutting Concepts).
 
 ## Scenario 1: harmonise to freeze (the pipeline)
 
