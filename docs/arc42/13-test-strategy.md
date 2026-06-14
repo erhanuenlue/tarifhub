@@ -101,10 +101,11 @@ that prints them with `-v`. CI fails if any LLM client appears on a value path. 
 the guarantee is structural (the import graph cannot reach a model), the boundary stays
 green by construction, not by reviewer discipline.
 
-## Tests der KI-Anteile
+## Tests of the AI components (Tests der KI-Anteile)
 
-The CAS rubric asks that the test strategy show **"Tests der KI-Anteile berücksichtigt"**:
-that the AI parts are themselves tested, not just the deterministic majority. TarifHub's AI
+The CAS rubric asks that the test strategy show **"Tests der KI-Anteile berücksichtigt"** (the
+tests of the AI components are accounted for): that the AI parts are themselves tested, not just
+the deterministic majority. TarifHub's AI
 portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
 only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path
 for search. Its tests therefore fall into four families: a **guardrail** test of the

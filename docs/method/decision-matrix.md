@@ -42,7 +42,7 @@ contract surface, it silently broke every displayed value (PR #16, `lib/api.ts`)
 The transfer to future practice is the rule itself: a hard gate and a spec where an error is
 irreversible, agentic breadth plus a second model where it is recoverable, and vibe only where
 the output is disposable. The non-delegated backstops (the freeze line, the plan and merge
-gates) are taken up in the [Fazit](fazit.md).
+gates) are taken up in the [Conclusion](fazit.md).
 
 ## References
 

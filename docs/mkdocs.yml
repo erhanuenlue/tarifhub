@@ -87,9 +87,9 @@ nav:
       - AI Tools & Workflow: method/ai-tools.md
       - Decision Matrix: method/decision-matrix.md
       - Journal (excerpts): method/journal.md
-      - Fazit: method/fazit.md
+      - Conclusion: method/fazit.md
   - Criterion Map: criterion-map.md
-  - Zusammenfassung (DE): zusammenfassung-de.md
+  - Summary: zusammenfassung-de.md
 
 plugins:
   - search

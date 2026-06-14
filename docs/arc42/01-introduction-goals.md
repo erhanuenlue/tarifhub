@@ -2,7 +2,7 @@
 
 TarifHub harmonises Switzerland's fragmented ambulatory tariff data into **one canonical, versioned, deterministic API**. AI assists the harmonisation *above* a freeze line (gap-filling non-billing fields, explaining mappings) and never operates below it: frozen records are immutable, hashed and served verbatim.
 
-## Problemstellung
+## Problem statement
 
 Switzerland's ambulatory tariff data is fragmented. Roughly 110 active tariff types are published across 20+ sources in XLSX, XML, PDF and FHIR, with **no single authoritative machine interface**: the public BAG lists alone arrive as semiannual EAL XLSX (three DE/FR/IT sheets) and monthly ePL FHIR NDJSON. The consequences compound downstream:
 
@@ -15,13 +15,13 @@ Switzerland's ambulatory tariff data is fragmented. Roughly 110 active tariff ty
 
 One trustworthy machine interface to ambulatory tariff data, in its three elements:
 
-- **Zielgruppe:** PIS/HIS vendors as machine consumers (REST/OpenAPI + FHIR R4 read), tariff experts who review uncertain mappings, practice users who look up records in the console, and AI agents that read frozen data over MCP.
-- **Bedürfnis:** one versioned, provenance-carrying interface where a *served value is provably the value that was reviewed and frozen*, replacing per-vendor parsing and hand-reconciled version transitions with a single auditable source.
-- **Abgrenzung:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, benchmarking, and the review POST loop (design scope only).
+- **Target group:** PIS/HIS vendors as machine consumers (REST/OpenAPI + FHIR R4 read), tariff experts who review uncertain mappings, practice users who look up records in the console, and AI agents that read frozen data over MCP.
+- **Need:** one versioned, provenance-carrying interface where a *served value is provably the value that was reviewed and frozen*, replacing per-vendor parsing and hand-reconciled version transitions with a single auditable source.
+- **Scope:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, benchmarking, and the review POST loop (design scope only).
 
 > **No AI computes or mutates a billing value at serve time.**
 
-### KI-Nutzen je Kernfunktion
+### AI value per core function (KI-Nutzen, Kernfunktion)
 
 - **UC-01 (harmonise):** fill-only AI gap-filling of non-billing fields pre-freeze through a single seam with structured output ([ADR-005](../adr/005-single-ai-seam.md)).
 - **UC-03 (freeze):** freeze seals AI contributions with provenance (`ai_model`, `ai_fields` recorded in metadata) into immutable, hash-verifiable versions. AI work becomes auditable, never silently mutable.
@@ -45,7 +45,7 @@ One trustworthy machine interface to ambulatory tariff data, in its three elemen
 
 ## Use-case catalogue
 
-### Kernfunktionen
+### Core functions (Kernfunktionen)
 
 These five form the platform's value chain: harmonise → freeze → serve deterministically → find → explain.
 
@@ -59,7 +59,7 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 
 ### Supporting use cases
 
-These parameterise or proxy the Kernfunktionen: the review threshold loop, version-time access, the MCP proxy, and console lookup.
+These parameterise or proxy the core functions (Kernfunktionen): the review threshold loop, version-time access, the MCP proxy, and console lookup.
 
 | ID | Use case | Actor | Trigger | Outcome | Realises | Status |
 |---|---|---|---|---|---|---|

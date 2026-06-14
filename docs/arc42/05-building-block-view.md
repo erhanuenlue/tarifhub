@@ -35,7 +35,7 @@ The ingestion service is the only place where AI runs, and only at the `map` ste
 
 | Component | Module (under `services/ingestion/src/tarifhub_ingest/`) | Responsibility |
 |-----------|-----------------------------------------------------------|----------------|
-| Adapters | `adapters/bag_eal.py`, `adapters/bag_epl.py` | Source-specific acquisition and parsing into raw rows: BAG EAL (XLSX) and the BAG ePL Spezialitätenliste (FHIR R5 NDJSON, streamed and traversed inside the adapter, [ADR-015](../adr/015-epl-sl-fhir-ingestion.md)) |
+| Adapters | `adapters/bag_eal.py`, `adapters/bag_epl.py` | Source-specific acquisition and parsing into raw rows: BAG EAL (XLSX) and the BAG ePL Spezialitätenliste (the specialty medicines list, FHIR R5 NDJSON, streamed and traversed inside the adapter, [ADR-015](../adr/015-epl-sl-fhir-ingestion.md)) |
 | Parsers | `parsers/xlsx_parser.py` | Generic XLSX parsing into raw row dicts with a pinned parser version; the EAL and SL sources parse inside their own adapters, so there is no standalone FHIR parser module |
 | Mapper | `mappers/tariff_mapper.py` (`map_raw`) | Deterministic mapping to the canonical `TariffRecord`; owns **all billing values** |
 | `ai_map` seam | `mappers/tariff_mapper.py` (`ai_map`, `AIRefinement`) | The **only live-AI point in the system**: fill-only on non-billing fields, deterministic gap-gate decides whether to call at all, structured output via `messages.parse`, deterministic fallback to `map_raw` without an API key |

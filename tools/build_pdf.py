@@ -228,6 +228,20 @@ PREAMBLE = r"""
 \providecommand{\pandocbounded}[1]{#1}
 \setlength{\emergencystretch}{3em}
 \sloppy
+% The class loads babel as [english,ngerman] (German active). Switch the document
+% to English so auto-generated labels and hyphenation render in English. The class
+% file itself is never edited; this override lives entirely in the build preamble.
+\AtBeginDocument{%
+  \selectlanguage{english}%
+  \renewcommand{\contentsname}{Contents}%
+  \renewcommand{\listfigurename}{List of Figures}%
+  \renewcommand{\listtablename}{List of Tables}%
+  \renewcommand{\bibname}{References}%
+  \renewcommand{\appendixname}{Appendix}%
+  \renewcommand{\chaptername}{Chapter}%
+  \renewcommand{\figurename}{Figure}%
+  \renewcommand{\tablename}{Table}%
+}
 """
 
 
@@ -237,21 +251,109 @@ def front_matter() -> str:
 \setlength{\parindent}{0pt}
 \setlength{\parskip}{0.6em}
 
-\dokumentTyp{Projektarbeit CAS AISE}
+\dokumentTyp{Project thesis CAS AISE}
 \studiengang{CAS AI-Assisted Software Engineering}
 \title{TarifHub}
-\subtitle{KI-gestützte Harmonisierung über einer deterministischen Freeze-Line\\[0.4ex]\normalsize\href{""" + REPO_URL + r"""}{""" + REPO_URL.replace("https://", "") + r"""}}
+\subtitle{AI-assisted harmonisation over a deterministic freeze line\\[0.4ex]\normalsize\href{""" + REPO_URL + r"""}{""" + REPO_URL.replace("https://", "") + r"""}}
 \author{Erhan Ünlü}
-\wohnort{Schweiz, 2026}
-\referent{FFHS\\ Departement Informatik\\ CAS AISE}
-\eingereichtBei{Fernfachhochschule Schweiz\\ CAS AI-Assisted Software Engineering\\ Gruppe K}
+\wohnort{Switzerland, 2026}
+\referent{FFHS\\ Department of Computer Science\\ CAS AISE}
+\eingereichtBei{Fernfachhochschule Schweiz\\ CAS AI-Assisted Software Engineering\\ Group K}
+
+% English cover. The FFHS class hardcodes German literals ("Studiengang" in the
+% running head, "im Studiengang", "von", "Eingereicht bei:", and the "Referent" label)
+% inside \titlehead and \maketitle; these cannot be reached by setting the document
+% macros. We override both commands here in the build preamble (faithful copies of the
+% class layout with the five literals translated). The official class file
+% (docs/latex_template/ffhsthesis.cls) is left untouched.
+\makeatletter
+\titlehead{%
+\begin{varwidth}[t][2cm][c]{5cm}
+\includegraphics[height=2cm]{FFHS_Logo.jpg}
+\end{varwidth}
+\hfill
+\begin{varwidth}[t][2cm][c]{7cm}
+\begin{flushright}
+\normalfont
+Fernfachhochschule Schweiz\\
+Study programme \@studiengang
+\vfill\phantom{.}
+\end{flushright}
+\end{varwidth}
+}
+\renewcommand\maketitle{%
+\setcounter{page}{0}
+
+\begin{titlepage}
+\thispagestyle{headings}
+\markright{\protect\@titlehead}
+
+\begin{center}
+
+\vspace*{2cm}
+
+\bfseries
+\Huge \@title
+
+\vspace{1ex}
+\Large
+\@subtitle
+
+\vfill
+\@titelbild
+\vfill
+\vfill
+
+\@dokumentTyp\ in the study programme \@studiengang
+
+\vspace{1ex}
+
+by
+
+\vspace{1ex}
+\@author
+
+\vspace{1cm}
+\normalsize
+
+\vspace{1ex}
+\phantom{.}
+\hfill
+\begin{varwidth}[t]{6cm}
+Submitted to:
+
+\vspace{0.5ex}
+\mdseries\normalsize
+\@eingereichtBei
+\end{varwidth}
+\hfill
+\hfill
+\begin{varwidth}[t]{6cm}
+Advisor:
+
+\vspace{0.5ex}
+\mdseries\normalsize
+\@referent
+\end{varwidth}
+\hfill
+\phantom{.}
+
+\vspace{5ex}
+\@wohnort
+
+\end{center}
+\end{titlepage}
+
+\@dedication
+}
+\makeatother
 
 \begin{document}
 \maketitle
 
 \pagenumbering{roman}
-\chapter*{Zusammenfassung (Deutsch)}
-\addcontentsline{toc}{chapter}{Zusammenfassung (Deutsch)}
+\chapter*{Summary}
+\addcontentsline{toc}{chapter}{Summary}
 \noindent Repository: \href{""" + REPO_URL + r"""}{""" + REPO_URL + r"""}
 \par\medskip
 """ + "%%SUMMARY%%" + r"""
@@ -265,49 +367,49 @@ def front_matter() -> str:
 
 HILFSMITTEL = r"""
 \newpage
-\chapter*{Hilfsmittelverzeichnis}
-\addcontentsline{toc}{chapter}{Hilfsmittelverzeichnis}
-\noindent Die KI-gestützte Arbeitsweise ist vollständig im Kapitel \emph{AI Tools and Workflow} (Kriterium 15) dokumentiert und durch Prompts, Diffs und Commit-Referenzen belegt. Übersicht der eingesetzten Hilfsmittel:
+\chapter*{List of Aids and Tools}
+\addcontentsline{toc}{chapter}{List of Aids and Tools}
+\noindent The AI-assisted way of working is fully documented in the chapter \emph{AI Tools and Workflow} (criterion 15) and evidenced by prompts, diffs, and commit references. Overview of the aids and tools used:
 \par\medskip
 {\footnotesize\setlength{\tabcolsep}{4pt}
 \begin{longtable}{|p{4.4cm}|p{6.2cm}|p{3.2cm}|}
 \hline
-\textbf{Welches Hilfsmittel?} & \textbf{Wozu eingesetzt?} & \textbf{Betroffene Stellen}\\ \hline
-Claude Code (Opus 4.8; Fable 5 in den frühen Blöcken) & Orchestrierung, Generierung, Review, Refactoring (implementer, verifier, determinism-auditor, security-reviewer) & Gesamter Code, gesamte Dokumentation \\ \hline
-OpenAI Codex (gpt-5.5) & Unabhängiges Zweitmodell: Review jeder PR; Kuratierung des Journals und der Fazit-Notizen (tools/curate.sh) & Reviews, vault/daily, vault/fazit-notes \\ \hline
-guard\_frozen / Hooks (CI, vault, graphify) & Governance der KI durch eigene Werkzeuge: Schutz der Freeze-Line, Journal-Commit, Anker-Ratchet & Freeze-Line, vault/, .github/workflows \\ \hline
-Context7, Explore-Agenten & Recherche: aktuelle Bibliotheks-Dokumentation, FHIR-IG-Analyse & Recherche-Phase \\ \hline
+\textbf{Which aid or tool?} & \textbf{Used for what?} & \textbf{Affected areas}\\ \hline
+Claude Code (Opus 4.8; Fable 5 in the early blocks) & Orchestration, generation, review, refactoring (implementer, verifier, determinism-auditor, security-reviewer) & All code, all documentation \\ \hline
+OpenAI Codex (gpt-5.5) & Independent second model: review of every PR; curation of the journal and the conclusion notes (tools/curate.sh) & Reviews, vault/daily, vault/fazit-notes \\ \hline
+guard\_frozen / Hooks (CI, vault, graphify) & Governance of the AI through purpose-built tools: protection of the freeze line, journal commit, anchor ratchet & Freeze line, vault/, .github/workflows \\ \hline
+Context7, Explore agents & Research: current library documentation, FHIR IG analysis & Research phase \\ \hline
 \end{longtable}}
 """
 
 
 ERKLAERUNG = r"""
 \newpage
-\chapter*{Selbstständigkeitserklärung}
-\addcontentsline{toc}{chapter}{Selbstständigkeitserklärung}
+\chapter*{Declaration of Authorship (Eigenständigkeitserklärung)}
+\addcontentsline{toc}{chapter}{Declaration of Authorship}
 
-\noindent\textit{Hinweis: Diese Seite ist als Platzhalter ausgeführt. Den finalen Wortlaut verfasst und unterzeichnet der Autor (Erhan Ünlü) selbst vor der Einreichung; die Delegation dieser Erklärung an die KI ist ausgeschlossen (siehe Fazit, Veto 3).}
+\noindent\textit{Note: this page is a placeholder. The final wording is written and signed by the author (Erhan Ünlü) himself before submission; delegating this declaration to the AI is ruled out (see Conclusion, Veto 3).}
 \par\medskip
 
-Hiermit erkläre ich,
+I hereby declare,
 \begin{itemize}
-    \item dass ich die vorliegende Arbeit selbstständig verfasst habe,
-    \item dass alle sinngemäss und wörtlich übernommenen Textstellen aus fremden Quellen kenntlich gemacht wurden,
-    \item dass alle mit Hilfsmitteln (einschliesslich KI-Werkzeugen) erbrachten Teile der Arbeit präzise deklariert wurden, im Kapitel \emph{AI Tools and Workflow} und im Hilfsmittelverzeichnis,
-    \item dass keine anderen als die aufgeführten Hilfsmittel verwendet wurden,
-    \item dass das Thema, die Arbeit oder Teile davon nicht bereits Gegenstand eines Leistungsnachweises eines anderen Moduls waren, sofern dies nicht ausdrücklich im Voraus vereinbart wurde,
-    \item dass ich mir bewusst bin, dass meine Arbeit elektronisch auf Plagiate und auf Drittautorschaft menschlichen oder technischen Ursprungs überprüft werden kann.
+    \item that I wrote this work independently,
+    \item that all passages taken from external sources, whether paraphrased or quoted verbatim, have been marked as such,
+    \item that all parts of the work produced with aids (including AI tools) have been precisely declared, in the chapter \emph{AI Tools and Workflow} and in the List of Aids and Tools,
+    \item that no aids other than those listed were used,
+    \item that the topic, the work, or parts of it were not already the subject of an assessment in another module, unless this was expressly agreed in advance,
+    \item that I am aware that my work may be checked electronically for plagiarism and for third-party authorship of human or technical origin.
 \end{itemize}
 
 \vspace{3.2cm}
 \noindent\hrule \ \\[-0.5ex]
-(Ort, Datum, Unterschrift)
+(Place, date, signature)
 \clearpage
 """
 
 
 def appendix_block() -> str:
-    parts = [r"\appendix", r"\chapter{Anhang: Kriterienkarte (Criterion Map)}"]
+    parts = [r"\appendix", r"\chapter{Appendix: Criterion Map}"]
     for rel in APPENDIX:
         # render the criterion map under the appendix chapter as sections
         parts.append(md_to_fragment(rel, top_level="section"))
