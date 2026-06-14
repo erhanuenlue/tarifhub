@@ -99,18 +99,18 @@ def ELEMENTS():
     a = E.append
     # 1 — Use-Cases
     a(("1.catalogue", 1, "UC-Katalog vorhanden (UC-xx)", 0, lambda: has(A01, r"UC-0\d"), str(A01)))
-    a(("1.kern", 1, "Kernfunktionen markiert (3–5)", 0, lambda: has(A01, r"Kernfunktion"), str(A01)))
+    a(("1.kern", 1, "Kernfunktionen markiert (3–5)", 0, lambda: has(A01, r"[Cc]ore function"), str(A01)))
     a(("1.stakeholder", 1, "Stakeholder-Tabelle", 0, lambda: has(A01, r"Stakeholder"), str(A01)))
     a(("1.diagram", 1, "Use-Case-Diagramm", 0, lambda: (DIA / "use-cases.svg").exists(), str(DIA / "use-cases.svg")))
     # 2 — NfA
-    a(("2.zielwert", 2, "NfA mit Zielwerten", 0, lambda: has(A10, r"Zielwert"), str(A10)))
-    a(("2.messverfahren", 2, "Messverfahren-Spalte", 0, lambda: has(A10, r"Messverfahren"), str(A10)))
+    a(("2.zielwert", 2, "NfA mit Zielwerten", 0, lambda: has(A10, r"[Tt]arget value"), str(A10)))
+    a(("2.messverfahren", 2, "Messverfahren-Spalte", 0, lambda: has(A10, r"[Mm]easurement method"), str(A10)))
     a(("2.adr", 2, "ADR-Bezug (≥3 Refs)", 0, lambda: cnt(A10, r"ADR-\d") >= 3, str(A10)))
     a(("2.count", 2, "≥3 NfA", 0, lambda: cnt(A10, r"NfA-?\d") >= 3, str(A10)))
     # 3 — Vision
     a(("3.problem", 3, "Problemstellung", 0, lambda: has(A01, r"Problemstellung|problem statement"), str(A01)))
     a(("3.vision", 3, "Vision mit Zielgruppe/Abgrenzung", 0, lambda: has(A01, r"Vision"), str(A01)))
-    a(("3.kinutzen", 3, "KI-Nutzen je Kernfunktion", 0, lambda: has(A01, r"KI-Nutzen"), str(A01)))
+    a(("3.kinutzen", 3, "KI-Nutzen je Kernfunktion", 0, lambda: has(A01, r"AI value"), str(A01)))
     # 4 — Architektur
     a(("4.c4l1", 4, "C4 Kontext (L1)", 0, lambda: (DIA / "c4-context.svg").exists(), str(DIA / "c4-context.svg")))
     a(("4.c4l2", 4, "C4 Container (L2)", 0, lambda: (DIA / "c4-container.svg").exists(), str(DIA / "c4-container.svg")))
@@ -135,7 +135,7 @@ def ELEMENTS():
     a(("7.appsplit", 7, "Console als eigenes App-Modul", 0, lambda: (ROOT / "apps" / "tarifguard").is_dir(), "apps/tarifguard"))
     # 8 — Framework
     a(("8.page", 8, "§8-Seite vorhanden", 0, lambda: (ARC / "08-crosscutting-concepts.md").exists(), str(ARC / "08-crosscutting-concepts.md")))
-    a(("8.quote", 8, "Kriterium 8 wörtlich zitiert", 0, lambda: has(ARC / "08-crosscutting-concepts.md", r"gewählten Frameworks"), "arc42/08"))
+    a(("8.quote", 8, "Kriterium 8 wörtlich zitiert", 0, lambda: has(ARC / "08-crosscutting-concepts.md", r"chosen framework"), "arc42/08"))
     a(("8.concepts", 8, "DI + Konfiguration + Fehlerbehandlung benannt", 0,
        lambda: has(ARC / "08-crosscutting-concepts.md", r"Depends|Dependency Injection")
        and has(ARC / "08-crosscutting-concepts.md", r"Konfiguration|configuration")
@@ -154,7 +154,7 @@ def ELEMENTS():
     # 12 — Teststrategie
     a(("12.doc", 12, "Strategie-Dokument (§13)", 1, lambda: A13.exists(), str(A13)))
     a(("12.levels", 12, "Teststufen benannt+begründet", 1, lambda: has(A13, r"Unit") and has(A13, r"Integration"), str(A13)))
-    a(("12.ai", 12, "„Tests der KI-Anteile“-Abschnitt", 1, lambda: has(A13, r"Tests der KI-Anteile"), str(A13)))
+    a(("12.ai", 12, "„Tests der KI-Anteile“-Abschnitt", 1, lambda: has(A13, r"[Tt]ests of the AI components"), str(A13)))
     a(("12.named", 12, "Zitierte Testnamen existieren (≥6)", 1, lambda: len(set(re.findall(r"test_[a-z0-9_]+", rd(A13))) & set(tests)) >= 6, str(A13)))
     # 13 — Unit-Tests
     a(("13.count", 13, "Kernlogik abgedeckt (≥100 Tests)", 0, lambda: len(tests) >= 100, "services/**/test_*.py"))
@@ -166,9 +166,9 @@ def ELEMENTS():
     a(("14.coverage", 14, "Coverage-Zahlen", 2, lambda: has(A10, r"\d{2}\s?%"), str(A10)))
     # 15 — KI-Werkzeuge (due Block 3)
     a(("15.chapter", 15, "KI-Kapitel vorhanden", 3, lambda: AIT.exists() and len(rd(AIT)) > 2000, str(AIT)))
-    a(("15.phases", 15, "Phasenstruktur (Generierung/Review/Refactoring/Recherche)", 3, lambda: all(has(AIT, w) for w in ("Generierung", "Review", "Refactoring", "Recherche")), str(AIT)))
+    a(("15.phases", 15, "Phasenstruktur (Generierung/Review/Refactoring/Recherche)", 3, lambda: all(has(AIT, w) for w in ("Generation", "Review", "Refactoring", "Research")), str(AIT)))
     a(("15.evidence", 15, "Belege: Prompts/Diffs/Commits (≥6)", 3, lambda: cnt(AIT, r"[0-9a-f]{7}|PR #\d+") >= 6, str(AIT)))
-    a(("15.erklaerung", 15, "Erklärung der Eigenständigkeit", 3, lambda: has(AIT, r"Eigenständigkeit"), str(AIT)))
+    a(("15.erklaerung", 15, "Erklärung der Eigenständigkeit", 3, lambda: has(AIT, r"Declaration of Authorship"), str(AIT)))
     # 16 — KI-Services
     a(("16.roles", 16, "≥2 KI-Rollen dokumentiert (ai_map · Suche · MCP)", 1, lambda: ("ai_map" in corpus) and (re.search(r"pgvector|Embedding", corpus, re.I) is not None) and ("MCP" in corpus), "docs/arc42/"))
     a(("16.guardrails", 16, "Guardrails dokumentiert", 1, lambda: re.search(r"guardrail|freeze|gap-gate", corpus, re.I) is not None, "docs/arc42/"))
@@ -182,7 +182,7 @@ def ELEMENTS():
     # 18 — Fazit (due Block 3)
     a(("18.chapter", 18, "Fazit-Kapitel substanziell", 3, lambda: FAZ.exists() and len(rd(FAZ)) > 2500, str(FAZ)))
     a(("18.vetoes", 18, "3 Veto-Entscheidungen", 3, lambda: cnt(FAZ, r"[Vv]eto") >= 3, str(FAZ)))
-    a(("18.transfer", 18, "Übertrag auf künftige Arbeitsweise", 3, lambda: has(FAZ, r"Übertrag|künftig"), str(FAZ)))
+    a(("18.transfer", 18, "Übertrag auf künftige Arbeitsweise", 3, lambda: has(FAZ, r"transfer|future"), str(FAZ)))
     a(("18.material", 18, "Fazit-Rohmaterial wächst (≥5 Notizen)", 1, lambda: cnt(ROOT / "vault" / "fazit-notes.md", r"^- ") >= 5, "vault/fazit-notes.md"))
     return E
 
