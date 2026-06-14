@@ -85,3 +85,7 @@
 ## 2026-06-14
 - I rejected service fixes in PR #23 and PR #25 because docs-only scope and the freeze-line review boundary mattered more than opportunistic cleanup.
 - I corrected the C5 determinism claim after codex found that pgvector search has no secondary tie-breaker, so the final wording pins the value contract instead of promising identical search ordering.
+
+## 2026-06-14
+- I rejected a services-side fix for the MCP `search_tariffs` `system` filter because PR #25 was docs-only and a code fix would need a separate services task plus determinism-auditor.
+- I kept the official German rubric quotations verbatim and glossed them in English instead of letting AI fully translate the cited anchors.
