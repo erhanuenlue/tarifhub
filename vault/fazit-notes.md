@@ -69,3 +69,7 @@
 ## 2026-06-14
 - I rejected service-layer P1 fixes in this task because the authorized scope was docs and `.env.example`, so `services/` changes needed a separate task and determinism-auditor.
 - The surprise was that my own timeline claim about the console test script was wrong: `git show 265b2e3:apps/tarifguard/package.json` proved the stale-doc issue existed from day one.
+
+## 2026-06-14
+- I corrected the evidence claim after AI review showed that the console pipeline was `1 passed / 1 skipped`, not two green Playwright end-to-end tests.
+- I rejected the `services/` fixes in this pass because the authorized scope was the three named documentation contradictions only.
