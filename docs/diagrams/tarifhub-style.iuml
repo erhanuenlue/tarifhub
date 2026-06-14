@@ -1,4 +1,4 @@
-' tarifhub-style.iuml — shared skinparams for all TarifHub PlantUML diagrams.
+' tarifhub-style.iuml: shared skinparams for all TarifHub PlantUML diagrams.
 ' Matches the hand-drawn house style of runtime-harmonise-freeze.svg:
 ' navy (#11365f) participants on white, slate (#475569/#94a3b8) lines, amber notes.
 ' Usage (from a sibling .puml file):  !include tarifhub-style.iuml

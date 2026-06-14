@@ -15,7 +15,7 @@
 <polygon fill="#11365f" stroke="transparent" points="498,-403.5 498,-428.5 924,-428.5 924,-403.5 498,-403.5"/>
 <polygon fill="none" stroke="black" points="498,-403.5 498,-428.5 924,-428.5 924,-403.5 498,-403.5"/>
 <text text-anchor="start" x="566.5" y="-413.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">tariff</text>
-<text text-anchor="start" x="606.5" y="-413.3" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">  — immutable · versioned · hashed</text>
+<text text-anchor="start" x="606.5" y="-413.3" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">  · immutable · versioned · hashed</text>
 <polygon fill="none" stroke="black" points="498,-378.5 498,-403.5 924,-403.5 924,-378.5 498,-378.5"/>
 <text text-anchor="start" x="503" y="-388.3" font-family="Helvetica,sans-Serif" font-size="14.00">id   BIGINT   </text>
 <text text-anchor="start" x="591" y="-388.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00">PK</text>
@@ -57,7 +57,7 @@
 <polygon fill="#11365f" stroke="transparent" points="8.5,-203.5 8.5,-228.5 297.5,-228.5 297.5,-203.5 8.5,-203.5"/>
 <polygon fill="none" stroke="black" points="8.5,-203.5 8.5,-228.5 297.5,-228.5 297.5,-203.5 8.5,-203.5"/>
 <text text-anchor="start" x="32" y="-213.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00" fill="white">audit_log</text>
-<text text-anchor="start" x="104" y="-213.3" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">  — append&#45;only lineage</text>
+<text text-anchor="start" x="104" y="-213.3" font-family="Helvetica,sans-Serif" font-size="14.00" fill="white">  · append&#45;only lineage</text>
 <polygon fill="none" stroke="black" points="8.5,-178.5 8.5,-203.5 297.5,-203.5 297.5,-178.5 8.5,-178.5"/>
 <text text-anchor="start" x="13.5" y="-188.3" font-family="Helvetica,sans-Serif" font-size="14.00">id   BIGINT   </text>
 <text text-anchor="start" x="101.5" y="-188.3" font-family="Helvetica,sans-Serif" font-weight="bold" font-size="14.00">PK</text>

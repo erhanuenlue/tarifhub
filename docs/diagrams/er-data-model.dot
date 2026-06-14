@@ -6,7 +6,7 @@ digraph er {
 
   tariff [label=<
    <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
-   <tr><td bgcolor="#11365f" align="center"><font color="white"><b>tariff</b> &nbsp;— immutable · versioned · hashed</font></td></tr>
+   <tr><td bgcolor="#11365f" align="center"><font color="white"><b>tariff</b> &nbsp;· immutable · versioned · hashed</font></td></tr>
    <tr><td align="left">id &nbsp; BIGINT &nbsp; <b>PK</b></td></tr>
    <tr><td align="left">tariff_code &nbsp; TEXT</td></tr>
    <tr><td align="left">tariff_system &nbsp; ENUM (TARDOC/EAL/SL/MiGeL/…)</td></tr>
@@ -26,7 +26,7 @@ digraph er {
 
   audit [label=<
    <table border="0" cellborder="1" cellspacing="0" cellpadding="4">
-   <tr><td bgcolor="#11365f" align="center"><font color="white"><b>audit_log</b> &nbsp;— append-only lineage</font></td></tr>
+   <tr><td bgcolor="#11365f" align="center"><font color="white"><b>audit_log</b> &nbsp;· append-only lineage</font></td></tr>
    <tr><td align="left">id &nbsp; BIGINT &nbsp; <b>PK</b></td></tr>
    <tr><td align="left">event_time &nbsp; TIMESTAMPTZ</td></tr>
    <tr><td align="left">event_type &nbsp; TEXT (freeze / skipped / …)</td></tr>

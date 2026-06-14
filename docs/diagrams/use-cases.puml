@@ -1,12 +1,12 @@
 @startuml use-cases
 !include tarifhub-style.iuml
-' UML use-case diagram for arc42 §1 — actors, triggers, outcomes.
+' UML use-case diagram for arc42 §1: actors, triggers, outcomes.
 ' Status honesty: <<designed>> = specified, not implemented; <<partial>> = partly live.
-' Render: plantuml docs/diagrams/use-cases.puml (done in a later phase — do not render here)
+' Render: plantuml docs/diagrams/use-cases.puml (done in a later phase, do not render here)
 
 left to right direction
 
-title TarifHub — use cases (criteria: actors, triggers, outcomes in arc42 §1)
+title TarifHub: use cases (criteria: actors, triggers, outcomes in arc42 §1)
 caption <color:#64748b><size:11>Each UC's trigger/outcome lives in the catalogue table, arc42 §1.</size></color>
 
 ' Amber border marks not-yet-live scope (designed / partial)
@@ -27,7 +27,7 @@ rectangle "TarifHub" {
   usecase "UC-02 Review\nlow-confidence mapping" as UC02 <<designed>>
   usecase "UC-03 Freeze record" as UC03
   usecase "UC-04 Read tariff by code" as UC04
-  usecase "UC-05 Point-in-time /\ndiff query" as UC05 <<designed>>
+  usecase "UC-05 Point-in-time /\ndiff query" as UC05
   usecase "UC-06 Semantic search" as UC06
   usecase "UC-07 MCP get/search" as UC07
   usecase "UC-08 Console\nmaster-detail lookup" as UC08
@@ -47,7 +47,7 @@ practice --> UC08
 practice --> UC09
 
 legend right
-  |<#b45309> <<designed>> | specified, not yet implemented (UC-02, UC-05) |
+  |<#b45309> <<designed>> | specified, not yet implemented (UC-02) |
   |<#b45309> <<partial>> | UC-09: console UI + de-identification live;\n serving endpoint designed |
   Honest status as of 2026-06.
 endlegend

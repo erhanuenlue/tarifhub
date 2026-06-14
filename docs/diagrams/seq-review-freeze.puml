@@ -4,12 +4,12 @@
 ' Runtime view: how a flagged record becomes a new immutable version.
 ' Render: plantuml docs/diagrams/seq-review-freeze.puml (done in a later phase)
 
-title Runtime view — review → freeze loop (design level, ADR-013)
+title Runtime view: review → freeze loop (design level, ADR-013)
 caption <color:#64748b>Flagged record → expert decision → new immutable version. freeze(), audit and flagging are live; the review surface is designed.</color>
 
 actor "Tariff expert" as expert
-participant "TarifGuard console\n(review form — designed)" as console <<designed>>
-participant "Review API\n(ingestion — designed)" as api <<designed>>
+participant "TarifGuard console\n(review form, designed)" as console <<designed>>
+participant "Review API\n(ingestion, designed)" as api <<designed>>
 participant "Validator + scorer" as validator
 participant "freeze()\nversioning/freeze_record.py" as freeze
 participant "AuditLogger" as audit
@@ -33,10 +33,10 @@ validator --> api : ValidationResult + confidence
 alt decision = approve
   api -> freeze : freeze(corrected record)
   freeze -> freeze : SHA-256 record_hash over sorted\ncanonical content; re-freezing a frozen\nrecord raises ValueError
-  freeze -> db : INSERT — NEW immutable version\n(supersedes the flagged one)
+  freeze -> db : INSERT: NEW immutable version\n(supersedes the flagged one)
   api -> audit : append review_decision + freeze events
   audit -> db : INSERT audit_log rows (append-only)
-  api --> console : frozen — record leaves the review queue
+  api --> console : frozen: record leaves the review queue
 else decision = reject / needs rework
   api -> audit : append review_decision event
   audit -> db : INSERT audit_log row (append-only)
@@ -50,7 +50,7 @@ note over freeze, audit #fffbeb
 end note
 
 note over console, api #f8fafc
-  <color:#475569>Console form + review endpoint are ADR-013 design scope —
+  <color:#475569>Console form + review endpoint are ADR-013 design scope,
   not yet implemented; freeze(), audit and flagging are live today
   (exercised by the pipeline).</color>
 end note

@@ -1,14 +1,14 @@
 @startuml state-record-lifecycle
-' UML state diagram — lifecycle of one tariff record through the L0 pipeline.
+' UML state diagram: lifecycle of one tariff record through the L0 pipeline.
 ' Render: plantuml docs/diagrams/state-record-lifecycle.puml
 !include tarifhub-style.iuml
 
 title <b><color:#11365f>Record lifecycle</color></b>
-caption <color:#64748b>From raw source row to immutable frozen version — run_pipeline in services/ingestion/src/tarifhub_ingest/ingestion/pipeline.py</color>
+caption <color:#64748b>From raw source row to immutable frozen version: run_pipeline in services/ingestion/src/tarifhub_ingest/ingestion/pipeline.py</color>
 
 state "raw" as raw : source row (XLSX / FHIR R5)
 state "parsed" as parsed : typed row
-state "mapped" as mapped : map_raw — all billing values\n+ optional ai_map fill (non-billing)
+state "mapped" as mapped : map_raw: all billing values\n+ optional ai_map fill (non-billing)
 state "validated" as validated : ValidationResult ok
 state "scored" as scored : deterministic confidence 0..1
 state "in_review" as in_review #fff7ed : frozen with requires_review = true\nawaiting expert decision (queue live,\nreview surface designed)
@@ -19,7 +19,7 @@ raw --> parsed : parse
 parsed --> mapped : map
 mapped --> validated : validate
 validated --> scored : score
-scored --> frozen : freeze — always\n(< 0.85 ⇒ requires_review = true)
+scored --> frozen : freeze: always\n(< 0.85 ⇒ requires_review = true)
 frozen --> in_review : requires_review = true\n(review queue, live)
 in_review -[#b45309,dashed]-> frozen : <<designed>>\nexpert decision → NEW\nimmutable version
 frozen --> [*]
