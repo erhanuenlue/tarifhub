@@ -354,8 +354,8 @@ Advisor:
 \maketitle
 
 \pagenumbering{roman}
-\chapter*{Summary}
-\addcontentsline{toc}{chapter}{Summary}
+\chapter*{Management Summary}
+\addcontentsline{toc}{chapter}{Management Summary}
 \noindent Repository: \href{""" + REPO_URL + r"""}{""" + REPO_URL + r"""}
 \par\medskip
 """ + "%%SUMMARY%%" + r"""
