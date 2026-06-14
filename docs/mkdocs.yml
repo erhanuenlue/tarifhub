@@ -10,8 +10,10 @@ site_author: Erhan Ünlü
 docs_dir: .
 site_dir: ../site
 # cas/ is the course-internal rubric working copy (gitignored) — never render it into the site
+# cockpit/ is the post-submission cockpit design package (ADR-022) — excluded from the graded build
 exclude_docs: |
   cas/
+  cockpit/
 repo_url: https://github.com/erhanuenlue/tarifhub   # set after `gh repo create`; appears in header
 edit_uri: ""
 

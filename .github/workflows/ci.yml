@@ -99,6 +99,25 @@ jobs:
             echo "console not yet scaffolded — skipping"
           fi
 
+  # Cockpit build-machinery tests (ADR-019..022). stdlib-only cockpit code, no uv. Guarded like
+  # `console`: green (skips) until cockpit d0 creates tests/cockpit, then runs the fitness-function
+  # suites for real. Authored pre-submission so a runner exists the moment d0 lands; it cannot run
+  # before then. pytest is the runner only; the cockpit modules import stdlib only (test_zero_dep_core).
+  cockpit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with: { python-version: "3.12" }
+      - name: Cockpit tests (offline, stdlib-only)
+        run: |
+          if ls tests/cockpit/test_*.py >/dev/null 2>&1; then
+            python -m pip install --quiet pytest
+            python -m pytest tests/cockpit -q
+          else
+            echo "tests/cockpit not yet present — skipping (built in cockpit d0, post-submission)"
+          fi
+
   security:
     runs-on: ubuntu-latest
     permissions:
