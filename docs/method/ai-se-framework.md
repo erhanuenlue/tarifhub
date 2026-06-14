@@ -6,9 +6,9 @@ plans and reviews, worker models implement and verify, an independent second mod
 a dedicated diagram tool generates diagrams as code, deterministic gates define and protect
 "done", a closed loop runs the work unattended, and a live dashboard makes every state
 inspectable. This chapter describes that framework in the order it is used. Its closing transfer
-feeds the [Fazit](fazit.md) (criterion 18); together with the worked, phase-structured evidence in
-the companion [AI Tools and Workflow chapter](ai-tools.md) (Generierung, Review, Refactoring,
-Recherche) it forms the criterion-15 account. The two chapters do not overlap: this one is the
+feeds the [Conclusion](fazit.md) (criterion 18); together with the worked, phase-structured evidence in
+the companion [AI Tools and Workflow chapter](ai-tools.md) (Generation, Review, Refactoring,
+Research) it forms the criterion-15 account. The two chapters do not overlap: this one is the
 apparatus, that one is the worked diffs. Where a mechanism here produced a concrete catch, I name
 it and point to the diff in the companion chapter rather than repeating it.
 
@@ -218,7 +218,7 @@ recorded in [ADR-011](../adr/011-opentelemetry-observability.md).
 ## 9. Documentation and diagrams as code
 
 The documentation is produced by the same pipeline that produces the software, not written by hand
-at the end. The architecture chapters, this method chapter, the journal, and the Fazit are drafted
+at the end. The architecture chapters, this method chapter, the journal, and the Conclusion are drafted
 by the models from the contemporaneous record, then reviewed by me.
 
 Diagrams are generated the same way. A dedicated diagram tool (the Eraser MCP, configured in
@@ -254,7 +254,7 @@ decision arrives within the timeout it denies, so the worst case is exactly the 
 already existed. Enabling live approvals is itself a deliberate owner step (the default permission
 mode, `APPROVALS_ON=1`, and the Telegram daemon running), recorded in `NEXT_STEPS.md`; the
 unattended loop ships with the gate off, so its behaviour is unchanged. These vetoes are stated and
-justified in the [Fazit](fazit.md) (criterion 18).
+justified in the [Conclusion](fazit.md) (criterion 18).
 
 ## Transfer to future practice
 
@@ -264,4 +264,4 @@ quality gates, its dashboard, and its auto-loop on its own. The lesson generalis
 codebase: an enforced, tested definition of done is the precondition for trustworthy AI autonomy.
 Give the system a gradient it can measure and boundaries it cannot cross, and it can carry the
 work; withhold those, and more autonomy only produces faster drift. That is the principle I will
-carry into future engineering, and it is the throughline I return to in the [Fazit](fazit.md).
+carry into future engineering, and it is the throughline I return to in the [Conclusion](fazit.md).

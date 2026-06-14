@@ -37,7 +37,7 @@ All read-side sub-systems, in or out of the MVP path, stay post-freeze and ship 
 
 ## Style choice: distributed services along the freeze line
 
-The CAS rubric treats a **modular monolith** as equally valid to
+The CAS rubric treats a **modular monolith** as equally valid as
 **distributed services**; the choice must simply be justified. TarifHub chooses distributed
 services, decomposed along the freeze line ([ADR-002](../adr/002-freeze-line-decomposition.md)):
 the one inviolable rule ("no AI computes or mutates a billing value at serve time") becomes a

@@ -367,14 +367,14 @@ Advisor:
 
 HILFSMITTEL = r"""
 \newpage
-\chapter*{List of Resources}
-\addcontentsline{toc}{chapter}{List of Resources}
-\noindent The AI-assisted way of working is fully documented in the chapter \emph{AI Tools and Workflow} (criterion 15) and evidenced by prompts, diffs, and commit references. Overview of the resources used:
+\chapter*{List of Aids and Tools}
+\addcontentsline{toc}{chapter}{List of Aids and Tools}
+\noindent The AI-assisted way of working is fully documented in the chapter \emph{AI Tools and Workflow} (criterion 15) and evidenced by prompts, diffs, and commit references. Overview of the aids and tools used:
 \par\medskip
 {\footnotesize\setlength{\tabcolsep}{4pt}
 \begin{longtable}{|p{4.4cm}|p{6.2cm}|p{3.2cm}|}
 \hline
-\textbf{Which resource?} & \textbf{Used for what?} & \textbf{Affected areas}\\ \hline
+\textbf{Which aid or tool?} & \textbf{Used for what?} & \textbf{Affected areas}\\ \hline
 Claude Code (Opus 4.8; Fable 5 in the early blocks) & Orchestration, generation, review, refactoring (implementer, verifier, determinism-auditor, security-reviewer) & All code, all documentation \\ \hline
 OpenAI Codex (gpt-5.5) & Independent second model: review of every PR; curation of the journal and the conclusion notes (tools/curate.sh) & Reviews, vault/daily, vault/fazit-notes \\ \hline
 guard\_frozen / Hooks (CI, vault, graphify) & Governance of the AI through purpose-built tools: protection of the freeze line, journal commit, anchor ratchet & Freeze line, vault/, .github/workflows \\ \hline
@@ -395,7 +395,7 @@ I hereby declare,
 \begin{itemize}
     \item that I wrote this work independently,
     \item that all passages taken from external sources, whether paraphrased or quoted verbatim, have been marked as such,
-    \item that all parts of the work produced with aids (including AI tools) have been precisely declared, in the chapter \emph{AI Tools and Workflow} and in the List of Resources,
+    \item that all parts of the work produced with aids (including AI tools) have been precisely declared, in the chapter \emph{AI Tools and Workflow} and in the List of Aids and Tools,
     \item that no aids other than those listed were used,
     \item that the topic, the work, or parts of it were not already the subject of an assessment in another module, unless this was expressly agreed in advance,
     \item that I am aware that my work may be checked electronically for plagiarism and for third-party authorship of human or technical origin.

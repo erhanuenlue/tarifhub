@@ -14,7 +14,7 @@ There were three places where I would not let AI act on its own judgment. I trea
 
 ## What I delegated, and how it went
 
-The volume was delegated, deliberately. The `implementer`, `verifier`, `determinism-auditor`, `security-reviewer` and `codex-reviewer` fleet did the breadth of the build: parsers, the read-only API surfaces, the FHIR adapter, the demo console. Even the journal and fazit-note drafting runs through Codex gpt-5.5 via `tools/curate.sh`, fully automated and disclosed in the AI-tools chapter; the owner edits before submission. This Fazit is the human edit of that material.
+The volume was delegated, deliberately. The `implementer`, `verifier`, `determinism-auditor`, `security-reviewer` and `codex-reviewer` fleet did the breadth of the build: parsers, the read-only API surfaces, the FHIR adapter, the demo console. Even the journal and fazit-note drafting runs through Codex gpt-5.5 via `tools/curate.sh`, fully automated and disclosed in the AI-tools chapter; the owner edits before submission. This conclusion is the human edit of that material.
 
 The measured results are mixed in the honest way. Review burden was real but bounded: the live EAL run froze 1279 records at a 0.0% review rate, and the SL ingest froze 10,299 records at a 1.08% review rate (111 records flagged into the review queue), with a further 109 GTIN-less packages fail-closed and never frozen. Re-version churn was a genuine surprise: live `ai_map` fills are not byte-stable across runs, so re-runs produced 55 re-versions until the fill-reuse fix landed (PR #8, d027a1d). The FR ranking improvement was concrete: adding the e5 `query:` prefix lifted recall@5 from .833 to .917, with the MRR@5 dip documented as a deliberate trade-off rather than hidden (PR #7, 5da6472).
 

@@ -11,7 +11,7 @@ error silently becomes an incorrect invoice. TarifHub consolidates this data int
 canonical, versioned and deterministic interface. The target audience comprises PIS/HIS
 vendors as machine consumers (REST/OpenAPI and FHIR R4), the tariff experts who review
 uncertain mappings, practice users who look things up in the TarifGuard console, and AI
-agents that read released data over MCP. The core is the assurance that a delivered value
+agents that read frozen data over MCP. The core is the assurance that a delivered value
 is provably exactly the value that was reviewed and frozen.
 
 ## Architecture
