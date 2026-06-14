@@ -19,7 +19,7 @@ the engineering was genuinely multi-tool, not a single chat window.
 
 | Tool family | Role in the framework | Where it lives in the repo |
 |---|---|---|
-| Claude Code (Opus 4.8; Fable 5 ran the early blocks before access ended 22 June 2026) | Orchestrator and worker agents: plan, implement, verify, review, document. | `.claude/` (agents, hooks, skills, settings), `CLAUDE.md` |
+| Claude Code (Opus 4.8; Fable 5 ran the early blocks, with Fable 5 access scheduled to end 22 June 2026) | Orchestrator and worker agents: plan, implement, verify, review, document. | `.claude/` (agents, hooks, skills, settings), `CLAUDE.md` |
 | OpenAI Codex CLI (gpt-5.5) | Independent second model family: reviews every pull request, reviews the assembled document, writes a second opinion on each grade estimate, and curates the journal. | `codex-reviewer` agent, `tools/curate.sh` |
 | Eraser MCP | Diagram-as-code generation: a described layout becomes Eraser source, rendered and committed as a static file. | `.mcp.json` (`@eraserlabs/eraser-mcp`), `docs/img/diagrams/` |
 

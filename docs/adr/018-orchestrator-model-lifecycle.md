@@ -1,10 +1,10 @@
-# ADR-018: Orchestrator model lifecycle (Fable 5 until 22 Jun 2026, then Opus 4.8)
+# ADR-018: Orchestrator model lifecycle (Fable 5 early blocks, then Opus 4.8; Fable access scheduled to end 22 Jun 2026)
 
 **Status:** accepted, switch executed · **Date:** 2026-06-13 · **Owner:** Erhan Ünlü
 
 **Context.** The pipeline orchestrator (planning, orchestration, merge-gate review, complex
 senior-level decisions) ran on Claude Fable 5 through the early blocks. The owner's Fable 5
-access ended on 22 Jun 2026; continued use would have been API-billed at roughly twice Opus
+access is scheduled to end on 22 Jun 2026; continued use would then be API-billed at roughly twice Opus
 prices. All worker and review seats run Opus 4.8 (or inherit the orchestrator); journal
 curation and the independent second-family review run on OpenAI gpt-5.5 via the owner's Codex
 Pro login.
