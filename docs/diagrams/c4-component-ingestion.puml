@@ -13,8 +13,8 @@ ContainerDb(db, "PostgreSQL + pgvector", "PostgreSQL 16", "Frozen canonical reco
 
 Container_Boundary(ingest, "Ingestion service (L0, pre-freeze)") {
   Component(pipeline, "Pipeline orchestrator", "Python", "ingestion/pipeline.py — run_pipeline: load→parse→map→validate→score→flag→freeze→store→audit")
-  Component(adapters, "Source adapters", "Python", "adapters/bag_eal.py — fetch raw source artifacts")
-  Component(parsers, "Parsers", "Python", "parsers/ — XLSX (xlsx_parser.py) + FHIR R5 (fhir_parser.py) into raw rows")
+  Component(adapters, "Source adapters", "Python", "adapters/bag_eal.py + bag_epl.py: fetch raw source artifacts (EAL XLSX, SL FHIR R5)")
+  Component(parsers, "Parsers", "Python", "parsers/xlsx_parser.py: XLSX into raw rows; SL FHIR R5 parsed in the bag_epl adapter")
   Component(mapper, "Mapper", "Python", "mappers/tariff_mapper.py — deterministic map_raw owns ALL billing values")
   Component(aimap, "ai_map seam", "Python + Claude", "same module — fill-only: designation_fr/it + category; gap-gate; structured output; deterministic fallback to map_raw")
   Component(validator, "Validator", "Python", "validators/tariff_validator.py — validate → ValidationResult")

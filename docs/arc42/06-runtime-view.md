@@ -10,7 +10,7 @@ Three scenarios show the architecture at work: the deterministic harmonisation p
 
 ![Runtime: harmonisation and freeze](../diagrams/runtime-harmonise-freeze.svg)
 
-1. **Load + parse.** Source specs are sorted by system and path; the matching adapter and parser yield raw rows: the `bag_eal` adapter with `xlsx_parser` for the EAL XLSX, and the `bag_epl` adapter for the SL FHIR R5 export ([ADR-015](../adr/015-epl-sl-fhir-ingestion.md)), which streams and traverses the resource graph itself.
+1. **Load + parse.** Source specs are sorted by system and path; a parser is dispatched per source kind (`_PARSERS` in `pipeline.py`): `xlsx_parser` for the generic XLSX kind, the `bag_eal` adapter for the EAL source, and the `bag_epl` adapter for the SL FHIR R5 export ([ADR-015](../adr/015-epl-sl-fhir-ingestion.md)), which streams and traverses the resource graph itself. Each yields raw rows with a pinned parser or adapter version.
 2. **Map.** `ai_map` wraps the deterministic `map_raw`, which owns every billing-relevant field. The AI seam is **fill-only** (designation FR/IT, category, [ADR-005](../adr/005-single-ai-seam.md)): a deterministic gap-gate skips the model call entirely when nothing is fillable, and any failure or missing API key falls back to the `map_raw` result unchanged.
 3. **Validate + score.** `validate` produces a `ValidationResult`; `score` computes a harmonisation confidence in [0, 1].
 4. **Flag.** Confidence below `TARIFHUB_REVIEW_THRESHOLD` (default 0.85) or a validation failure sets `requires_review`; the record still freezes, carrying the flag into the review queue.
