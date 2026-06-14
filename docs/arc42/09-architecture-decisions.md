@@ -1,7 +1,6 @@
 # Architecture Decisions
 
-Consolidated ADR register, adopted from Architecture v2.1 (2026-06).
-Each ADR is at most one page on the house template.
+This is the consolidated ADR register, adopted from Architecture v2.1 (2026-06): the single register every other chapter links back to. Where the Solution Strategy named the load-bearing decisions in passing, this chapter records each one with its status and its one-page ADR on the house template.
 
 | # | Decision | Status | ADR |
 |---|----------|--------|-----|
@@ -26,7 +25,7 @@ Each ADR is at most one page on the house template.
 
 ## Legacy register
 
-The pre-register repo ADRs live in [adr/legacy/](../adr/legacy/README.md) together
+The repo-era ADRs live in [adr/legacy/](../adr/legacy/README.md) together
 with the renumbering map from repo-era numbers to this register. They are kept
 verbatim as contemporaneous evidence of the decision history, not as current policy.
 

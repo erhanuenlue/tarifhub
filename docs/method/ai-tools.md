@@ -30,7 +30,7 @@ and commits, organised by Generation, Review, Refactoring and Research. The one 
 worth restating here, because its catches recur below, is governance by tooling: a pre-tool
 hook (`guard_frozen`) blocks any edit below the freeze line (`versioning/`, `audit/`, the
 determinism boundary test) and halts the agent rather than letting it work around the rule.
-These hooks are not decoration: in this project a hook stopped a real bad edit (recorded
+These hooks are not cosmetic: in this project a hook blocked a genuinely unsafe edit (recorded
 under Review below).
 
 A second governance-by-tooling mechanism sits on top of the freeze-line guard: the approval bridge,

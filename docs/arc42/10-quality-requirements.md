@@ -2,7 +2,7 @@
 
 ## Quality goals (SMART NFRs)
 
-Targets from Architecture v2.1 §12, carried as stable ids NfA-1…NfA-6; each row gives the four grading anchors, **Target value** (the target), **Measurement method** (how it is measured), **Measured** (the value actually observed), and the governing **ADR**, and is validated against the measured runs below.
+Targets from Architecture v2.1 §12, carried as stable ids NfA-1…NfA-6; each row gives the four grading anchors, **Target value**, **Measurement method** (how it is measured), **Measured** (the observed value), and the governing **ADR**, and is validated against the measured runs below.
 
 | NfA | Attribute | Target value | Measurement method | Measured | ADR |
 |---|---|---|---|---|---|
@@ -94,7 +94,7 @@ deferred (owner decision at gate 01) until the figures have a few weeks of histo
 
 ### Determinism boundary (the apex test, a visible CI step)
 
-The single highest-leverage test is the AST boundary scan. CI runs it again as a dedicated,
+The most decisive test is the AST boundary scan. CI runs it again as a dedicated,
 `-v` step so it is impossible to miss in the log (`.github/workflows/ci.yml`):
 
 ```yaml
@@ -349,12 +349,7 @@ scenario every one of these lands in the review queue at 0.75 confidence
 provenance (`ai_model`, `ai_fields`, `ai_status`) is recorded in record metadata; billing
 values are structurally unreachable by the model ([ADR-005](../adr/005-single-ai-seam.md)).
 
-4 of 6 fills exact-match the official text; the two deltas are stylistic
-(hyphenation/punctuation), and both would be flagged `requires_review` and routed
-to the review form (design scope, [ADR-013](../adr/013-demo-scope.md)) for a
-human decision in a real gap scenario. AI provenance (`ai_model`, `ai_fields`,
-`ai_status`) is recorded in record metadata; billing values are structurally
-unreachable by the model ([ADR-005](../adr/005-single-ai-seam.md)).
+Across the two AI-seam demonstrations above, 4 of 6 fills exact-match the official text; the two deltas are stylistic (hyphenation, punctuation).
 
 *Runtime serving evidence (Postgres + pgvector search) is captured under
 `docs/evidence/`.*

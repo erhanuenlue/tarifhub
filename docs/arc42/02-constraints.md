@@ -1,6 +1,6 @@
 # Constraints
 
-Constraints TarifHub must satisfy as given; they bound every decision in chapters 04 to 09. The first is the architectural constraint everything else serves: the value-path invariant, that no AI computes or mutates a billing value at serve time, established as the determinism boundary in §8 (Crosscutting Concepts).
+This chapter lists the constraints TarifHub must satisfy as given; they bound every decision in chapters 04 to 09. The first is the architectural constraint everything else serves: the value-path invariant that no AI computes or mutates a billing value at serve time, established as the determinism boundary in §8 (Crosscutting Concepts).
 
 | # | Constraint | Rationale |
 |---|------------|-----------|
@@ -9,7 +9,7 @@ Constraints TarifHub must satisfy as given; they bound every decision in chapter
 | 3 | **Graders review code and documentation only** | Nothing is deployed or executed by graders; runtime evidence must be captured into `docs/` (screenshots, CI links, coverage figures). |
 | 4 | **No Java / JVM anywhere** (owner decision, final) | Stack is Python plus a TypeScript console; a second runtime would split the canonical model and the toolchain. |
 | 5 | **MVP data sources limited to public BAG feeds** | OAAT/SASIS material is licence-gated; the pipeline is built source-extensible, but only public data ships in the MVP. |
-| 6 | **Data residency Switzerland; patient-facing LLM calls de-identified, EU/CH region** | Persistent data stays CH-hosted; the core handles public data only, so revFADP bites only at the app layer ([ADR-012](../adr/012-data-residency-llm-region.md)). |
+| 6 | **Data residency Switzerland; patient-facing LLM calls de-identified, EU/CH region** | Persistent data stays CH-hosted; the core handles public data only, so revFADP applies at the app layer alone ([ADR-012](../adr/012-data-residency-llm-region.md)). |
 | 7 | **Canonical field set locked, additive-only** | The record model is the integration contract between services; breaking changes need a new ADR first ([ADR-003](../adr/003-canonical-record-model.md)). |
 | 8 | **Env-only configuration** (`TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY`) | Twelve-factor; no config files to drift between dev, CI and containers. Without an API key, `ai_map` falls back to deterministic `map_raw`. |
 | 9 | **Tests offline by default** (SQLite mirror + stub embedder) | `pytest -q` runs without containers, network or API keys: fast CI and reproducible local runs. |

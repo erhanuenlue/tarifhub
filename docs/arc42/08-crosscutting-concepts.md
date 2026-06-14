@@ -2,7 +2,7 @@
 
 > **Concepts of the chosen framework and of modern application development applied appropriately (for example DI, REST interfaces, configuration, error handling)**, grading rubric, criterion 8 (0/3/7/10), refreshed 12 Jun 2026
 
-This chapter claims that criterion directly. All four named concepts are implemented in this repository: dependency injection via FastAPI's `Depends` graph (`services/serving/src/tarifhub_serving/main.py`), REST interfaces with a generated OpenAPI document (the `/api/v1` routes, each with a declared `response_model`), env-only configuration injection (`tarifhub_ingest/config.py`, `tarifhub_serving/config.py`), and boundary error handling (declarative 422s from Pydantic/`Query` validation, explicit `HTTPException` 404s with structured detail). Each is detailed in the [concept catalogue](#modern-application-concepts) below.
+This chapter maps criterion 8 directly. All four named concepts are implemented in this repository: dependency injection via FastAPI's `Depends` graph (`services/serving/src/tarifhub_serving/main.py`), REST interfaces with a generated OpenAPI document (the `/api/v1` routes, each with a declared `response_model`), env-only configuration injection (`tarifhub_ingest/config.py`, `tarifhub_serving/config.py`), and boundary error handling (declarative 422s from Pydantic/`Query` validation, explicit `HTTPException(404)` responses with structured detail). Each is detailed in the [Modern application concepts](#modern-application-concepts) catalogue below.
 
 The concept that cuts across every layer is the determinism boundary:
 
@@ -12,7 +12,7 @@ The concept that cuts across every layer is the determinism boundary:
 
 > **Figure: The determinism boundary.** Above the freeze line, the pre-freeze ai_map seam and the read-only search and explain seams; below it, the immutable hashed records and the deterministic serving path. The pre-tool guard hook and the AST boundary tests are the two enforcement points.
 
-It is enforced structurally, not by convention: AST boundary tests (`services/ingestion/tests/test_determinism_boundary.py`, `services/serving/tests/test_serving_boundary.py`) fail CI if an LLM client becomes importable on the value path, and a write-guard hook (`.claude/hooks/guard_frozen.sh`) protects `versioning/`, `audit/` and applied migrations. Everything below assumes this boundary. The full set of autonomous quality gates that lets AI assistance run hard above this line while never crossing it (the freeze-line guard, the fitness ratchet and the merge green-contract) is described in [the AI-SE framework chapter](../method/ai-se-framework.md).
+It is enforced structurally, not by convention: AST boundary tests (`services/ingestion/tests/test_determinism_boundary.py`, `services/serving/tests/test_serving_boundary.py`) fail CI if an LLM client becomes importable on the value path, and a write-guard hook (`.claude/hooks/guard_frozen.sh`) protects `versioning/`, `audit/` and applied migrations. Everything below assumes this boundary. The full set of autonomous quality gates that lets AI assistance run with full autonomy above this line while never crossing it (the freeze-line guard, the fitness ratchet and the merge green-contract) is described in [the AI-SE framework chapter](../method/ai-se-framework.md).
 
 ## Modern application concepts
 
@@ -40,7 +40,7 @@ Errors are part of the API contract, handled at the boundary: route handlers in 
 
 ### Configuration injection
 
-Env-only, 12-factor: a frozen `Settings` dataclass built fresh by `get_settings()` on every call (`services/ingestion/src/tarifhub_ingest/config.py`, mirrored in `tarifhub_serving/config.py`), so tests reconfigure via `monkeypatch.setenv` with no import-time caching. The knobs are `TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY` (presence alone enables the pre-freeze AI seam) and `TARIFHUB_EMBEDDINGS`.
+Env-only, twelve-factor: a frozen `Settings` dataclass built fresh by `get_settings()` on every call (`services/ingestion/src/tarifhub_ingest/config.py`, mirrored in `tarifhub_serving/config.py`), so tests reconfigure via `monkeypatch.setenv` with no import-time caching. The configuration settings are `TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY` (presence alone enables the pre-freeze AI seam) and `TARIFHUB_EMBEDDINGS`.
 
 ### Health/readiness probes
 
@@ -52,7 +52,7 @@ Decided, not yet instrumented: [ADR-011](../adr/011-opentelemetry-observability.
 
 ### Container-first packaging
 
-Per-service images on digest-pinned `python:3.12-slim` bases, each running as a non-root user: the MCP and ingestion Dockerfiles are multi-stage (builder venv to minimal runtime), the serving image vendors the ingestion package so one canonical model ships end-to-end. Compose keeps the default profile to the database and puts MinIO behind an `objects` profile; the Helm chart (`deploy/helm/tarifhub/`) deploys the stack to k3d.
+Per-service images on digest-pinned `python:3.12-slim` bases, each running as a non-root user: the MCP and ingestion Dockerfiles are multi-stage (builder venv to minimal runtime), the serving image vendors the ingestion package, so one canonical model ships end-to-end. Compose keeps the default profile to the database and puts MinIO behind an `objects` profile; the Helm chart (`deploy/helm/tarifhub/`) deploys the stack to k3d.
 
 ### Dev-mode reload
 
@@ -60,7 +60,7 @@ Development runs uvicorn with live reload via `scripts/run_serving.sh` (`uvicorn
 
 ### Async
 
-The MCP server (`services/mcp/server.py`) is fully async: each tool (`search_tariffs`, `get_tariff`, `explain_crosswalk`) awaits an `httpx` async client proxying to the serving API. The serving handlers themselves are plain `def`: FastAPI executes them in its worker threadpool, which is the honest fit for their short, blocking DB reads.
+The MCP server (`services/mcp/server.py`) is fully async: each tool (`search_tariffs`, `get_tariff`, `explain_crosswalk`) awaits an `httpx` async client proxying to the serving API. The serving handlers themselves are plain `def`: FastAPI executes them in its worker threadpool, which is the appropriate execution model for their short, blocking DB reads.
 
 ## Why Python-first
 

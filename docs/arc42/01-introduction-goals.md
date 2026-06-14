@@ -9,7 +9,7 @@ Switzerland's ambulatory tariff data is fragmented. Roughly 110 active tariff ty
 - every PIS/HIS vendor re-implements parsing per source, multiplying the same brittle work;
 - tariff values reach billing systems **without verifiable provenance**: there is no way to prove a served value is the one that was reviewed;
 - version transitions (semiannual EAL updates on 1.1 / 1.7, monthly SL on the 1st) are reconciled by hand;
-- and an uncaught mapping error propagates silently: it becomes a wrong invoice.
+- an uncaught mapping error propagates silently and becomes a wrong invoice.
 
 ## Vision
 
@@ -55,7 +55,7 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 | UC-03 | Freeze record | Pipeline (automatic post-validation; expert approval loop designed) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
 | UC-04 | Read tariff by code | API consumer (PIS/HIS) | GET /api/v1/tariffs/{system}/{code} | frozen record, served verbatim | FR-5 | live |
 | UC-06 | Semantic search | API consumer | free-text query (DE/FR/IT) against the search endpoint | ranked frozen records via pgvector cosine similarity | FR-7 | live |
-| UC-09 | Explain (crosswalk, labelled AI) | Practice user | user opens the labelled AI explain panel on a record | AI-labelled, de-identified explanation; served values never altered | FR-8, FR-9 | live (console UI + de-id live, serving endpoint this release) |
+| UC-09 | Explain (crosswalk, labelled AI) | Practice user | user opens the labelled AI explain panel on a record | AI-labelled, de-identified explanation; served values never altered | FR-8, FR-9 | live (console UI + de-id live; serving endpoint added this release) |
 
 ### Supporting use cases
 

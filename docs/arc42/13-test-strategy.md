@@ -27,9 +27,7 @@ From the broad, fast base to the narrow, high-leverage apex:
    Postgres via the `engine` fixture, and each test asserts the endpoint's **full JSON
    body** equals an engine-independent expected snapshot
    (`services/serving/tests/test_read_parity.py`, mirrored for ingestion). Because both
-   engines must match the *same* snapshot, they match each other, so SQLite-only blindness
-   becomes impossible to pass silently. This layer exists because Block-0 was burned twice
-   by Postgres-vs-SQLite drift (a JSONB dict crashed `json.loads`; an `int` for a BOOLEAN
+   engines must match the *same* snapshot, they match each other, so an engine-specific bug that only SQLite would tolerate can no longer pass silently. This layer exists because two Postgres-vs-SQLite drift defects surfaced in Block-0 (a JSONB dict crashed `json.loads`; an `int` for a BOOLEAN
    column was rejected by psycopg), so the snapshots deliberately stress non-ASCII
    designations (umlauts, accented Latin letters, cedillas), nested metadata dicts, `requires_review` booleans,
    trailing-zero Decimals at the exact `NUMERIC` scale, dates, multi-version keys and
@@ -102,7 +100,7 @@ green by construction, not by reviewer discipline.
 ## Tests of the AI components
 
 The CAS rubric asks that the test strategy **account for the tests of the AI components**: that
-the AI parts are themselves tested, not just
+the AI components are themselves tested, not just
 the deterministic majority. TarifHub's AI
 portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
 only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path
@@ -111,7 +109,7 @@ boundary itself, **no-call** tests of the gap gate, **non-deterministic-output h
 tests of fill-reuse, and **fail-closed parsing** tests of the schema validation that treats
 model output as untrusted.
 
-#### 1 · Guardrail: the boundary itself
+### 1 · Guardrail: the boundary itself
 
 The AST boundary tests are described in full above (*The determinism acceptance gate*):
 `services/serving/tests/test_serving_boundary.py`,
@@ -120,7 +118,7 @@ The AST boundary tests are described in full above (*The determinism acceptance 
 boundary, the AI-portion test with the highest leverage, since a single failure proves a
 model became reachable on a value path. Verifies **NfA-1** ([§10](10-quality-requirements.md)).
 
-#### 2 · Gap-gate: the no-call paths
+### 2 · Gap-gate: the no-call paths
 
 `services/ingestion/tests/test_ai_mapper.py` proves the pipeline makes **zero** model calls
 when there is nothing to fill or no key is present:
@@ -130,7 +128,7 @@ when there is nothing to fill or no key is present:
 calls over 1,279 complete rows**, [§10](10-quality-requirements.md)) is exactly this
 behaviour observed at scale.
 
-#### 3 · Fill-reuse: handling non-deterministic AI output
+### 3 · Fill-reuse: handling non-deterministic AI output
 
 Live model output is **not** byte-stable across runs (the measured 55 re-versions,
 [§10](10-quality-requirements.md)); `services/ingestion/tests/test_fill_reuse.py` pins the
@@ -141,7 +139,7 @@ mechanism that makes the pipeline reproducible anyway:
 suite (e.g. `test_strip_to_prefill_reverses_a_category_fill_byte_exactly`). Verifies
 **NfA-2** ([§10](10-quality-requirements.md)).
 
-#### 4 · Schema-validation: fail-closed on untrusted model output
+### 4 · Schema-validation: fail-closed on untrusted model output
 
 Model output is treated as untrusted input. `services/ingestion/tests/test_ai_mapper.py`
 asserts that refusals, empty strings and parse failures all degrade to the deterministic
@@ -191,7 +189,7 @@ history.
 
 ## Console component tests
 
-The TarifGuard console has its tests wired in CI. The `apps/tarifguard/package.json` `test`
+The TarifGuard console is tested in CI. The `apps/tarifguard/package.json` `test`
 script runs `vitest run && playwright test` (with `test:unit` and `test:e2e` running each half),
 and has done so since the console landed (PR #16, commit `265b2e3`, 2026-06-13). The CI
 `console` job (`.github/workflows/ci.yml`) runs `npm ci`, lint, build, installs Chromium, and

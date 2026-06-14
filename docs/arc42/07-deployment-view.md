@@ -64,7 +64,7 @@ profiles so the offline test suite needs nothing running:
 
 The `images` job (`.github/workflows/ci.yml`, on `main` after `python` + `security`) builds
 every `services/*/Dockerfile` and `apps/*/Dockerfile`. The BuildKit "naming to" lines from
-the CI log, one per image, show all seven build:
+the CI log, one per image, show all seven building:
 
 ```text
 naming to docker.io/library/tarifhub-ingestion:ci     done
@@ -77,7 +77,7 @@ naming to docker.io/library/tarifhub-tarifguard:ci    done
 ```
 
 **Interpretation.** Distribution is reproducible from source on every push to `main`: the
-4 services + 3 apps each produce an independent image, so the "independently deployable
+four services and three apps each produce an independent image, so the "independently deployable
 containers" property is proven by the pipeline, not asserted. The serving image is built
 from the repo root because it vendors the sibling `ingestion` package (the canonical
 `TariffRecord` + embedder), keeping one model end-to-end.
@@ -118,7 +118,7 @@ single replica, not a load test; it bounds the single-record path, not concurren
 
 ## Evidence 3: the chart deploys on Kubernetes (k3d)
 
-The Helm chart `deploy/helm/tarifhub` is six things: a `Chart.yaml`; a `values.yaml` whose
+The Helm chart `deploy/helm/tarifhub` comprises six parts: a `Chart.yaml`; a `values.yaml` whose
 top-level keys are the sub-systems (`ingestion`, `serving`, `mcp`, `intelligence`,
 `tarifguard`, plus `kassenflow`/`meldepilot` shipped `enabled: false`); one Deployment +
 Service template per sub-system under `templates/`; an in-cluster `postgres` Deployment with
@@ -145,7 +145,7 @@ tarifhub-ingestion-5d5dddc876-njbvx      0/1     Running   3          41s
 ```
 
 **Interpretation.** The read/serve sub-systems run as independent, individually-scaled
-Deployments (serving and intelligence and tarifguard at 2 replicas, mcp at 1) alongside
+Deployments (serving, intelligence and tarifguard at two replicas, mcp at one) alongside
 Postgres. `tarifhub-ingestion` shows `0/1` honestly: it is a one-shot batch pipeline, so a
 long-lived `Deployment` runs it to completion and the ReplicaSet restarts it; in production
 it belongs in a `Job`/`CronJob` (follow-up in [§11](11-risks-technical-debt.md)). Functional

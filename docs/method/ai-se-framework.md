@@ -1,7 +1,6 @@
 # The AI-SE Framework
 
-This chapter is the system view of how TarifHub was engineered with AI. I did not use AI as an
-autocomplete. I built a small software-engineering system around the model: an orchestrator model
+This chapter is the system view of how TarifHub was engineered with AI. AI here was not an autocomplete; I built a software-engineering system around the model: an orchestrator model
 plans and reviews, worker models implement and verify, an independent second model family audits,
 a dedicated diagram tool generates diagrams as code, deterministic gates define and protect
 "done", a closed loop runs the work unattended, and a live dashboard makes every state
@@ -19,15 +18,14 @@ the engineering was genuinely multi-tool, not a single chat window.
 
 | Tool family | Role in the framework | Where it lives in the repo |
 |---|---|---|
-| Claude Code (Opus 4.8; Fable 5 ran the early blocks, with Fable 5 access scheduled to end 22 June 2026) | Orchestrator and worker agents: plan, implement, verify, review, document. | `.claude/` (agents, hooks, skills, settings), `CLAUDE.md` |
+| Claude Code (Opus 4.8; Fable 5 ran the early blocks, access scheduled to end 22 June 2026) | Orchestrator and worker agents: plan, implement, verify, review, document. | `.claude/` (agents, hooks, skills, settings), `CLAUDE.md` |
 | OpenAI Codex CLI (gpt-5.5) | Independent second model family: reviews every pull request, reviews the assembled document, writes a second opinion on each grade estimate, and curates the journal. | `codex-reviewer` agent, `tools/curate.sh` |
 | Eraser MCP | Diagram-as-code generation: a described layout becomes Eraser source, rendered and committed as a static file. | `.mcp.json` (`@eraserlabs/eraser-mcp`), `docs/img/diagrams/` |
 
 Two supporting tools complete the picture: Context7 (Model Context Protocol server) fetches current
 library and SDK documentation so framework claims trace to live sources rather than a training
 cut-off, and GitHub Actions runs the same gates a reviewer would on every push. The point of the
-second model family in particular is that a defect invisible to one model's blind spots is often
-visible to another's, which the Review evidence in the [companion chapter](ai-tools.md) bears out.
+second model family in particular is that a defect that one model's blind spots hide is often visible to another's, which the Review evidence in the [companion chapter](ai-tools.md) bears out.
 
 <a id="fig-four-layer"></a>
 
@@ -56,8 +54,7 @@ part of the repository, not lost in a chat.
 
 The prompt library (the numbered `prompts/` files, one outcome prompt per block) is written as
 outcome prompts: each states the goal, the constraints, and the verification that proves done, and
-deliberately omits step-by-step instructions. Modern models perform worse when micromanaged with
-scripts written for older models, and better when given a falsifiable definition of success and the
+deliberately omits step-by-step instructions. Modern models perform worse when constrained by scripts written for older models, and better when given a falsifiable definition of success and the
 freedom to reach it. Each prompt names its acceptance evidence (tests green, coverage figures,
 screenshots captured, a document section present) so the model can self-check before claiming
 progress. The mode analysis behind these prompts (vibe versus spec-driven versus agentic) is in the
@@ -67,7 +64,7 @@ One human gate is built into the prompt itself. A pre-approved plan header lets 
 plan and proceed, while still stopping for anything outside the prompt's scope, the protected code,
 or a destructive operation. Where a sensitive action does need a human mid-run, the approval bridge
 (section 10) routes it for an explicit decision instead of letting it run unseen. This is how a
-single pasted prompt becomes an autonomous, bounded unit of work. The companion chapter shows where this discipline caught a real error: an orchestrator brief
+single submitted prompt becomes an autonomous, bounded unit of work. The companion chapter shows where this discipline caught a real error: an orchestrator brief
 that asserted the wrong HTTP status propagated into three files before a fresh-context verifier
 checked the actual code path (see [Review evidence](ai-tools.md)).
 
@@ -124,7 +121,7 @@ generated prompt to disk so it remains inspectable and vetoable, and checkpointi
 
 ## 5. Autonomous quality gates
 
-This is the core idea: an enforced, tested boundary is what makes increasing autonomy safe.
+An enforced, tested boundary is what makes increasing autonomy safe.
 
 - A deterministic fitness function (`tools/cas_check.py`) expresses the definition of done as
   roughly sixty machine-checkable elements, each with an evidence path, producing a pass or miss
@@ -135,7 +132,7 @@ This is the core idea: an enforced, tested boundary is what makes increasing aut
   (`.claude/hooks/guard_frozen.sh`) blocks any agent edit to the billing-integrity code and halts
   the agent rather than letting it work around the rule, and a test asserts no model client is
   importable on the value path (`services/ingestion/tests/test_determinism_boundary.py` and
-  `services/serving/tests/test_serving_boundary.py`), failing CI otherwise. The agent can run hard
+  `services/serving/tests/test_serving_boundary.py`), failing CI otherwise. The agent can run with full autonomy
   everywhere else precisely because this line cannot be crossed silently. The boundary's design is
   documented in [Crosscutting Concepts](../arc42/08-crosscutting-concepts.md),
   [ADR-002](../adr/002-freeze-line-decomposition.md) and
@@ -143,14 +140,14 @@ This is the core idea: an enforced, tested boundary is what makes increasing aut
 - The green-contract governs autonomous merge. Phase 09 merges only when all four conditions hold:
   CI is fully green including the security and boundary tests, every review finding is resolved or
   explicitly dispositioned with no open P1 or P2, the diff touches no frozen path beyond what I
-  authorized this session, and the working tree is clean with the branch current. The CAS fitness
+  authorised this session, and the working tree is clean with the branch current. The CAS fitness
   ratchet showing no regression is folded into the same contract: a regression is a failing check
   that blocks the merge. Anything less stops for me.
 - A secret gate runs on every loop iteration (gitleaks, with a key-shaped grep fallback) so no
   credential can ride the loop into a public repository, independent of CI timing.
 
 The freeze-line guard has a concrete record: in the first real Postgres run it blocked an edit to
-`audit/audit_logger.py` below the line, the work halted, and I authorized exactly one line in an
+`audit/audit_logger.py` below the line, the work halted, and I authorised exactly one line in an
 isolated commit with the diff shown first. The worked record is in the
 [companion chapter](ai-tools.md).
 
