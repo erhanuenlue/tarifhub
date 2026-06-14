@@ -1,8 +1,8 @@
-# Fazit
+# Conclusion
 
-This Fazit is written in the first person because the decisions it records were mine to make. The project leaned hard on AI: model-pinned worker agents wrote most of the volume, a second model family reviewed every pull request, and even this journal was drafted by an automated pipeline. What follows is an honest account of where I refused to delegate, where I delegated and how it went, and what I would carry into future work. I do not claim the result is flawless; I claim it is auditable, and that the boundaries held.
+This conclusion is written in the first person because the decisions it records were mine to make. The project leaned hard on AI: model-pinned worker agents wrote most of the volume, a second model family reviewed every pull request, and even this journal was drafted by an automated pipeline. What follows is an honest account of where I refused to delegate, where I delegated and how it went, and what I would carry into future work. I do not claim the result is flawless; I claim it is auditable, and that the boundaries held.
 
-## Three veto decisions: nie an die KI delegiert
+## Three veto decisions: never delegated to AI
 
 There were three places where I would not let AI act on its own judgment. I treated each as a hard veto, not a guideline.
 
@@ -10,7 +10,7 @@ There were three places where I would not let AI act on its own judgment. I trea
 
 **Veto 2: Plan approval and the merge green-contract stay under human judgment.** No plan reached implementation without the owner's gate-01 approval, and no PR auto-merged unless its green-contract held. This veto earned its keep. On 12 June my own orchestrator brief claimed the explain route returned HTTP 501 when the code actually 404'd, because no serving route existed at all; that single error propagated into three files before a fresh-context verifier caught it against the real httpx path (PR #4, 07cdfc5). An error in my brief scaled exactly as fast as the agents that consumed it, which is precisely why a human reads the plan and why every reviewer finding is dispositioned in the PR body rather than waved through.
 
-**Veto 3: Final acceptance is never delegated.** The go-live decision, the Moodle submission and the Eigenständigkeitserklärung stay with me. This is partly structural: repository visibility and the GitHub Pages settings can only be changed by the owner, and the public-readiness sweep on 13 June (a secret scan across all 142 commits, an MIT LICENSE, a hardened Helm dev password) explicitly left visibility and Pages with the owner (PR #17). The upload to Moodle is an act only I can perform, and the Erklärung der Eigenständigkeit is mine to sign. No automated pipeline gets to declare the work submitted or to declare it my own.
+**Veto 3: Final acceptance is never delegated.** The go-live decision, the Moodle submission and the Declaration of Authorship (Eigenständigkeitserklärung) stay with me. This is partly structural: repository visibility and the GitHub Pages settings can only be changed by the owner, and the public-readiness sweep on 13 June (a secret scan across all 142 commits, an MIT LICENSE, a hardened Helm dev password) explicitly left visibility and Pages with the owner (PR #17). The upload to Moodle is an act only I can perform, and the Declaration of Authorship is mine to sign. No automated pipeline gets to declare the work submitted or to declare it my own.
 
 ## What I delegated, and how it went
 
@@ -26,15 +26,13 @@ The central lesson sits underneath all of this. An enforced, tested determinism 
 
 The tools are not infallible, and pretending otherwise would undercut the whole argument. Codex proposed a confidently wrong e5 prefix fix built on the same misconception the bug came from, and I rejected it (PR #7, 5da6472). A worker's TOCTOU race diagnosis for the re-versioning problem was refuted at the merge gate by audit timestamps and a clean `UNIQUE(record_hash)` constraint (PR #8, d027a1d). The Codex CLI failed to emit a formal report in two of six sessions in one block, once on a plugin error and once on a silent termination. The adjudication burden of weighing every second-model finding is itself a cost, not a free safety net. The backstop is always the human gate.
 
-## Transfer to future practice (Übertrag auf die künftige Arbeitsweise)
+## Transfer to future practice (Übertrag)
 
-The Übertrag in eine künftige Arbeitsweise is a single rule: match the working mode to the blast radius of an error. Where an error is irreversible, use a hard gate plus a written spec, so the dangerous change cannot land silently. Where an error is recoverable, use agentic breadth with an independent second model, so wide work moves fast and defects get a second pair of eyes. Where the output is disposable, vibe coding is fine and a written spec would only be ceremony. The mistake to avoid in future work is applying one mode everywhere: a spec on throwaway exploration is waste, and vibe coding on a value contract is exactly how the console scaffold silently rendered every billing value as a dash placeholder until I read both sides of the wire (PR #16). The mode is a function of consequence, not of habit.
+The transfer into a future way of working (Übertrag) is a single rule: match the working mode to the blast radius of an error. Where an error is irreversible, use a hard gate plus a written spec, so the dangerous change cannot land silently. Where an error is recoverable, use agentic breadth with an independent second model, so wide work moves fast and defects get a second pair of eyes. Where the output is disposable, vibe coding is fine and a written spec would only be ceremony. The mistake to avoid in future work is applying one mode everywhere: a spec on throwaway exploration is waste, and vibe coding on a value contract is exactly how the console scaffold silently rendered every billing value as a dash placeholder until I read both sides of the wire (PR #16). The mode is a function of consequence, not of habit.
 
-### Kernaussage (Deutsch)
+### Core statement
 
-Eine erzwungene und getestete Determinismus-Grenze, der AST-Test, der sicherstellt, dass auf dem Wertepfad kein LLM-Client importierbar ist, ist die Bedingung dafür, dass KI bei abrechnungsrelevanten Daten überhaupt einsetzbar wird. Die Grenze ist kein Versprechen, sondern eine bei jedem CI-Lauf geprüfte Tatsache.
-
-In English: an enforced, tested determinism boundary, the AST test that guarantees no LLM client is importable on the value path, is the precondition that makes AI usable on billing-grade data at all. The boundary is not a promise; it is a fact checked on every CI run.
+An enforced, tested determinism boundary, the AST test that guarantees no LLM client is importable on the value path, is the precondition that makes AI usable on billing-grade data at all. The boundary is not a promise; it is a fact checked on every CI run.
 
 ## References
 

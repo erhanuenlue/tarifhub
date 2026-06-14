@@ -49,7 +49,7 @@ search method refuses to run on SQLite rather than fake a ranking, so the `/sear
 endpoint falls back to the deterministic in-process cosine instead (`test_repository.py`,
 with the offline ranking and the Postgres dimension-guard 501 pinned in `test_api.py`). What this
 output **excludes** by design: it is the offline suite, so it does not exercise live
-Claude output (tested separately, see *Tests der KI-Anteile* in [§13](13-test-strategy.md))
+Claude output (tested separately, see the AI-component tests, *Tests der KI-Anteile*, in [§13](13-test-strategy.md))
 or the real Postgres engine (the `python-parity` job).
 
 ### Coverage (pytest-cov, line coverage)
@@ -220,7 +220,7 @@ deterministic mapper has no category, and the gap-gate therefore invokes Claude 
 Billing values are structurally unreachable by the model. Separately, the 111
 flagged-for-review records all score exactly 0.75 (the single `−0.25` no-value penalty),
 i.e. they are the reimbursed packages carrying **no retail price**: keyable and frozen
-with the price gap left `None`, then routed to review (the EAL `nach Aufwand` precedent).
+with the price gap left `None`, then routed to review (the EAL `nach Aufwand`, priced by effort, precedent).
 That is a different set from the 47 AI-`category` fills (a record with price, category,
 unit and trilingual names scores 1.0). See the
 [evidence doc](../evidence/2026-06-12-sl-live-ingest.md) §2b for the derivation.

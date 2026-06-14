@@ -1,8 +1,8 @@
 # AI Tools and Workflow (criterion 15, 12 points)
 
 This chapter is the honest account of how AI was used to build TarifHub, organised by
-the four working phases the project actually ran: Generierung, Review, Refactoring and
-Recherche. Every claim is tied to a prompt line, the file or diff it produced, and a
+the four working phases the project actually ran: Generierung (Generation), Review,
+Refactoring and Recherche (Research). Every claim is tied to a prompt line, the file or diff it produced, and a
 PR plus commit reference taken from the contemporaneous journal (`vault/daily/`) and the
 `LEARNINGS.md` register. Where AI was wrong, that is recorded with what caught it. The
 companion mode analysis (vibe versus spec-driven versus agentic) lives in
@@ -26,7 +26,7 @@ documented in the companion chapter
 [AI-Assisted Software Engineering: the framework](ai-se-framework.md), which also names the
 complete external tool set: Claude Code, the OpenAI Codex CLI, and the Eraser MCP. This
 chapter is the worked, phase-structured evidence behind that framework: the prompts, diffs
-and commits, organised by Generierung, Review, Refactoring and Recherche. The one mechanism
+and commits, organised by Generierung (Generation), Review, Refactoring and Recherche (Research). The one mechanism
 worth restating here, because its catches recur below, is governance by tooling: a pre-tool
 hook (`guard_frozen`) blocks any edit below the freeze line (`versioning/`, `audit/`, the
 determinism boundary test) and halts the agent rather than letting it work around the rule.
@@ -51,7 +51,7 @@ human-floor lines (merges, publishes) from halt-and-rerun into pause-tap-resume,
 rather than asserted (the framework view is in [the framework chapter](ai-se-framework.md), section
 10).
 
-## Generierung
+## Generierung (Generation)
 
 Generation is where AI produced first drafts of code, docs and diagrams, always behind a
 gate before anything landed.
@@ -155,7 +155,7 @@ The drift-guard refactor is the model of converting advice into a test. Codex's 
 mechanically instead of by convention (PR #12, `257c0e0`). The review left a test behind, not
 a comment.
 
-## Recherche
+## Recherche (Research)
 
 Research is where AI distilled large source material before any plan was written, and where
 its readings had to be corrected against ground truth.
@@ -176,29 +176,23 @@ For current library and API documentation, Context7 was used to fetch up-to-date
 than relying on the model's training cut-off, so that framework and SDK claims in the build
 trace to current sources.
 
-## Erklärung der Eigenständigkeit
+## Declaration of Authorship (Eigenständigkeit)
 
 > Editorial note: this section is a visible placeholder. The text below paraphrases the
 > standard FFHS declaration form so the structure is in place. The owner, Erhan Ünlü, authors
 > and signs the final wording himself before submission. It is not signed here, and the
 > paraphrase below is not yet his words.
 
-Hiermit erkläre ich, dass ich die vorliegende Arbeit selbständig und ohne unerlaubte fremde
-Hilfe verfasst habe. Alle verwendeten Quellen, Hilfsmittel und Hilfeleistungen sind vollständig
-angegeben. Der Einsatz von KI-gestützten Werkzeugen ist in diesem Kapitel offengelegt und
-beschrieben. Die Arbeit wurde in dieser oder ähnlicher Form noch keiner anderen Prüfungsbehörde
-vorgelegt und auch nicht veröffentlicht.
-
-(In English, for the body of this report: I declare that I wrote this work independently and
-without unauthorised assistance. All sources, aids and assistance used are fully declared. The
-use of AI-supported tools is disclosed and described in this chapter. The work has not been
-submitted to any other examining body in this or a similar form, nor previously published.)
+I hereby declare that I wrote this work independently and without unauthorised outside
+assistance. All sources, aids and assistance used are fully declared. The use of AI-supported
+tools is disclosed and described in this chapter. The work has not been submitted to any other
+examining body in this or a similar form, nor has it been previously published.
 
 | | |
 |---|---|
 | Name | _______________________________ |
-| Ort | _______________________________ |
-| Datum | _______________________________ |
-| Unterschrift | _______________________________ |
+| Place | _______________________________ |
+| Date | _______________________________ |
+| Signature | _______________________________ |
 
 > Awaiting the owner's final text and signature.

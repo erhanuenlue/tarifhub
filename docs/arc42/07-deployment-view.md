@@ -37,7 +37,7 @@ All read-side sub-systems, in or out of the MVP path, stay post-freeze and ship 
 
 ## Style choice: distributed services along the freeze line
 
-The CAS rubric treats a **modular monolith** as *gleichwertig* (equally valid) to
+The CAS rubric treats a **modular monolith** as equally valid to
 **distributed services**; the choice must simply be justified. TarifHub chooses distributed
 services, decomposed along the freeze line ([ADR-002](../adr/002-freeze-line-decomposition.md)):
 the one inviolable rule ("no AI computes or mutates a billing value at serve time") becomes a
@@ -107,7 +107,7 @@ meldepilot     tarifhub-meldepilot      Up              0.0.0.0:3002->3002/tcp
 minio          minio/minio:latest       Up (healthy)    0.0.0.0:9000-9001->9000-9001/tcp
 ```
 
-**Interpretation.** This is the criterion-17 "lauffähig per Compose" anchor: the module
+**Interpretation.** This is the criterion-17 "runnable via Compose" anchor: the module
 boundaries from the building-block view are visible as eight running containers with
 distinct ports, and `serving` returns a real frozen record verbatim (`EAL/1000`,
 `tax_points "76.5"`, trilingual designation) at p95 = 15.8 ms over 200 warm point reads,
@@ -151,7 +151,7 @@ long-lived `Deployment` runs it to completion and the ReplicaSet restarts it; in
 it belongs in a `Job`/`CronJob` (follow-up in [§11](11-risks-technical-debt.md)). Functional
 data serving is shown under Compose above, where the Postgres is already populated; the k3d
 run proves the chart itself deploys every sub-system on Kubernetes, satisfying the criterion's
-"oder Kubernetes" alternative on top of the Compose proof.
+"or Kubernetes" alternative on top of the Compose proof.
 
 ## Production target
 
