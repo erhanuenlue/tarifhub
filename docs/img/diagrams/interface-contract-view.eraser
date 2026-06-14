@@ -1,0 +1,40 @@
+// diagramType: sequence-diagram
+// Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
+title L1 Serving: Interface Contract in Motion (Read-Only, Deterministic)
+autoNumber nested
+
+"PIS/HIS Client" [icon: monitor, color: blue]
+AI Agent [icon: cpu, color: blue]
+TarifCore API [icon: server, color: green]
+Serving Repository [icon: database]
+Frozen Records [icon: aws-rds, color: orange]
+
+// Point-in-time read via REST (the FHIR R4 ChargeItemDefinition adapter rides the same value path)
+"PIS/HIS Client" > TarifCore API: GET /api/v1/tariffs/{system}/{code}?as_of=2026-01-01
+activate TarifCore API
+TarifCore API > Serving Repository: Resolve version for date
+Serving Repository > Frozen Records: Select frozen row (read-only)
+Frozen Records --> Serving Repository: Immutable record with hash
+Serving Repository --> TarifCore API: Record unchanged
+TarifCore API --> "PIS/HIS Client": Frozen record with SHA-256 hash
+deactivate TarifCore API
+
+// Same contract via MCP
+AI Agent > TarifCore API: MCP get_tariff(system, code)
+activate TarifCore API
+TarifCore API --> AI Agent: Frozen record verbatim (no transform)
+deactivate TarifCore API
+
+// Diff between versions
+"PIS/HIS Client" > TarifCore API: GET /api/v1/tariffs/{system}/{code}/diff?from=1&to=2
+activate TarifCore API
+TarifCore API > Serving Repository: Read both frozen versions
+Serving Repository --> TarifCore API: Version 1 and 2 immutable
+TarifCore API --> "PIS/HIS Client": Field-level diff with verbatim values
+deactivate TarifCore API
+
+legend {
+  [connection: ">", label: "Synchronous request"]
+  [connection: "-->", label: "Response (no recomputation)"]
+  [icon: aws-rds, color: orange, label: "Immutable frozen storage"]
+}
