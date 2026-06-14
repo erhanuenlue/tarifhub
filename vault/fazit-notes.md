@@ -61,3 +61,7 @@
 ## 2026-06-13
 - Veto: I rejected parallel implementation worktrees for the console and kept the tightly-coupled contract and brand layer in-orchestrator on Opus 4.8.
 - Correction: I recorded the unsigned Eigenständigkeitserklärung as the largest C15 point gap, because final acceptance remains owner-only.
+
+## 2026-06-14
+- I did not accept the one-line `services/` sweep: even real P1 findings stayed out because the authorized task was exactly three docs and `.env.example` contradictions.
+- A quoted CI log replaced my unbacked green claim in arc42/13: the correction was 18 Vitest tests passed, one e2e smoke passed, one CAPTURE-gated screenshot spec skipped.
