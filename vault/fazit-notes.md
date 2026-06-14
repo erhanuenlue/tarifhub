@@ -101,3 +101,7 @@
 ## 2026-06-14
 - I kept the freeze line as a veto boundary during doc fixes: PR #23, PR #24, PR #25 and PR #26 stayed out of `services/` and did not touch freeze-line files even when reviewers found real service-side issues.
 - The repeated correction was that same-family diff review and umlaut scans missed umlaut-free German nouns; the cross-family whole-corpus review caught `Generierung`, `Recherche`, `Fazit`, `Arzneimittelliste` and `fazit-note`.
+
+## 2026-06-14
+- I vetoed optional determinism-guard widening in PR #27 because editing `tests/test_determinism_boundary.py` would cross the freeze-line hook for a docs-only correctness pass.
+- I corrected my PR #24 rubric-quotation judgment after the owner made the rule stricter: no German/English mix anywhere in PDF-bound docs, even for official anchor quotations.
