@@ -57,3 +57,7 @@
 ## 2026-06-13
 - Final acceptance stayed owner-only: both graders found the unsigned Eigenstaendigkeitserklaerung as the largest C15 gap, and I recorded it as owner-only rather than letting AI close it.
 - Independent model review changed the work: codex gpt-5.5 found the false offline deck claim and the phantom `parsers/fhir_parser.py` doc reference that first-pass review missed.
+
+## 2026-06-13
+- Veto: I rejected parallel implementation worktrees for the console and kept the tightly-coupled contract and brand layer in-orchestrator on Opus 4.8.
+- Correction: I recorded the unsigned Eigenständigkeitserklärung as the largest C15 point gap, because final acceptance remains owner-only.
