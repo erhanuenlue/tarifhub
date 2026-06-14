@@ -105,3 +105,7 @@
 ## 2026-06-14
 - I vetoed optional determinism-guard widening in PR #27 because editing `tests/test_determinism_boundary.py` would cross the freeze-line hook for a docs-only correctness pass.
 - I corrected my PR #24 rubric-quotation judgment after the owner made the rule stricter: no German/English mix anywhere in PDF-bound docs, even for official anchor quotations.
+
+## 2026-06-14
+- I did not delegate the freeze-line widening to AI or touch `tests/test_determinism_boundary.py`; I skipped optional PR #27 task 7 because the guard would fire and a freeze-line change needs separate authorization.
+- Cross-family review corrected failures my same-family checks missed: umlaut-free German nouns, C5 determinism overclaims, and SVG em dashes outside the markdown normalizer.
