@@ -97,3 +97,7 @@
 ## 2026-06-14
 - I treated official German rubric quotations as safe citations in PR #24, but the owner and lecturer rule vetoed the mix, and PR #26 removed all German from PDF-bound docs while keeping the 63/63 structural floor.
 - I corrected the repeated German-scan failure: my umlaut-plus-wordlist heuristic missed umlaut-free nouns, while the cross-family reviewer found them by crawling the corpus.
+
+## 2026-06-14
+- I kept the freeze line as a veto boundary during doc fixes: PR #23, PR #24, PR #25 and PR #26 stayed out of `services/` and did not touch freeze-line files even when reviewers found real service-side issues.
+- The repeated correction was that same-family diff review and umlaut scans missed umlaut-free German nouns; the cross-family whole-corpus review caught `Generierung`, `Recherche`, `Fazit`, `Arzneimittelliste` and `fazit-note`.
