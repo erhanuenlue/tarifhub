@@ -1,17 +1,32 @@
-/* tarifhub brand tokens for MkDocs Material — original Convergence identity */
+/* TarifHub brand tokens for MkDocs Material */
 :root {
-  --md-primary-fg-color: #0C4A6E;        /* navy */
-  --md-primary-fg-color--light: #0EA5E9; /* sky */
-  --md-primary-fg-color--dark: #06263B;
-  --md-accent-fg-color: #0EA5E9;
+  --md-primary-fg-color:        #0C4A6E;   /* navy */
+  --md-primary-fg-color--light: #0EA5E9;   /* sky */
+  --md-primary-fg-color--dark:  #06263B;
+  --md-accent-fg-color:         #0EA5E9;    /* sky */
+  --md-primary-bg-color:        #ffffff;
+  --md-primary-bg-color--light: rgba(255,255,255,.7);
 }
+
+/* Header: navy with a sky underline */
 .md-header { border-bottom: 3px solid #0EA5E9; }
-/* frozen/deterministic values: navy + mono (brand rule) */
+.md-header__button.md-logo img,
+.md-header__button.md-logo svg { height: 1.7rem; width: auto; }
+
+/* Links / accents in brand sky */
+.md-typeset a { color: #0369A1; }
+.md-typeset a:hover { color: #0EA5E9; }
+
+/* Frozen / deterministic values: navy + mono (brand rule) */
 .frozen { font-family: "JetBrains Mono", monospace; color: #0C4A6E; font-weight: 600; }
-/* AI-generated content marker */
+
+/* AI-generated content marker (never a billing value) */
 .ai-note {
   border-left: 4px solid #94A3B8; background: #F8FAFC;
   padding: .5em .9em; color: #475569; font-size: .9em;
 }
-.ai-note::before { content: "AI-generated explanation — not a billing value"; display: block;
-  font-size: .72em; font-weight: 700; letter-spacing: .06em; text-transform: uppercase; color: #94A3B8; }
+.ai-note::before {
+  content: "AI-generated explanation, not a billing value";
+  display: block; font-size: .72em; font-weight: 700; letter-spacing: .06em;
+  text-transform: uppercase; color: #94A3B8;
+}

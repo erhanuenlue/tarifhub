@@ -1,33 +1,36 @@
-# tarifhub — architecture documentation site (MkDocs Material)
-# Option A note: this REPLACES the existing repo's mkdocs.yml (adds PDF export + method chapters).
+# TarifHub - architecture documentation site (MkDocs Material)
 # Serve:  mkdocs serve -f docs/mkdocs.yml
 # Build:  mkdocs build -f docs/mkdocs.yml --strict
-# PDF:    open the "Full document (PDF)" page on the built site → browser print → save as PDF.
 
-site_name: tarifhub — Architecture Documentation
-site_description: AI-assisted harmonisation above a deterministic freeze line. FFHS AISE Semesterarbeit.
+site_name: TarifHub
+site_description: AI-assisted harmonisation above a deterministic freeze line. FFHS CAS AI-Assisted Software Engineering.
 site_author: Erhan Ünlü
 docs_dir: .
 site_dir: ../site
-# cas/ is the course-internal rubric working copy (gitignored) — never render it into the site
-# cockpit/ is the post-submission cockpit design package (ADR-022) — excluded from the graded build
+# cas/ is the course-internal rubric working copy (gitignored); cockpit/ is the
+# post-submission design package (ADR-022). Neither is rendered into the site.
 exclude_docs: |
   cas/
   cockpit/
-repo_url: https://github.com/erhanuenlue/tarifhub   # set after `gh repo create`; appears in header
+repo_url: https://github.com/erhanuenlue/tarifhub
+repo_name: erhanuenlue/tarifhub
 edit_uri: ""
 
 theme:
   name: material
+  logo: brand/assets/logo-mono.svg
+  favicon: brand/assets/logo-primary.svg
   palette:
-    primary: custom
-    accent: custom
+    - scheme: default
+      primary: custom
+      accent: custom
   font:
     text: Inter
     code: JetBrains Mono
   features:
     - navigation.sections
     - navigation.top
+    - navigation.footer
     - content.code.copy
     - toc.follow
 
@@ -49,7 +52,8 @@ markdown_extensions:
 
 nav:
   - Home: index.md
-  - Architecture (arc42):
+  - Summary: zusammenfassung-de.md
+  - Architecture:
       - 1 · Introduction & Goals: arc42/01-introduction-goals.md
       - 2 · Constraints: arc42/02-constraints.md
       - 3 · Context & Scope: arc42/03-context-scope.md
@@ -63,25 +67,25 @@ nav:
       - 11 · Risks & Technical Debt: arc42/11-risks-technical-debt.md
       - 12 · Glossary: arc42/12-glossary.md
       - 13 · Test Strategy: arc42/13-test-strategy.md
-  - Architecture Decisions (ADR):
-      - "ADR-001 — Python-first core; Next.js only at L3": adr/001-python-first-core.md
-      - "ADR-002 — Service decomposition along the freeze line": adr/002-freeze-line-decomposition.md
-      - "ADR-003 — Canonical, versioned, immutable record model": adr/003-canonical-record-model.md
-      - "ADR-004 — Freeze, content-hash and lineage as the determinism anchor": adr/004-freeze-content-hash-lineage.md
-      - "ADR-005 — Single AI seam (ai_map) with human-in-the-loop": adr/005-single-ai-seam.md
-      - "ADR-006 — PostgreSQL 16 + pgvector as the single store": adr/006-postgres-pgvector.md
-      - "ADR-007 — S3-compatible object store for raw source artifacts": adr/007-object-store-raw-artifacts.md
-      - "ADR-008 — API styles: REST primary, plus GraphQL, FHIR R4, XML and MCP": adr/008-api-styles.md
-      - "ADR-009 — Docker images + Kubernetes via Helm; compose for local": adr/009-docker-kubernetes-helm.md
-      - "ADR-010 — GitHub Actions CI/CD with DevSecOps gates": adr/010-github-actions-devsecops.md
-      - "ADR-011 — OpenTelemetry-based observability": adr/011-opentelemetry-observability.md
-      - "ADR-012 — Data residency in Switzerland; LLM region boundary for patie": adr/012-data-residency-llm-region.md
-      - "ADR-013 — TarifGuard console demo scope: master-detail, review form, e": adr/013-demo-scope.md
-      - "ADR-014 — arc42-light retained as the documentation framework": adr/014-arc42-light.md
-      - "ADR-015 — BAG ePL Spezialitätenliste (FHIR R5) ingestion": adr/015-epl-sl-fhir-ingestion.md
-      - "ADR-016 — Canonical Decimal scale contract (stored bytes == hashed bytes)": adr/016-decimal-scale-contract.md
-      - "ADR-017 — Deterministic search fallback; record-grounded explain endpoint": adr/017-deterministic-search-fallback-explain.md
-      - "ADR-018 — Orchestrator model lifecycle (Fable 5, then Opus 4.8)": adr/018-orchestrator-model-lifecycle.md
+  - Architecture Decisions:
+      - "ADR-001 · Python-first core; Next.js only at L3": adr/001-python-first-core.md
+      - "ADR-002 · Service decomposition along the freeze line": adr/002-freeze-line-decomposition.md
+      - "ADR-003 · Canonical, versioned, immutable record model": adr/003-canonical-record-model.md
+      - "ADR-004 · Freeze, content-hash and lineage as the determinism anchor": adr/004-freeze-content-hash-lineage.md
+      - "ADR-005 · Single AI seam (ai_map) with human-in-the-loop": adr/005-single-ai-seam.md
+      - "ADR-006 · PostgreSQL 16 + pgvector as the single store": adr/006-postgres-pgvector.md
+      - "ADR-007 · S3-compatible object store for raw source artifacts": adr/007-object-store-raw-artifacts.md
+      - "ADR-008 · API styles: REST primary, plus GraphQL, FHIR R4, XML and MCP": adr/008-api-styles.md
+      - "ADR-009 · Docker images + Kubernetes via Helm; compose for local": adr/009-docker-kubernetes-helm.md
+      - "ADR-010 · GitHub Actions CI/CD with DevSecOps gates": adr/010-github-actions-devsecops.md
+      - "ADR-011 · OpenTelemetry-based observability": adr/011-opentelemetry-observability.md
+      - "ADR-012 · Data residency in Switzerland; LLM region boundary for patient data": adr/012-data-residency-llm-region.md
+      - "ADR-013 · TarifGuard console demo scope: master-detail, review form, explain panel": adr/013-demo-scope.md
+      - "ADR-014 · arc42-light retained as the documentation framework": adr/014-arc42-light.md
+      - "ADR-015 · BAG ePL Spezialitätenliste (FHIR R5) ingestion": adr/015-epl-sl-fhir-ingestion.md
+      - "ADR-016 · Canonical Decimal scale contract (stored bytes == hashed bytes)": adr/016-decimal-scale-contract.md
+      - "ADR-017 · Deterministic search fallback; record-grounded explain endpoint": adr/017-deterministic-search-fallback-explain.md
+      - "ADR-018 · Orchestrator model lifecycle (Fable 5, then Opus 4.8)": adr/018-orchestrator-model-lifecycle.md
   - AI-Assisted Method:
       - The AI-SE Framework: method/ai-se-framework.md
       - AI Tools & Workflow: method/ai-tools.md
@@ -89,13 +93,12 @@ nav:
       - Journal (excerpts): method/journal.md
       - Conclusion: method/fazit.md
   - Criterion Map: criterion-map.md
-  - Summary: zusammenfassung-de.md
 
 plugins:
   - search
   - print-site:
-      add_to_navigation: true
-      print_page_title: "Full document (PDF)"
+      add_to_navigation: false
+      print_page_title: "Full document"
       add_cover_page: true
       cover_page_template: ""
       toc_title: "Contents"
