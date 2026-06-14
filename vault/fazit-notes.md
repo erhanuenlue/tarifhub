@@ -65,3 +65,7 @@
 ## 2026-06-14
 - I did not accept the one-line `services/` sweep: even real P1 findings stayed out because the authorized task was exactly three docs and `.env.example` contradictions.
 - A quoted CI log replaced my unbacked green claim in arc42/13: the correction was 18 Vitest tests passed, one e2e smoke passed, one CAPTURE-gated screenshot spec skipped.
+
+## 2026-06-14
+- I rejected service-layer P1 fixes in this task because the authorized scope was docs and `.env.example`, so `services/` changes needed a separate task and determinism-auditor.
+- The surprise was that my own timeline claim about the console test script was wrong: `git show 265b2e3:apps/tarifguard/package.json` proved the stale-doc issue existed from day one.
