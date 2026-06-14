@@ -1,36 +1,46 @@
 {
   "date": "2026-06-14",
   "block": 3,
-  "estimated_total": 94,
-  "max_total": 100,
+  "total_estimate": 94,
+  "max": 100,
+  "estimate": true,
+  "source": "grade-auditor independent judgment pass over tools/cas_check.py floor (63/63 elements present, 0 not-yet-due, 0 regressions); conjunctive anchor rule applied, lower tier reported on close boundaries",
+  "groups": {
+    "Spezifikation": {"awarded": 15, "max": 15},
+    "Entwurf": {"awarded": 17, "max": 17},
+    "Programmierung": {"awarded": 21, "max": 22},
+    "Validierung": {"awarded": 16, "max": 16},
+    "KI und Architektur": {"awarded": 25, "max": 30}
+  },
   "criteria": [
-    {"c": 1, "name": "Use-Cases & Anforderungen", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "5 Kernfunktionen as UC table (Actor+Trigger+Outcome+Realises FR) + stakeholder table; anchor tables widerspruchsfrei. Watch: rendered use-case diagram contradicts catalogue on UC-05 (scored under crit 5)."},
-    {"c": 2, "name": "NfA nach SMART", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "6 NfA each with Zielwert + Messverfahren + Measured + governing ADR (e.g. NfA-4 p95<200ms, measured 15.8ms, ADR-002/006)."},
-    {"c": 3, "name": "Vision", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "Clear Problemstellung; vision with Zielgruppe/Beduerfnis/Abgrenzung; one KI-Nutzen sentence per Kernfunktion (incl. UC-04 'deliberately zero AI')."},
-    {"c": 4, "name": "Architektur Bild+Text", "weight": 7, "estimate": 7, "tier": "vollstaendig", "note": "C4 L1+L2 consistent with text; style per ADR-002; 17 ADRs; roter Faden index->intro->strategy->decisions->fazit holds durchgaengig."},
-    {"c": 5, "name": "Perspektiven", "weight": 7, "estimate": 6, "tier": "ueberwiegend (top boundary)", "note": "All three perspectives present with diagram+text, so NOT the 4-pt two-perspective tier. Docked 1: use-cases.puml marks UC-05 <<designed>>/not-implemented while arc42/01 marks UC-05 'live (this release)' — a real diagram/text contradiction a strict conjunctive read punishes."},
-    {"c": 6, "name": "Datenmodell", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "ER diagram + two-table model explained + db/migrations + pgvector(1024) HNSW/cosine documented."},
-    {"c": 7, "name": "Code-Struktur", "weight": 7, "estimate": 7, "tier": "vollstaendig", "note": "Clean ingestion/serving/mcp split + console app module; component table maps each module to a responsibility consistent with the freeze-line entwurf."},
-    {"c": 8, "name": "Framework-Konzepte", "weight": 10, "estimate": 10, "tier": "vollstaendig", "note": "arc42/08 quotes crit 8 verbatim; DI (Depends), env-only config, Pydantic validation, uniform boundary error handling; framework choice justified (ADR-001); console tests wired into CI."},
-    {"c": 9, "name": "Erkenntnisse", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "LEARNINGS.md >=8 entries with commit/PR refs and explicit accept/correct/reject dispositions on AI suggestions (e.g. drift-guard accepted PR #12 257c0e0)."},
-    {"c": 10, "name": "Git-Repository", "weight": 2, "estimate": 2, "tier": "vollstaendig (conditional)", "note": "Clickable repo URL in report, source complete. CONDITIONAL on the owner-only Block-3 public flip; drops to 0/2 if the repo is private at submission. Codex could not verify anonymous access either."},
-    {"c": 11, "name": "Abnahmekriterien", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "One Given/When/Then per Kernfunktion against a concrete observable; explicit 'Verifies (NfA)' column cross-references NfA-1..NfA-6."},
-    {"c": 12, "name": "Teststrategie", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "Teststufen named+justified; dedicated 'Tests of the AI components' with four named real families (guardrail, gap-gate, fill-reuse non-determinism, fail-closed) and named test files."},
-    {"c": 13, "name": "Unit-Tests", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "Large offline suite incl. named error cases (validator/mapper fail-closed, double-freeze ValueError); runs green in the CI build."},
-    {"c": 14, "name": "Test-Ergebnisse", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "Pipeline output and coverage TOTALs quoted verbatim AND interpreted ('residual misses are bounded and named'); screenshots explicitly demoted to illustration. The 3-pt anchor, not the 1-pt screenshot anchor."},
-    {"c": 15, "name": "KI-Werkzeuge", "weight": 12, "estimate": 7, "tier": "ueberwiegend", "note": "Phase-structured (Generierung/Review/Refactoring/Recherche) with prompts/diffs/PR+commit refs. CONJUNCTIVE MISS: Eigenstaendigkeitserklaerung is an unsigned placeholder in BOTH docs/method/ai-tools.md and tools/build_pdf.py (ERKLAERUNG). 'vollstaendig' fails, capping at 7-pt tier; a strict grader could go lower. Owner-gated by Fazit veto 3."},
-    {"c": 16, "name": "KI-Services", "weight": 6, "estimate": 6, "tier": "vollstaendig", "note": "Two substantial KI roles (fill-only ai_map with structured output + e5/MCP embedding search); guardrails (gap-gate, schema-constrained, AST boundary, label law); human-in-the-loop review form."},
-    {"c": 17, "name": "Container-Sub-Systeme", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "compose + per-sub-system Dockerfiles + Helm/k3d; module borders consistent with entwurf; style choice justified via ADR-002/006; runtime evidence captured in docs/img and Sec 7."},
-    {"c": 18, "name": "Fazit", "weight": 7, "estimate": 7, "tier": "vollstaendig", "note": "Three concrete, justified, evidenced vetoes (freeze line PR #2; plan+merge gate, 501-vs-404 PR #4; final acceptance PR #17) + honest limits + substantive transfer ('match the working mode to the blast radius of an error')."}
+    {"c": 1, "name": "Use-Cases & Anforderungen", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "5 Kernfunktionen as UC tables (UC-01/03/04/06/09) with Actor+Trigger+Outcome+Realises FR, stakeholder table, FR table (docs/arc42/01-introduction-goals.md). Widerspruchsfrei; diagram footnote statuses now match catalogue."},
+    {"c": 2, "name": "NfA nach SMART", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "6 NfA each with Target value + Measurement method + Measured + governing ADR (10-quality-requirements.md), e.g. NfA-4 p95<200ms, measured 15.8ms, ADR-002/006."},
+    {"c": 3, "name": "Vision", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "Problemstellung + Vision (Zielgruppe/Abgrenzung) + dedicated 'AI value per core function' giving one KI-Nutzen sentence per Kernfunktion."},
+    {"c": 4, "name": "Architektur bild+text", "weight": 7, "estimate": 7, "tier": "vollstaendig", "note": "C4 L1/L2 SVGs consistent with text; style named + ADR-backed (04-solution-strategy -> ADR-001/002/003); roter Faden Problem->Loesung->Fazit holds. No bild/text contradiction this run."},
+    {"c": 5, "name": "Perspektiven", "weight": 7, "estimate": 7, "tier": "vollstaendig", "note": "Structure (C4 component view, §5), behaviour (runtime scenarios §6), interaction (OpenAPI/response_model routes §8, MCP tool contracts) each with diagram + text."},
+    {"c": 6, "name": "Datenmodell", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "ER model §5 + db/schema.sql + forward-only migrations; pgvector vector(1024) storage documented (ADR-006)."},
+    {"c": 7, "name": "Code-Struktur", "weight": 7, "estimate": 6, "tier": "ueberwiegend", "note": "Clean layer/module split, speaking names, boundaries consistent with design. Held 1 short: in-report proof of 'Dokumentation an nicht-trivialen Stellen' is asserted, not shown with a code excerpt."},
+    {"c": 8, "name": "Framework-Konzepte", "weight": 10, "estimate": 10, "tier": "vollstaendig", "note": "Idiomatic FastAPI: DI via get_settings() frozen Settings, env-only 12-factor config, response_model validation, OpenAPI auto-gen, dimension-guard 501 error handling; framework choice justified (ADR-001)."},
+    {"c": 9, "name": "Erkenntnisse", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "LEARNINGS.md: 14 dated entries, each with PR# + merge SHA and explicit accepted/corrected/rejected disposition where AI was involved."},
+    {"c": 10, "name": "Git-Repository", "weight": 2, "estimate": 2, "tier": "vollstaendig", "note": "Repo complete; public-readiness sweep done (secret scan 142 commits, MIT LICENSE, PR #17); URL in report at submission."},
+    {"c": 11, "name": "Abnahmekriterien", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "§10 acceptance table: one Given/When/Then per UC against a concrete observable, with a final 'Verifies (NfA)' column cross-referencing NfA-1..NfA-6 (crit-2 link). Design-scope rows honestly marked."},
+    {"c": 12, "name": "Teststrategie", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "§13 names levels+tools+rationale and has a 'Tests of the AI components' section: guardrail (boundary AST), gap-gate, fill-reuse (non-deterministic output), schema fail-closed, named as such."},
+    {"c": 13, "name": "Unit-Tests", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "§10 quotes '295 tests pass, 4 skipped'; error cases enumerated concretely (validator/mapper fail-closed, double-freeze raises). Green in build."},
+    {"c": 14, "name": "Test-Ergebnisse", "weight": 3, "estimate": 3, "tier": "vollstaendig", "note": "§10 quotes pipeline output verbatim ('ingestion: 167 passed, 3 skipped') THEN interprets it; explicitly states screenshot only illustrates and 'the quoted text is the evidence'. Exactly the 3-pt anchor."},
+    {"c": 15, "name": "KI-Werkzeuge", "weight": 12, "estimate": 7, "tier": "ueberwiegend", "note": "ai-tools.md excellent: phases Generation/Review/Refactoring/Research each evidenced with prompts+diffs+PR/SHA. BUT Declaration of Authorship is a self-declared placeholder ('not yet his words... awaiting signature'). 12-pt anchor requires Eigenstaendigkeit vollstaendig; conjunctive -> drops to 7."},
+    {"c": 16, "name": "KI-Services", "weight": 6, "estimate": 6, "tier": "vollstaendig", "note": "Two substantial AI roles: fill-only ai_map seam (schema-constrained, ADR-005) + pgvector e5 embedding search (UC-06); guardrails enforced (boundary AST, guard_frozen); HITL review form."},
+    {"c": 17, "name": "Container-Sub-Systeme", "weight": 5, "estimate": 5, "tier": "vollstaendig", "note": "docs/evidence/2026-06-13-distribution.md quotes verbatim Compose up + CI image builds + k3d/Helm deploy; boundaries consistent with §5/§7; style justified (ADR-002/009)."},
+    {"c": 18, "name": "Fazit", "weight": 7, "estimate": 7, "tier": "vollstaendig", "note": "fazit.md: three concrete evidenced veto decisions (freeze line PR#2, plan+merge gates PR#4, final acceptance) + 'Honest limits' + transfer rule ('match mode to blast radius'). Substantial, not generic."}
   ],
-  "gaps_ranked": [
-    {"c": 15, "points_at_risk": 5, "action": "Replace the Eigenstaendigkeitserklaerung placeholder in BOTH docs/method/ai-tools.md and the ERKLAERUNG block in tools/build_pdf.py with the owner's own final FFHS declaration text and signature, then rebuild and inspect the PDF. Owner-gated by Fazit veto 3; unlocks crit 15 from 7 to 12."},
-    {"c": 10, "points_at_risk": 2, "action": "Flip the repository to public and confirm github.com/erhanuenlue/tarifhub resolves anonymously (no login) before hand-in; otherwise crit 10 silently collapses from 2 to 0 at grading."},
-    {"c": 5, "points_at_risk": 1, "action": "Fix the UC-05 status contradiction in use-cases.puml (stereotype + legend) to match the 'live (this release)' catalogue status and re-render the SVG; also strip em-dashes from diagram sources (use-cases.puml, seq-review-freeze.puml, runtime-harmonise-freeze.svg) before the single-PDF compile."}
+  "gaps": [
+    {"crit": 15, "points_at_risk": 5, "what": "Declaration of Authorship is a self-declared placeholder ('this section is a visible placeholder... not yet his words... Awaiting the owner's final text and signature'). The 12-pt anchor requires the Eigenstaendigkeitserklaerung vollstaendig; conjunctive rule caps the tier at 7 until the owner writes the standard FFHS wording and signs. Owner-only action (Veto 3)."},
+    {"crit": 7, "points_at_risk": 1, "what": "In-report evidence for 'Dokumentation an nicht-trivialen Stellen' is asserted, not shown. One quoted docstring/module-header excerpt would secure the 7-pt tier."},
+    {"crit": 4, "points_at_risk": 0, "what": "Watch only (no deduction this run): prior same-day note flagged a UC-05 diagram-vs-catalogue contradiction; this run found them consistent (SVG footnote scopes only UC-02/UC-09, both matching the table; UC-05 'live' in both). Re-verify after any diagram regeneration since the render is cached by existence."}
   ],
   "top_actions": [
-    "Sign the Eigenstaendigkeitserklaerung in both docs/method/ai-tools.md and tools/build_pdf.py with the owner's own self-authored FFHS declaration text and signature, then rebuild and inspect the PDF (+5, crit 15; the one element AI must not author).",
-    "Flip the repo to public and verify anonymous access to github.com/erhanuenlue/tarifhub before submission (+2 protected, crit 10).",
-    "Fix the UC-05 diagram/text contradiction in use-cases.puml, re-render the SVG, and strip residual em-dashes from the diagram sources before the single-PDF compile so the roter Faden and quoted evidence survive the markdown-to-PDF transform (+1, crit 5; report quality)."
-  ]
+    "Finalise and sign the Declaration of Authorship (crit 15, +5): replace the placeholder with the standard FFHS Eigenstaendigkeitserklaerung wording and sign. Owner-only by design (Veto 3); single largest movable gap, lowest effort.",
+    "Add one quoted documentation excerpt to the code-structure narrative (crit 7, +1): show a representative docstring/module header so 'documented' becomes evidence rather than assertion.",
+    "Lock diagram-vs-text consistency before the PDF build (crit 4/5 insurance): clear build/pdf/img/use-cases.pdf and re-render after any diagram edit, then spot-check every status footnote against the catalogue at pre-flight."
+  ],
+  "honesty_note": "Estimate only, not the grader. Test/pipeline figures (295 passed, coverage 90-97%, p95 15.8ms) taken at face value from the report; not re-run this session. The crit-15 tier boundary is the one place a generous reading could restore 5 points and a strict reading confirms the deduction."
 }
