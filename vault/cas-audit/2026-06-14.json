@@ -1,233 +1,35 @@
 {
   "date": "2026-06-14",
-  "block": 3,
-  "total": 95,
-  "max": 100,
   "total_estimate": 95,
-  "estimate": true,
-  "source": "grade-auditor judgment pass over tools/cas_check.py floor (63/63 elements present, 0 regressions); independent verification of crit 8/15 evidence files",
-  "groups": {
-    "Spezifikation": {
-      "awarded": 15,
-      "max": 15
-    },
-    "Entwurf": {
-      "awarded": 17,
-      "max": 17
-    },
-    "Programmierung": {
-      "awarded": 22,
-      "max": 22
-    },
-    "Validierung": {
-      "awarded": 16,
-      "max": 16
-    },
-    "KI und Architektur": {
-      "awarded": 25,
-      "max": 30
-    }
-  },
-  "criteria": {
-    "0": {
-      "c": 1,
-      "name": "Use-Cases & Anforderungen",
-      "awarded": 5,
-      "max": 5,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 5,
-      "rationale": "5 Kernfunktionen as UCs (UC-01/03/04/06/09) with Actor+Trigger+Outcome+Realises-FR; supporting UCs; stakeholder table; UML use-case diagram (docs/diagrams/use-cases.svg).",
-      "misses": []
-    },
-    "1": {
-      "c": 2,
-      "name": "NfA nach SMART",
-      "awarded": 5,
-      "max": 5,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 5,
-      "rationale": "6 NfA, each with Zielwert + Messverfahren + Measured + governing ADR (docs/arc42/10: 'NfA-4 p95 < 200 ms ... measured 15.8 ms ... ADR-002/006').",
-      "misses": []
-    },
-    "2": {
-      "c": 3,
-      "name": "Vision",
-      "awarded": 5,
-      "max": 5,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 5,
-      "rationale": "Problemstellung + Vision w/ Zielgruppe + Abgrenzung + one KI-Nutzen sentence per Kernfunktion (docs/arc42/01 'KI-Nutzen je Kernfunktion': UC-04 'deliberately zero AI').",
-      "misses": []
-    },
-    "3": {
-      "c": 4,
-      "name": "Architektur bild+text",
-      "awarded": 7,
-      "max": 7,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 7,
-      "rationale": "C4 L1/L2 consistent with text; Architekturstil named + ADR-002; durchgaengiger roter Faden Problemstellung->freeze-line solution->Fazit; >=10 ADRs.",
-      "misses": []
-    },
-    "4": {
-      "c": 5,
-      "name": "Perspektiven",
-      "awarded": 7,
-      "max": 7,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 7,
-      "rationale": "Struktur (C4 component §5), Verhalten (runtime sequences + record-lifecycle states §6), Interaktion (OpenAPI + console contracts), each with diagram + explanatory text.",
-      "misses": []
-    },
-    "5": {
-      "c": 6,
-      "name": "Datenmodell",
-      "awarded": 3,
-      "max": 3,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 3,
-      "rationale": "ER diagram + db/migrations/ + pgvector (HNSW/cosine) documented in §8/§10.",
-      "misses": []
-    },
-    "6": {
-      "c": 7,
-      "name": "Code-Struktur",
-      "awarded": 7,
-      "max": 7,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 7,
-      "rationale": "Clean service split (ingestion/serving/mcp + console), per-service READMEs, sprechende Namen, Modulgrenzen consistent with §5 component view.",
-      "misses": []
-    },
-    "7": {
-      "c": 8,
-      "name": "Framework-Konzepte",
-      "awarded": 10,
-      "max": 10,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 10,
-      "rationale": "+1 today. DI (Depends/RepoDep), env-only get_settings(), boundary HTTPException(404)+declarative 422s, Pydantic validation idiomatic in code; framework choice justified; console Vitest/Playwright tests now wired into CI (PR #23, 163eda7; real package.json test script + 5 test files), closing the last 'durchgehend idiomatisch' crack.",
-      "misses": []
-    },
-    "8": {
-      "c": 9,
-      "name": "Erkenntnisse",
-      "awarded": 3,
-      "max": 3,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 3,
-      "rationale": "LEARNINGS.md: every entry ends with PR + merge SHA and an explicit accepted/corrected/rejected disposition on the AI suggestion (e.g. 'rejected ... PR #5, ac8296c').",
-      "misses": []
-    },
-    "9": {
-      "c": 10,
-      "name": "Git-Repository",
-      "awarded": 2,
-      "max": 2,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 2,
-      "rationale": "Clickable repo URL in docs/index.md; full history; CI on every push.",
-      "misses": []
-    },
-    "10": {
-      "c": 11,
-      "name": "Abnahmekriterien",
-      "awarded": 5,
-      "max": 5,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 5,
-      "rationale": "One G/W/T per UC with concrete observable + Verifies(NfA) cross-reference column (docs/arc42/10 Acceptance criteria); design-scope rows honestly labelled.",
-      "misses": []
-    },
-    "11": {
-      "c": 12,
-      "name": "Teststrategie",
-      "awarded": 5,
-      "max": 5,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 5,
-      "rationale": "Teststufen named+justified; 'Tests der KI-Anteile' with four named real families (guardrail boundary, gap-gate no-call, fill-reuse, fail-closed schema) in docs/arc42/13.",
-      "misses": []
-    },
-    "12": {
-      "c": 13,
-      "name": "Unit-Tests",
-      "awarded": 3,
-      "max": 3,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 3,
-      "rationale": "Core logic + error paths covered (>=100 tests, named error cases); suite green in CI.",
-      "misses": []
-    },
-    "13": {
-      "c": 14,
-      "name": "Test-Ergebnisse",
-      "awarded": 3,
-      "max": 3,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 3,
-      "rationale": "Pipeline/coverage output quoted verbatim AND interpreted in docs/arc42/10 ('residual misses are bounded and named, not blind spots'); screenshots only illustrate.",
-      "misses": []
-    },
-    "14": {
-      "c": 15,
-      "name": "KI-Werkzeuge",
-      "awarded": 7,
-      "max": 12,
-      "tier": "überwiegend",
-      "gap": "Erklaerung der Eigenstaendigkeit not yet final/signed (visible placeholder, blank Name/Ort/Datum/Unterschrift); owner-gated, finalise+sign before PDF hand-in to secure the 12-point tier (+5).",
-      "points": 7,
-      "rationale": "Per-phase structure (Generierung/Review/Refactoring/Recherche) + prompts/diffs/commit refs fully met in docs/method/ai-tools.md; conjunctive miss: Erklaerung der Eigenstaendigkeit is a self-declared unsigned placeholder ('Awaiting the owner's final text and signature'), so 'gemaess Aufgabenstellung vollstaendig' fails and the tier drops to ueberwiegend. Owner-gated by Fazit veto 3.",
-      "misses": [
-        "Erklaerung der Eigenstaendigkeit not yet final/signed (visible placeholder, blank Name/Ort/Datum/Unterschrift); owner-gated, finalise+sign before PDF hand-in to secure the 12-point tier (+5)."
-      ]
-    },
-    "15": {
-      "c": 16,
-      "name": "KI-Services",
-      "awarded": 6,
-      "max": 6,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 6,
-      "rationale": "Two substantial AI roles (fill-only ai_map seam + e5 embedding/MCP search); guardrails (AST boundary test, label law); Human-in-the-Loop review form (docs/arc42/05,06,08).",
-      "misses": []
-    },
-    "16": {
-      "c": 17,
-      "name": "Container-Sub-Systeme",
-      "awarded": 5,
-      "max": 5,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 5,
-      "rationale": "Compose + per-sub-system Dockerfiles + Helm; distributed-services choice explicitly justified vs modular monolith via ADR-002 (docs/arc42/07); oper/latency evidence captured in §7/§10.",
-      "misses": []
-    },
-    "17": {
-      "c": 18,
-      "name": "Fazit",
-      "awarded": 7,
-      "max": 7,
-      "tier": "vollständig",
-      "gap": "",
-      "points": 7,
-      "rationale": "Three concrete, evidenced vetoes (PR/commit refs 057a6c1, 07cdfc5, PR #17) + honest limits + Uebertrag ('match the working mode to the blast radius of an error') in docs/method/fazit.md.",
-      "misses": []
-    }
-  }
+  "max_total": 100,
+  "criteria": [
+    {"id": 1, "name": "Use-Cases & fachliche Anforderungen", "max": 5, "estimate": 5, "justification": "arc42/01 Use-case catalogue marks exactly 5 Kernfunktionen (UC-01/03/04/06/09), each with Actor + Trigger + Outcome + 'Realises FR'; stakeholder table with concern + key use cases; FR-1..FR-9 unambiguous. Meets vollstaendig: actors + business benefit + stakeholders + widerspruchsfrei."},
+    {"id": 2, "name": "Qualitaetsanforderungen (NfA) nach SMART", "max": 5, "estimate": 5, "justification": "arc42/10 SMART NFR table: 6 NfA each with Zielwert + Messverfahren + Measured + governing ADR (e.g. NfA-4 'p95 < 200 ms ... measured 15.8 ms', linked to ADR-002/006). ADR linkage visible per row. Meets vollstaendig."},
+    {"id": 3, "name": "Vision der Loesung", "max": 5, "estimate": 5, "justification": "arc42/01 'Problem statement' + 'Vision' (target group/need/scope with explicit Abgrenzung) + 'AI value per core function' giving one KI-Nutzen sentence per Kernfunktion (incl. UC-04 'deliberately zero AI'). Meets vollstaendig."},
+    {"id": 4, "name": "Loesungsansatz & Architektur (bild+text)", "max": 7, "estimate": 7, "justification": "C4 context + container SVGs consistent with arc42/04 text; Architekturstil (freeze-line two-service split) named and ADR-002-justified; 17 ADRs; roter Faden Problemstellung (fragmentierte Tarifdaten) -> Loesung (freeze line) -> Fazit is genuinely durchgaengig. Meets vollstaendig."},
+    {"id": 5, "name": "Perspektiven (Struktur/Verhalten/Interaktion)", "max": 7, "estimate": 7, "justification": "Struktur (C4 component), Verhalten (sequence/runtime + state diagram), Interaktion (OpenAPI + interface-contract view, C5, PR #25), each with diagram + explanatory text. Meets vollstaendig."},
+    {"id": 6, "name": "Datenmodell", "max": 3, "estimate": 3, "justification": "ER diagram + db/migrations/ scripts + pgvector(1024) HNSW/cosine vector storage documented in arc42 §8/§10. Relational model complete incl. migrations and vector DB. Meets vollstaendig."},
+    {"id": 7, "name": "Code-Struktur (Schichten/Module)", "max": 7, "estimate": 7, "justification": "Clean service boundaries (ingestion/serving/mcp) + console as own app module; READMEs per service; module borders consistent with the §5 component view and the freeze-line entwurf. Meets vollstaendig."},
+    {"id": 8, "name": "Framework-/moderne Konzepte idiomatisch", "max": 10, "estimate": 10, "justification": "arc42/08 names DI (Depends), env-only get_settings(), einheitliche Fehlerbehandlung (HTTPException + declarative 422s), Pydantic validation; framework choice justified via ADR-001 cited in §4/§8; console tests now wired into CI closes the last idiomatic crack. Meets vollstaendig (durchgehend idiomatisch + Framework-Wahl begruendet)."},
+    {"id": 9, "name": "Erkenntnisse aus der Programmierung", "max": 3, "estimate": 3, "justification": "LEARNINGS.md: 14 commit SHAs + 14 PR refs, every entry carries an explicit accepted/corrected/rejected disposition on the AI suggestion (e.g. Codex P1 rejected PR #5 ac8296c; drift-guard accepted PR #12; json.loads corrected PR #2). Concrete + belegt. Meets vollstaendig."},
+    {"id": 10, "name": "Git-Repository verfuegbar", "max": 2, "estimate": 2, "justification": "docs/index.md carries the clickable public repo URL github.com/erhanuenlue/tarifhub; source complete; CI on every push. CONDITIONAL: repo is private until the owner-only Block-3 public flip; if not anonymously reachable at submission this drops to 0/2 (flagged by both the floor note and the Codex second opinion)."},
+    {"id": 11, "name": "Abnahmekriterien", "max": 5, "estimate": 5, "justification": "arc42/10 Acceptance criteria: one Given/When/Then per use case against a concrete observable, each row's final 'Verifies (NfA)' column explicitly cross-references NfA-1..NfA-6; design-scope rows honestly labelled. Meets vollstaendig (testbar + NfA-Bezug)."},
+    {"id": 12, "name": "Teststrategie inkl. KI-Anteile", "max": 5, "estimate": 5, "justification": "arc42/13 has a dedicated 'Tests der KI-Anteile' section with four named real families (guardrail boundary, gap-gate no-call, fill-reuse non-determinism, fail-closed schema); levels named + justified; tools named. Meets vollstaendig."},
+    {"id": 13, "name": "Unit-Tests programmiert", "max": 3, "estimate": 3, "justification": "295 tests pass offline incl. concrete error cases (validator rejects empty key/inverted window, mapper fail-closed, double-freeze ValueError); run in the CI build. Meets vollstaendig (Kernlogik + Fehlerfaelle + im Build)."},
+    {"id": 14, "name": "Test-Ergebnisse dokumentiert", "max": 3, "estimate": 3, "justification": "arc42/10 'Test and pipeline results' quotes pytest output and coverage TOTALs verbatim AND interprets them ('residual misses are bounded and named, not blind spots'), explicitly noting screenshots only illustrate. This is the 3-pt anchor over the 1-pt screenshot anchor. Meets vollstaendig."},
+    {"id": 15, "name": "KI-Werkzeuge & Nutzung beschrieben", "max": 12, "estimate": 7, "justification": "AI-tools chapter is phase-structured (Generierung/Review/Refactoring/Recherche) with prompts, diffs and PR+commit refs (e.g. fill-only prompt -> tariff_mapper.py PR #2 057a6c1). CONJUNCTIVE MISS: the Eigenstaendigkeit section is an explicit unsigned placeholder ('not yet his words ... Awaiting the owner's final text and signature', blank Name/Ort/Datum/Unterschrift). The 12-pt anchor requires it 'gemaess Aufgabenstellung vollstaendig', so the tier drops to 7-pt ueberwiegend. Note: a strict grader could read 'not yet his words' as not even 'vorhanden', so 7 is the optimistic read of the lower tier; the owner's signed declaration secures the full 12."},
+    {"id": 16, "name": "Intelligente/flexible KI-Services", "max": 6, "estimate": 6, "justification": "Two substantial KI roles: fill-only ai_map (structured output, gap-gate, before/after category fills shown) + multilingual-e5 embedding/MCP search; guardrails (AST boundary, fail-closed, label law) documented; human-in-the-loop review queue. Meets vollstaendig."},
+    {"id": 17, "name": "Modulare Sub-Systeme als Container", "max": 5, "estimate": 5, "justification": "docker-compose + per-sub-system Dockerfiles + Helm/k3d; module borders consistent with entwurf; distributed-vs-monolith style choice justified via ADR-002/006 cited in §4/§7; runtime/latency evidence captured into docs/img and §7. Meets vollstaendig."},
+    {"id": 18, "name": "Fazit: KI-Erfahrungen reflektiert", "max": 7, "estimate": 7, "justification": "fazit.md has three concrete, justified, evidenced veto decisions (freeze line/guard_grozen PR #2 057a6c1; plan+merge gate, 501-vs-404 brief error PR #4 07cdfc5; final acceptance/Eigenstaendigkeit PR #17) + honest limits + a substantive Uebertrag ('match the working mode to the blast radius of an error'). Meets vollstaendig."}
+  ],
+  "gaps_ranked": [
+    {"criterion": 15, "points_at_risk": 5, "gap": "Eigenstaendigkeitserklaerung is an unsigned placeholder ('not yet his words ... Awaiting the owner's final text and signature'; blank signature fields). The 12-pt tier requires it complete per Aufgabenstellung; until the owner authors and signs the final declaration, this criterion caps at the 7-pt tier, and a strict conjunctive grader could push it lower. Single largest recoverable gap (5 pts) and owner-gated by Fazit veto 3."},
+    {"criterion": 10, "points_at_risk": 2, "gap": "Repo URL is in the report but the repository is private until the owner-only Block-3 public flip. If the repo is not anonymously reachable at submission, criterion 10 collapses from 2 to 0. Conditional, not yet realised; corroborated by the Codex second opinion."},
+    {"criterion": 0, "points_at_risk": 0, "gap": "No further per-criterion points at risk: all 16 remaining criteria sit at the top anchor on prose, consistency, roter Faden and quoted-and-interpreted evidence. Residual non-scoring risk is compile-time drift when the markdown chapters are flattened into the single submission PDF (em-dashes still present in mkdocs.yml/brand.css per the Codex note; verbatim criterion-8 quote; quoted pytest/coverage figures; embedded diagrams)."}
+  ],
+  "top_actions": [
+    "Replace the Eigenstaendigkeitserklaerung placeholder in docs/method/ai-tools.md with the owner's final self-authored FFHS declaration text and signature before submission. Highest-value action: +5 points (crit 15 from 7 to 12) and it is the one element AI must not author.",
+    "Flip the repository to public and confirm the docs/index.md URL (github.com/erhanuenlue/tarifhub) resolves anonymously before hand-in. Protects 2 points (crit 10) that otherwise silently zero out at grading time.",
+    "Run the single-PDF compile (FFHS LaTeX template) and re-verify cross-chapter consistency end to end (NfA ids, ADR links, the verbatim criterion-8 quote, quoted pytest/coverage figures, embedded diagrams) and strip the residual em-dashes from mkdocs.yml/brand.css, so the roter Faden and quoted evidence survive the markdown-to-PDF transform where the floor cannot check."
+  ]
 }
