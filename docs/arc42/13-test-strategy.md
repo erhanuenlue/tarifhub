@@ -192,11 +192,28 @@ history.
 
 ## Console component tests
 
-The TarifGuard console currently has lint, build and typecheck wired in CI; it ships **no
-automated component or Playwright smoke test yet** (`apps/tarifguard/package.json` defines
-no `test` script, so the CI `console` job's `npm run test --if-present` is a no-op today).
-Component tests are **planned**: they will assert the brand visual law, namely that frozen values
-render in navy mono with version + truncated `record_hash` provenance chips, and every AI
-output renders inside its `.ai-content` labelled surface, marked as AI-generated content that
-is not a billing value, never restyled as a frozen value (ADR-013 scope). Until then the console is covered by the
-serving API contract tests it consumes plus manual smoke captured into `docs/evidence/`.
+The TarifGuard console has lint, build, typecheck **and tests** wired in CI. The
+`apps/tarifguard/package.json` `test` script runs `vitest run && playwright test` (the
+`test:unit` and `test:e2e` scripts run each half), and the CI `console` job
+(`.github/workflows/ci.yml`) installs Chromium and executes it on every push and pull request.
+
+The suite is **18 Vitest component tests across four files plus 2 Playwright end-to-end tests**.
+The component tests assert the brand visual law: that frozen values render in navy mono with
+version and truncated `record_hash` provenance chips, and that every AI output renders inside
+its `.ai-content` labelled surface, marked as AI-generated content that is not a billing value
+and never restyled as a frozen value (ADR-013 scope). The Playwright smoke walks search to
+detail to a mocked review-freeze to explain in a real browser, against an offline mock serving
+API, asserting the same two boundaries end to end.
+
+Measured locally with `npm run test:unit` on 2026-06-14 (`lib` 2, `brand` 7, `tariff-card` 5,
+`detail-panel` 4):
+
+```
+ Test Files  4 passed (4)
+      Tests  18 passed (18)
+```
+
+All 18 component tests pass; the seven `brand` assertions are the visual-law checks named
+above. The full suite (component plus the 2 Playwright tests) runs green in the CI `console`
+job, which concluded `success` on the latest `main` run. The console is additionally covered
+by the serving API contract tests it consumes, with manual smoke captured into `docs/evidence/`.
