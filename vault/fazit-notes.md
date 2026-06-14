@@ -77,3 +77,7 @@
 ## 2026-06-14
 - I did not delegate the final meaning of the official rubric quotations to AI: I kept the German citation text verbatim and only added English glosses.
 - The second-model repo-wide crawl corrected a false PASS from the diff-only verifier by finding two in-scope German files that my heuristic scan missed.
+
+## 2026-06-14
+- I did not let AI fully translate the official German rubric quotations; I kept the citations verbatim and glossed them in English.
+- The C5 review showed that a verifier PASS was not enough; codex opened the serving and MCP source and forced me to correct `as_of`, response-shape and determinism overclaims before merge.
