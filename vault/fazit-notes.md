@@ -73,3 +73,7 @@
 ## 2026-06-14
 - I corrected the evidence claim after AI review showed that the console pipeline was `1 passed / 1 skipped`, not two green Playwright end-to-end tests.
 - I rejected the `services/` fixes in this pass because the authorized scope was the three named documentation contradictions only.
+
+## 2026-06-14
+- I did not delegate the final meaning of the official rubric quotations to AI: I kept the German citation text verbatim and only added English glosses.
+- The second-model repo-wide crawl corrected a false PASS from the diff-only verifier by finding two in-scope German files that my heuristic scan missed.
