@@ -192,11 +192,34 @@ history.
 
 ## Console component tests
 
-The TarifGuard console currently has lint, build and typecheck wired in CI; it ships **no
-automated component or Playwright smoke test yet** (`apps/tarifguard/package.json` defines
-no `test` script, so the CI `console` job's `npm run test --if-present` is a no-op today).
-Component tests are **planned**: they will assert the brand visual law, namely that frozen values
-render in navy mono with version + truncated `record_hash` provenance chips, and every AI
-output renders inside its `.ai-content` labelled surface, marked as AI-generated content that
-is not a billing value, never restyled as a frozen value (ADR-013 scope). Until then the console is covered by the
-serving API contract tests it consumes plus manual smoke captured into `docs/evidence/`.
+The TarifGuard console has its tests wired in CI. The `apps/tarifguard/package.json` `test`
+script runs `vitest run && playwright test` (with `test:unit` and `test:e2e` running each half),
+and has done so since the console landed (PR #16, commit `265b2e3`, 2026-06-13). The CI
+`console` job (`.github/workflows/ci.yml`) runs `npm ci`, lint, build, installs Chromium, and
+then the suite, on every push to `main` and every pull request.
+
+The suite is **18 Vitest tests across four files** plus a **Playwright end-to-end
+smoke**. The component tests assert the brand visual law: that frozen values render in navy mono
+with version and truncated `record_hash` provenance chips, and that every AI output renders
+inside its `.ai-content` labelled surface, marked as AI-generated content that is not a billing
+value and never restyled as a frozen value (ADR-013 scope). The Playwright smoke walks search to
+detail to a mocked review-freeze to explain in a real browser, against an offline mock serving
+API, asserting the same two boundaries end to end. A second Playwright spec captures the doc
+screenshots and is gated behind `CAPTURE=1`, so it is skipped in the CI gate.
+
+The CI `console` job on the latest `main` run produced this result (Vitest summary, then the
+Playwright run):
+
+```
+ Test Files  4 passed (4)
+      Tests  18 passed (18)
+...
+Running 2 tests using 1 worker
+  1 skipped
+  1 passed (17.2s)
+```
+
+All 18 Vitest tests pass (the seven `brand` cases are the visual-law checks named
+above), and the Playwright run is 1 end-to-end smoke passed plus 1 screenshot-capture spec
+skipped (it runs only with `CAPTURE=1`). The console is additionally covered by the serving API
+contract tests it consumes, with manual smoke captured into `docs/evidence/`.
