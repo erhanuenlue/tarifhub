@@ -22,6 +22,7 @@ Each ADR is at most one page on the house template.
 | 015 | Ingest the BAG ePL Spezialitätenliste (FHIR R5 NDJSON) per reimbursed package, keyed by GTIN, retail price as the canonical value, money-only | Accepted | [015](../adr/015-epl-sl-fhir-ingestion.md) |
 | 016 | Quantize billing values to the canonical NUMERIC scales pre-freeze so stored bytes == hashed bytes on every engine; lossy values fail closed to review | Accepted | [016](../adr/016-decimal-scale-contract.md) |
 | 017 | Search ranks offline via deterministic in-process cosine on SQLite (pgvector on Postgres); `/api/v1/explain` is live, deterministic and record-grounded, with no LLM on the serve path | Accepted | [017](../adr/017-deterministic-search-fallback-explain.md) |
+| 018 | Pin the orchestrator model in one place (`.claude/settings.json`): Fable 5 for the early blocks, Opus 4.8 from the switch onward; worker seats stay Opus 4.8, Sonnet/Haiku excluded | Accepted | [018](../adr/018-orchestrator-model-lifecycle.md) |
 
 ## Legacy register
 

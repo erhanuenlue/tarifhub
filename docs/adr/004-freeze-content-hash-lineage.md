@@ -14,7 +14,7 @@ We freeze each reviewed record by stamping a SHA-256 `record_hash` computed over
 
 ## Consequences
 - (+) Strong, testable determinism and provenance: any record can be re-hashed and checked; updates are new versions; the lineage from source to frozen record is append-only.
-- (+) The version chain makes point-in-time and diff queries natural, designed for the serving API, not yet implemented.
+- (+) The version chain makes point-in-time and diff queries natural; these are implemented on the serving API (UC-05: `?as_of=` point-in-time reads and `/diff`, live this release; [ADR-008](008-api-styles.md)).
 - (+) The `versioning/` module is protected (the `guard_frozen` hook blocks AI edits below the freeze line).
 - (-) Corrections always cost a new version: storage grows append-only and there is no in-place fix path. Revisit only if a regulator requires redaction; that would need a documented tombstone mechanism via a new ADR.
 

@@ -3,7 +3,7 @@
 ' Render: plantuml docs/diagrams/c4-container.puml  (C4 stdlib is bundled with plantuml >= 1.2023; no internet needed)
 !include <C4/C4_Container>
 
-title TarifHub — Containers
+title TarifHub: Containers
 
 Person(vendor, "PIS/HIS vendor")
 Person(practice, "Medical practice")
