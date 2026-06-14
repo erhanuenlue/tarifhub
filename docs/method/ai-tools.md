@@ -59,7 +59,7 @@ gate before anything landed.
 The most safety-critical generation is the pre-freeze `ai_map` seam. The prompt is
 deliberately narrow: "FILL-ONLY: set designation.fr/it/category ONLY where the current value
 is None." That line produced the merge block in `tariff_mapper.py`, and a live run against
-the official Arzneimittelliste sample showed exactly the intended behaviour: French and
+the official BAG list sample showed exactly the intended behaviour: French and
 Italian designations filled, the existing category left untouched,
 `ai_fields=['designation_fr','designation_it']`, and the billing fields byte-identical
 before and after (PR #2, `057a6c1`). The schema-constrained, fill-only shape is what keeps
