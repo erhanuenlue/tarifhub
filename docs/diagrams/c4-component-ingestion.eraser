@@ -1,0 +1,46 @@
+// diagramType: flowchart-diagram
+// Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
+// this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
+// No boundary box: a group around all 12 components forces a single 12-wide row (aspect ~6:1,
+// unreadable in the PDF). The ingestion-service scope is carried by the title and by colour
+// (orange = in-service components; gray/yellow/green = externals), matching the data-flow diagram.
+// Labels are concise; the full per-component responsibility table lives in arc42 section 5.
+title Component view: ingestion service (L0, pre-freeze)
+direction right
+colorMode pastel
+typeface clean
+
+Sources [icon: download, color: gray, label: "Public tariff sources (BAG EAL, BAG ePL)"]
+Claude [icon: cpu, color: yellow, label: "Claude API (structured output, pre-freeze only)"]
+DB [icon: database, color: green, label: "PostgreSQL + pgvector (frozen records, audit log, embeddings)"]
+
+Pipeline [icon: server, color: orange, label: "Pipeline orchestrator: pipeline.py run_pipeline (load to audit)"]
+Adapters [icon: download, color: orange, label: "Source adapters: bag_eal.py, bag_epl.py"]
+Parsers [icon: file-text, color: orange, label: "Parsers: xlsx_parser.py"]
+Mapper [icon: map, color: orange, label: "Mapper: tariff_mapper.py map_raw, owns all billing values"]
+AiMap [icon: cpu, color: yellow, label: "ai_map seam: fill-only non-billing, gap-gate, fallback to map_raw"]
+Validator [icon: check-circle, color: orange, label: "Validator: tariff_validator.py to ValidationResult"]
+Scorer [icon: bar-chart-2, color: orange, label: "Confidence scorer: scorer.py, score 0..1"]
+Review [icon: eye, color: orange, label: "Review routing: requires_review below 0.85"]
+Freeze [icon: lock, color: red, label: "Freeze: freeze_record.py SHA-256 record_hash, immutable versions"]
+Embedder [icon: layers, color: orange, label: "Embedder: embedder.py e5 1024-dim, hashing stub offline"]
+Repo [icon: database, color: orange, label: "Repository: tariff_repository.py persists rows + embeddings"]
+Audit [icon: book, color: orange, label: "Audit: audit_logger.py, append-only events"]
+FreezeLine [shape: parallelogram, color: red, icon: lock, label: "Freeze line: downstream of freeze is immutable; no LLM client importable on the value path, AST-enforced by test_determinism_boundary.py (CI gate)"]
+
+Pipeline > Adapters: drives the run [color: orange]
+Sources > Adapters: raw XLSX or FHIR R5 [color: gray]
+Adapters > Parsers: raw artifact
+Parsers > Mapper: parsed rows
+Mapper > AiMap: non-billing gaps [color: yellow]
+AiMap > Claude: non-billing fields only, deterministic fallback [color: yellow]
+Mapper > Validator: canonical TariffRecord
+Validator > Scorer: validated record
+Scorer > Review: confidence
+Review > Freeze: record plus requires_review
+Freeze > Repo: frozen record, record_hash [color: red]
+Embedder > Repo: 1024-dim embedding
+Repo > DB: INSERT immutable tariff rows [color: green]
+Pipeline > Audit: stage event per record
+Audit > DB: INSERT audit_log, append-only [color: green]
+Freeze > FreezeLine: enforced by [color: red]

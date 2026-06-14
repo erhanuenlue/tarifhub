@@ -1,0 +1,29 @@
+// diagramType: flowchart-diagram
+// Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
+// this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
+title Record lifecycle
+direction right
+colorMode pastel
+typeface clean
+
+Start [shape: oval, color: gray, label: "start"]
+Raw [color: orange, label: "raw: source row (XLSX / FHIR R5)"]
+Parsed [color: orange, label: "parsed: typed row"]
+Mapped [color: orange, label: "mapped: map_raw owns all billing values, plus optional ai_map fill (non-billing)"]
+Validated [color: orange, label: "validated: ValidationResult ok"]
+Scored [color: orange, label: "scored: deterministic confidence 0..1"]
+Frozen [icon: lock, color: green, label: "frozen: record_hash = SHA-256 over sorted canonical content"]
+InReview [color: yellow, label: "in_review: frozen with requires_review = true, awaiting expert decision (queue live, review surface designed)"]
+Note [shape: parallelogram, color: green, label: "immutable: SHA-256 record_hash; updates create a new version; audit_log append-only"]
+End [shape: oval, color: gray, label: "end"]
+
+Start > Raw: load
+Raw > Parsed: parse
+Parsed > Mapped: map
+Mapped > Validated: validate
+Validated > Scored: score
+Scored > Frozen: freeze always, below 0.85 sets requires_review
+Frozen > InReview: requires_review true, review queue live [color: orange]
+InReview > Frozen: expert decision creates a new immutable version, designed [color: orange]
+Frozen > Note: invariant [color: gray]
+Frozen > End

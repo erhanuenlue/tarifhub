@@ -1,0 +1,49 @@
+// diagramType: entity-relationship-diagram
+// Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
+// this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
+// Canonical source: db/schema.sql (mirrored in SQLite for offline tests).
+// record_hash is UNIQUE (SHA-256 integrity anchor); UNIQUE(tariff_system, tariff_code, version).
+title TarifHub data model: tariff (immutable, versioned, hashed) and audit_log (append-only lineage)
+colorMode pastel
+typeface clean
+notation crows-feet
+
+tariff [icon: database, color: green] {
+  id BIGINT pk
+  tariff_system ENUM
+  tariff_code TEXT
+  version INT
+  designation_de TEXT
+  designation_fr TEXT
+  designation_it TEXT
+  category TEXT
+  tax_points NUMERIC
+  price_chf NUMERIC
+  unit TEXT
+  valid_from DATE
+  valid_to DATE
+  source_url TEXT
+  source_version TEXT
+  harmonization_confidence REAL
+  requires_review BOOL
+  metadata JSONB
+  embedding VECTOR
+  record_hash TEXT unique
+  created_at TIMESTAMPTZ
+}
+
+audit_log [icon: book, color: gray] {
+  id BIGINT pk
+  event_time TIMESTAMPTZ
+  event_type TEXT
+  tariff_system TEXT
+  tariff_code TEXT
+  record_hash TEXT
+  source_file TEXT
+  parser_version TEXT
+  confidence REAL
+  validation_ok BOOL
+  detail JSONB
+}
+
+audit_log.record_hash > tariff.record_hash

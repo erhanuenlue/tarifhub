@@ -1,0 +1,30 @@
+// diagramType: sequence-diagram
+// Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
+// this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
+title Runtime view: semantic search (read-only)
+colorMode pastel
+typeface clean
+
+Consumer [icon: user, color: blue]
+API [icon: server, color: green, label: "TarifCore API (FastAPI main.py)"]
+Embedder [icon: cpu, color: green, label: "Embedder (get_embedder)"]
+Repo [icon: database, color: green, label: "ServingRepository"]
+DB [icon: database, color: green, label: "PostgreSQL + pgvector"]
+
+Consumer > API: GET /api/v1/search with q and limit
+activate API
+API > Repo: Depends(get_repository), per-request connection
+API > Embedder: embed(q)
+Embedder > API: vector, 1024-dim e5 or 16-dim offline stub
+alt [label: "vector dim mismatches schema vector 1024"] {
+  API > Consumer: HTTP 501, search honestly unavailable, no fake results
+}
+else [label: "dimensions match"] {
+  API > Repo: search_by_embedding(vector, limit)
+  Repo > DB: parameterised pgvector cosine query, ORDER BY embedding distance, LIMIT n
+  DB > Repo: rows, frozen records
+  Repo > API: _row_to_record to list of TariffRecord
+  API > Consumer: 200 JSON, list of SearchHit with rank and record
+}
+deactivate API
+API > API: read-only path, no LLM client importable here, enforced by test_serving_boundary.py AST check

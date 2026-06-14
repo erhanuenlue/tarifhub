@@ -210,6 +210,10 @@ def md_to_fragment(rel: str, *, top_level: str = "chapter") -> str:
         "\\begin{Verbatim}[breaklines=true,breakanywhere=true,fontsize=\\footnotesize]",
     )
     frag = frag.replace("\\end{verbatim}", "\\end{Verbatim}")
+    # A literal section sign (U+00A7) misrenders as "ğ" under tectonic + T1 helvet
+    # (same failure mode as the middot normalised above). Emit the real LaTeX section
+    # glyph with a thin space so cross-references read "§ 10"; the markdown keeps "§".
+    frag = re.sub(r"§ *", r"\\S{}\\,", frag)
     return frag
 
 

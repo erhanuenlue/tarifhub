@@ -1,0 +1,27 @@
+// diagramType: sequence-diagram
+// Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
+// this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
+title Runtime view: harmonisation and freeze (behaviour)
+colorMode pastel
+typeface clean
+
+Source [icon: download, color: gray, label: "Public source"]
+Pipeline [icon: server, color: orange, label: "Ingestion pipeline"]
+Claude [icon: cpu, color: yellow, label: "Claude (pre-freeze)"]
+Reviewer [icon: user, color: purple, label: "Human reviewer"]
+Freeze [icon: lock, color: red, label: "Freeze + Postgres (frozen store)"]
+Audit [icon: book, color: green, label: "Audit log"]
+
+opt [label: "AI allowed (pre-freeze)"] {
+  Source > Pipeline: raw file, XLSX or FHIR R5
+  Pipeline > Claude: propose mapping, non-billing fields only
+  Claude > Pipeline: designation and category, structured output, deterministic
+}
+opt [label: "deterministic, no AI on the value path"] {
+  Pipeline > Pipeline: rules own tax_points and price_chf, validate, score
+  Pipeline > Reviewer: if confidence below 0.85, review task
+  Reviewer > Pipeline: approve or correct
+  Pipeline > Freeze: freeze() SHA-256 over sorted content
+  Pipeline > Audit: append lineage, source, parser, conf, reviewer
+}
+Freeze > Freeze: serving path (separate, deterministic), TarifCore or TarifMCP read the frozen record from Postgres and return it verbatim, no LLM import on this path, AST boundary test in CI
