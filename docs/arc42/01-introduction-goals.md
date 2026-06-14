@@ -21,7 +21,7 @@ One trustworthy machine interface to ambulatory tariff data, in its three elemen
 
 > **No AI computes or mutates a billing value at serve time.**
 
-### AI value per core function (KI-Nutzen, Kernfunktion)
+### AI value per core function
 
 - **UC-01 (harmonise):** fill-only AI gap-filling of non-billing fields pre-freeze through a single seam with structured output ([ADR-005](../adr/005-single-ai-seam.md)).
 - **UC-03 (freeze):** freeze seals AI contributions with provenance (`ai_model`, `ai_fields` recorded in metadata) into immutable, hash-verifiable versions. AI work becomes auditable, never silently mutable.
@@ -45,7 +45,7 @@ One trustworthy machine interface to ambulatory tariff data, in its three elemen
 
 ## Use-case catalogue
 
-### Core functions (Kernfunktionen)
+### Core functions
 
 These five form the platform's value chain: harmonise → freeze → serve deterministically → find → explain.
 
@@ -59,7 +59,7 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 
 ### Supporting use cases
 
-These parameterise or proxy the core functions (Kernfunktionen): the review threshold loop, version-time access, the MCP proxy, and console lookup.
+These parameterise or proxy the core functions: the review threshold loop, version-time access, the MCP proxy, and console lookup.
 
 | ID | Use case | Actor | Trigger | Outcome | Realises | Status |
 |---|---|---|---|---|---|---|

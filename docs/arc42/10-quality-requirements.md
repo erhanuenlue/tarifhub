@@ -2,9 +2,9 @@
 
 ## Quality goals (SMART NFRs)
 
-Targets from Architecture v2.1 §12, carried as stable ids NfA-1…NfA-6; each row gives the four grading anchors, **Zielwert** (the target), **Messverfahren** (how it is measured), **Measured** (the value actually observed), and the governing **ADR**, and is validated against the measured runs below.
+Targets from Architecture v2.1 §12, carried as stable ids NfA-1…NfA-6; each row gives the four grading anchors, **Target value** (the target), **Measurement method** (how it is measured), **Measured** (the value actually observed), and the governing **ADR**, and is validated against the measured runs below.
 
-| NfA | Attribute | Zielwert | Messverfahren | Measured | ADR |
+| NfA | Attribute | Target value | Measurement method | Measured | ADR |
 |---|---|---|---|---|---|
 | NfA-1 | Determinism | 100% of value-serving responses are frozen records; LLM-free value path | AST boundary tests (`test_serving_boundary.py`, `test_determinism_boundary.py` ×2) run per service in the offline suite and in CI's per-service test loop on every push; the ingestion + serving value-path suites re-run as a named, `-v`-visible CI step | Green on every CI run (per-service loop + named step in `.github/workflows/ci.yml` `python` job) | [ADR-002](../adr/002-freeze-line-decomposition.md), [ADR-005](../adr/005-single-ai-seam.md) |
 | NfA-2 | Reproducibility | Identical sources → identical `record_hash` set, unconditionally (live key or not); `--refill` the deliberate exception; stored bytes == hashed bytes | Full re-ingest of the identical export + the live fill-reuse leg with a deliberately invalid API key | 0/10 299 frozen on the reuse leg (zero-API proof, [`docs/evidence/2026-06-12-sl-live-ingest.md`](../evidence/2026-06-12-sl-live-ingest.md)); zero duplicate hashes | [ADR-005 addendum](../adr/005-single-ai-seam.md), [ADR-016](../adr/016-decimal-scale-contract.md) |
@@ -49,7 +49,7 @@ search method refuses to run on SQLite rather than fake a ranking, so the `/sear
 endpoint falls back to the deterministic in-process cosine instead (`test_repository.py`,
 with the offline ranking and the Postgres dimension-guard 501 pinned in `test_api.py`). What this
 output **excludes** by design: it is the offline suite, so it does not exercise live
-Claude output (tested separately, see the AI-component tests, *Tests der KI-Anteile*, in [§13](13-test-strategy.md))
+Claude output (tested separately, see the AI-component tests in [§13](13-test-strategy.md))
 or the real Postgres engine (the `python-parity` job).
 
 ### Coverage (pytest-cov, line coverage)
@@ -220,7 +220,7 @@ deterministic mapper has no category, and the gap-gate therefore invokes Claude 
 Billing values are structurally unreachable by the model. Separately, the 111
 flagged-for-review records all score exactly 0.75 (the single `−0.25` no-value penalty),
 i.e. they are the reimbursed packages carrying **no retail price**: keyable and frozen
-with the price gap left `None`, then routed to review (the EAL `nach Aufwand`, priced by effort, precedent).
+with the price gap left `None`, then routed to review (the EAL priced-by-effort precedent).
 That is a different set from the 47 AI-`category` fills (a record with price, category,
 unit and trilingual names scores 1.0). See the
 [evidence doc](../evidence/2026-06-12-sl-live-ingest.md) §2b for the derivation.

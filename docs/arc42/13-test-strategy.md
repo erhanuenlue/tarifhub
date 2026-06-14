@@ -33,7 +33,7 @@ From the broad, fast base to the narrow, high-leverage apex:
    becomes impossible to pass silently. This layer exists because Block-0 was burned twice
    by Postgres-vs-SQLite drift (a JSONB dict crashed `json.loads`; an `int` for a BOOLEAN
    column was rejected by psycopg), so the snapshots deliberately stress non-ASCII
-   designations (ü, é, ç), nested metadata dicts, `requires_review` booleans,
+   designations (umlauts, accented Latin letters, cedillas), nested metadata dicts, `requires_review` booleans,
    trailing-zero Decimals at the exact `NUMERIC` scale, dates, multi-version keys and
    pagination windows.
 4. **MCP proxy contract.** The MCP tools (`get_tariff`, `search_tariffs`,
@@ -101,10 +101,10 @@ that prints them with `-v`. CI fails if any LLM client appears on a value path. 
 the guarantee is structural (the import graph cannot reach a model), the boundary stays
 green by construction, not by reviewer discipline.
 
-## Tests of the AI components (Tests der KI-Anteile)
+## Tests of the AI components
 
-The CAS rubric asks that the test strategy show **"Tests der KI-Anteile berücksichtigt"** (the
-tests of the AI components are accounted for): that the AI parts are themselves tested, not just
+The CAS rubric asks that the test strategy **account for the tests of the AI components**: that
+the AI parts are themselves tested, not just
 the deterministic majority. TarifHub's AI
 portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
 only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path

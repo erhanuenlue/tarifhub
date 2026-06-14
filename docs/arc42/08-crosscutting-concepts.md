@@ -1,6 +1,6 @@
 # 08 · crosscutting concepts
 
-> **Concepts of the chosen framework ("gewählten Frameworks") and of modern application development applied appropriately (for example DI, REST interfaces, configuration, error handling)**, grading rubric, criterion 8 (0/3/7/10), refreshed 12 Jun 2026
+> **Concepts of the chosen framework and of modern application development applied appropriately (for example DI, REST interfaces, configuration, error handling)**, grading rubric, criterion 8 (0/3/7/10), refreshed 12 Jun 2026
 
 This chapter claims that criterion directly. All four named concepts are implemented in this repository: dependency injection via FastAPI's `Depends` graph (`services/serving/src/tarifhub_serving/main.py`), REST interfaces with a generated OpenAPI document (the `/api/v1` routes, each with a declared `response_model`), env-only configuration injection (`tarifhub_ingest/config.py`, `tarifhub_serving/config.py`), and boundary error handling (declarative 422s from Pydantic/`Query` validation, explicit `HTTPException` 404s with structured detail). Each is detailed in the [concept catalogue](#modern-application-concepts) below.
 

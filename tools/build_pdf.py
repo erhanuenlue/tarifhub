@@ -33,7 +33,7 @@ OUT_PDF = BUILD / "tarifhub-cas.pdf"
 REPO_URL = "https://github.com/erhanuenlue/tarifhub"
 
 # --- document structure (in order) ----------------------------------------
-# Front-matter German summary sits right after the cover (owner spec).
+# Front-matter summary sits right after the cover (owner spec).
 SUMMARY = "zusammenfassung-de.md"
 
 ARC42 = [
@@ -385,7 +385,7 @@ Context7, Explore agents & Research: current library documentation, FHIR IG anal
 
 ERKLAERUNG = r"""
 \newpage
-\chapter*{Declaration of Authorship (Eigenständigkeitserklärung)}
+\chapter*{Declaration of Authorship}
 \addcontentsline{toc}{chapter}{Declaration of Authorship}
 
 \noindent\textit{Note: this page is a placeholder. The final wording is written and signed by the author (Erhan Ünlü) himself before submission; delegating this declaration to the AI is ruled out (see Conclusion, Veto 3).}
