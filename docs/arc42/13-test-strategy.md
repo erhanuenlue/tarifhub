@@ -196,9 +196,9 @@ The TarifGuard console has its tests wired in CI. The `apps/tarifguard/package.j
 script runs `vitest run && playwright test` (with `test:unit` and `test:e2e` running each half),
 and has done so since the console landed (PR #16, commit `265b2e3`, 2026-06-13). The CI
 `console` job (`.github/workflows/ci.yml`) runs `npm ci`, lint, build, installs Chromium, and
-then the suite, on every push and pull request.
+then the suite, on every push to `main` and every pull request.
 
-The suite is **18 Vitest component tests across four files** plus a **Playwright end-to-end
+The suite is **18 Vitest tests across four files** plus a **Playwright end-to-end
 smoke**. The component tests assert the brand visual law: that frozen values render in navy mono
 with version and truncated `record_hash` provenance chips, and that every AI output renders
 inside its `.ai-content` labelled surface, marked as AI-generated content that is not a billing
@@ -219,7 +219,7 @@ Running 2 tests using 1 worker
   1 passed (17.2s)
 ```
 
-All 18 Vitest component tests pass (the seven `brand` cases are the visual-law checks named
+All 18 Vitest tests pass (the seven `brand` cases are the visual-law checks named
 above), and the Playwright run is 1 end-to-end smoke passed plus 1 screenshot-capture spec
 skipped (it runs only with `CAPTURE=1`). The console is additionally covered by the serving API
 contract tests it consumes, with manual smoke captured into `docs/evidence/`.
