@@ -89,3 +89,7 @@
 ## 2026-06-14
 - I rejected a services-side fix for the MCP `search_tariffs` `system` filter because PR #25 was docs-only and a code fix would need a separate services task plus determinism-auditor.
 - I kept the official German rubric quotations verbatim and glossed them in English instead of letting AI fully translate the cited anchors.
+
+## 2026-06-14
+- Veto moment: I rejected PR #23 service fixes because the authorized task was docs-only and services changes would need determinism-auditor.
+- Correction: PR #26 showed again that my umlaut-plus-wordlist German scan misses umlaut-free nouns, and the cross-family full-corpus review caught `Arzneimittelliste` and `fazit-note`.
