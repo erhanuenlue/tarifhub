@@ -93,3 +93,7 @@
 ## 2026-06-14
 - Veto moment: I rejected PR #23 service fixes because the authorized task was docs-only and services changes would need determinism-auditor.
 - Correction: PR #26 showed again that my umlaut-plus-wordlist German scan misses umlaut-free nouns, and the cross-family full-corpus review caught `Arzneimittelliste` and `fazit-note`.
+
+## 2026-06-14
+- I treated official German rubric quotations as safe citations in PR #24, but the owner and lecturer rule vetoed the mix, and PR #26 removed all German from PDF-bound docs while keeping the 63/63 structural floor.
+- I corrected the repeated German-scan failure: my umlaut-plus-wordlist heuristic missed umlaut-free nouns, while the cross-family reviewer found them by crawling the corpus.
