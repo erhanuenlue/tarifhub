@@ -1,4 +1,4 @@
-# 08 · crosscutting concepts
+# Crosscutting Concepts
 
 > **Concepts of the chosen framework and of modern application development applied appropriately (for example DI, REST interfaces, configuration, error handling)**, grading rubric, criterion 8 (0/3/7/10), refreshed 12 Jun 2026
 

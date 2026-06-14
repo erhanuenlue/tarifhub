@@ -1,4 +1,4 @@
-# 11 · risks technical debt
+# Risks and Technical Debt
 
 The risk register tracks each known risk with its mitigation and residual exposure. Every row is grounded in a dated incident from the contemporaneous record (`vault/daily/`, `LEARNINGS.md`, the decision matrix) and names its evidence, so this is an honest accounting and not a checklist.
 

@@ -1,4 +1,4 @@
-# 03 · context scope
+# Context and Scope
 
 ## Business context
 

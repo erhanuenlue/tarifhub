@@ -1,4 +1,4 @@
-# AI-Assisted Software Engineering: the framework
+# The AI-SE Framework
 
 This chapter is the system view of how TarifHub was engineered with AI. I did not use AI as an
 autocomplete. I built a small software-engineering system around the model: an orchestrator model

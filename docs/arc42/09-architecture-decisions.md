@@ -1,4 +1,4 @@
-# 09 · architecture decisions
+# Architecture Decisions
 
 Consolidated ADR register, adopted from Architecture v2.1 (2026-06).
 Each ADR is at most one page on the house template.

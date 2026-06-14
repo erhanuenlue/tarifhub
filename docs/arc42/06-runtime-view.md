@@ -1,4 +1,4 @@
-# 06 · runtime view
+# Runtime View
 
 Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (design level, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`.
 

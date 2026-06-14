@@ -1,4 +1,4 @@
-# 12 · glossary
+# Glossary
 
 The terms that recur across this report, each defined as implemented in the repository, not in the abstract.
 

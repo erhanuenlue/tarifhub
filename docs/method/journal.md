@@ -1,4 +1,4 @@
-# AI-Workflow Journal: excerpts
+# Journal Excerpts
 
 These are selected excerpts from the contemporaneous `vault/daily/` journal. They are a selection
 only, never backfilled; the full journal lives in the repository (`vault/daily/2026-06-11.md`,

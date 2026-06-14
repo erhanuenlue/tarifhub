@@ -1,4 +1,4 @@
-# 07 · deployment view
+# Deployment View
 
 TarifHub ships as a set of independently containerised sub-systems. This chapter shows the
 deployment topology, the chosen architecture style and why, and the evidence that the

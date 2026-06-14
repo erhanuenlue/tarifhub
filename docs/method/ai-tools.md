@@ -1,4 +1,4 @@
-# AI Tools and Workflow (criterion 15, 12 points)
+# AI Tools and Workflow
 
 This chapter is the honest account of how AI was used to build TarifHub, organised by
 the four working phases the project actually ran: Generation, Review,

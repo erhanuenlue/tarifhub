@@ -1,4 +1,4 @@
-# 13 · test strategy
+# Test Strategy
 
 How TarifHub is tested, as actually implemented. The strategy serves one architectural
 promise above all: **no AI computes or mutates a billing value at serve time**, and a

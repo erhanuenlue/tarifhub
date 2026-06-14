@@ -1,4 +1,4 @@
-# 05 · building block view
+# Building Block View
 
 ## Level 0: system context
 

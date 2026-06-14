@@ -1,4 +1,4 @@
-# Decision Matrix: Vibe vs Spec-Driven vs Agentic
+# Decision Matrix
 
 Three AI-assisted working modes were available throughout TarifHub. They are not ranked in
 the abstract; they are *placed* against this project's real constraints. The vibe-to-spec

@@ -1,4 +1,4 @@
-# 10 · quality requirements
+# Quality Requirements
 
 ## Quality goals (SMART NFRs)
 
