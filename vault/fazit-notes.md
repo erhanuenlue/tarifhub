@@ -81,3 +81,7 @@
 ## 2026-06-14
 - I did not let AI fully translate the official German rubric quotations; I kept the citations verbatim and glossed them in English.
 - The C5 review showed that a verifier PASS was not enough; codex opened the serving and MCP source and forced me to correct `as_of`, response-shape and determinism overclaims before merge.
+
+## 2026-06-14
+- I rejected service fixes in PR #23 and PR #25 because docs-only scope and the freeze-line review boundary mattered more than opportunistic cleanup.
+- I corrected the C5 determinism claim after codex found that pgvector search has no secondary tie-breaker, so the final wording pins the value contract instead of promising identical search ordering.
