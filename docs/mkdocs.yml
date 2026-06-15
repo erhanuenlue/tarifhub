@@ -33,7 +33,6 @@ theme:
     - navigation.footer
     - content.code.copy
     - toc.follow
-    - toc.integrate
 
 extra_css:
   - stylesheets/brand.css
