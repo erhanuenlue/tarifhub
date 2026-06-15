@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>tarifhub: engineered with an auto-loop (5-minute talk)</title>
+  <title>tarifhub: idea, product, and the AI-assisted auto-loop (5-minute talk)</title>
   <link rel="icon" href="data:,">
 
   <!-- Reveal.js core, vendored locally (pinned 5.1.0) so the deck renders fully offline:
@@ -37,6 +37,8 @@
       --muted: #94A3B8;
       --line:  #E2E8F0;
       --bg:    #FFFFFF;
+      --sky-tint: #E0F2FE;
+      --frost:  #F0F9FF;
       --font-sans: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
       --font-mono: "JetBrains Mono", ui-monospace, monospace;
     }
@@ -110,15 +112,6 @@
     .tagline { font-size: 1.6rem; color: var(--body); margin: 0.5em 0 0 0; font-weight: 400; }
     .byline { font-size: 1.0rem; color: var(--body); margin-top: 1.6em; font-family: var(--font-mono); }
 
-    /* a textual "visual" for the problem slide */
-    .converge {
-      display: flex; align-items: center; gap: 0.6em;
-      font-family: var(--font-mono); font-size: 1.15rem; color: var(--navy);
-      margin-top: 0.6em; flex-wrap: wrap;
-    }
-    .converge .arrow { color: var(--sky); font-weight: 600; }
-    .converge .out { color: var(--navy); font-weight: 600; border-bottom: 3px solid var(--sky); }
-
     .lead { font-size: 1.5rem; color: var(--body); }
     .big-quote { font-size: 1.9rem; color: var(--navy); font-weight: 600; line-height: 1.25; }
 
@@ -128,6 +121,101 @@
     .footer { position: fixed; bottom: 14px; left: 24px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--body); z-index: 30; }
     .footer b { color: var(--navy); font-weight: 600; }
     .footer i { color: var(--sky); font-style: normal; }
+
+    /* ============================================================= *
+     *  ON-SLIDE MOTION: animation explains the idea, it does not decorate.
+     *  Every keyframe lives inside (prefers-reduced-motion: no-preference);
+     *  the default (resting) state is the FINAL composed state, so reduced
+     *  motion and no-JS both degrade to a correct static slide.
+     * ============================================================= */
+
+    /* ---- convergence flow (problem slide): many streams into one hub ---- */
+    .flow { width: 100%; height: auto; }
+    .flow .stream { fill: none; stroke: var(--muted); stroke-width: 2.5; stroke-linecap: round;
+                    stroke-dasharray: 320; stroke-dashoffset: 0; }
+    .flow .out { stroke: var(--sky); stroke-width: 3.5; }
+    .flow .src { fill: var(--frost); stroke: var(--line); }
+    .flow .src-t { fill: var(--navy); font-family: var(--font-mono); font-size: 13px; font-weight: 600; }
+    .flow .hub { fill: var(--navy); }
+    .flow .hub-t { fill: #fff; font-family: var(--font-sans); font-weight: 700; font-size: 15px; }
+    .flow .cert { fill: var(--navy); font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+    .flow .dot { fill: var(--sky); opacity: 0; }
+
+    /* ---- four-layer stack + freeze bar (vision slide) ---- */
+    .stack { display: flex; flex-direction: column; gap: 7px; }
+    .layer { border-radius: 8px; padding: 0.5em 0.8em; border: 1px solid var(--line);
+             font-size: 1.0rem; color: var(--body); }
+    .layer .lt { font-weight: 700; color: var(--navy); }
+    .layer .lk { font-family: var(--font-mono); font-size: 0.78rem; color: var(--body); }
+    .layer.l0  { background: var(--sky-tint); border-color: #bae6fd; }
+    .layer.l1  { background: var(--frost); }
+    .layer.l2  { background: #fff; }
+    .layer.l3  { background: #fff; }
+    .freezebar { display: flex; align-items: center; gap: 0.5em;
+                 background: var(--navy); color: #fff; border-radius: 8px;
+                 padding: 0.45em 0.8em; font-weight: 700; letter-spacing: 0.02em; }
+    .freezebar .lock { width: 18px; height: 18px; flex: none; }
+    .freezebar .fz-sub { font-family: var(--font-mono); font-weight: 400; font-size: 0.72rem;
+                         color: #bae6fd; margin-left: auto; }
+    .above-tag, .below-tag { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted);
+                             letter-spacing: 0.08em; text-transform: uppercase; margin: 0.1em 0; }
+
+    /* ---- freeze-line seal slide ---- */
+    .seal-svg { display: block; margin: 0 auto; max-height: 540px; }
+    .seal-svg .spine { stroke: var(--sky); stroke-width: 2; opacity: 0.45; }
+    .seal-svg .midline { stroke: var(--navy); stroke-width: 3; stroke-dasharray: 6 5; }
+    .seal-svg .seal-halo { fill: #fff; }
+    .seal-svg .hash-bg { fill: #fff; }
+    .seal-svg .card { fill: #fff; stroke: var(--line); stroke-width: 1.5; }
+    .seal-svg .card-ai { stroke: var(--sky); stroke-width: 2; }
+    .seal-svg .lbl { font-family: var(--font-mono); font-size: 12px; fill: var(--body); }
+    .seal-svg .lbl-n { fill: var(--navy); font-weight: 600; }
+    .seal-svg .badge { fill: var(--sky); }
+    .seal-svg .badge-t { fill: #fff; font-family: var(--font-sans); font-weight: 700; font-size: 11px; }
+    .seal-svg .lock-body { fill: var(--navy); }
+    .seal-svg .lock-shackle { fill: none; stroke: var(--navy); stroke-width: 6; }
+    .seal-svg .ring { fill: none; stroke: var(--sky); stroke-width: 3; opacity: 0; }
+    .seal-svg .hash { font-family: var(--font-mono); font-size: 12px; fill: var(--navy); }
+    .seal-svg .chip { fill: var(--frost); stroke: var(--line); }
+    .seal-svg .chip-t { font-family: var(--font-mono); font-size: 11px; fill: var(--navy); font-weight: 600; }
+
+    /* ---- by-the-numbers grid + counters ---- */
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7em 1.0em; margin-top: 0.3em; }
+    .stat { border: 1px solid var(--line); border-radius: 10px; padding: 0.6em 0.7em; background: #fff; }
+    .stat .num { font-family: var(--font-sans); font-weight: 700; color: var(--navy);
+                 font-size: 2.1rem; line-height: 1; letter-spacing: -0.02em; }
+    .stat .num .u { color: var(--sky); font-size: 1.2rem; font-weight: 700; }
+    .stat .lab { font-size: 0.78rem; color: var(--body); margin-top: 0.25em; }
+    .oops { margin-top: 0.7em; font-size: 1.02rem; color: var(--body);
+            border-left: 3px solid var(--sky); padding: 0.1em 0 0.1em 0.7em; }
+    .oops b { color: var(--navy); }
+
+    /* fragment bullets: gentle lift (content reveal, guarded for reduced motion) */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal .fragment.lift { transform: translateY(10px); transition: all 0.45s ease; }
+      .reveal .fragment.lift.visible { transform: translateY(0); }
+
+      /* convergence: draw the streams when the slide is present, staggered */
+      section.present .flow .stream { animation: draw 1.0s ease both; }
+      section.present .flow .s1 { animation-delay: 0.10s; }
+      section.present .flow .s2 { animation-delay: 0.30s; }
+      section.present .flow .s3 { animation-delay: 0.50s; }
+      section.present .flow .s4 { animation-delay: 0.70s; }
+      section.present .flow .out { animation-delay: 0.95s; }
+      section.present .flow .dot { animation: travel 2.4s linear 1.2s infinite; }
+      @keyframes draw   { from { stroke-dashoffset: 320; } to { stroke-dashoffset: 0; } }
+      @keyframes travel { 0% { opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+
+      /* seal sequence: each step fires when its fragment becomes visible */
+      .seal-svg .ring.go            { animation: ringpulse 1.1s ease-out 1; }
+      .seal-svg .lock-shackle.go    { transform-box: fill-box; transform-origin: 50% 100%; animation: snap 0.5s ease-out 1; }
+      .seal-svg .lock-grp.go        { animation: pop 0.45s ease-out 1; }
+      @keyframes ringpulse { 0% { transform: scale(0.5); opacity: 0.6; transform-box: fill-box; transform-origin: center; }
+                             100% { transform: scale(1.25); opacity: 0; transform-box: fill-box; transform-origin: center; } }
+      @keyframes snap { 0% { transform: translateY(-7px) rotate(-8deg); } 70% { transform: translateY(1px); } 100% { transform: translateY(0); } }
+      @keyframes pop  { 0% { transform: scale(0.82); opacity: 0; transform-box: fill-box; transform-origin: center; }
+                        100% { transform: scale(1); opacity: 1; transform-box: fill-box; transform-origin: center; } }
+    }
   </style>
 </head>
 
@@ -143,87 +231,219 @@
           <div class="wordmark">tarif<b>hub</b></div>
           <p class="tagline">Swiss ambulatory tariff data, made trustworthy.</p>
           <hr class="rule" style="margin-top:1em;">
-          <p class="byline">Erhan Ünlü &nbsp;·&nbsp; FFHS CAS AI-Assisted Software Engineering &nbsp;·&nbsp; 13 June 2026</p>
+          <p class="byline">Erhan Ünlü &nbsp;·&nbsp; FFHS CAS AI-Assisted Software Engineering &nbsp;·&nbsp; June 2026</p>
         </div>
         <aside class="notes">
-          [~15s] Good morning. This is tarifhub: it takes messy Swiss outpatient tariff data and
-          turns it into something you can actually trust. I am Erhan. In five minutes I want to
-          show you the idea, and more importantly, how it was engineered with an auto-loop.
+          [~15s] Guten Tag. Das ist tarifhub. Es nimmt unübersichtliche Schweizer Tarifdaten aus dem
+          ambulanten Bereich und macht daraus etwas, dem man wirklich vertrauen kann. Ich bin Erhan.
+          In fünf Minuten zeige ich Ihnen drei Dinge: die Idee, das Produkt, und vor allem, wie es mit
+          einem KI-gestützten Auto-Loop entwickelt wurde.
         </aside>
       </section>
 
-      <!-- 2 · THE PROBLEM -->
+      <!-- 2 · THE PROBLEM / IDEA -->
       <section data-transition="fade">
         <p class="kicker">The problem</p>
-        <h2>Tariff data you cannot trust is worthless.</h2>
-        <hr class="rule">
-        <ul>
-          <li>Many sources, four languages, constant new versions</li>
-          <li>A billing value must be exact, traceable, reproducible</li>
-          <li><strong>Trust, meaning determinism, is the product</strong></li>
-        </ul>
-        <div class="converge">
-          <span>3 sources</span><span class="arrow">·</span><span>4 languages</span>
-          <span class="arrow">·</span><span>N versions</span>
-          <span class="arrow">&rarr;</span><span class="out">1 certified value</span>
-        </div>
-        <aside class="notes">
-          [~30s] Tariffs arrive from several authorities, in German, French and Italian, and they
-          change constantly. A billing value has to be exact and reproducible: the same input must
-          always give the same output, and you must be able to prove it later. So trust is not a
-          feature here, it is the whole product. One cautionary moment: an AI scaffold once used the
-          wrong field contract and rendered every value as a dash. Reading both sides of the wire
-          caught it, not a test. Determinism is the point.
-        </aside>
-      </section>
-
-      <!-- 3 · THE IDEA -->
-      <section data-transition="fade">
-        <p class="kicker">The idea</p>
         <div class="cols wide-fig">
           <div>
-            <h2>Four layers.<br>One freeze line.</h2>
+            <h2>Tariff data you cannot trust is worthless.</h2>
             <hr class="rule">
             <ul>
-              <li>L0 harmonise: AI-assisted, pre-freeze</li>
-              <li><strong>Freeze line</strong>: records become immutable, hashed</li>
-              <li>L1 to L3 serving: fully deterministic</li>
+              <li class="fragment lift">~110 tariff types, 20+ sources</li>
+              <li class="fragment lift">XLSX, XML, PDF, FHIR: no single machine interface</li>
+              <li class="fragment lift">One uncaught mapping error becomes a <strong>wrong invoice</strong></li>
             </ul>
           </div>
           <div class="figure">
-            <img src="../img/diagrams/four-layer-architecture.png" alt="The four-layer architecture and the freeze line">
+            <!-- convergence: many fragmented streams resolve into one certified value -->
+            <svg class="flow" viewBox="0 0 460 280" role="img"
+                 aria-label="Many fragmented sources converging into one tarifhub hub and one certified value">
+              <!-- sources -->
+              <g class="src-grp">
+                <rect class="src" x="6"  y="14"  width="118" height="34" rx="7"/>
+                <text class="src-t" x="20" y="35">EAL · XLSX</text>
+                <rect class="src" x="6"  y="74"  width="118" height="34" rx="7"/>
+                <text class="src-t" x="20" y="95">ePL/SL · FHIR</text>
+                <rect class="src" x="6"  y="134" width="118" height="34" rx="7"/>
+                <text class="src-t" x="20" y="155">tariffs · XML</text>
+                <rect class="src" x="6"  y="194" width="118" height="34" rx="7"/>
+                <text class="src-t" x="20" y="215">circulars · PDF</text>
+              </g>
+              <!-- converging streams -->
+              <path class="stream s1" d="M124 31  C 210 31, 230 121, 300 121"/>
+              <path class="stream s2" d="M124 91  C 210 91, 240 121, 300 121"/>
+              <path class="stream s3" d="M124 151 C 210 151, 240 121, 300 121"/>
+              <path class="stream s4" d="M124 211 C 210 211, 230 121, 300 121"/>
+              <!-- hub -->
+              <circle class="hub" cx="330" cy="121" r="30"/>
+              <text class="hub-t" x="330" y="126" text-anchor="middle">hub</text>
+              <!-- output -->
+              <path class="stream out" d="M360 121 H 430"/>
+              <circle class="dot" cx="0" cy="0" r="4">
+                <animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite" path="M360 121 H 430"/>
+              </circle>
+              <text class="cert" x="390" y="112" text-anchor="middle">1 certified</text>
+              <text class="cert" x="390" y="146" text-anchor="middle">value</text>
+            </svg>
           </div>
         </div>
         <aside class="notes">
-          [~35s] The architecture is four layers split by one line, the freeze line. Above it, layer
-          zero harmonises raw data, and that is the only place AI is allowed to run, before freezing,
-          on non-billing fields. At the line, every record is frozen: a SHA-256 hash over its
-          canonical content, updates are new versions, the audit log is append-only. Below the line,
-          serving is deterministic, read-only. The one rule that defines the whole system: no AI ever
-          computes or mutates a billing value at serve time. The freeze line is the trust guarantee.
+          [~32s] Schweizer Tarifdaten sind zersplittert: rund hundertzehn Tarifarten, über zwanzig
+          Quellen, verteilt auf Excel, XML, PDF und FHIR, und keine einzige maschinenlesbare
+          Schnittstelle. Sie kommen von verschiedenen Behörden, in drei Sprachen, und ändern sich
+          ständig. Das eigentliche Problem: Ein einziger unbemerkter Mapping-Fehler wird am Ende zu
+          einer falschen Rechnung. Ein Abrechnungswert muss exakt, nachvollziehbar und reproduzierbar
+          sein. Vertrauen ist hier kein Feature, sondern das ganze Produkt.
         </aside>
       </section>
 
-      <!-- 4 · HOW I STARTED -->
+      <!-- 3 · THE VISION / PRODUCT  (auto-animate pair A: freeze bar) -->
+      <section data-transition="fade" data-auto-animate>
+        <p class="kicker">The vision</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>One versioned, deterministic API.</h2>
+            <hr class="rule">
+            <ul>
+              <li>Four layers, split by one <strong>freeze line</strong></li>
+              <li>Read surface: <strong>REST · FHIR R4 · MCP</strong></li>
+              <li>Every record carries its proof: a <strong>SHA-256 hash</strong></li>
+            </ul>
+          </div>
+          <div>
+            <p class="above-tag">above · AI-assisted, pre-freeze</p>
+            <div class="stack">
+              <div class="layer l0 fragment lift" data-fragment-index="1">
+                <span class="lt">L0 harmonise</span> &nbsp;<span class="lk">adapters → ai_map → validate → score</span>
+              </div>
+              <!-- shared auto-animate element: the freeze line -->
+              <div class="freezebar" data-id="freeze-bar">
+                <svg class="lock" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="2"/>
+                  <rect x="5" y="11" width="14" height="9" rx="2" fill="#fff"/>
+                </svg>
+                <span>FREEZE LINE</span>
+                <span class="fz-sub">immutable · hashed · versioned</span>
+              </div>
+              <div class="layer l1 fragment lift" data-fragment-index="2">
+                <span class="lt">L1 serving</span> &nbsp;<span class="lk">TarifCore (REST + FHIR R4) · TarifMCP</span>
+              </div>
+              <div class="layer l2 fragment lift" data-fragment-index="3">
+                <span class="lt">L2 rules</span> &nbsp;<span class="lk">TarifIQ (deterministic)</span>
+              </div>
+              <div class="layer l3 fragment lift" data-fragment-index="4">
+                <span class="lt">L3 apps</span> &nbsp;<span class="lk">TarifGuard console</span>
+              </div>
+            </div>
+            <p class="below-tag">below · fully deterministic, read-only</p>
+          </div>
+        </div>
+        <aside class="notes">
+          [~33s] Die Antwort ist eine einzige, versionierte und deterministische API. Vier Schichten,
+          getrennt durch eine Linie, die Freeze-Linie. Oberhalb wird harmonisiert, KI-gestützt, vor dem
+          Einfrieren; unterhalb wird ausgeliefert, vollständig deterministisch, über REST, FHIR R4 und
+          ein MCP für KI-Agenten. Vier Sub-Produkte sitzen darauf: TarifCore liefert aus, TarifMCP
+          bedient Agenten, TarifIQ kapselt die Regeln, die TarifGuard-Konsole macht alles sichtbar. Und
+          jeder Datensatz trägt seinen Beweis: einen SHA-256-Hash.
+        </aside>
+      </section>
+
+      <!-- 4 · THE FREEZE LINE: the one rule (auto-animate pair A continues) -->
+      <section data-transition="fade" data-auto-animate>
+        <p class="kicker">The one rule</p>
+        <h2 style="margin-bottom:0.15em;">Harmonise above. Freeze. Serve below.</h2>
+        <!-- the same freeze bar morphs in from the previous slide, now centered + wide -->
+        <div class="freezebar" data-id="freeze-bar" style="margin:0.2em 0 0.4em 0;">
+          <svg class="lock" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="2"/>
+            <rect x="5" y="11" width="14" height="9" rx="2" fill="#fff"/>
+          </svg>
+          <span>FREEZE LINE</span>
+          <span class="fz-sub">SHA-256 · append-only audit</span>
+        </div>
+
+        <div class="figure" style="margin-top:0.1em;">
+          <svg class="seal-svg" viewBox="0 0 760 312" role="img"
+               aria-label="A record is harmonised above the freeze line, sealed with a SHA-256 hash, then served read-only below">
+            <!-- vertical spine threading above to freeze to below -->
+            <line class="spine" x1="140" y1="124" x2="140" y2="202"/>
+
+            <!-- ABOVE: AI-harmonised record -->
+            <text class="lbl" x="40" y="26">ABOVE · harmonise (AI-assisted, non-billing fields)</text>
+            <g class="fragment" data-fragment-index="1">
+              <rect class="card card-ai" x="40" y="38" width="200" height="84" rx="10"/>
+              <text class="lbl-n lbl" x="58" y="66">code: EAL/1000</text>
+              <text class="lbl" x="58" y="88">designation_de: …</text>
+              <text class="lbl" x="58" y="110">designation_fr/it: …</text>
+              <rect class="badge" x="180" y="46" width="44" height="20" rx="10"/>
+              <text class="badge-t" x="202" y="60" text-anchor="middle">AI</text>
+            </g>
+
+            <!-- THE LINE (mid): a thin divider; the top freeze bar carries the label -->
+            <line class="midline" x1="20" y1="166" x2="740" y2="166"/>
+            <text class="lbl" x="740" y="160" text-anchor="end" style="fill:#94A3B8;">the freeze line</text>
+
+            <!-- the seal: a lock snaps shut on the line, then the hash appears -->
+            <g class="fragment" data-fragment-index="2">
+              <circle class="ring" cx="140" cy="166" r="28"/>
+              <rect class="seal-halo" x="112" y="146" width="56" height="42" rx="10"/>
+              <g class="lock-grp">
+                <path class="lock-shackle" d="M126 164 v-7 a14 14 0 0 1 28 0 v7"/>
+                <rect class="lock-body" x="122" y="164" width="36" height="24" rx="5"/>
+              </g>
+              <rect class="hash-bg" x="184" y="156" width="404" height="20" rx="5"/>
+              <text class="hash" x="192" y="171">record_hash = 9f2a…c41b · SHA-256, immutable</text>
+            </g>
+
+            <!-- BELOW: served, read-only, deterministic -->
+            <text class="lbl" x="40" y="210">BELOW · serve (deterministic, read-only)</text>
+            <g class="fragment" data-fragment-index="3">
+              <rect class="card" x="40" y="222" width="200" height="76" rx="10"/>
+              <text class="lbl-n lbl" x="58" y="250">EAL/1000 · frozen</text>
+              <text class="lbl" x="58" y="272">tax_points · price_chf</text>
+              <text class="lbl" x="58" y="292" style="fill:#0EA5E9;font-weight:600;">verbatim · versioned</text>
+              <!-- consumer chips -->
+              <rect class="chip" x="300" y="230" width="78" height="26" rx="13"/>
+              <text class="chip-t" x="339" y="247" text-anchor="middle">REST</text>
+              <rect class="chip" x="388" y="230" width="92" height="26" rx="13"/>
+              <text class="chip-t" x="434" y="247" text-anchor="middle">FHIR R4</text>
+              <rect class="chip" x="490" y="230" width="70" height="26" rx="13"/>
+              <text class="chip-t" x="525" y="247" text-anchor="middle">MCP</text>
+              <text class="lbl" x="300" y="290">No AI on the value path. Ever.</text>
+            </g>
+          </svg>
+        </div>
+        <aside class="notes">
+          [~37s] Das ist das Herzstück. Verfolgen wir einen Datensatz. Oberhalb der Linie wird er
+          harmonisiert: Hier, und nur hier, darf die KI arbeiten, vor dem Einfrieren und nur auf
+          nicht-abrechnungsrelevanten Feldern. An der Linie wird er eingefroren: ein SHA-256-Hash über
+          den kanonischen Inhalt, jede Änderung wird eine neue Version, das Audit-Log ist nur anhängbar.
+          Unterhalb wird er ausgeliefert, schreibgeschützt und deterministisch, über REST, FHIR und MCP.
+          Die eine Regel, die alles definiert: Keine KI berechnet oder verändert jemals einen
+          Abrechnungswert zur Auslieferungszeit.
+        </aside>
+      </section>
+
+      <!-- 5 · THE JOURNEY: HOW I STARTED -->
       <section data-transition="fade">
-        <p class="kicker">How I started</p>
+        <p class="kicker">The development journey</p>
         <h2>An empty repo and a definition of done.</h2>
         <hr class="rule">
         <ul>
-          <li>Not a backlog: a falsifiable <strong>"done"</strong></li>
-          <li>Outcome prompts, not step-by-step scripts</li>
-          <li>One human gate: I approve the plan</li>
+          <li class="fragment lift">Not a backlog: a falsifiable <strong>"done"</strong></li>
+          <li class="fragment lift">Outcome prompts, not step-by-step scripts</li>
+          <li class="fragment lift">One human gate I keep for myself: <strong>I approve the plan</strong></li>
         </ul>
         <aside class="notes">
-          [~25s] I did not start with a task list. I started with two checked-in control files, the
-          project facts and the workflow, plus outcome prompts. Each prompt states the goal, the
-          constraints, and the verification that proves done, and deliberately leaves out the steps.
-          Modern models do better with a falsifiable target than with a script written for an older
-          model. The only thing I always keep for myself is approving the plan.
+          [~25s] Jetzt zum eigentlichen Beitrag: wie es gebaut wurde. Ich habe nicht mit einer
+          Aufgabenliste angefangen, sondern mit einem leeren Repository und einer überprüfbaren
+          Definition von fertig: Prompts, die das Ziel und die Verifikation beschreiben, aber bewusst
+          nicht die Schritte. Moderne Modelle arbeiten besser mit einem falsifizierbaren Ziel als mit
+          einem Skript. Das Einzige, was ich mir immer vorbehalte: Ich gebe den Plan frei.
         </aside>
       </section>
 
-      <!-- 5 · HOW IT WAS DEVELOPED -->
+      <!-- 6 · /ship: MULTI-MODEL ASSEMBLY LINE -->
       <section data-transition="fade">
         <p class="kicker">How it was built</p>
         <div class="cols wide-fig">
@@ -231,9 +451,9 @@
             <h2>/ship: a multi-model assembly line.</h2>
             <hr class="rule">
             <ul>
-              <li>Orchestrator plans, workers build test-first</li>
-              <li>An <strong>independent model</strong> reviews every PR</li>
-              <li>Nine phases, one human gate: the plan</li>
+              <li class="fragment lift">Orchestrator plans, workers build test-first</li>
+              <li class="fragment lift">An <strong>independent model family</strong> reviews every PR</li>
+              <li class="fragment lift">Nine phases, one human gate: the plan</li>
             </ul>
           </div>
           <div class="figure">
@@ -241,16 +461,42 @@
           </div>
         </div>
         <aside class="notes">
-          [~35s] The build runs through a pipeline called ship, nine phases from plan approval to
-          merge. The work is split by where quality compounds. An orchestrator, Claude Opus 4.8,
-          plans and judges; worker agents implement test-first and collect runtime evidence. Then a
-          second, independent model family, OpenAI gpt-5.5, reviews every single pull request,
-          because a Claude-reviewed Claude diff shares blind spots. Twenty pull requests were merged
-          this way, each one reviewed by that second family.
+          [~33s] Gebaut wird über die /ship-Pipeline, neun Phasen von der Planfreigabe bis zum Merge.
+          Aufgeteilt wird dort, wo Qualität sich auszahlt: Ein Orchestrator, Claude Opus 4.8, plant und
+          beurteilt; Worker-Agenten implementieren test-first und sammeln Belege. Dann prüft eine
+          zweite, unabhängige Modellfamilie, OpenAI gpt-5.5, jeden Pull Request, weil ein
+          Claude-geprüftes Claude-Diff dieselben blinden Flecken teilt. Siebenundzwanzig Pull Requests
+          sind so gemerged worden, jeder von dieser zweiten Familie geprüft.
         </aside>
       </section>
 
-      <!-- 6 · AUTO-LOOP (headline) -->
+      <!-- 7 · MODEL LIFECYCLE -->
+      <section data-transition="fade">
+        <p class="kicker">A process that outlives its model</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>Built across a model transition.</h2>
+            <hr class="rule">
+            <ul>
+              <li class="fragment lift">Early blocks: <strong>Fable 5</strong> &nbsp;→&nbsp; switch &nbsp;→&nbsp; <strong>Opus 4.8</strong></li>
+              <li class="fragment lift">Pinned in one place; workers always Opus 4.8</li>
+              <li class="fragment lift">Gates, board, CI are <strong>model-agnostic</strong></li>
+            </ul>
+          </div>
+          <div class="figure">
+            <img src="../img/diagrams/model-effort-map.png" alt="The model and effort map across orchestrator, workers and the independent reviewer">
+          </div>
+        </div>
+        <aside class="notes">
+          [~22s] Ein Detail, das mir wichtig ist: der Modellwechsel. Die frühen Blöcke liefen auf
+          Claude Fable 5; dann bin ich auf Claude Opus 4.8 gewechselt, das stärkste mir verfügbare
+          Modell, festgelegt an genau einer Stelle. Die Worker liefen durchgehend auf Opus. Dass der
+          Prozess diesen Wechsel ohne Anpassung überstanden hat, ist selbst ein Beleg: Gates, Board und
+          CI sind modell-unabhängig.
+        </aside>
+      </section>
+
+      <!-- 8 · THE AUTO-LOOP (headline) -->
       <section data-transition="fade">
         <p class="kicker">The headline</p>
         <div class="cols wide-fig">
@@ -258,9 +504,9 @@
             <h2>The machine writes its own next step.</h2>
             <hr class="rule">
             <ul>
-              <li>Fixed loop: replays a known list</li>
-              <li><strong>Self-prompting loop</strong>: optimises a moving target</li>
-              <li>Runs unattended; checkpoints its state</li>
+              <li class="fragment lift">Fixed loop: replays a known list</li>
+              <li class="fragment lift"><strong>Self-prompting loop</strong>: optimises a moving target</li>
+              <li class="fragment lift">Runs unattended; checkpoints its state</li>
             </ul>
           </div>
           <div class="figure">
@@ -268,17 +514,16 @@
           </div>
         </div>
         <aside class="notes">
-          [~40s] This is the headline of the project. There are two loops. The fixed loop runs a
-          known list of prompts back to back, like replaying a recording. The self-prompting loop
-          goes further: each iteration reads the current state, writes the next task as a prompt by
-          itself, runs it through ship, checks a contract, and repeats until a measurable goal is
-          reached. The difference matters: the fixed list replays, the self-prompting loop optimises
-          whatever is most valuable now. It only works because done is machine-checkable. Without
-          that gradient, self-prompting just drifts.
+          [~33s] Das ist die Schlagzeile. Es gibt zwei Schleifen. Die feste Schleife spielt eine
+          bekannte Liste von Prompts ab, wie eine Aufnahme. Die selbst-promptende Schleife geht weiter:
+          Jede Iteration liest den Zustand, schreibt sich die nächste Aufgabe selbst, lässt sie durch
+          /ship laufen, prüft einen Vertrag und wiederholt das bis zu einem messbaren Ziel. Das
+          funktioniert nur, weil fertig maschinell überprüfbar ist. Ohne diesen Gradienten würde das
+          Selbst-Prompten einfach abdriften.
         </aside>
       </section>
 
-      <!-- 7 · THE GATES (intellectual core) -->
+      <!-- 9 · THE GATES (intellectual core) -->
       <section data-transition="fade">
         <p class="kicker">The intellectual core</p>
         <div class="cols wide-fig">
@@ -286,9 +531,9 @@
             <h2>Autonomy is safe because the boundary is enforced.</h2>
             <hr class="rule">
             <ul>
-              <li>Fitness ratchet: ~60 checks, never regress</li>
-              <li>Freeze-line guard plus a boundary test</li>
-              <li>Green-contract: merge only on full green</li>
+              <li class="fragment lift">Fitness ratchet: <strong>62/62</strong> checks, never regress</li>
+              <li class="fragment lift">Freeze-line guard plus a boundary test</li>
+              <li class="fragment lift">Green-contract: merge only on full green</li>
             </ul>
           </div>
           <div class="figure">
@@ -296,19 +541,17 @@
           </div>
         </div>
         <aside class="notes">
-          [~45s] This is the intellectual core. Four gates let the loop run hard and still stay safe.
-          One: a deterministic fitness function expresses done as about sixty machine-checkable
-          elements, with a committed baseline that only ratchets up, today at 63 of 63. Once an
-          element passes it must keep passing, or CI fails. Two: the freeze line is guarded by a
-          pre-tool hook that blocks any edit below it, plus a test that asserts no model client is
-          even importable on the value path. Three: the green-contract governs autonomous merge, CI
-          green, findings dispositioned, no unauthorised frozen-path change, clean tree, anything
-          less stops for me. Four: a secret gate on every iteration. The agent can run hard
-          everywhere else precisely because this line cannot be crossed silently.
+          [~35s] Das ist der intellektuelle Kern. Vier Gates lassen die Schleife hart laufen und
+          trotzdem sicher bleiben. Erstens: eine deterministische Fitnessfunktion, heute bei
+          zweiundsechzig von zweiundsechzig Elementen, mit einer Basislinie, die nur nach oben ratscht.
+          Zweitens: die Freeze-Linie, geschützt durch einen Hook und einen Test, der sicherstellt, dass
+          auf dem Wertpfad kein Modell-Client importierbar ist. Drittens: der Green-Contract regelt den
+          autonomen Merge. Viertens: ein Secret-Gate bei jeder Iteration. Die KI darf überall sonst hart
+          laufen, genau weil diese Linie nicht still überschritten werden kann.
         </aside>
       </section>
 
-      <!-- 8 · QUALITY & CI/CD -->
+      <!-- 10 · QUALITY & CI/CD -->
       <section data-transition="fade">
         <p class="kicker">Quality and CI/CD</p>
         <div class="cols wide-fig">
@@ -316,9 +559,9 @@
             <h2>Every change passes the gates a reviewer would.</h2>
             <hr class="rule">
             <ul>
-              <li>A second model family reviews every PR</li>
-              <li>Full CI: lint, tests, boundary, secrets, SBOM</li>
-              <li>Docs and diagrams generated by the loop</li>
+              <li class="fragment lift">A second model family reviews every PR</li>
+              <li class="fragment lift">Full CI: lint, tests, boundary, secrets, SBOM</li>
+              <li class="fragment lift">Docs and diagrams generated by the loop</li>
             </ul>
           </div>
           <div class="figure">
@@ -326,14 +569,70 @@
           </div>
         </div>
         <aside class="notes">
-          [~25s] CI runs the same gates a reviewer would, on every push: lint, the full test suite,
-          the determinism boundary tests, secrets and SBOM scans. The numbers are concrete: the e5
-          query-prefix fix lifted cross-lingual recall at five from 0.833 to 0.917. Every diagram
-          here was generated by the pipeline and committed as a static file.
+          [~25s] Die CI prüft bei jedem Push dieselben Gates wie ein Reviewer: Linting, die komplette
+          Testsuite, die Determinismus-Grenztests, Secret- und SBOM-Scans. Die Zahlen sind konkret:
+          Der e5-Query-Prefix-Fix hob die mehrsprachige Trefferquote von null Komma acht drei drei auf
+          null Komma neun eins sieben. Und jedes Diagramm hier wurde von der Pipeline erzeugt und als
+          statische Datei eingecheckt.
         </aside>
       </section>
 
-      <!-- 9 · THE DASHBOARD -->
+      <!-- 11 · THE RESULT: what shipped -->
+      <section data-transition="fade">
+        <p class="kicker">The result</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>What actually shipped.</h2>
+            <hr class="rule">
+            <ul>
+              <li class="fragment lift"><strong>Built:</strong> BAG EAL (XLSX) + BAG ePL/SL (FHIR R5)</li>
+              <li class="fragment lift">Serving · MCP · rules · console, on <strong>295 green tests</strong></li>
+              <li class="fragment lift"><strong>Vision, not built:</strong> TARMED / TARDOC</li>
+            </ul>
+          </div>
+          <div class="figure shot">
+            <img src="../img/diagrams/console-master-detail.png" alt="The TarifGuard console: search to frozen-record detail with a labelled AI explain panel">
+            <p class="caption">TarifGuard console: search → frozen record → labelled AI explain panel.</p>
+          </div>
+        </div>
+        <aside class="notes">
+          [~25s] Was ist tatsächlich entstanden? Zwei echte Quellen sind angebunden: die Analysenliste
+          als Excel und die Spezialitätenliste als FHIR R5. Darauf laufen die Serving-API, das MCP, die
+          Regel-Schicht und die Konsole, abgesichert durch zweihundertfünfundneunzig grüne Tests.
+          TARMED und TARDOC bleiben bewusst Vision, nicht gebaut. Ehrlicher Umfang schlägt vorgetäuschte
+          Vollständigkeit, und ist im Bericht auch so markiert.
+        </aside>
+      </section>
+
+      <!-- 12 · BY THE NUMBERS (fun, animated count-up) -->
+      <section data-transition="fade" data-counters>
+        <p class="kicker">By the numbers</p>
+        <h3 style="margin-bottom:0.25em;">One solo engineer, one auto-loop.</h3>
+        <div class="grid">
+          <div class="stat"><div class="num"><span data-target="207">0</span></div><div class="lab">commits</div></div>
+          <div class="stat"><div class="num"><span data-target="27">0</span></div><div class="lab">PRs, each 2nd-model reviewed</div></div>
+          <div class="stat"><div class="num"><span data-target="295">0</span></div><div class="lab">green tests (4 skipped)</div></div>
+          <div class="stat"><div class="num"><span data-target="97">0</span><span class="u">%</span></div><div class="lab">peak line coverage</div></div>
+          <div class="stat"><div class="num"><span data-target="18">0</span></div><div class="lab">ADRs</div></div>
+          <div class="stat"><div class="num"><span data-target="20">0</span></div><div class="lab">generated diagrams</div></div>
+          <div class="stat"><div class="num"><span data-target="62">0</span><span class="u">/62</span></div><div class="lab">fitness floor</div></div>
+          <div class="stat"><div class="num"><span data-target="3">0</span></div><div class="lab">model families in the loop</div></div>
+        </div>
+        <p class="oops fragment">
+          <b>What the AI got wrong:</b> a scaffold once read the wrong field contract and rendered
+          <em>every</em> value as a dash. No test caught it; reading <b>both sides of the wire</b> did.
+        </p>
+        <aside class="notes">
+          [~23s] In Zahlen: zweihundertsieben Commits, siebenundzwanzig Pull Requests,
+          zweihundertfünfundneunzig grüne Tests, Coverage zwischen neunzig und siebenundneunzig Prozent.
+          Achtzehn ADRs, zwanzig Diagramme, drei Modellfamilien im Loop. Und ein ehrlicher Moment: Ein
+          KI-Gerüst nutzte einmal den falschen Feld-Vertrag und stellte jeden Wert als Strich dar.
+          Gefangen hat das kein Test, sondern das Lesen beider Seiten der Leitung. Determinismus ist der
+          Punkt.
+        </aside>
+      </section>
+
+      <!-- 13 · THE DASHBOARD -->
       <section data-transition="fade">
         <p class="kicker">Observable end to end</p>
         <h3>The whole system is inspectable while it runs.</h3>
@@ -342,32 +641,33 @@
           <p class="caption">Shipboard: the live /ship pipeline, per-agent cost, and the CAS grading floor. Captured while this deck was being built.</p>
         </div>
         <aside class="notes">
-          [~20s] One dependency-free dashboard makes the system legible: it reads real pipeline
-          events, git state, and the fitness function. Its rule is that it never asserts a state it
-          cannot show evidence for; it says unknown rather than invent progress. That is what lets me
-          trust it while the loop runs unattended.
+          [~19s] Ein einziges, abhängigkeitsfreies Dashboard macht das System lesbar: Es liest echte
+          Pipeline-Ereignisse, den Git-Zustand und die Fitnessfunktion. Seine Regel: Es behauptet nie
+          einen Zustand, den es nicht belegen kann, und sagt lieber unbekannt, als Fortschritt zu
+          erfinden. Das lässt mich der Schleife vertrauen, während sie unbeaufsichtigt läuft.
         </aside>
       </section>
 
-      <!-- 10 · WHAT I LEARNED / TRANSFER -->
+      <!-- 14 · WHAT I LEARNED / TRANSFER -->
       <section data-transition="fade">
         <p class="kicker">What I learned</p>
         <p class="big-quote">An enforced, tested definition of done is what makes AI autonomy trustworthy.</p>
         <hr class="rule">
         <ul>
-          <li>Give the system a gradient it can measure</li>
-          <li>And boundaries it cannot cross</li>
-          <li>The method is now a reusable framework</li>
+          <li class="fragment lift">Give the system a gradient it can measure</li>
+          <li class="fragment lift">And boundaries it cannot cross</li>
+          <li class="fragment lift">The method is now a reusable framework</li>
         </ul>
         <aside class="notes">
-          [~20s] The most useful outcome is not this project, it is the method, packaged as a
-          reusable framework: a bootstrap prompt that scaffolds a new project with its gates,
-          dashboard, and loop. The lesson generalises: give the system a gradient it can measure and
-          boundaries it cannot cross, and it carries the work.
+          [~20s] Das Nützlichste ist nicht dieses Projekt, sondern die Methode, verpackt als
+          wiederverwendbares Framework. Die Lektion verallgemeinert sich: Gib dem System einen
+          Gradienten, den es messen kann, und Grenzen, die es nicht überschreiten kann, dann trägt es
+          die Arbeit. Und die eine Grenze, die ich nie an die KI delegiert habe: kein Abrechnungswert
+          zur Auslieferungszeit.
         </aside>
       </section>
 
-      <!-- 11 · CLOSE -->
+      <!-- 15 · CLOSE -->
       <section data-transition="fade">
         <div class="title-wrap">
           <div class="wordmark" style="font-size:3.0rem;">Thank you.</div>
@@ -379,8 +679,9 @@
           </ul>
         </div>
         <aside class="notes">
-          [~10s] Thank you. The code is public, the docs are the deliverable, and one rule defines it
-          all: no AI mutates a billing value at serve time. Questions welcome.
+          [~10s] Vielen Dank. Der Code ist öffentlich, die Dokumentation ist das Ergebnis, und eine
+          Regel definiert alles: Keine KI verändert einen Abrechnungswert zur Auslieferungszeit. Fragen
+          sind willkommen.
         </aside>
       </section>
 
@@ -391,9 +692,18 @@
   <script src="reveal/reveal.js"></script>
   <script src="reveal/plugin/notes/notes.js"></script>
   <script>
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Reduced motion: neutralise the per-slide data-transition="fade" so the global
+    // 'none' actually wins (reveal.css fade rule excludes sections that set their own).
+    if (reduceMotion) {
+      document.querySelectorAll('.slides section[data-transition]')
+        .forEach(function (s) { s.setAttribute('data-transition', 'none'); });
+    }
+
     Reveal.initialize({
       hash: true,
-      transition: 'fade',
+      transition: reduceMotion ? 'none' : 'fade',
       transitionSpeed: 'fast',
       controls: true,
       progress: true,
@@ -401,7 +711,50 @@
       width: 1280,
       height: 720,
       margin: 0.07,
+      autoAnimate: !reduceMotion,   /* calm cross-slide morph of the freeze line; cuts under reduced motion */
       plugins: [ RevealNotes ]
+    });
+
+    /* ---- on-slide-enter seal sequence: re-arm CSS keyframes per fragment show ---- */
+    function armSeal(fragEl) {
+      if (reduceMotion || !fragEl) return;
+      var idx = fragEl.getAttribute('data-fragment-index');
+      if (idx === '2') {  /* the seal step */
+        var ring = fragEl.querySelector('.ring');
+        var shackle = fragEl.querySelector('.lock-shackle');
+        var grp = fragEl.querySelector('.lock-grp');
+        [ring, shackle, grp].forEach(function (el) {
+          if (!el) return;
+          el.classList.remove('go');
+          void el.getBoundingClientRect();   /* reflow so the animation restarts */
+          el.classList.add('go');
+        });
+      }
+    }
+    Reveal.on('fragmentshown', function (e) { armSeal(e.fragment); });
+
+    /* ---- by-the-numbers count-up: animate on slide enter, static under reduced motion ---- */
+    function animateCounters(slide) {
+      slide.querySelectorAll('[data-target]').forEach(function (el) {
+        var target = parseFloat(el.getAttribute('data-target'));
+        if (reduceMotion) { el.textContent = String(target); return; }
+        var dur = 1100, start = null;
+        function step(ts) {
+          if (!start) start = ts;
+          var p = Math.min((ts - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          el.textContent = String(Math.round(target * eased));
+          if (p < 1) requestAnimationFrame(step); else el.textContent = String(target);
+        }
+        el.textContent = '0';
+        requestAnimationFrame(step);
+      });
+    }
+    Reveal.on('slidechanged', function (e) {
+      if (e.currentSlide.hasAttribute('data-counters')) animateCounters(e.currentSlide);
+    });
+    Reveal.on('ready', function (e) {
+      if (e.currentSlide && e.currentSlide.hasAttribute('data-counters')) animateCounters(e.currentSlide);
     });
   </script>
 </body>
