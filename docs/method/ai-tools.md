@@ -179,7 +179,7 @@ trace to current sources.
 ## Declaration of authorship
 
 The Selbstständigkeitserklärung (the declaration of independent authorship) is the official
-FFHS form and is included verbatim as the final page of the submitted document and as the
-final [annex](../selbststaendigkeitserklaerung.md) on the site. The author writes and signs
+FFHS form and is included verbatim as the
+final [annex](../selbststaendigkeitserklaerung.md) on the site. The author completes and affirms
 it himself; delegating this declaration to the AI is ruled out (see [Conclusion](fazit.md),
 Veto 3).
