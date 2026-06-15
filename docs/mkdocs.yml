@@ -18,7 +18,7 @@ edit_uri: ""
 
 theme:
   name: material
-  logo: brand/assets/logo-white.svg
+  logo: brand/assets/logo-header.svg
   favicon: brand/assets/logo-primary.svg
   palette:
     - scheme: default
@@ -33,6 +33,7 @@ theme:
     - navigation.footer
     - content.code.copy
     - toc.follow
+    - toc.integrate
 
 extra_css:
   - stylesheets/brand.css
@@ -62,40 +63,51 @@ nav:
       - 6 · Runtime View: arc42/06-runtime-view.md
       - 7 · Deployment View: arc42/07-deployment-view.md
       - 8 · Crosscutting Concepts: arc42/08-crosscutting-concepts.md
-      - 9 · Architecture Decisions: arc42/09-architecture-decisions.md
+      - 9 · Architecture Decisions:
+          - Decision register: arc42/09-architecture-decisions.md
+          - "ADR-001 · Python-first core; Next.js only at L3": adr/001-python-first-core.md
+          - "ADR-002 · Service decomposition along the freeze line": adr/002-freeze-line-decomposition.md
+          - "ADR-003 · Canonical, versioned, immutable record model": adr/003-canonical-record-model.md
+          - "ADR-004 · Freeze, content-hash and lineage as the determinism anchor": adr/004-freeze-content-hash-lineage.md
+          - "ADR-005 · Single AI seam (ai_map) with human-in-the-loop": adr/005-single-ai-seam.md
+          - "ADR-006 · PostgreSQL 16 + pgvector as the single store": adr/006-postgres-pgvector.md
+          - "ADR-007 · S3-compatible object store for raw source artifacts": adr/007-object-store-raw-artifacts.md
+          - "ADR-008 · API styles: REST primary, plus GraphQL, FHIR R4, XML and MCP": adr/008-api-styles.md
+          - "ADR-009 · Docker images + Kubernetes via Helm; compose for local": adr/009-docker-kubernetes-helm.md
+          - "ADR-010 · GitHub Actions CI/CD with DevSecOps gates": adr/010-github-actions-devsecops.md
+          - "ADR-011 · OpenTelemetry-based observability": adr/011-opentelemetry-observability.md
+          - "ADR-012 · Data residency in Switzerland; LLM region boundary for patient data": adr/012-data-residency-llm-region.md
+          - "ADR-013 · TarifGuard console demo scope: master-detail, review form, explain panel": adr/013-demo-scope.md
+          - "ADR-014 · arc42-light retained as the documentation framework": adr/014-arc42-light.md
+          - "ADR-015 · BAG ePL Spezialitätenliste (FHIR R5) ingestion": adr/015-epl-sl-fhir-ingestion.md
+          - "ADR-016 · Canonical Decimal scale contract (stored bytes == hashed bytes)": adr/016-decimal-scale-contract.md
+          - "ADR-017 · Deterministic search fallback; record-grounded explain endpoint": adr/017-deterministic-search-fallback-explain.md
+          - "ADR-018 · Orchestrator model lifecycle (Fable 5, then Opus 4.8)": adr/018-orchestrator-model-lifecycle.md
       - 10 · Quality Requirements: arc42/10-quality-requirements.md
       - 11 · Risks & Technical Debt: arc42/11-risks-technical-debt.md
-      - 12 · Glossary: arc42/12-glossary.md
-      - 13 · Test Strategy: arc42/13-test-strategy.md
-  - Architecture Decisions:
-      - "ADR-001 · Python-first core; Next.js only at L3": adr/001-python-first-core.md
-      - "ADR-002 · Service decomposition along the freeze line": adr/002-freeze-line-decomposition.md
-      - "ADR-003 · Canonical, versioned, immutable record model": adr/003-canonical-record-model.md
-      - "ADR-004 · Freeze, content-hash and lineage as the determinism anchor": adr/004-freeze-content-hash-lineage.md
-      - "ADR-005 · Single AI seam (ai_map) with human-in-the-loop": adr/005-single-ai-seam.md
-      - "ADR-006 · PostgreSQL 16 + pgvector as the single store": adr/006-postgres-pgvector.md
-      - "ADR-007 · S3-compatible object store for raw source artifacts": adr/007-object-store-raw-artifacts.md
-      - "ADR-008 · API styles: REST primary, plus GraphQL, FHIR R4, XML and MCP": adr/008-api-styles.md
-      - "ADR-009 · Docker images + Kubernetes via Helm; compose for local": adr/009-docker-kubernetes-helm.md
-      - "ADR-010 · GitHub Actions CI/CD with DevSecOps gates": adr/010-github-actions-devsecops.md
-      - "ADR-011 · OpenTelemetry-based observability": adr/011-opentelemetry-observability.md
-      - "ADR-012 · Data residency in Switzerland; LLM region boundary for patient data": adr/012-data-residency-llm-region.md
-      - "ADR-013 · TarifGuard console demo scope: master-detail, review form, explain panel": adr/013-demo-scope.md
-      - "ADR-014 · arc42-light retained as the documentation framework": adr/014-arc42-light.md
-      - "ADR-015 · BAG ePL Spezialitätenliste (FHIR R5) ingestion": adr/015-epl-sl-fhir-ingestion.md
-      - "ADR-016 · Canonical Decimal scale contract (stored bytes == hashed bytes)": adr/016-decimal-scale-contract.md
-      - "ADR-017 · Deterministic search fallback; record-grounded explain endpoint": adr/017-deterministic-search-fallback-explain.md
-      - "ADR-018 · Orchestrator model lifecycle (Fable 5, then Opus 4.8)": adr/018-orchestrator-model-lifecycle.md
-  - AI-Assisted Method:
-      - The AI-SE Framework: method/ai-se-framework.md
-      - AI Tools & Workflow: method/ai-tools.md
-      - Decision Matrix: method/decision-matrix.md
-      - Journal (excerpts): method/journal.md
-      - Conclusion: method/fazit.md
-  - Criterion Map: criterion-map.md
+      - 12 · Test Strategy: arc42/13-test-strategy.md
+      - 13 · Glossary: arc42/12-glossary.md
+  - Appendix:
+      - AI-Assisted Method:
+          - The AI-SE Framework: method/ai-se-framework.md
+          - AI Tools & Workflow: method/ai-tools.md
+          - Decision Matrix: method/decision-matrix.md
+          - Journal (excerpts): method/journal.md
+          - Conclusion: method/fazit.md
+      - Criterion Map: criterion-map.md
 
 plugins:
   - search
+  - enumerate-headings:
+      toc_depth: 3
+      strict: false
+      increment_across_pages: true
+      exclude:
+        - index.md
+        - zusammenfassung-de.md
+        - adr/*.md
+        - method/*.md
+        - criterion-map.md
   - print-site:
       add_to_navigation: false
       print_page_title: "Full document"

@@ -10,8 +10,10 @@
 
 /* Header: navy with a sky underline */
 .md-header { border-bottom: 3px solid #0EA5E9; }
+/* The logo is the full tarifhub wordmark, so hide the duplicate site_name text */
+.md-header__title { display: none; }
 .md-header__button.md-logo img,
-.md-header__button.md-logo svg { height: 1.7rem; width: auto; }
+.md-header__button.md-logo svg { height: 1.9rem; width: auto; }
 
 /* Links / accents in brand sky */
 .md-typeset a { color: #0369A1; }
