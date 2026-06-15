@@ -10,7 +10,7 @@ Tools:
     search_tariffs(query, system?, limit?)  -> GET  /api/v1/search
     get_tariff(system, code)                 -> GET  /api/v1/tariffs/{system}/{code}
     explain_crosswalk(code)                  -> GET  /api/v1/explain   (frozen records +
-                                                optional EU-routed NL explanation)
+                                                deterministic, record-grounded explanation)
 """
 
 from __future__ import annotations
@@ -76,9 +76,9 @@ async def explain_crosswalk(code: str) -> dict:
     Args:
         code: a tariff code (inherently non-identifying — no patient data is involved).
 
-    Proxies to the deterministic explanation endpoint, which grounds any natural-language
-    text in frozen records and routes its LLM seam via an EU-resident model. The tool
-    returns whatever serving returns and adds nothing.
+    Proxies to the deterministic explanation endpoint, which grounds its natural-language
+    text only in frozen records, with no model on the serve path. The tool returns whatever
+    serving returns and adds nothing.
     """
 
     return await _get("/api/v1/explain", {"code": code})

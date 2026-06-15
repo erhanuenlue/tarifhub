@@ -27,7 +27,7 @@ Across all of this, no AI computes or mutates a billing value at serve time; thi
 - **UC-03 (freeze):** freeze seals AI contributions with provenance (`ai_model`, `ai_fields` recorded in metadata) into immutable, hash-verifiable versions. AI work becomes auditable, never silently mutable.
 - **UC-04 (serve deterministically):** deliberately zero AI. The value path is provably LLM-free, enforced by an AST boundary test in CI, so the determinism guarantee is itself a verified property of the deliverable.
 - **UC-06 (find):** multilingual-e5 embeddings give cross-lingual DE/FR/IT retrieval over frozen records; ML ranks, never alters, the served values.
-- **UC-09 (explain):** a labelled, de-identified AI explanation seam that can never change a served value.
+- **UC-09 (explain):** the serving `/api/v1/explain` endpoint is deterministic and record-grounded (no AI on the value path); the AI value is the L3 console's labelled, de-identified AI explanation seam, which can never change a served value.
 
 ## Functional requirements
 
@@ -55,7 +55,7 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 | UC-03 | Freeze record | Pipeline (automatic post-validation; expert approval loop designed) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
 | UC-04 | Read tariff by code | API consumer (PIS/HIS) | GET /api/v1/tariffs/{system}/{code} | frozen record, served verbatim | FR-5 | live |
 | UC-06 | Semantic search | API consumer | free-text query (DE/FR/IT) against the search endpoint | ranked frozen records via pgvector cosine similarity | FR-7 | live |
-| UC-09 | Explain (crosswalk, labelled AI) | Practice user | user opens the labelled AI explain panel on a record | AI-labelled, de-identified explanation; served values never altered | FR-8, FR-9 | live (console UI + de-id live; serving endpoint added this release) |
+| UC-09 | Explain (crosswalk) | Practice user | user requests an explanation of a record (serving endpoint; console explain panel) | serving returns a deterministic, record-grounded explanation; the L3 console additionally shows a labelled, de-identified AI explanation; served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded; console AI panel + de-id live) |
 
 ### Supporting use cases
 

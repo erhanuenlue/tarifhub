@@ -11,7 +11,7 @@ This is the consolidated ADR register, adopted from Architecture v2.1 (2026-06):
 | 005 | Keep exactly one live-AI seam (`ai_map`), pre-freeze, non-billing fields only, with human review below the confidence threshold | Accepted | [005](../adr/005-single-ai-seam.md) |
 | 006 | Use PostgreSQL 16 + pgvector as the single system of record and vector index | Accepted | [006](../adr/006-postgres-pgvector.md) |
 | 007 | Store immutable raw source artifacts in S3-compatible object storage, referenced from the audit log | Accepted | [007](../adr/007-object-store-raw-artifacts.md) |
-| 008 | Serve REST + GraphQL + FHIR R4 + XML + MCP over one shared service layer | Accepted | [008](../adr/008-api-styles.md) |
+| 008 | Serve REST + FHIR R4 + MCP over one shared service layer (built); GraphQL + XML designed, not built | Accepted | [008](../adr/008-api-styles.md) |
 | 009 | Ship each sub-system as a Docker image, deployed via Helm to Kubernetes; docker-compose for local development | Accepted | [009](../adr/009-docker-kubernetes-helm.md) |
 | 010 | Run GitHub Actions CI/CD with DevSecOps gates: gitleaks, Trivy, Syft SBOM, images to GHCR | Accepted | [010](../adr/010-github-actions-devsecops.md) |
 | 011 | Standardise observability on OpenTelemetry → Prometheus/Grafana, with Sentry for errors | Accepted | [011](../adr/011-opentelemetry-observability.md) |

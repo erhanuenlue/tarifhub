@@ -1,4 +1,4 @@
-# ADR-008: API styles: REST primary, plus GraphQL, FHIR R4, XML and MCP
+# ADR-008: API styles: REST primary, FHIR R4 and MCP built; GraphQL and XML designed
 
 *Status: Accepted · Date: 2026-06-11 · Decider: Erhan (+ AI-assisted analysis)*
 
@@ -6,7 +6,7 @@
 Integrators differ: software vendors want REST/OpenAPI or flexible queries, healthcare interop expects FHIR, the incumbents publish fixed XML, and AI agents consume tools over MCP. The incumbents' one-format distribution is exactly the gap TarifHub targets: breadth of API style is product, not polish.
 
 ## Decision
-We serve frozen records over REST (primary, OpenAPI) and add GraphQL (Strawberry), a FHIR R4 adapter (ChargeItemDefinition/CodeSystem, bridging BAG's FHIR R5 source), XML for incumbent parity, and MCP (FastMCP, read-only tools): all thin facades over one shared, read-only service layer.
+We serve frozen records over REST (primary, OpenAPI), a FHIR R4 adapter (ChargeItemDefinition/CodeSystem, bridging BAG's FHIR R5 source), and MCP (FastMCP, read-only tools): the three built facades, all thin layers over one shared, read-only service layer. GraphQL (Strawberry) and XML for incumbent parity are designed, not built: forward-looking facades over the same layer, scheduled for after the CAS deliverable freezes (see Consequences).
 
 ## Alternatives weighed
 - **REST only**: simplest, but cedes FHIR-expecting healthcare integrations and AI-agent distribution, the two channels the incumbents don't serve.

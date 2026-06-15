@@ -53,8 +53,9 @@ profiles for local development ([ADR-009](../adr/009-docker-kubernetes-helm.md))
 
 ## Local development: Docker Compose with profiles
 
-`deploy/docker-compose.yml` (and the richer root `docker-compose.yml`) layer the stack via
-profiles so the offline test suite needs nothing running:
+The root `docker-compose.yml` layers the full stack via profiles so the offline test suite
+needs nothing running (the lighter `deploy/docker-compose.yml` brings up only `db`, plus
+`minio` under its `objects` profile):
 
 - default: `db` + `minio` only;
 - `--profile services`: adds `serving` (FastAPI) and `intelligence` (TarifIQ);
@@ -89,8 +90,8 @@ described in [the AI-SE framework chapter](../method/ai-se-framework.md).
 
 ## Evidence 2: the full stack runs under Compose
 
-`docker compose --profile services --profile apps up -d` brings up eight independent
-containers; `db` and `minio` report `healthy`, and the L1 serving container answers over
+`docker compose -f docker-compose.yml --profile services --profile apps up -d` brings up eight
+independent containers; `db` and `minio` report `healthy`, and the L1 serving container answers over
 HTTP against the 11 653 frozen rows in the compose Postgres.
 
 ![docker compose ps: eight independent TarifHub containers running, with a live serving smoke and point-read latency](../img/compose-ps.png)

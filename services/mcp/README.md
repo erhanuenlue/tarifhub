@@ -10,7 +10,7 @@ the deterministic FastAPI serving service (read-only, :8000) and returns its fro
 |---|---|---|
 | `search_tariffs(query, system?, limit?)` | `GET /api/v1/search` | ranked hits over frozen records |
 | `get_tariff(system, code)` | `GET /api/v1/tariffs/{system}/{code}` | one frozen record |
-| `explain_crosswalk(code)` | `GET /api/v1/explain` | frozen records + optional EU-routed NL explanation |
+| `explain_crosswalk(code)` | `GET /api/v1/explain` | frozen records + deterministic, record-grounded explanation |
 
 ## The determinism guarantee
 
