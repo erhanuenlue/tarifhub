@@ -2,7 +2,7 @@
   "name": "kassenflow",
   "version": "0.1.0",
   "private": true,
-  "description": "KassenFlow \u2014 payer-correspondence / Kostengutsprache automation over the TarifHub platform (read-only over serving + TarifIQ). Stub / in development.",
+  "description": "KassenFlow \u2014 payer-correspondence / Kostengutsprache automation over the tarifhub platform (read-only over serving + TarifIQ). Stub / in development.",
   "scripts": {
     "dev": "next dev -p 3001",
     "build": "next build",

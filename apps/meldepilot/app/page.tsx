@@ -1,6 +1,6 @@
 // MeldePilot landing — purpose + scope / "coming in development" screen.
 // This is a stub: it ships the planned scope, not working screens. MeldePilot will be a
-// thin, read-only client over the deterministic TarifHub serving API (L1) and TarifIQ
+// thin, read-only client over the deterministic tarifhub serving API (L1) and TarifIQ
 // (L2); it computes no billing value and submits no report without human sign-off.
 
 const PLANNED_SCREENS = [
@@ -29,7 +29,7 @@ export default function HomePage() {
           MeldePilot automates Switzerland&apos;s mandatory reporting and quality-data
           obligations: BFS/MARS structural and statistical returns, ANQ quality measures,
           and interRAI/BESA long-term-care data to the cantons. It is a Layer-3 app on the
-          TarifHub platform — read-only over the deterministic serving API (L1) and the
+          tarifhub platform — read-only over the deterministic serving API (L1) and the
           TarifIQ rule engine (L2), so it never computes or mutates a billing value, and
           submits nothing without human sign-off.
         </p>

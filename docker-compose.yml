@@ -1,4 +1,4 @@
-# Local development stack for TarifHub.
+# Local development stack for tarifhub.
 #   db        -> PostgreSQL 16 with pgvector (system of record + vector search)
 #   minio     -> S3-compatible object store for raw source artifacts
 #   intelligence       -> L2 TarifIQ service, in the "services" profile (opt-in)

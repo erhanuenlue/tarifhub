@@ -7,7 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // TarifHub brand sky — payer/correspondence module.
+        // tarifhub brand sky — payer/correspondence module.
         brand: {
           DEFAULT: "#0ea5e9",
           dark: "#0369a1",

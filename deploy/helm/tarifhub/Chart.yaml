@@ -1,7 +1,7 @@
 apiVersion: v2
 name: tarifhub
 description: >-
-  TarifHub — AI-assisted Swiss ambulatory tariff harmonization. Deploys the Python
+  tarifhub — AI-assisted Swiss ambulatory tariff harmonization. Deploys the Python
   ingestion service (pre-freeze) and the FastAPI serving service (deterministic,
   read-only), with an optional in-cluster PostgreSQL + pgvector.
 type: application
@@ -14,4 +14,4 @@ keywords:
   - switzerland
 home: https://github.com/tarifhub/tarifhub
 maintainers:
-  - name: TarifHub
+  - name: tarifhub

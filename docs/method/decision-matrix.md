@@ -1,6 +1,6 @@
 # Decision Matrix
 
-Three AI-assisted working modes were available throughout TarifHub. They are not ranked in
+Three AI-assisted working modes were available throughout tarifhub. They are not ranked in
 the abstract; they are *placed* against this project's real constraints. The vibe-to-spec
 spectrum follows Osmani's framing of AI-assisted development [1]; the agentic, multi-agent
 pipeline follows the agentic-workflow patterns in [9]. Every claim below is grounded in a

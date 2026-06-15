@@ -1,6 +1,6 @@
 # TarifGuard Console
 
-The trust surface of the TarifHub platform: a thin **Next.js (App Router, React + Tailwind)**
+The trust surface of the tarifhub platform: a thin **Next.js (App Router, React + Tailwind)**
 console over the deterministic Python serving API. It renders frozen records verbatim and
 carries the product's trust story; it has no billing logic of its own.
 

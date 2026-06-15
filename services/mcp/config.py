@@ -1,4 +1,4 @@
-"""Configuration for the TarifHub MCP server.
+"""Configuration for the tarifhub MCP server.
 
 The server is a thin, READ-ONLY proxy in front of the deterministic serving API. Its
 only configuration is where that API lives and how the MCP transport is exposed.

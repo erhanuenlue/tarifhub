@@ -7,7 +7,7 @@ Two options:
 - **A — Continue the existing repo (recommended):** your working repo (`Documents/Tarif/tarifhub`) already has the pipeline, freeze, tests and arc42 chapters. Copy this bundle over it: `CLAUDE.md`, `AGENTS.md`, `.claude/`, `.mcp.json`, `prompts/`, `vault/`, `docs/` (its mkdocs.yml replaces the old one), `deploy/`, `.github/`, `tools/` (Shipboard), `.env.example`, `.gitignore`. Delete the old `.claude/commands/`, the old 6–10 agent set, `scripts/ship.sh`, and the graphify hooks — this setup replaces them. Keep all real code, tests, fixtures, ADRs. **The exact command sequence: `QUICKSTART.md`.**
 - **B — Greenfield:** start from this folder, `git init`, and let session 1 (FIRST_PROMPT.md) scaffold services from the architecture doc. Only sensible if you decide the existing code is more burden than asset — it isn't; choose A.
 
-The older environments (`TarifHub_Master/dev`, `tarifhub-fable`) are **superseded by this bundle** — archive them, don't run them in parallel.
+The older environments (`tarifhub_Master/dev`, `tarifhub-fable`) are **superseded by this bundle** — archive them, don't run them in parallel.
 
 ## 1. Tools
 

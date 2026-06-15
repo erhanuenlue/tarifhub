@@ -1,12 +1,12 @@
 ---
-title: TarifHub Knowledge Vault — Index
+title: tarifhub Knowledge Vault — Index
 type: index
 updated: 2026-06-07
 ---
 
-# TarifHub Knowledge Vault
+# tarifhub Knowledge Vault
 
-The founder-owned **second brain** for TarifHub: the things that do *not* live in code —
+The founder-owned **second brain** for tarifhub: the things that do *not* live in code —
 decisions, research, the running AI-tooling journal, daily logs. Code structure lives in the
 [[README|repo]] and in the **graphify** knowledge graph (see [[README#graphify-to-obsidian|README]]);
 *why we decided things* lives here. The two never pretend to be each other.

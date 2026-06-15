@@ -2,7 +2,7 @@
 
 > **Gate-01: pre-approved by the owner (14 Jun).** Produce and log the plan (emit + plan report), then proceed without waiting. STOP only for: scope beyond this prompt, any freeze-line contact, a green-contract or ratchet breach, or a destructive operation.
 
-Read AGENTS.md, CLAUDE.md, and the AI-SE framework chapter (`docs/`, the chapter prompt 08 produced). Run at `/effort ultracode`. Build a short, minimalist Reveal.js slide deck for a **5-minute live presentation at the school** about the TarifHub idea and how it was engineered with the auto-loop. This is a talk aid, not a document: few words per slide, one idea per slide, the speaker fills the rest.
+Read AGENTS.md, CLAUDE.md, and the AI-SE framework chapter (`docs/`, the chapter prompt 08 produced). Run at `/effort ultracode`. Build a short, minimalist Reveal.js slide deck for a **5-minute live presentation at the school** about the tarifhub idea and how it was engineered with the auto-loop. This is a talk aid, not a document: few words per slide, one idea per slide, the speaker fills the rest.
 
 ## Output
 
@@ -10,7 +10,7 @@ A single self-contained file `docs/presentation/index.html` using Reveal.js. Pre
 
 ## Story arc (about 9 to 11 slides, 5 minutes)
 
-1. **Title:** TarifHub, one line on what it is (Swiss ambulatory tariff data, made trustworthy), name, date.
+1. **Title:** tarifhub, one line on what it is (Swiss ambulatory tariff data, made trustworthy), name, date.
 2. **The problem:** why tariff data is hard and why trust (determinism) is the point. One sentence, one visual.
 3. **The idea:** the four-layer architecture in one diagram (reuse the Eraser four-layer image), the freeze line as the trust guarantee.
 4. **How I started:** an empty repo plus a definition of done, not a backlog; outcome prompts, not scripts.

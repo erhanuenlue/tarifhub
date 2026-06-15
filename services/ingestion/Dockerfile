@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# Multi-stage build for the TarifHub ingestion service (Python 3.12).
+# Multi-stage build for the tarifhub ingestion service (Python 3.12).
 
 # --- builder: install into a self-contained virtualenv ---
 # Base image pinned by digest 2026-06-11 (python:3.12-slim manifest-list digest).

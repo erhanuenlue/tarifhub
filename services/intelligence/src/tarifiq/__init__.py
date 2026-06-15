@@ -1,4 +1,4 @@
-"""TarifIQ — the TarifHub intelligence service (Layer 2).
+"""TarifIQ — the tarifhub intelligence service (Layer 2).
 
 Deterministic combinability/cumulation rules, TARMED↔TARDOC cross-walk, and rule
 validation, layered on top of the frozen tariff facts served by TarifCore (L1).

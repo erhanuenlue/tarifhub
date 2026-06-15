@@ -1,6 +1,6 @@
 # aise-harness — how this repository builds itself
 
-> This folder is a **guided tour, not a separate codebase.** TarifHub was built with an
+> This folder is a **guided tour, not a separate codebase.** tarifhub was built with an
 > agentic software‑engineering loop, and every part of that loop is checked into this
 > repository as first‑class evidence (FFHS CAS AI‑Assisted Software Engineering, criterion 15).
 > The files live in their working locations — the automation depends on those exact paths —

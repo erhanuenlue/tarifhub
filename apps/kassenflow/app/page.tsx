@@ -1,6 +1,6 @@
 // KassenFlow landing — purpose + scope / "coming in development" screen.
 // This is a stub: it ships the planned scope, not working screens. KassenFlow will be a
-// thin, read-only client over the deterministic TarifHub serving API (L1) and TarifIQ
+// thin, read-only client over the deterministic tarifhub serving API (L1) and TarifIQ
 // rules (L2); it computes no billing value of its own.
 
 const PLANNED_SCREENS = [
@@ -28,7 +28,7 @@ export default function HomePage() {
         <p className="mt-2 max-w-2xl text-sm text-slate-600">
           KassenFlow automates the back-and-forth with health insurers: cost-approval
           (Kostengutsprache) requests, MiGeL and medication approvals, and multi-payer
-          query handling. It is a Layer-3 app on the TarifHub platform — read-only over the
+          query handling. It is a Layer-3 app on the tarifhub platform — read-only over the
           deterministic serving API (L1) and the TarifIQ rule engine (L2), so it never
           computes or mutates a billing value itself.
         </p>

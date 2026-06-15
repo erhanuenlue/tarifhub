@@ -11,7 +11,7 @@ The platform (ingestion + serving) is backend-heavy. A practice-facing front end
 the frozen data useful at the point of care and adds a second, visible AI surface
 (search / coding-check / explain), while the wider ecosystem is converging on the Model
 Context Protocol as the way AI agents consume tools. Two questions follow: how should a
-practice-facing app and an agent-facing interface attach to TarifHub without weakening
+practice-facing app and an agent-facing interface attach to tarifhub without weakening
 the freeze-line guarantee?
 
 ## Decision

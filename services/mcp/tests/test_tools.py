@@ -1,4 +1,4 @@
-"""Tests for the TarifHub MCP tools.
+"""Tests for the tarifhub MCP tools.
 
 The serving API is mocked with ``httpx.MockTransport`` so the suite runs fully offline.
 The contract under test: each tool returns EXACTLY what the backend returns and never

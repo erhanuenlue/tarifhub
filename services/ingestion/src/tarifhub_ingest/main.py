@@ -60,7 +60,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             conn.close()
 
     app = FastAPI(
-        title="TarifHub Ingestion",
+        title="tarifhub Ingestion",
         version=__version__,
         summary="Pre-freeze harmonization pipeline + read API over frozen records.",
         lifespan=lifespan,

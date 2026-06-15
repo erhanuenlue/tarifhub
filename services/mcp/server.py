@@ -1,6 +1,6 @@
-"""TarifHub MCP server — read-only tools over the deterministic serving API.
+"""tarifhub MCP server — read-only tools over the deterministic serving API.
 
-Exposes TarifHub to AI agents through the Model Context Protocol. Every tool is a thin
+Exposes tarifhub to AI agents through the Model Context Protocol. Every tool is a thin
 proxy to the FastAPI serving service and returns its frozen records VERBATIM. This
 server has no database, no model, and no arithmetic: it cannot and must not compute,
 round, or invent a tariff value. If serving cannot answer, the tool surfaces the error

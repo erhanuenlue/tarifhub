@@ -1,6 +1,6 @@
 # Introduction and Goals
 
-TarifHub harmonises Switzerland's fragmented ambulatory tariff data into **one canonical, versioned, deterministic API**. AI assists the harmonisation *above* a freeze line (gap-filling non-billing fields, explaining mappings) and never operates below it: frozen records are immutable, hashed and served verbatim.
+tarifhub harmonises Switzerland's fragmented ambulatory tariff data into **one canonical, versioned, deterministic API**. AI assists the harmonisation *above* a freeze line (gap-filling non-billing fields, explaining mappings) and never operates below it: frozen records are immutable, hashed and served verbatim.
 
 ## Problem statement
 

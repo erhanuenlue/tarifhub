@@ -18,7 +18,7 @@ way to name and place these without weakening the freeze-line guarantee.
 
 ## Decision
 
-Frame TarifHub as **one platform, four layers**, each with a product/brand name:
+Frame tarifhub as **one platform, four layers**, each with a product/brand name:
 
 - **L0 — Harmonization Engine** (`services/ingestion`): pre-freeze, AI-assisted pipeline →
   freeze + version + hash + lineage → canonical store.

@@ -2,7 +2,7 @@
   "name": "tarifguard",
   "version": "0.1.0",
   "private": true,
-  "description": "TarifGuard Console — master-detail + review form + labelled AI explain panel over the deterministic TarifHub serving API.",
+  "description": "TarifGuard Console — master-detail + review form + labelled AI explain panel over the deterministic tarifhub serving API.",
   "scripts": {
     "dev": "next dev -p 3000",
     "build": "next build",

@@ -5,7 +5,7 @@ appear across more than 20 sources in the XLSX, XML, PDF and FHIR formats, witho
 single authoritative machine interface. The downstream costs add up: every PIS/HIS
 vendor re-implements parsing per source, tariff values reach the billing systems without
 provable provenance, version changes are reconciled by hand, and an undetected mapping
-error silently becomes an incorrect invoice. TarifHub consolidates this data into a
+error silently becomes an incorrect invoice. tarifhub consolidates this data into a
 canonical, versioned and deterministic interface. Its audience comprises PIS/HIS vendors
 as machine consumers (REST/OpenAPI and FHIR R4), the tariff experts who review uncertain
 mappings, practice users who look things up in the TarifGuard console, and AI agents that

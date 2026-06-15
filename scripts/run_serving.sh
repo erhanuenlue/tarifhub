@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# Run the TarifHub serving service (FastAPI) in dev mode with live reload on :8000.
+# Run the tarifhub serving service (FastAPI) in dev mode with live reload on :8000.
 # Offline by default (SQLite). For Postgres+pgvector (enables semantic search):
 #   docker compose up -d db && export TARIFHUB_DB_URL=postgresql://tarifhub:tarifhub@localhost:5432/tarifhub
 #

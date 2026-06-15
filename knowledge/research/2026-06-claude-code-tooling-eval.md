@@ -9,7 +9,7 @@ tags: [research, tooling, claude-code, mcp, knowledge-graph]
 # Claude Code tooling evaluation — June 2026
 
 Condensed, decision-oriented summary of the fuller evaluation (14 repos + features) in
-`DevSetup/TarifHub_ClaudeCode_Setup_EN.md`. Star counts/dates are as reported in early June
+`DevSetup/tarifhub_ClaudeCode_Setup_EN.md`. Star counts/dates are as reported in early June
 2026; where unverified, they're marked. The lens: a determinism-strict monorepo built solo.
 
 ## Install now (the three pillars)
@@ -53,5 +53,5 @@ graphify's `--obsidian` export bridging code nodes into notes. See [[README]].
 
 ## Sources
 
-`DevSetup/TarifHub_ClaudeCode_Setup_EN.md` (full eval, with per-repo source links), accessed
+`DevSetup/tarifhub_ClaudeCode_Setup_EN.md` (full eval, with per-repo source links), accessed
 June 2026. Decision recorded in [[decisions/0001-adopt-claude-code-ultracode-codex-review]].

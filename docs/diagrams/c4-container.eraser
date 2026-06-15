@@ -1,7 +1,7 @@
 // diagramType: flowchart-diagram
 // Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
 // this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
-title TarifHub Containers (C4 L2)
+title tarifhub Containers (C4 L2)
 direction down
 colorMode pastel
 typeface clean
@@ -11,7 +11,7 @@ Vendor [icon: user, color: blue, label: "PIS/HIS vendor"]
 Practice [icon: user, color: purple, label: "Medical practice"]
 Agent [icon: cpu, color: gray, label: "AI agent (MCP client)"]
 
-TarifHub [color: green, label: "TarifHub"] {
+tarifhub [color: green, label: "tarifhub"] {
   Ingest [icon: server, color: orange, label: "Ingestion service (Python 3.12, FastAPI): pre-freeze, AI-assisted pipeline (load to freeze to store to audit) plus admin/read API. No AI on the value path."]
   Serving [icon: server, color: green, label: "Serving service (Python 3.12, FastAPI): deterministic REST over frozen records (JSON; XML designed, ADR-008) plus pgvector semantic search"]
   MCP [icon: search, color: green, label: "MCP server (Python, FastMCP): read-only MCP tools (search/lookup/explain) over serving. No DB, no model, no math."]

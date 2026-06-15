@@ -1,6 +1,6 @@
 # AI Tools and Workflow
 
-This chapter is the honest account of how AI was used to build TarifHub, organised by
+This chapter is the honest account of how AI was used to build tarifhub, organised by
 the four working phases the project actually ran: Generation, Review,
 Refactoring and Research. Every claim is tied to a prompt line, the file or diff it produced, and a
 PR plus commit reference taken from the contemporaneous journal (`vault/daily/`) and the

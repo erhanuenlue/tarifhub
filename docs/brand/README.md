@@ -1,6 +1,6 @@
 # Brand: original Convergence identity (developer reference)
 
-The owner's canonical identity: the **Convergence mark** (three streams → hub node → one output), lowercase `tarif`+`hub` wordmark (Inter 300 navy / 700 sky), sky/cyan/blue palette. Full guideline: `tarifhub-fable5/04_Branding/TarifHub_Brand_Guide_EN.md`. Canonical tokens: `tokens.css` (mirror into Tailwind config). Assets here: `assets/` (`logo-primary`, `logo-mono` via `currentColor`, `icon-app`, `tarifguard-mark`).
+The owner's canonical identity: the **Convergence mark** (three streams → hub node → one output), lowercase `tarif`+`hub` wordmark (Inter 300 navy / 700 sky), sky/cyan/blue palette. Full guideline: `tarifhub-fable5/04_Branding/tarifhub_Brand_Guide_EN.md`. Canonical tokens: `tokens.css` (mirror into Tailwind config). Assets here: `assets/` (`logo-primary`, `logo-mono` via `currentColor`, `icon-app`, `tarifguard-mark`).
 
 **The visual law (review-blocking, see `.claude/rules/demo-frontend.md`):**
 

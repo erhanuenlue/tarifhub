@@ -1,4 +1,4 @@
-# knowledge/ — the TarifHub Obsidian vault
+# knowledge/ — the tarifhub Obsidian vault
 
 This folder is an **Obsidian vault** and the founder's second brain. It holds the
 human-curated knowledge that does not belong in source code: architecture/dev decisions,

@@ -7,7 +7,7 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "TarifGuard Console",
   description:
-    "Master-detail over the deterministic TarifHub serving API: tariff search, frozen-record detail, a human review form, and a labelled AI explain panel.",
+    "Master-detail over the deterministic tarifhub serving API: tariff search, frozen-record detail, a human review form, and a labelled AI explain panel.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {

@@ -1,7 +1,7 @@
-# TarifHub MCP server
+# tarifhub MCP server
 
 A small **Model Context Protocol** server (Python, [FastMCP](https://modelcontextprotocol.io))
-that exposes TarifHub to AI agents as **read-only** tools. Every tool is a thin proxy to
+that exposes tarifhub to AI agents as **read-only** tools. Every tool is a thin proxy to
 the deterministic FastAPI serving service (read-only, :8000) and returns its frozen records verbatim.
 
 ## Tools

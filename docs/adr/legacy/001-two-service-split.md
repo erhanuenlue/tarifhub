@@ -9,7 +9,7 @@
 
 ## Context
 
-TarifHub needs an AI-rich harmonization stage and a strictly deterministic serving
+tarifhub needs an AI-rich harmonization stage and a strictly deterministic serving
 stage. These have different qualities: the first benefits from Python's AI/data
 ecosystem; the second benefits from a strongly-typed, fast, deterministic JVM service.
 

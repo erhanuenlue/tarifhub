@@ -1,6 +1,6 @@
 # The AI-SE Framework
 
-This chapter is the system view of how TarifHub was engineered with AI. AI here was not an autocomplete; I built a software-engineering system around the model: an orchestrator model
+This chapter is the system view of how tarifhub was engineered with AI. AI here was not an autocomplete; I built a software-engineering system around the model: an orchestrator model
 plans and reviews, worker models implement and verify, an independent second model family audits,
 a dedicated diagram tool generates diagrams as code, deterministic gates define and protect
 "done", a closed loop runs the work unattended, and a live dashboard makes every state
@@ -31,7 +31,7 @@ second model family in particular is that a defect that one model's blind spots 
 
 ![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
 
-> **Figure: TarifHub's four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) sits above the line; L1 deterministic serving, L2 rules, and L3 apps sit below it. The single AI seam is confined to L0, and no AI computes or mutates a billing value at serve time.
+> **Figure: tarifhub's four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) sits above the line; L1 deterministic serving, L2 rules, and L3 apps sit below it. The single AI seam is confined to L0, and no AI computes or mutates a billing value at serve time.
 
 ## 1. Project setup as reproducible context
 

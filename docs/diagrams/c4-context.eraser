@@ -1,16 +1,16 @@
 // diagramType: flowchart-diagram
 // Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
 // this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
-title TarifHub System Context (C4 L1)
+title tarifhub System Context (C4 L1)
 direction down
 colorMode pastel
 typeface clean
 
 Sources [icon: download, color: gray, label: "Public tariff sources: BAG EAL (XLSX), BAG ePL (FHIR R5), future OAAT / cantons"]
-TarifHub [icon: box, color: green, label: "TarifHub: harmonises Swiss ambulatory tariff data and serves immutable, frozen records deterministically"]
+tarifhub [icon: box, color: green, label: "tarifhub: harmonises Swiss ambulatory tariff data and serves immutable, frozen records deterministically"]
 Vendor [icon: user, color: blue, label: "PIS/HIS vendor: consumes harmonised, frozen tariff data via read-only APIs"]
 Expert [icon: user, color: purple, label: "Tariff domain expert: reviews low-confidence harmonisations (human in the loop)"]
 
-Sources > TarifHub: tariff datasets, file or API [color: gray]
-Vendor > TarifHub: reads and searches, REST JSON [color: blue]
-Expert > TarifHub: reviews flagged items [color: purple]
+Sources > tarifhub: tariff datasets, file or API [color: gray]
+Vendor > tarifhub: reads and searches, REST JSON [color: blue]
+Expert > tarifhub: reviews flagged items [color: purple]

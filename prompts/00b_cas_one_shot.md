@@ -4,7 +4,7 @@
 
 ---
 
-You are in the prepared TarifHub workspace — AGENTS.md and CLAUDE.md are loaded; hooks enforce the freeze line; the docs scaffold and CI/publish workflows exist. Existing service code may be present: audit it first and build on what survives the audit; rewrite only what is wrong, not what is unfamiliar.
+You are in the prepared tarifhub workspace — AGENTS.md and CLAUDE.md are loaded; hooks enforce the freeze line; the docs scaffold and CI/publish workflows exist. Existing service code may be present: audit it first and build on what survives the audit; rewrite only what is wrong, not what is unfamiliar.
 
 **Mission:** bring this repository to the state where the FFHS grading table below scores at the top of every row a machine can influence, in one continuous run. Work plan-first, then execute block by block; commit in small Conventional Commits as you go; keep working until the exit condition holds or you hit something only Erhan can decide (irreversible, legal, money — nothing else stops you).
 

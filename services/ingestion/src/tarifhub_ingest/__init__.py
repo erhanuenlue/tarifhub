@@ -1,4 +1,4 @@
-"""TarifHub ingestion service.
+"""tarifhub ingestion service.
 
 AI-assisted harmonization of Swiss ambulatory tariff data. Everything in this
 package runs *before* the freeze line: load -> parse -> map -> validate -> score

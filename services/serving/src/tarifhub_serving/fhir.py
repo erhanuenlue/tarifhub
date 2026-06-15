@@ -156,7 +156,7 @@ class CodeSystem(BaseModel):
     status: str = "active"
     content: str = "fragment"
     caseSensitive: bool = True
-    publisher: str = "TarifHub"
+    publisher: str = "tarifhub"
     name: str
     title: str
     count: int = Field(..., ge=0)
@@ -170,7 +170,7 @@ def _provenance_extensions(record: TariffRecord) -> list[FhirExtension] | None:
     """Carry ``record_hash`` and ``source_url`` as plain valueString extensions.
 
     Honest provenance without inventing a bespoke profile: each is a single extension
-    whose ``url`` names a StructureDefinition under the TarifHub canonical space. Absent
+    whose ``url`` names a StructureDefinition under the tarifhub canonical space. Absent
     fields are simply not emitted; an empty list collapses to ``None`` (omitted).
     """
 
@@ -285,8 +285,8 @@ def to_code_system(system: str, records: list[TariffRecord], *, count: int) -> C
     return CodeSystem(
         id=_fhir_id(system),
         url=f"{_CS_URL}/{system}",
-        name=f"TarifHub-{system}",
-        title=f"TarifHub {system} tariff codes",
+        name=f"tarifhub-{system}",
+        title=f"tarifhub {system} tariff codes",
         count=count,
         concept=concepts,
     )

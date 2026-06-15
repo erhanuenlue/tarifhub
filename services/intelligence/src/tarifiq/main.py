@@ -45,7 +45,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         yield
 
     app = FastAPI(
-        title="TarifHub Intelligence (TarifIQ)",
+        title="tarifhub Intelligence (TarifIQ)",
         version=__version__,
         summary="Deterministic combinability rules, TARMED↔TARDOC cross-walk, and rule validation.",
         lifespan=lifespan,

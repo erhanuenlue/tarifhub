@@ -1,4 +1,4 @@
-# CLAUDE.md — TarifHub (Opus 4.8)
+# CLAUDE.md — tarifhub (Opus 4.8)
 
 @AGENTS.md
 

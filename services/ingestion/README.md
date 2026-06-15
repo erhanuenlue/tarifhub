@@ -1,6 +1,6 @@
 # tarifhub-ingest
 
-Pre-freeze, AI-assisted harmonization pipeline + admin/read API for TarifHub. Runs
+Pre-freeze, AI-assisted harmonization pipeline + admin/read API for tarifhub. Runs
 fully offline (SQLite, no network, no live LLM) so the suite is reproducible anywhere.
 
 ## Pipeline

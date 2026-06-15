@@ -1,6 +1,6 @@
 # Test Strategy
 
-How TarifHub is tested, as actually implemented. The strategy serves one architectural
+How tarifhub is tested, as actually implemented. The strategy serves one architectural
 promise above all: no AI computes or mutates a billing value at serve time, and a
 served value is provably the value that was reviewed and frozen. The tests are therefore
 arranged as a pyramid whose apex is an architectural AST guard rather than an end-to-end UI test,
@@ -101,7 +101,7 @@ green by construction, not by reviewer discipline.
 
 The CAS rubric asks that the test strategy **account for the tests of the AI components**: that
 the AI components are themselves tested, not just
-the deterministic majority. TarifHub's AI
+the deterministic majority. tarifhub's AI
 portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
 only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path
 for search. Its tests therefore fall into four families: a **guardrail** test of the

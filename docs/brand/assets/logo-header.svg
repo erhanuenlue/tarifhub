@@ -1,5 +1,5 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 252 56" fill="none" role="img" aria-label="tarifhub">
-  <!-- TarifHub header wordmark — brand convergence streams + light-adapted two-tone wordmark for the dark header -->
+  <!-- tarifhub header wordmark — brand convergence streams + light-adapted two-tone wordmark for the dark header -->
   <!-- Data streams: cyan / sky / blue (pop on navy) -->
   <path d="M4 10 C24 10 34 23 50 28" stroke="#06B6D4" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M4 28 L50 28" stroke="#0EA5E9" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
@@ -15,6 +15,6 @@
   <circle cx="67" cy="28" r="1.6" fill="#0EA5E9"/>
   <!-- Wordmark: tarif (white) + hub (sky) -->
   <text font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="30" x="80" y="37" letter-spacing="0.3">
-    <tspan font-weight="300" fill="#FFFFFF">Tarif</tspan><tspan font-weight="700" fill="#38BDF8">Hub</tspan>
+    <tspan font-weight="300" fill="#FFFFFF">tarif</tspan><tspan font-weight="700" fill="#38BDF8">hub</tspan>
   </text>
 </svg>

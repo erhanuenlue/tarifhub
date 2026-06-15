@@ -4,7 +4,7 @@
 
 ![C4 system context](../diagrams/c4-context.svg)
 
-TarifHub ingests Swiss ambulatory tariff sources (BAG EAL XLSX, FHIR catalogues), harmonises them once pre-freeze, and serves immutable frozen records to humans (TarifGuard console), machines (REST/FHIR clients) and AI assistants (MCP). All consumers read from the same deterministic serving layer; nothing downstream of the freeze line writes.
+tarifhub ingests Swiss ambulatory tariff sources (BAG EAL XLSX, FHIR catalogues), harmonises them once pre-freeze, and serves immutable frozen records to humans (TarifGuard console), machines (REST/FHIR clients) and AI assistants (MCP). All consumers read from the same deterministic serving layer; nothing downstream of the freeze line writes.
 
 ## Level 1: containers
 

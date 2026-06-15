@@ -1,6 +1,6 @@
 # START GUIDE: what to install before a Claude Code session
 
-This is the pre-flight for developing TarifHub with Claude Code (Opus 4.8) and Codex as the
+This is the pre-flight for developing tarifhub with Claude Code (Opus 4.8) and Codex as the
 automated reviewer. Install the toolchain once, authenticate, then use the "first session"
 checklist every time. Copy-paste commands are below; adjust package names if an upstream
 project has renamed something.

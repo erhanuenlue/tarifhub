@@ -1,4 +1,4 @@
-# Default values for the TarifHub chart.
+# Default values for the tarifhub chart.
 
 nameOverride: ""
 fullnameOverride: ""

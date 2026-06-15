@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  *  DE-IDENTIFICATION BOUNDARY  —  the ONLY code in MeldePilot allowed to build
- *  an LLM-bound payload.  (TarifHub determinism / data-sovereignty rule.)
+ *  an LLM-bound payload.  (tarifhub determinism / data-sovereignty rule.)
  * ============================================================================
  *
  * MeldePilot prepares mandatory reports and quality datasets (BFS/MARS, ANQ,

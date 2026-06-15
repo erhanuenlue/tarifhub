@@ -1,8 +1,8 @@
-# TarifHub - architecture documentation site (MkDocs Material)
+# tarifhub - architecture documentation site (MkDocs Material)
 # Serve:  mkdocs serve -f docs/mkdocs.yml
 # Build:  mkdocs build -f docs/mkdocs.yml --strict
 
-site_name: TarifHub
+site_name: tarifhub
 site_description: AI-assisted harmonisation above a deterministic freeze line. FFHS CAS AI-Assisted Software Engineering.
 site_author: Erhan Ünlü
 docs_dir: .

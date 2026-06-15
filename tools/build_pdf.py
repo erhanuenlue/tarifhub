@@ -259,7 +259,7 @@ def front_matter() -> str:
 
 \dokumentTyp{Project thesis CAS AISE}
 \studiengang{CAS AI-Assisted Software Engineering}
-\title{TarifHub}
+\title{tarifhub}
 \subtitle{AI-assisted harmonisation over a deterministic freeze line\\[0.4ex]\normalsize\href{""" + REPO_URL + r"""}{""" + REPO_URL.replace("https://", "") + r"""}}
 \author{Erhan Ünlü}
 \wohnort{Switzerland, 2026}

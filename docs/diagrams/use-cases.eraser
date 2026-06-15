@@ -5,7 +5,7 @@
 // UC-05 (point-in-time / diff) is live this release: kept green, no amber marker.
 // The amber key lives in the title (Eraser drops disconnected legend nodes from the render;
 // the full status catalogue is the arc42 section 1 use-case table).
-title TarifHub use cases (arc42 section 1). Amber = not yet fully live: UC-02 designed, UC-09 partial.
+title tarifhub use cases (arc42 section 1). Amber = not yet fully live: UC-02 designed, UC-09 partial.
 direction right
 colorMode pastel
 typeface clean
@@ -16,7 +16,7 @@ Consumer [icon: user, color: blue, label: "API consumer (PIS/HIS)"]
 Agent [icon: cpu, color: blue, label: "AI agent (MCP client)"]
 Practice [icon: user, color: blue, label: "Practice user"]
 
-TarifHub [color: green, label: "TarifHub"] {
+tarifhub [color: green, label: "tarifhub"] {
   UC01 [shape: oval, color: green, label: "UC-01 Trigger ingest"]
   UC02 [shape: oval, color: orange, label: "UC-02 Review low-confidence mapping (designed)"]
   UC03 [shape: oval, color: green, label: "UC-03 Freeze record"]

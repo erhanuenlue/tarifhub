@@ -1,4 +1,4 @@
-Vendored brand fonts for the TarifHub presentation deck
+Vendored brand fonts for the tarifhub presentation deck
 ========================================================
 
 Two font files are bundled here so the deck renders fully offline (no CDN at

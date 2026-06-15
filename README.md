@@ -1,6 +1,6 @@
 <div align="center">
 
-<img src="docs/brand/assets/logo-primary.svg" alt="TarifHub" height="84">
+<img src="docs/brand/assets/logo-primary.svg" alt="tarifhub" height="84">
 
 **One trustworthy machine interface to Swiss ambulatory tariff data: AI‑assisted above a deterministic freeze line, immutable and versioned below it.**
 
@@ -17,7 +17,7 @@
 
 ---
 
-TarifHub harmonises Switzerland's fragmented ambulatory tariff data (TARMED, TARDOC, EAL, the BAG Spezialitätenliste) **once**, with AI assistance, into a canonical, versioned, deterministic record, then serves it through a read‑only API, FHIR R4, and MCP tools for AI agents. It is the capstone project for the **FFHS CAS AI‑Assisted Software Engineering** (due 6 July 2026) and the seed of a commercial platform, on a single codebase.
+tarifhub harmonises Switzerland's fragmented ambulatory tariff data (TARMED, TARDOC, EAL, the BAG Spezialitätenliste) **once**, with AI assistance, into a canonical, versioned, deterministic record, then serves it through a read‑only API, FHIR R4, and MCP tools for AI agents. It is the capstone project for the **FFHS CAS AI‑Assisted Software Engineering** (due 6 July 2026) and the seed of a commercial platform, on a single codebase.
 
 ## The one inviolable rule
 
@@ -68,7 +68,7 @@ Python 3.12 · FastAPI · Pydantic v2 (one canonical `TariffRecord` end to end) 
 This repo holds **both** halves of the project:
 
 - **The graded product + thesis**: `services/`, `apps/`, `db/`, `deploy/`, and the arc42 documentation under `docs/`.
-- **The agentic build system that produced it**: documented as a guided tour in **[`aise-harness/`](aise-harness/)**. TarifHub was built with a closed‑loop, multi‑model, human‑gated AI software‑engineering pipeline; that harness (prompts, agents, governance hooks, the live dashboard, the journal) is kept on purpose as criterion‑15 evidence of *how* the work was done.
+- **The agentic build system that produced it**: documented as a guided tour in **[`aise-harness/`](aise-harness/)**. tarifhub was built with a closed‑loop, multi‑model, human‑gated AI software‑engineering pipeline; that harness (prompts, agents, governance hooks, the live dashboard, the journal) is kept on purpose as criterion‑15 evidence of *how* the work was done.
 
 ## Documentation & decisions
 

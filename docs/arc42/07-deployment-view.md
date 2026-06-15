@@ -1,6 +1,6 @@
 # Deployment View
 
-TarifHub ships as a set of independently containerised sub-systems. This chapter shows the
+tarifhub ships as a set of independently containerised sub-systems. This chapter shows the
 deployment topology, the chosen architecture style and why, and the evidence that the
 solution is actually runnable, both under Docker Compose and on Kubernetes (criterion 17).
 Graders review code and documentation only, so the runtime proof is captured here as quoted
@@ -38,7 +38,7 @@ All read-side sub-systems, in or out of the MVP path, stay post-freeze and ship 
 ## Style choice: distributed services along the freeze line
 
 The CAS rubric treats a **modular monolith** as equally valid as
-**distributed services**; the choice must simply be justified. TarifHub chooses distributed
+**distributed services**; the choice must simply be justified. tarifhub chooses distributed
 services, decomposed along the freeze line ([ADR-002](../adr/002-freeze-line-decomposition.md)):
 the value-path invariant ("no AI computes or mutates a billing value at serve time") becomes a
 *process boundary* rather than a convention inside one process. The serving image physically
@@ -94,7 +94,7 @@ described in [the AI-SE framework chapter](../method/ai-se-framework.md).
 independent containers; `db` and `minio` report `healthy`, and the L1 serving container answers over
 HTTP against the 11 653 frozen rows in the compose Postgres.
 
-![docker compose ps: eight independent TarifHub containers running, with a live serving smoke and point-read latency](../img/compose-ps.png)
+![docker compose ps: eight independent tarifhub containers running, with a live serving smoke and point-read latency](../img/compose-ps.png)
 
 ```text
 SERVICE        IMAGE                    STATUS          PORTS

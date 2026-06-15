@@ -87,5 +87,5 @@ Claude Code performs **all** git/gh operations (`AGENTS.md`). Two scripts encaps
 - **mattpocock/skills** = composable engineering skills that complement, not replace, the
   spec-driven spine.
 
-See `DevSetup/TarifHub_ClaudeCode_Setup_EN.md` for the full tool evaluation and
+See `DevSetup/tarifhub_ClaudeCode_Setup_EN.md` for the full tool evaluation and
 `knowledge/decisions/0001-adopt-claude-code-ultracode-codex-review.md` for the rationale.

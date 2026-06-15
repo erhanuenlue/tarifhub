@@ -1,5 +1,5 @@
 /**
- * Typed, server-side client for the deterministic TarifHub serving API (L1 TarifCore).
+ * Typed, server-side client for the deterministic tarifhub serving API (L1 TarifCore).
  *
  * DETERMINISM BOUNDARY
  * --------------------

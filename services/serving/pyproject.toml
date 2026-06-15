@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tarifhub-serving"
 version = "0.1.0"
-description = "TarifHub L1 serving service — deterministic read API over frozen tariff records (FastAPI)."
+description = "tarifhub L1 serving service — deterministic read API over frozen tariff records (FastAPI)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
-authors = [{ name = "TarifHub" }]
+authors = [{ name = "tarifhub" }]
 
 # Runtime dependencies. The service is strictly READ-ONLY over frozen records and
 # must run fully OFFLINE for tests (SQLite mirror + stub embedder, no network).

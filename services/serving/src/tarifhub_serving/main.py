@@ -44,7 +44,7 @@ from tarifhub_serving.models import (
 from tarifhub_serving.repository import ServingRepository
 
 app = FastAPI(
-    title="TarifHub Serving (L1 TarifCore)",
+    title="tarifhub Serving (L1 TarifCore)",
     description="Deterministic read API over frozen Swiss ambulatory tariff records.",
     version="0.1.0",
 )
@@ -223,7 +223,7 @@ _FHIR_ID_RULE = (
         "'informational' priceComponent factor (a component is omitted when its field is "
         "None). FHIR decimals are JSON numbers emitted via float(); at our scales they "
         "round-trip the stored Decimal exactly. record_hash and source_url are carried as "
-        "valueString extensions under the TarifHub canonical URL space. 404 when the key, "
+        "valueString extensions under the tarifhub canonical URL space. 404 when the key, "
         "version or as_of date matches no frozen record."
     ),
 )

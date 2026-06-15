@@ -1,6 +1,6 @@
 // diagramType: flowchart-diagram
 // Rendered with the eraser-diagrams skill (Eraser /render). Regenerate: feed this DSL to the Eraser MCP and export PNG (imageQuality 3, theme light).
-title TarifHub four-layer architecture and the freeze line
+title tarifhub four-layer architecture and the freeze line
 direction down
 colorMode pastel
 typeface clean

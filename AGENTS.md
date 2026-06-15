@@ -1,4 +1,4 @@
-# TarifHub — Project Facts (read first)
+# tarifhub — Project Facts (read first)
 
 Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (post-CAS) → L3 apps (demo now). **CAS capstone due Mon 6 July 2026, 00:00** (submit as Gruppe K: PDF with clickable repo URL). Grading strategy lives in Erhan's corpus (CAS Dossier v3.1); the operative grading anchors every session must honour are below.
 

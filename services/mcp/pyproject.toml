@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tarifhub-mcp"
 version = "0.1.0"
-description = "TarifHub MCP server — read-only tools over the deterministic serving API for AI agents."
+description = "tarifhub MCP server — read-only tools over the deterministic serving API for AI agents."
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "Proprietary" }
-authors = [{ name = "TarifHub" }]
+authors = [{ name = "tarifhub" }]
 
 # Thin proxy: the MCP SDK + an HTTP client. No DB, no model, no math libraries.
 dependencies = [

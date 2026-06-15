@@ -4,9 +4,9 @@ import type { ReactNode } from "react";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "MeldePilot — TarifHub",
+  title: "MeldePilot — tarifhub",
   description:
-    "Mandatory-reporting / quality-data automation (BFS/MARS, ANQ, interRAI/BESA → cantonal) over the TarifHub platform. Stub / in development.",
+    "Mandatory-reporting / quality-data automation (BFS/MARS, ANQ, interRAI/BESA → cantonal) over the tarifhub platform. Stub / in development.",
 };
 
 export default function RootLayout({ children }: { children: ReactNode }) {
@@ -17,7 +17,7 @@ export default function RootLayout({ children }: { children: ReactNode }) {
           <div className="mx-auto flex max-w-4xl items-center justify-between px-4 py-3">
             <span className="font-semibold text-brand-dark">MeldePilot</span>
             <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800">
-              TarifHub · Layer 3 app · preview
+              tarifhub · Layer 3 app · preview
             </span>
           </div>
         </header>

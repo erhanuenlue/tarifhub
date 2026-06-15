@@ -3,7 +3,7 @@
 // this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
 // Canonical source: db/schema.sql (mirrored in SQLite for offline tests).
 // record_hash is UNIQUE (SHA-256 integrity anchor); UNIQUE(tariff_system, tariff_code, version).
-title TarifHub data model: tariff (immutable, versioned, hashed) and audit_log (append-only lineage)
+title tarifhub data model: tariff (immutable, versioned, hashed) and audit_log (append-only lineage)
 colorMode pastel
 typeface clean
 notation crows-feet

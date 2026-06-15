@@ -17,7 +17,7 @@ Accepted — 2026-06-07.
 
 ## Context
 
-TarifHub is a Python + Quarkus + Next.js monorepo with one hard promise: **no AI ever
+tarifhub is a Python + Quarkus + Next.js monorepo with one hard promise: **no AI ever
 computes or mutates a billing value.** AI harmonizes *before* the freeze (human-in-the-loop)
 and powers search/explain *after* it; authoritative values are unaltered, versioned, hashed,
 frozen records. The founder develops solo with two AI runtimes available — Claude Code (Claude

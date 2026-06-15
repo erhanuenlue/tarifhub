@@ -32,7 +32,7 @@ export default function HomePage() {
       <section>
         <h1 className="text-2xl font-semibold text-navy">TarifGuard Console</h1>
         <p className="mt-2 max-w-2xl text-sm leading-relaxed text-body">
-          The trust surface of the TarifHub platform: a thin, read-only client over the
+          The trust surface of the tarifhub platform: a thin, read-only client over the
           deterministic serving API. Every billing value shown is an unaltered frozen
           record. The console computes nothing of its own.
         </p>

@@ -1,4 +1,4 @@
-# TarifHub: Architecture Documentation
+# tarifhub: Architecture Documentation
 
 **AI-assisted harmonisation above a deterministic freeze line; one versioned tariff API below it.**
 

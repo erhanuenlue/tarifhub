@@ -1,10 +1,10 @@
 # 00 — The one-shot greenfield prompt (reference)
 
-> How the orchestrator would prompt itself to build TarifHub from an empty directory in one autonomous session. Not the CAS route (that's 01–07, because graded evidence needs contemporaneous human curation) — this is the reference for outcome-prompting a whole system: lock the invariant and the product shape, define done as falsifiable evidence, grant autonomy with ADRs as after-the-fact accountability. Steps, stack and sequencing stay with the model.
+> How the orchestrator would prompt itself to build tarifhub from an empty directory in one autonomous session. Not the CAS route (that's 01–07, because graded evidence needs contemporaneous human curation) — this is the reference for outcome-prompting a whole system: lock the invariant and the product shape, define done as falsifiable evidence, grant autonomy with ADRs as after-the-fact accountability. Steps, stack and sequencing stay with the model.
 
 ---
 
-You're starting from an empty directory. Build TarifHub — I'll give you the idea, the invariants, and what "done" means. Everything else is yours: plan it, decide it, build it, verify it. Decide alone and record decisions as you go; surface only what is irreversible, legally risky, or costs real money.
+You're starting from an empty directory. Build tarifhub — I'll give you the idea, the invariants, and what "done" means. Everything else is yours: plan it, decide it, build it, verify it. Decide alone and record decisions as you go; surface only what is irreversible, legally risky, or costs real money.
 
 **The idea.** Switzerland replaced its outpatient medical tariff on 1 Jan 2026 (TARMED → TARDOC + flat rates) and now revises it annually. The billing data lives in ~110 tariff types across 20+ public sources — XLSX, XML, PDF, FHIR R5 — on independent update cycles, with no machine-readable source of truth, so every software vendor rebuilds the same brittle pipeline. The product: harvest the public sources, harmonise them into one canonical, versioned record model — AI does the mapping, humans approve uncertain cases — then **freeze** each approved record (content hash, version, full lineage) and serve frozen records through a clean API: REST + FHIR read, point-in-time and diff queries, semantic search, and an MCP server so AI agents can consume it. On top, a small web console: master-detail search over frozen records, plus the review queue where a human approves or corrects AI mapping proposals before freeze.
 

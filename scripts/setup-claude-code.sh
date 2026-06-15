@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 #
-# setup-claude-code.sh — install the Claude Code dev tooling for TarifHub.
+# setup-claude-code.sh — install the Claude Code dev tooling for tarifhub.
 #
 # RUN THIS ON YOUR MACHINE. It installs the Codex CLI + codex-plugin-cc (the in-Claude
 # reviewer), graphify (codebase knowledge graph + MCP + Obsidian export), context7 (wired via

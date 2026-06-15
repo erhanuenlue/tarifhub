@@ -7,7 +7,7 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        // TarifHub brand cyan — reporting / quality-data module.
+        // tarifhub brand cyan — reporting / quality-data module.
         brand: {
           DEFAULT: "#0891b2",
           dark: "#155e75",

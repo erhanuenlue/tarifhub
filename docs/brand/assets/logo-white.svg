@@ -1,5 +1,5 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56" fill="none" role="img" aria-label="TarifHub" style="color:#FFFFFF">
-  <!-- TarifHub - convergence mark only, white ink for the dark header (pairs with the site_name text) -->
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56" fill="none" role="img" aria-label="tarifhub" style="color:#FFFFFF">
+  <!-- tarifhub - convergence mark only, white ink for the dark header (pairs with the site_name text) -->
   <!-- Data streams -->
   <path d="M4 10 C24 10 34 23 50 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
   <path d="M4 28 L50 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>

@@ -1,6 +1,6 @@
 # tarifiq
 
-**TarifIQ** is the TarifHub intelligence service (Layer 2). It layers deterministic
+**TarifIQ** is the tarifhub intelligence service (Layer 2). It layers deterministic
 *reasoning* — combinability/cumulation rules, the **TARMED↔TARDOC cross-walk**, and rule
 validation — on top of the frozen tariff facts served by TarifCore (Layer 1). Runs fully
 offline (bundled frozen tables, no network, no live LLM) so the suite is reproducible

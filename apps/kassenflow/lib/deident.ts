@@ -1,7 +1,7 @@
 /**
  * ============================================================================
  *  DE-IDENTIFICATION BOUNDARY  —  the ONLY code in KassenFlow allowed to build
- *  an LLM-bound payload.  (TarifHub determinism / data-sovereignty rule.)
+ *  an LLM-bound payload.  (tarifhub determinism / data-sovereignty rule.)
  * ============================================================================
  *
  * KassenFlow drafts payer correspondence (Kostengutsprache requests, MiGeL/medication

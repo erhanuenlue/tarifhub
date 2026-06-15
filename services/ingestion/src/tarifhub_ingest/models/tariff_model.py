@@ -16,7 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class TariffSystem(str, Enum):
-    """Swiss ambulatory tariff systems handled by TarifHub.
+    """Swiss ambulatory tariff systems handled by tarifhub.
 
     Values are the canonical short identifiers used across the whole platform.
     """

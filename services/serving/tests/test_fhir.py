@@ -192,7 +192,7 @@ def test_codesystem_happy_path(client):
     assert body["status"] == "active"
     assert body["content"] == "fragment"
     assert body["caseSensitive"] is True
-    assert body["publisher"] == "TarifHub"
+    assert body["publisher"] == "tarifhub"
 
     # TARDOC latest keys: AA.00.0010, BB.00.0020, PIT.0001 -> count 3.
     assert body["count"] == 3

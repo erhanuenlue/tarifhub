@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-# TarifHub serving service (Python 3.12 + FastAPI). Read-only over frozen records.
+# tarifhub serving service (Python 3.12 + FastAPI). Read-only over frozen records.
 # The canonical TariffRecord and the embedder come from the sibling ingestion package,
 # which is vendored into the image so there is one canonical model end-to-end.
 

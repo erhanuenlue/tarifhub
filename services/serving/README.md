@@ -1,4 +1,4 @@
-# TarifHub Serving (L1 TarifCore)
+# tarifhub Serving (L1 TarifCore)
 
 Deterministic, **read-only** REST API over frozen Swiss ambulatory tariff records.
 Python 3.12 + FastAPI + Pydantic v2. Every value returned is an unaltered, frozen,

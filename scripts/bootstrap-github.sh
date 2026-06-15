@@ -34,7 +34,7 @@ fi
 if ! git rev-parse --verify HEAD >/dev/null 2>&1; then
   echo "Creating initial commit ..."
   git add -A
-  git commit -m "chore: initial TarifHub commit"
+  git commit -m "chore: initial tarifhub commit"
 fi
 git branch -M "$DEFAULT_BRANCH"
 

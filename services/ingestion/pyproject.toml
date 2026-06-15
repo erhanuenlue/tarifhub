@@ -5,11 +5,11 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "tarifhub-ingest"
 version = "0.1.0"
-description = "TarifHub ingestion & AI-assisted harmonization service (pre-freeze pipeline + admin API)."
+description = "tarifhub ingestion & AI-assisted harmonization service (pre-freeze pipeline + admin API)."
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "Proprietary" }
-authors = [{ name = "TarifHub" }]
+authors = [{ name = "tarifhub" }]
 
 # Runtime dependencies. The pipeline must run fully OFFLINE for tests:
 # no live LLM, no network, SQLite by default.

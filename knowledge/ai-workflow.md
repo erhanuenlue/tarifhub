@@ -7,7 +7,7 @@ tags: [ai, workflow, claude-code, codex, ultracode]
 
 # AI-Tooling Workflow Journal
 
-A running log of *how* TarifHub is built with AI tools — what worked, what didn't, and which
+A running log of *how* tarifhub is built with AI tools — what worked, what didn't, and which
 mode fits which task. Append a dated entry whenever a tool, prompt pattern, or mode changes
 the outcome. The goal is an honest, evolving playbook (and useful raw material for the CAS
 write-up). Keep it factual; mark anything unverified.
@@ -34,7 +34,7 @@ crosses the freeze line (no AI computes/mutates a billing value; `versioning/`, 
 | Review cadence | Per logical change | Per task / per PR | **Per PR** (one PR per orchestrated task) |
 | Determinism risk | Medium (easy to drift) | Low (spec pins intent) | **Highest surface** — many agents at once → the PreToolUse guard + determinism tests are the safety net |
 | Tests | After, lightly | Test-first where it matters | Suite-gated: agents stay until tests pass |
-| TarifHub default | Quick fixes, docs, copy | New endpoints, rules, crosswalk *suggestion* seams, schema-adjacent work | Multi-adapter ingestion, cross-service refactors, large arc42/code sync |
+| tarifhub default | Quick fixes, docs, copy | New endpoints, rules, crosswalk *suggestion* seams, schema-adjacent work | Multi-adapter ingestion, cross-service refactors, large arc42/code sync |
 | Codex review | Still required on the PR | Required on the PR | Required on the PR (orchestrator opens one) |
 
 **Rule of thumb:** if the change touches a *contract* (canonical fields, DB columns, REST
