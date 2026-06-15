@@ -33,7 +33,7 @@ tarifhub_dev.db
 data/raw/
 site/
 .shipboard/
-# PDF build workspace (tarifhub-cas.pdf is reproducible via tools/build_pdf.py)
+# Build output directory (generated locally, never committed)
 build/
 
 # OS / editors
