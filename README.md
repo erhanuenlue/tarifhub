@@ -2,8 +2,6 @@
 
 <img src="docs/brand/assets/logo-primary.svg" alt="TarifHub" height="84">
 
-# TarifHub
-
 **One trustworthy machine interface to Swiss ambulatory tariff data: AI‑assisted above a deterministic freeze line, immutable and versioned below it.**
 
 [![CI](https://github.com/erhanuenlue/tarifhub/actions/workflows/ci.yml/badge.svg)](https://github.com/erhanuenlue/tarifhub/actions/workflows/ci.yml)
@@ -76,9 +74,9 @@ This repo holds **both** halves of the project:
 
 The architecture is documented as an arc42 site (MkDocs Material) under `docs/`, published to GitHub Pages via `.github/workflows/docs.yml` at **https://erhanuenlue.github.io/tarifhub/**. Architecture decisions are recorded in `docs/adr/` (18 ADRs). The [**Criterion Map**](docs/criterion-map.md) (published as *Criterion Map* on the docs site) indexes each CAS grading criterion to its evidence in the repo. Contributors should read `AGENTS.md` (project facts, layout, the inviolable rule) and `CLAUDE.md` (the working pipeline).
 
-## CAS scope (honest)
+## Scope
 
-Graders review code and documentation only; nothing is deployed or executed by them, so runtime evidence is captured into `docs/`. The TarifGuard console is a deliberately small demo (no authentication, no patient data, no benchmarking). The platform demonstrates the concepts; it is not a production billing system.
+The TarifGuard console is a deliberately small demo: no authentication, no patient data, no benchmarking. It demonstrates the platform's concepts and is not a production billing system. Runtime evidence (test output, pipeline results, screenshots) is captured under `docs/`, so the architecture and behaviour can be reviewed directly from the repository.
 
 ## License
 

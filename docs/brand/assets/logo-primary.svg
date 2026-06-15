@@ -21,6 +21,6 @@
 
   <!-- Wordmark: tarif (Inter Light 300) + hub (Inter Bold 700) -->
   <text font-family="Inter, 'Helvetica Neue', Arial, sans-serif" font-size="30" x="80" y="37" letter-spacing="0.3">
-    <tspan font-weight="300" fill="#0C4A6E">tarif</tspan><tspan font-weight="700" fill="#0EA5E9">hub</tspan>
+    <tspan font-weight="300" fill="#0C4A6E">Tarif</tspan><tspan font-weight="700" fill="#0EA5E9">Hub</tspan>
   </text>
 </svg>
