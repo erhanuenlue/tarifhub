@@ -35,6 +35,10 @@ site/
 .shipboard/
 # PDF build workspace (tarifhub-cas.pdf is reproducible via tools/build_pdf.py)
 build/
+# Local-only PDF builder: kept out of the repo and Pages (lecturer scope = repo + Pages only).
+# Restored locally so `python3 tools/build_pdf.py` works on this machine; never committed.
+tools/build_pdf.py
+docs/latex_template/
 
 # OS / editors
 .DS_Store
