@@ -16,8 +16,8 @@ person's head. Two files act as the context set loaded into every session:
 `AGENTS.md` pins the project facts, the layout, the value-path invariant
 ("no AI computes or mutates a billing value at serve time") and the model policy;
 `CLAUDE.md` pins the orchestration workflow on top of it. Because both are checked into the
-repository, any session starts from the same constraints, and a grader can read exactly
-the rules the AI was given.
+repository, any session starts from the same constraints, and the rules the AI was given
+are readable directly in the repository.
 
 The full system view of that apparatus, the `/ship` pipeline and its green-contract, the
 model-pinned seats, the autonomous loop, the quality gates and the freeze-line guard, the
@@ -176,23 +176,10 @@ For current library and API documentation, Context7 was used to fetch up-to-date
 than relying on the model's training cut-off, so that framework and SDK claims in the build
 trace to current sources.
 
-## Declaration of Authorship
+## Declaration of authorship
 
-> Editorial note: this section is a visible placeholder. The text below paraphrases the
-> standard FFHS declaration form so the structure is in place. The owner, Erhan Ünlü, authors
-> and signs the final wording himself before submission. It is not signed here, and the
-> paraphrase below is not yet his words.
-
-I hereby declare that I wrote this work independently and without unauthorised outside
-assistance. All sources, aids and assistance used are fully declared. The use of AI-supported
-tools is disclosed and described in this chapter. The work has not been submitted to any other
-examining body in this or a similar form, nor has it been previously published.
-
-| | |
-|---|---|
-| Name | _______________________________ |
-| Place | _______________________________ |
-| Date | _______________________________ |
-| Signature | _______________________________ |
-
-> Awaiting the owner's final text and signature.
+The Selbstständigkeitserklärung (the declaration of independent authorship) is the official
+FFHS form and is included verbatim as the final page of the submitted document and as the
+final [annex](../selbststaendigkeitserklaerung.md) on the site. The author writes and signs
+it himself; delegating this declaration to the AI is ruled out (see [Conclusion](fazit.md),
+Veto 3).

@@ -5,9 +5,9 @@ plans and reviews, worker models implement and verify, an independent second mod
 a dedicated diagram tool generates diagrams as code, deterministic gates define and protect
 "done", a closed loop runs the work unattended, and a live dashboard makes every state
 inspectable. This chapter describes that framework in the order it is used. Its closing transfer
-feeds the [Conclusion](fazit.md) (criterion 18); together with the worked, phase-structured evidence in
+feeds the [Conclusion](fazit.md); together with the worked, phase-structured evidence in
 the companion [AI Tools and Workflow chapter](ai-tools.md) (Generation, Review, Refactoring,
-Research) it forms the criterion-15 account. The two chapters do not overlap: this one is the
+Research) it forms the account of the AI-assisted method. The two chapters do not overlap: this one is the
 apparatus, that one is the worked diffs. Where a mechanism here produced a concrete catch, I name
 it and point to the diff in the companion chapter rather than repeating it.
 
@@ -40,7 +40,7 @@ truth. Two control files do the work. `AGENTS.md` holds the project facts: the f
 architecture, the stack, the value-path invariant (no AI computes or mutates a billing value at
 serve time), and the conventions. `CLAUDE.md` holds the workflow: how to take tasks, when to plan,
 and the effort policy. Because both are checked into the repository, every session starts from the
-same constraints and a grader can read exactly the rules the AI was given.
+same constraints and the rules the AI was given are readable directly in the repository.
 
 A single model pin in `.claude/settings.json` selects the orchestrator, switched with one command
 (`tools/switch_model.sh`) and recorded in [ADR-018](../adr/018-orchestrator-model-lifecycle.md).
@@ -170,7 +170,7 @@ GitHub Actions enforces the same standards a reviewer would, on every push and p
 boundary tests printed visibly in the log, a secrets scan (gitleaks), a vulnerability and SBOM scan
 (Trivy and Syft), and a dedicated ratchet job (`cas-anchors`) that runs the fitness function in
 read-only mode (`python3 tools/cas_check.py --ci`) and fails only on a regression. Container images
-are built on the main branch as the distribution evidence for criterion 17. The
+are built on the main branch as the distribution evidence. The
 documentation site builds under strict mode and deploys to GitHub Pages
 (`.github/workflows/docs.yml`), gated behind an explicit permission so publication is a deliberate
 act. CI is also the loop's backstop: the between-step contract requires the latest run to be green
@@ -181,7 +181,7 @@ before it proceeds, so a red pipeline halts the automation. The pipeline rationa
 
 ![The CI/CD pipeline](../img/diagrams/cicd-pipeline.png)
 
-> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the anchor ratchet); on main, an images job builds every container as criterion-17 evidence, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
+> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the anchor ratchet); on main, an images job builds every container, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
 
 ## 7. Independent second-model review
 
@@ -251,7 +251,7 @@ decision arrives within the timeout it denies, so the worst case is exactly the 
 already existed. Enabling live approvals is itself a deliberate owner step (the default permission
 mode, `APPROVALS_ON=1`, and the Telegram daemon running), recorded in `NEXT_STEPS.md`; the
 unattended loop ships with the gate off, so its behaviour is unchanged. These vetoes are stated and
-justified in the [Conclusion](fazit.md) (criterion 18).
+justified in the [Conclusion](fazit.md).
 
 ## Transfer to future practice
 

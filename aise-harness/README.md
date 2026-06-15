@@ -44,7 +44,7 @@ LOOP_CMD='true' bash tools/loop.sh 06
 python3 tools/cas_check.py
 
 # Fresh-machine setup
-#   ../SETUP.md · ../QUICKSTART.md · ../docs/CLAUDE_CODE_SETUP.md
+#   ../docs/CLAUDE_CODE_SETUP.md
 ```
 
 > **For graders:** the product itself (services, serving API, console, arc42 docs) stands on its

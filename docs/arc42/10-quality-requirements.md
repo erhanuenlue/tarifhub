@@ -2,7 +2,7 @@
 
 ## Quality goals (SMART NFRs)
 
-Targets from Architecture v2.1 §12, carried as stable ids NfA-1…NfA-6; each row gives the four grading anchors, **Target value**, **Measurement method** (how it is measured), **Measured** (the observed value), and the governing **ADR**, and is validated against the measured runs below.
+Targets from Architecture v2.1 §12, carried as stable ids NfA-1…NfA-6; each row gives four columns, **Target value**, **Measurement method** (how it is measured), **Measured** (the observed value), and the governing **ADR**, and is validated against the measured runs below.
 
 | NfA | Attribute | Target value | Measurement method | Measured | ADR |
 |---|---|---|---|---|---|
@@ -19,9 +19,8 @@ The section below documents measured harmonisation evidence for the determinism,
 
 This section documents the test and pipeline output that the NfA table above is built
 on, quoted verbatim from the offline suite and the CI pipeline and then interpreted.
-This is deliberate: the grading anchor for documented results (criterion 14) treats a
-screenshot or an unbacked "all tests green" claim as the lowest level, and reserves full
-marks for pipeline output that is documented and interpreted in the report. The numbers
+This is deliberate: a screenshot or an unbacked "all tests green" claim says little, so the
+pipeline output is quoted verbatim and interpreted here. The numbers
 below are the interpretation; the CI link and the screenshots in [§7](07-deployment-view.md)
 only illustrate. Every figure was produced on 2026-06-13 and the offline figures are
 reproducible with `uv run pytest` in each service (no network, no container, no API key).
@@ -38,7 +37,7 @@ intelligence: 24 passed in 0.17s
 **Interpretation.** 295 tests pass and 4 are skipped (the skips are the Postgres-only
 parity legs that have no `TARIFHUB_PG_TEST_URL` offline; they run in the `python-parity`
 CI job against a real pgvector container). What this proves: the core logic, **including
-its error cases**, runs green in the build (criterion 13). The error-case coverage is
+its error cases**, runs green in the build. The error-case coverage is
 concrete, not incidental: the validator rejects an empty key, an empty canonical German
 designation and an inverted validity window (`test_validator.py`); the mapper's coercers
 fail closed to `None` on unparseable money, a `bool`, or a non-ISO date rather than guess
@@ -160,8 +159,8 @@ point-in-time half of NfA-1's acceptance (UC-05).
 
 Every sub-system image builds in CI on `main` (the `images` job) and the full stack runs
 under Compose. That evidence (the CI image-build log, `docker compose ps`, and the k3d
-Helm proof) is documented and interpreted in [§7 Deployment view](07-deployment-view.md)
-(criterion 17), so it is not duplicated here.
+Helm proof) is documented and interpreted in [§7 Deployment view](07-deployment-view.md),
+so it is not duplicated here.
 
 ## Harmonisation results
 
@@ -230,7 +229,7 @@ That is a different set from the 47 AI-`category` fills (a record with price, ca
 unit and trilingual names scores 1.0). See the
 [evidence doc](../evidence/2026-06-12-sl-live-ingest.md) §2b for the derivation.
 
-**Three real before/after `ai_map` category fills** (criterion 16, from the live ingest):
+**Three real before/after `ai_map` category fills** (from the live ingest):
 
 | GTIN | designation (DE) | category before → after |
 |---|---|---|

@@ -27,7 +27,7 @@ inputs are public federal tariff lists, outputs are frozen tariff records.
 The L0 ingestion layer harmonises public Swiss ambulatory tariff publications into the
 canonical `TariffRecord`. Each source is wired as an adapter (format reader) feeding the
 deterministic mapper. Raw artifacts live under `data/raw/` (gitignored, never committed);
-their SHA-256 is recorded so a grader can verify provenance from the code/docs alone.
+their SHA-256 is recorded so provenance can be verified from the code and docs alone.
 
 | Source | Format | URL | Update cadence | Licence / re-use | Raw artifact |
 | --- | --- | --- | --- | --- | --- |

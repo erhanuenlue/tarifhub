@@ -389,27 +389,30 @@ Context7, Explore agents & Research: current library documentation, FHIR IG anal
 """
 
 
+# Official FFHS Selbstständigkeitserklärung, copied verbatim from
+# docs/latex_template/VorlageThesisFFHS.tex (the institutional form). German is correct
+# here and is the one sanctioned exception to the English-only rule. Rendered as a raw
+# LaTeX block (not via markdown) so the spacing and signature rule are exact; this is the
+# final page of the document. The author signs the exported PDF (Ort, Datum, Unterschrift).
 ERKLAERUNG = r"""
 \newpage
-\chapter*{Declaration of Authorship}
-\addcontentsline{toc}{chapter}{Declaration of Authorship}
+\chapter*{Selbstständigkeitserklärung}
+\addcontentsline{toc}{chapter}{Selbstständigkeitserklärung}
 
-\noindent\textit{Note: this page is a placeholder. The final wording is written and signed by the author (Erhan Ünlü) himself before submission; delegating this declaration to the AI is ruled out (see Conclusion, Veto 3).}
-\par\medskip
-
-I hereby declare,
+Hiermit erkläre ich,
 \begin{itemize}
-    \item that I wrote this work independently,
-    \item that all passages taken from external sources, whether paraphrased or quoted verbatim, have been marked as such,
-    \item that all parts of the work produced with aids (including AI tools) have been precisely declared, in the chapter \emph{AI Tools and Workflow} and in the List of Aids and Tools,
-    \item that no aids other than those listed were used,
-    \item that the topic, the work, or parts of it were not already the subject of an assessment in another module, unless this was expressly agreed in advance,
-    \item that I am aware that my work may be checked electronically for plagiarism and for third-party authorship of human or technical origin.
+    \item dass ich die vorliegende Arbeit selbstständig verfasst habe,
+    \item dass alle sinngemäss und wörtlich übernommenen Textstellen aus fremden Quellen kenntlich gemacht wurden,
+    \item dass alle mit Hilfsmitteln erbrachten Teile der Arbeit präzise deklariert wurden,
+    \item dass keine anderen als die im Hilfsmittelverzeichnis aufgeführten Hilfsmittel verwendet wurden,
+    \item dass das Thema, die Arbeit oder Teile davon nicht bereits Gegenstand eines Leistungsnachweises eines anderen Moduls waren, sofern dies nicht ausdrücklich mit der Referentin oder dem Referenten im Voraus vereinbart wurde,
+    \item dass ich mir bewusst bin, dass meine Arbeit elektronisch auf Plagiate und auf Drittautorschaft menschlichen oder technischen Ursprungs überprüft werden kann und ich hiermit der FFHS das Nutzungsrecht so weit einräume, wie es für diese Verwaltungshandlungen notwendig ist.
 \end{itemize}
 
-\vspace{3.2cm}
-\noindent\hrule \ \\[-0.5ex]
-(Place, date, signature)
+\vspace{4cm}
+\noindent
+\hrule \ \\[-0.5ex]
+(Ort, Datum, Unterschrift)
 \clearpage
 """
 

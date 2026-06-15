@@ -2,10 +2,10 @@
 
 tarifhub ships as a set of independently containerised sub-systems. This chapter shows the
 deployment topology, the chosen architecture style and why, and the evidence that the
-solution is actually runnable, both under Docker Compose and on Kubernetes (criterion 17).
-Graders review code and documentation only, so the runtime proof is captured here as quoted
-output plus illustrative screenshots; nothing has to be deployed for grading. Full verbatim
-capture is in [`docs/evidence/2026-06-13-distribution.md`](../evidence/2026-06-13-distribution.md).
+solution is actually runnable, both under Docker Compose and on Kubernetes. The runtime
+proof is captured here as quoted output plus illustrative screenshots, so it can be followed
+from the document alone; full verbatim capture is in
+[`docs/evidence/2026-06-13-distribution.md`](../evidence/2026-06-13-distribution.md).
 
 ## Sub-systems and their containers
 
@@ -15,7 +15,7 @@ may use AI; everything right of it is the deterministic value path and ships no 
 
 ![Deployment topology: k3d Kubernetes (Helm) and CI/CD](../img/diagrams/deployment-view.png)
 
-> **Figure: The deployment topology.** The Helm chart for the k3d Kubernetes proof: an nginx ingress in front of the ingestion, serving, MCP, console, and TarifIQ workloads over a Postgres-plus-pgvector store, with two optional L3 stubs off by default. CI builds every image as criterion-17 evidence and a gated workflow deploys the docs to Pages; local development uses docker-compose with the database and an optional MinIO.
+> **Figure: The deployment topology.** The Helm chart for the k3d Kubernetes proof: an nginx ingress in front of the ingestion, serving, MCP, console, and TarifIQ workloads over a Postgres-plus-pgvector store, with two optional L3 stubs off by default. CI builds every image and a gated workflow deploys the docs to Pages; local development uses docker-compose with the database and an optional MinIO.
 
 | Sub-system | Layer | Image | Port | Side of freeze line |
 |---|---|---|---|---|
@@ -108,7 +108,7 @@ meldepilot     tarifhub-meldepilot      Up              0.0.0.0:3002->3002/tcp
 minio          minio/minio:latest       Up (healthy)    0.0.0.0:9000-9001->9000-9001/tcp
 ```
 
-**Interpretation.** This is the criterion-17 "runnable via Compose" anchor: the module
+**Interpretation.** This is the "runnable via Compose" proof: the module
 boundaries from the building-block view are visible as eight running containers with
 distinct ports, and `serving` returns a real frozen record verbatim (`EAL/1000`,
 `tax_points "76.5"`, trilingual designation) at p95 = 15.8 ms over 200 warm point reads,

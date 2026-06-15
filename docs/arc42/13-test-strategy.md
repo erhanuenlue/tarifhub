@@ -164,7 +164,7 @@ From `.github/workflows/ci.yml`, on every push to `main` and every pull request:
 | `console` | When `apps/tarifguard/package.json` exists: `npm ci` → `npm run lint` → `npm run build` → `npm run test --if-present`. |
 | `security` | `gitleaks` (secrets) → `Trivy` (fs scan, fail on HIGH/CRITICAL) → `Syft` SBOM (`spdx-json`, uploaded as an artifact). |
 | `docs` | `mkdocs build -f docs/mkdocs.yml --strict`: a broken link or nav entry fails the build. |
-| `images` | On `main` only, after `python` + `security`: builds every sub-system Docker image (criterion 17 distribution evidence). |
+| `images` | On `main` only, after `python` + `security`: builds every sub-system Docker image as distribution evidence. |
 
 Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision).
 

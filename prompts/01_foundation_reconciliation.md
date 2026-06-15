@@ -1,6 +1,6 @@
 # First prompt — session 1 (Block 0)
 
-Paste this into Claude Code after SETUP.md is done. Adjust the bracketed line to your starting point.
+Paste this into Claude Code after the initial machine setup is done. Adjust the bracketed line to your starting point.
 
 ---
 

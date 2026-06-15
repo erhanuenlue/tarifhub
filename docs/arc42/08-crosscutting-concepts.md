@@ -1,8 +1,8 @@
 # Crosscutting Concepts
 
-> **Concepts of the chosen framework and of modern application development applied appropriately (for example DI, REST interfaces, configuration, error handling)**, grading rubric, criterion 8 (0/3/7/10), refreshed 12 Jun 2026
+> **Concepts of the chosen framework and of modern application development, applied appropriately: for example dependency injection, REST interfaces, configuration, and error handling.**
 
-This chapter maps criterion 8 directly. All four named concepts are implemented in this repository: dependency injection via FastAPI's `Depends` graph (`services/serving/src/tarifhub_serving/main.py`), REST interfaces with a generated OpenAPI document (the `/api/v1` routes, each with a declared `response_model`), env-only configuration injection (`tarifhub_ingest/config.py`, `tarifhub_serving/config.py`), and boundary error handling (declarative 422s from Pydantic/`Query` validation, explicit `HTTPException(404)` responses with structured detail). Each is detailed in the [Modern application concepts](#modern-application-concepts) catalogue below.
+This chapter is the scope of that statement. All four named concepts are implemented in this repository: dependency injection via FastAPI's `Depends` graph (`services/serving/src/tarifhub_serving/main.py`), REST interfaces with a generated OpenAPI document (the `/api/v1` routes, each with a declared `response_model`), env-only configuration injection (`tarifhub_ingest/config.py`, `tarifhub_serving/config.py`), and boundary error handling (declarative 422s from Pydantic/`Query` validation, explicit `HTTPException(404)` responses with structured detail). Each is detailed in the [Modern application concepts](#modern-application-concepts) catalogue below.
 
 The concept that cuts across every layer is the determinism boundary:
 
