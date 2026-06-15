@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 80 56" fill="none" role="img" aria-label="TarifHub" style="color:#FFFFFF">
+  <!-- TarifHub - convergence mark only, white ink for the dark header (pairs with the site_name text) -->
+  <!-- Data streams -->
+  <path d="M4 10 C24 10 34 23 50 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M4 28 L50 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M4 46 C24 46 34 33 50 28" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Origin dots -->
+  <circle cx="4" cy="10" r="2.2" fill="currentColor"/>
+  <circle cx="4" cy="28" r="2.2" fill="currentColor"/>
+  <circle cx="4" cy="46" r="2.2" fill="currentColor"/>
+  <!-- Hub node -->
+  <rect x="50" y="22.5" width="11" height="11" rx="3" fill="currentColor"/>
+  <!-- Output -->
+  <line x1="61" y1="28" x2="72" y2="28" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+  <circle cx="67" cy="28" r="1.6" fill="currentColor"/>
+</svg>

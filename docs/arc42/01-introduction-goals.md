@@ -80,7 +80,7 @@ The top quality goals are **determinism** (the same query returns the same tarif
 
 | Stakeholder | Concern | Key use cases |
 |---|---|---|
-| CAS graders / lecturer | Assessable evidence in code and documentation: architecture, AI-assisted method, distribution, nothing requires deployment to grade | all (evidence) |
+| Medical practices (billing staff) | Correct, provenance-backed tariff values reach billing; a served value is provably the one that was reviewed and is never silently changed | UC-04, UC-05, UC-09 |
 | Tariff experts | Catch and correct uncertain mappings before freeze; trust that frozen values are never silently changed | UC-02, UC-03 |
 | PIS/HIS vendors (API consumers) | Stable, deterministic, versioned REST/OpenAPI access to tariff data | UC-04, UC-05, UC-06 |
 | Practice users | Fast, reliable tariff lookup in the console; AI assistance clearly labelled and never authoritative for values | UC-08, UC-09 |

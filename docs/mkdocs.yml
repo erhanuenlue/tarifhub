@@ -18,7 +18,7 @@ edit_uri: ""
 
 theme:
   name: material
-  logo: brand/assets/logo-mono.svg
+  logo: brand/assets/logo-white.svg
   favicon: brand/assets/logo-primary.svg
   palette:
     - scheme: default
@@ -33,6 +33,7 @@ theme:
     - navigation.footer
     - content.code.copy
     - toc.follow
+    - toc.integrate
 
 extra_css:
   - stylesheets/brand.css
@@ -51,7 +52,7 @@ markdown_extensions:
           format: pymdownx.superfences.fence_code_format
 
 nav:
-  - Home: index.md
+  - Table of Contents: index.md
   - Summary: zusammenfassung-de.md
   - Architecture:
       - 1 · Introduction & Goals: arc42/01-introduction-goals.md
