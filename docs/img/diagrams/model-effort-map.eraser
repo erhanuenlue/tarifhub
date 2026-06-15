@@ -20,6 +20,5 @@ Codex [color: "#10a37f", label: "OpenAI Codex: gpt-5.5 (owner Codex Pro login), 
   Curate [icon: edit, color: "#10a37f", label: "journal curation (tools/curate.sh)"]
   SecondOpinion [icon: check-circle, color: "#10a37f", label: "grade second opinion (/cas-audit)"]
 }
-Banned [shape: oval, color: red, icon: x, label: "Banned from every seat: Sonnet, Haiku (quality before cost, owner law)"]
 
 Orchestrator > CodexReview: every PR gets an independent second-family review [color: gray]
