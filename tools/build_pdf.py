@@ -48,8 +48,8 @@ ARC42 = [
     "arc42/09-architecture-decisions.md",
     "arc42/10-quality-requirements.md",
     "arc42/11-risks-technical-debt.md",
-    "arc42/12-glossary.md",
     "arc42/13-test-strategy.md",
+    "arc42/12-glossary.md",
 ]
 
 METHOD = [
