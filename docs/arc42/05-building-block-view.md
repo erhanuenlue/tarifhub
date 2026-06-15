@@ -23,7 +23,7 @@ L2 (intelligence: rules, crosswalk reasoning) is post-CAS scope as a *feature*: 
 
 ![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
 
-> **Figure: The four layers and the freeze line.** A freeze-line-aware view of the same containers: the L0 ingestion pipeline below the line, and the L1 serving and MCP read paths, the L2 rules scaffold, and the L3 console above it. No AI runs on the value path above the line.
+> **Figure: The four layers and the freeze line.** A freeze-line-aware view of the same containers: the L0 ingestion pipeline above the line, and the L1 serving and MCP read paths, the L2 rules scaffold, and the L3 console below it. No AI runs on the value path below the line.
 
 ## Level 2: ingestion service components
 

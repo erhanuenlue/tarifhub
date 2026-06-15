@@ -31,7 +31,7 @@ second model family in particular is that a defect that one model's blind spots 
 
 ![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
 
-> **Figure: TarifHub's four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) sits below the line; L1 deterministic serving, L2 rules, and L3 apps sit above it. The single AI seam is confined to L0, and no AI computes or mutates a billing value at serve time.
+> **Figure: TarifHub's four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) sits above the line; L1 deterministic serving, L2 rules, and L3 apps sit below it. The single AI seam is confined to L0, and no AI computes or mutates a billing value at serve time.
 
 ## 1. Project setup as reproducible context
 

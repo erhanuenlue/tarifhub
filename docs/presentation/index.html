@@ -195,10 +195,10 @@
           </div>
         </div>
         <aside class="notes">
-          [~35s] The architecture is four layers split by one line, the freeze line. Below it, layer
+          [~35s] The architecture is four layers split by one line, the freeze line. Above it, layer
           zero harmonises raw data, and that is the only place AI is allowed to run, before freezing,
           on non-billing fields. At the line, every record is frozen: a SHA-256 hash over its
-          canonical content, updates are new versions, the audit log is append-only. Above the line,
+          canonical content, updates are new versions, the audit log is append-only. Below the line,
           serving is deterministic, read-only. The one rule that defines the whole system: no AI ever
           computes or mutates a billing value at serve time. The freeze line is the trust guarantee.
         </aside>
