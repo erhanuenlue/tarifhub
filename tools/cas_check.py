@@ -168,7 +168,6 @@ def ELEMENTS():
     a(("15.chapter", 15, "KI-Kapitel vorhanden", 3, lambda: AIT.exists() and len(rd(AIT)) > 2000, str(AIT)))
     a(("15.phases", 15, "Phasenstruktur (Generierung/Review/Refactoring/Recherche)", 3, lambda: all(has(AIT, w) for w in ("Generation", "Review", "Refactoring", "Research")), str(AIT)))
     a(("15.evidence", 15, "Belege: Prompts/Diffs/Commits (≥6)", 3, lambda: cnt(AIT, r"[0-9a-f]{7}|PR #\d+") >= 6, str(AIT)))
-    a(("15.erklaerung", 15, "Erklärung der Eigenständigkeit", 3, lambda: has(AIT, r"Selbstständigkeitserklärung"), str(AIT)))
     # 16 — KI-Services
     a(("16.roles", 16, "≥2 KI-Rollen dokumentiert (ai_map · Suche · MCP)", 1, lambda: ("ai_map" in corpus) and (re.search(r"pgvector|Embedding", corpus, re.I) is not None) and ("MCP" in corpus), "docs/arc42/"))
     a(("16.guardrails", 16, "Guardrails dokumentiert", 1, lambda: re.search(r"guardrail|freeze|gap-gate", corpus, re.I) is not None, "docs/arc42/"))

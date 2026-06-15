@@ -222,7 +222,7 @@ Diagrams are generated the same way. A dedicated diagram tool (the Eraser MCP, c
 `.mcp.json`) turns a described layout into Eraser diagram-as-code, renders it, and the pipeline
 commits the result as a static PNG under `docs/img/diagrams/` with its diagram-as-code source
 beside it, embedded with a caption (every figure in this chapter was produced by exactly this
-step). Nothing in the repository or the submission PDF depends on a live diagram service at read
+step). Nothing in the repository depends on a live diagram service at read
 time; the rendered files are checked in, so the documentation is self-contained and reproducible.
 This makes diagramming a first-class, autonomous step in the loop rather than a manual afterthought,
 and it is the third external tool family in the workflow, alongside Claude Code and the independent
@@ -237,8 +237,8 @@ with the entries it produced, is in the [companion chapter](ai-tools.md).
 
 Some decisions are never delegated, by design, not by limitation. No AI touches the billing
 boundary without my explicit line-by-line approval. Plan approval (gate 01) and the merge
-green-contract (phase 09) sit under human judgment. Final acceptance, the go-live decision, the
-Moodle submission, and the declaration of independent work stay with me. The framework is built so
+green-contract (phase 09) sit under human judgment. Final acceptance, the go-live decision, and
+the release of the work to the public stay with me. The framework is built so
 that autonomy increases up to these lines and stops cleanly at them.
 
 The approval bridge upgrades how these lines are held at runtime. Before it, an unattended run could

@@ -95,7 +95,6 @@ nav:
           - Journal (excerpts): method/journal.md
           - Conclusion: method/fazit.md
       - Criterion Map: criterion-map.md
-      - Selbstständigkeitserklärung: selbststaendigkeitserklaerung.md
 
 plugins:
   - search
@@ -109,11 +108,3 @@ plugins:
         - adr/*.md
         - method/*.md
         - criterion-map.md
-        - selbststaendigkeitserklaerung.md
-  - print-site:
-      add_to_navigation: false
-      print_page_title: "Full document"
-      add_cover_page: true
-      cover_page_template: ""
-      toc_title: "Contents"
-      enumerate_headings: false

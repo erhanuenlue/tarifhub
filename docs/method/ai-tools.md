@@ -175,11 +175,3 @@ the model's first reading of the IG.
 For current library and API documentation, Context7 was used to fetch up-to-date docs rather
 than relying on the model's training cut-off, so that framework and SDK claims in the build
 trace to current sources.
-
-## Declaration of authorship
-
-The Selbstständigkeitserklärung (the declaration of independent authorship) is the official
-FFHS form and is included verbatim as the
-final [annex](../selbststaendigkeitserklaerung.md) on the site. The author completes and affirms
-it himself; delegating this declaration to the AI is ruled out (see [Conclusion](fazit.md),
-Veto 3).

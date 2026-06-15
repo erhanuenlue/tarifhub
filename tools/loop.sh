@@ -137,4 +137,3 @@ $(cat docs/criterion-map.md)" 2>/dev/null)
 fi
 bash tools/curate.sh >>"$LOG" 2>&1 || true
 say "loop done · all prompts green · journal curated · audit estimate on the CAS tab."
-say "the only thing left that is yours: the Eigenständigkeitserklärung (NEXT_STEPS step 5)."

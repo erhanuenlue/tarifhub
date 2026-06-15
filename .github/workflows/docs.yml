@@ -28,7 +28,7 @@ jobs:
       - uses: actions/checkout@v6
       - uses: actions/setup-python@v6
         with: { python-version: "3.12" }
-      - run: pip install mkdocs-material mkdocs-print-site-plugin mkdocs-enumerate-headings-plugin
+      - run: pip install mkdocs-material mkdocs-enumerate-headings-plugin
       - run: mkdocs build -f docs/mkdocs.yml --strict
       - uses: actions/upload-pages-artifact@v3
         with: { path: site }

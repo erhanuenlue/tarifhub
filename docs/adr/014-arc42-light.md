@@ -6,7 +6,7 @@
 The dossier is itself a graded deliverable: the CAS criteria expect requirements, quality goals, architecture views, and recorded decisions, and there is one maintainer working against a fixed deadline. The constraint that makes this a decision: the framework must map onto the grading criteria without demanding more writing than one person can sustain.
 
 ## Decision
-We keep arc42 in a light profile (all 12 chapters present, only load-bearing sections filled), combined with C4 diagrams and this ADR register, published via MkDocs Material (with a print-site single-document PDF export).
+We keep arc42 in a light profile (all 12 chapters present, only load-bearing sections filled), combined with C4 diagrams and this ADR register, published via MkDocs Material.
 
 ## Alternatives weighed
 - **Diátaxis**: optimised for product documentation (tutorials/how-tos), the wrong cut for a graded architecture dossier.
