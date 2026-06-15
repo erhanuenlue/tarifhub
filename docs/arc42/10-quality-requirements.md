@@ -94,8 +94,10 @@ deferred (owner decision at gate 01) until the figures have a few weeks of histo
 
 ### Determinism boundary (the apex test, a visible CI step)
 
-The most decisive test is the AST boundary scan. CI runs it again as a dedicated,
-`-v` step so it is impossible to miss in the log (`.github/workflows/ci.yml`):
+The most decisive test is the AST boundary scan. The two value-path suites (ingestion and
+serving) are rerun as a dedicated, `-v` step so the gate is impossible to miss in the log
+(`.github/workflows/ci.yml`); the intelligence service's boundary test runs in the normal
+per-service test loop above and is not part of this dedicated step:
 
 ```yaml
 - name: Determinism boundary tests (must be visible in this log)
@@ -103,6 +105,9 @@ The most decisive test is the AST boundary scan. CI runs it again as a dedicated
     (cd services/ingestion && uv run pytest -q tests/test_determinism_boundary.py -v)
     (cd services/serving && uv run pytest -q tests/test_serving_boundary.py -v)
 ```
+
+The boundary results across all three services, ingestion and serving from the dedicated
+step above and intelligence from the per-service test loop:
 
 ```text
 services/ingestion/tests/test_determinism_boundary.py   2 passed in 0.01s
@@ -412,7 +417,7 @@ the criterion records the intended contract per the cited ADR.
 | UC | Given / When / Then | Observable / proof | Status | Verifies (NfA) |
 |---|---|---|---|---|
 | **UC-01** Trigger ingest | **Given** a sorted set of BAG source specs; **When** `run_pipeline` executes load→parse→map→validate→score→flag→freeze→store→audit; **Then** every keyable row is frozen with a SHA-256 `record_hash`, one append-only `audit_log` entry per record, and a `PipelineReport` whose `frozen` + `parse_failures` reconcile to the input (a GTIN-less package never freezes). | `PipelineReport` counts; `audit_log` rows; live evidence EAL 1 279/1 279, SL 10 299 frozen + 109 fail-closed (`docs/evidence/2026-06-12-sl-live-ingest.md`). | live | NfA-2 (reproducibility), NfA-3 (review rate), NfA-5 (freshness) |
-| **UC-02** Review low-confidence mapping | **Given** a frozen record scored `< TARIFHUB_REVIEW_THRESHOLD` (0.85); **When** the pipeline flags it; **Then** it freezes with `requires_review = true` and enters the review queue. The console form submitting a correction back through deterministic `validate` to produce a new frozen version is **design scope** ([ADR-013](../adr/013-demo-scope.md)). | `requires_review` flag in the frozen row (live, e.g. SL 111 @ 0.75); review POST loop not implemented. | partial: flagging live, review POST **design scope** | NfA-3 (review rate) |
+| **UC-02** Review low-confidence mapping | **Given** a frozen record scored `< TARIFHUB_REVIEW_THRESHOLD` (0.85); **When** the pipeline flags it; **Then** it freezes with `requires_review = true` and enters the review queue. The console review route and its fixture-backed form (approve/correct, server-side billing-field guard, simulated freeze) are implemented and tested; the **real ingestion review endpoint** (behind `INGEST_BASE_URL`) that persists the correction as a new frozen version through deterministic `validate` is **design scope** ([ADR-013](../adr/013-demo-scope.md)). | `requires_review` flag in the frozen row (live, e.g. SL 111 @ 0.75); console review route + form tested (Vitest + Playwright); store-backed ingestion endpoint not yet implemented. | partial: flagging + console form live, store-backed ingestion endpoint **design scope** | NfA-3 (review rate) |
 | **UC-03** Freeze record | **Given** a validated, scored record; **When** `freeze` stamps the `record_hash` over sorted canonical content (excluding `record_hash`/`created_at`/`version`); **Then** the row is immutable: re-freezing it raises `ValueError`, a re-ingest with a matching hash is skipped idempotently, and the audit entry is `freeze` or `freeze_skipped_idempotent`. | `ValueError` on re-freeze; `freeze_skipped_idempotent` audit event; [ADR-004](../adr/004-freeze-content-hash-lineage.md). | live | NfA-1 (determinism), NfA-2 (reproducibility) |
 | **UC-04** Read tariff by code | **Given** a frozen `(system, code)` key; **When** `GET /api/v1/tariffs/{system}/{code}`; **Then** HTTP 200 with the highest-version frozen record served verbatim (Decimals in scale-canonical form, e.g. `10.10 → "10.1"`); an unknown key returns HTTP 404 with `"no frozen record"` in `detail`. | `test_get_returns_latest_record`, `test_get_unknown_returns_404` (`services/serving/tests/test_api.py`). | live | NfA-1 (determinism), NfA-4 (read latency) |
 | **UC-05** Point-in-time / diff query | **Given** a key with ≥1 frozen version; **When** `GET /api/v1/tariffs/{system}/{code}?as_of=<date>` is called, or `/diff?from=&to=` between two versions; **Then** `?as_of=` returns HTTP 200 with the version valid on that date (404 if none was valid then) and `/diff` returns the field-level delta between two frozen versions, both `record_hash`es included. | `as_of` selects by `valid_from`/`valid_to`, `MAX(version)` among qualifying; `/diff` emits a sorted per-field change set from the immutable version chain: `test_as_of_*`, `test_diff_*` (`services/serving/tests/test_api.py`, parity legs in `test_read_parity.py`). | live **(this release)** | NfA-1 (determinism) |

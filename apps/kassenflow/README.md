@@ -3,7 +3,7 @@
 **Layer-3 app stub (in development).** KassenFlow automates payer correspondence and
 **Kostengutsprache** (cost-approval) workflows: insurer queries, MiGeL/medication
 approvals, and multi-payer handling. Like TarifGuard, it is a thin **Next.js (App Router,
-React + Tailwind)** client over the deterministic platform — read-only over the serving
+React + Tailwind)** client over the deterministic platform: read-only over the serving
 API (L1) and the TarifIQ rule engine (L2). It computes no billing value of its own.
 
 ## Planned scope (none wired yet)
@@ -20,8 +20,8 @@ API (L1) and the TarifIQ rule engine (L2). It computes no billing value of its o
    verbatim from serving, and every combinability/cross-walk answer comes from TarifIQ. It
    never computes, rounds, or mutates a billing value.
 2. **De-identification.** Patient identifiers never leave Swiss infrastructure. Any
-   LLM-assisted drafting scrubs input with `lib/deident.ts` — the **only** module allowed
-   to build an LLM-bound payload — before anything is forwarded; the model call is served
+   LLM-assisted drafting scrubs input with `lib/deident.ts` (the **only** module allowed
+   to build an LLM-bound payload) before anything is forwarded; the model call is served
    by the backend and routed via AWS Bedrock EU / Google Vertex AI EU.
 
 ## Layout

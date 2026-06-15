@@ -34,7 +34,7 @@ REPO_URL = "https://github.com/erhanuenlue/tarifhub"
 
 # --- document structure (in order) ----------------------------------------
 # Front-matter summary sits right after the cover (owner spec).
-SUMMARY = "zusammenfassung-de.md"
+SUMMARY = "summary.md"
 
 ARC42 = [
     "arc42/01-introduction-goals.md",

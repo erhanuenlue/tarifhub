@@ -14,7 +14,7 @@ Four components (ADR-013 scope: no auth, no patient data, no benchmarking, no st
 | Explain panel | `/explain` | `GET /api/v1/explain?code=` (deterministic, labelled AI surface) |
 
 A small ADR-013-accepted **coding-check** page (`/coding-check`) does structural lookups
-(`GET /api/v1/tariffs/{system}/{code}` per position) — no combinability verdict is computed here.
+(`GET /api/v1/tariffs/{system}/{code}` per position): no combinability verdict is computed here.
 
 ## Two boundaries this app respects
 
@@ -31,7 +31,7 @@ A small ADR-013-accepted **coding-check** page (`/coding-check`) does structural
 
 Mirrored from `docs/brand/tokens.css`: frozen/deterministic values render `.value-certified`
 (navy + JetBrains Mono 600, tabular) with version + truncated `record_hash` chips; AI output
-renders on a labelled `.ai-content` slate surface ("AI-generated — not a billing value") and is
+renders on a labelled `.ai-content` slate surface ("AI-generated, not a billing value") and is
 never styled like, or blended with, a frozen value.
 
 ## Layout
@@ -64,7 +64,7 @@ which run server-side via `lib/api.ts`.
 Requires Node 20+ and a running serving API. Bring the backend up offline (SQLite mirror):
 
 ```bash
-# 1. seed sample frozen records + start serving (:8000) — see services/ingestion + services/serving
+# 1. seed sample frozen records + start serving (:8000); see services/ingestion + services/serving
 # 2. run the console:
 cd apps/tarifguard
 echo "SERVING_BASE_URL=http://localhost:8000" > .env.local
@@ -73,9 +73,13 @@ npm run dev                          # http://localhost:3000
 ```
 
 `npm run lint`, `npm run build` and `npm test` (Vitest component tests + a Playwright smoke
-against a mocked API) are the CI gates — see `.github/workflows/ci.yml`. The smoke is fully
+against a mocked API) are the CI gates; see `.github/workflows/ci.yml`. The smoke is fully
 offline (a mock serving server + fixture review queue), so it is deterministic and needs no
-live backend.
+live backend. It also owns isolated ports so a local `npm test` stays hermetic even when a dev
+server is running on `:3000`: the smoke serves the console on `127.0.0.1:3100` and the mock on
+`127.0.0.1:8799` by default, and never reuses a pre-existing server. Override with
+`PLAYWRIGHT_WEB_PORT` / `PLAYWRIGHT_MOCK_PORT`, or set `PLAYWRIGHT_REUSE=1` to reuse a server you
+started yourself.
 
 ## Environment
 

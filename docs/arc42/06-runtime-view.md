@@ -1,6 +1,6 @@
 # Runtime View
 
-Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (design level, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`. Across all three, the value-path invariant holds: no AI computes or mutates a billing value at serve time. This is the determinism boundary established in §8 (Crosscutting Concepts).
+Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (the console review route and its fixture-backed form are implemented and tested; the ingestion-backed write path that persists a new frozen version in the store remains design scope, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`. Across all three, the value-path invariant holds: no AI computes or mutates a billing value at serve time. This is the determinism boundary established in §8 (Crosscutting Concepts).
 
 ## Scenario 1: harmonise to freeze (the pipeline)
 
@@ -33,18 +33,18 @@ Three scenarios show the architecture at work: the deterministic harmonisation p
 5. Rows are rehydrated verbatim into `TariffRecord` and returned as ranked `SearchHit` items; no field is recomputed or rewritten.
 6. **Read-only guarantee.** The AST boundary test (`services/serving/tests/test_serving_boundary.py`) proves no LLM client is importable on this path; CI fails otherwise.
 
-## Scenario 3: review to freeze loop (design level)
+## Scenario 3: review to freeze loop (console form live; ingestion-backed freeze design scope)
 
-The console review form and its POST endpoint are **design scope ([ADR-013](../adr/013-demo-scope.md)), not yet implemented**. What is live today: the pipeline flags low-confidence records (`requires_review`), and `freeze` plus the append-only audit log are exercised on every run. The loop below describes how the designed pieces close the cycle.
+The console review route (`apps/tarifguard/app/api/review`) and its fixture-backed review form **are implemented and tested**: the form GETs the review queue and POSTs an approve/correct decision, the server-side billing-field guard rejects any attempt to correct `tax_points`/`price_chf`, and offline the route simulates the server-side freeze with a genuine SHA-256 over the decided content (the Vitest specs and the Playwright smoke exercise this path, see [§13](13-test-strategy.md#console-component-tests)). What remains **design scope ([ADR-013](../adr/013-demo-scope.md))** is the real ingestion review endpoint behind `INGEST_BASE_URL` that persists the decision as a new frozen version in the store. Also live today: the pipeline flags low-confidence records (`requires_review`), and `freeze` plus the append-only audit log are exercised on every run. The loop below describes how the pieces close the cycle, marking which are live and which are design scope.
 
 ![Runtime: review to freeze loop](../diagrams/seq-review-freeze.svg)
 
 1. The pipeline flags a record (confidence < 0.85 or validation failure); it freezes with `requires_review = true` and enters the review queue *(live)*.
-2. A tariff expert opens the flagged record in the console master-detail view and corrects or approves the mapping in the review form *(designed)*.
-3. The correction passes back through the same deterministic `validate`; an expert edit gets no shortcut around the rules *(designed)*.
-4. `freeze` produces a **new version** with a new `record_hash`; the flagged version remains immutable and re-freezing it raises `ValueError` *(freeze live, trigger designed)*.
+2. A tariff expert opens the flagged record in the console master-detail view and corrects or approves the mapping in the review form *(console form live, fixture-backed)*.
+3. The correction passes back through the same deterministic `validate` in the ingestion service; an expert edit gets no shortcut around the rules *(design scope: the offline console route simulates the freeze rather than re-running `validate`)*.
+4. `freeze` produces a **new version** with a new `record_hash`; the flagged version remains immutable and re-freezing it raises `ValueError` *(freeze primitive live; the store-backed re-version through the ingestion endpoint is design scope, simulated offline by the console route)*.
 5. Audit events are appended for the review decision and the new freeze; the append-only `audit_log` keeps the full lineage *(audit live)*.
-6. The new version carries `requires_review = false` and the record leaves the queue *(designed)*.
+6. The new version carries `requires_review = false` and the record leaves the queue *(design scope)*.
 
 The freeze line itself is defended in depth: `versioning/` and `audit/` are write-protected against AI edits by the `guard_frozen` hook, and the boundary is CI-enforced by `test_determinism_boundary.py`.
 

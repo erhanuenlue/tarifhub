@@ -14,16 +14,17 @@ record is an immutable, SHA-256-hashed, versioned fact.
 
 ```
 src/tarifhub_ingest/
-├─ main.py                 FastAPI app (GET /health, /tariffs, /tariffs/{code}; POST /ingest/sample) — no LLM import
+├─ main.py                 FastAPI app (GET /health, /tariffs, /tariffs/{code}; POST /ingest/sample); no LLM import
 ├─ config.py               12-factor settings (SQLite default; Postgres-ready)
 ├─ models/tariff_model.py  Canonical Pydantic model (LOCKED field set)
 ├─ ingestion/              pipeline.py (orchestration), source_loader.py (discover samples)
-├─ parsers/                xlsx_parser.py (EAL), fhir_parser.py (ePL)
+├─ adapters/               bag_eal.py (EAL XLSX), bag_epl.py (ePL/SL FHIR R5, streamed + traversed)
+├─ parsers/xlsx_parser.py  generic XLSX parsing into raw rows (EAL/SL specifics live in adapters/)
 ├─ mappers/tariff_mapper.py  rules-based map + replaceable ai_map() seam
 ├─ confidence/scorer.py    deterministic confidence in [0,1]
 ├─ validators/tariff_validator.py  pre-freeze validation
-├─ versioning/freeze_record.py  PROTECTED — deterministic freeze + hash
-├─ audit/audit_logger.py   PROTECTED — append-only lineage log
+├─ versioning/freeze_record.py  PROTECTED: deterministic freeze + hash
+├─ audit/audit_logger.py   PROTECTED: append-only lineage log
 ├─ embeddings/embedder.py  Embedder port + offline hashing stub (e5 in prod)
 └─ storage/                db.py (SQLite/Postgres), tariff_repository.py
 ```

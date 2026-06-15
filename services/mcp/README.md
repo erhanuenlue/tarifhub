@@ -15,7 +15,7 @@ the deterministic FastAPI serving service (read-only, :8000) and returns its fro
 ## The determinism guarantee
 
 This server has **no database, no model, and no arithmetic**. It cannot compute, round,
-or invent a tariff value — it relays exactly what serving returns, and surfaces an error
+or invent a tariff value; it relays exactly what serving returns, and surfaces an error
 when serving cannot answer rather than fabricating a result. The unit tests pin this
 contract (mocked HTTP; assert verbatim passthrough and that a missing record raises).
 

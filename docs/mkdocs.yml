@@ -53,7 +53,7 @@ markdown_extensions:
 
 nav:
   - Table of Contents: index.md
-  - Summary: zusammenfassung-de.md
+  - Summary: summary.md
   - Architecture:
       - 1 · Introduction & Goals: arc42/01-introduction-goals.md
       - 2 · Constraints: arc42/02-constraints.md
@@ -104,7 +104,7 @@ plugins:
       increment_across_pages: true
       exclude:
         - index.md
-        - zusammenfassung-de.md
+        - summary.md
         - adr/*.md
         - method/*.md
         - criterion-map.md

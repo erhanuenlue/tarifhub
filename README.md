@@ -17,7 +17,7 @@
 
 ---
 
-tarifhub harmonises Switzerland's fragmented ambulatory tariff data (TARMED, TARDOC, EAL, the BAG Spezialitätenliste) **once**, with AI assistance, into a canonical, versioned, deterministic record, then serves it through a read‑only API, FHIR R4, and MCP tools for AI agents. It is the capstone project for the **FFHS CAS AI‑Assisted Software Engineering** (due 6 July 2026) and the seed of a commercial platform, on a single codebase.
+tarifhub's commercial vision is one trustworthy machine interface to the full breadth of Switzerland's fragmented ambulatory tariff data. The submitted CAS/MVP harmonises two BAG sources, the EAL (Analysenliste) XLSX and the ePL/SL (Spezialitätenliste) FHIR R5 feed, **once**, with AI assistance, into a canonical, versioned, deterministic record, then serves it through a read‑only API, FHIR R4, and MCP tools for AI agents. TARMED and TARDOC remain out of scope for the submitted MVP. It is the capstone project for the **FFHS CAS AI‑Assisted Software Engineering** (due 6 July 2026) and the seed of a commercial platform, on a single codebase.
 
 ## The one inviolable rule
 

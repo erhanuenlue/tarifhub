@@ -4,7 +4,7 @@
 reporting and quality-data obligations: **BFS/MARS** structural and statistical returns,
 **ANQ** quality measures, and **interRAI/BESA** long-term-care data to the cantons. Like
 TarifGuard, it is a thin **Next.js (App Router, React + Tailwind)** client over the
-deterministic platform — read-only over the serving API (L1) and TarifIQ (L2). It computes
+deterministic platform: read-only over the serving API (L1) and TarifIQ (L2). It computes
 no billing value and submits nothing without human sign-off.
 
 ## Planned scope (none wired yet)
@@ -21,8 +21,8 @@ no billing value and submits nothing without human sign-off.
    tariff value shown is an unaltered frozen record from serving, and rule/cross-walk
    answers come from TarifIQ. MeldePilot computes or mutates no billing value.
 2. **De-identification.** Patient identifiers never leave Swiss infrastructure. Any
-   LLM-assisted mapping/narrative scrubs input with `lib/deident.ts` — the **only** module
-   allowed to build an LLM-bound payload — before anything is forwarded; the model call is
+   LLM-assisted mapping/narrative scrubs input with `lib/deident.ts` (the **only** module
+   allowed to build an LLM-bound payload) before anything is forwarded; the model call is
    served by the backend and routed via AWS Bedrock EU / Google Vertex AI EU.
 
 ## Layout

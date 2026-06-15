@@ -1,8 +1,8 @@
 # tarifiq
 
 **TarifIQ** is the tarifhub intelligence service (Layer 2). It layers deterministic
-*reasoning* — combinability/cumulation rules, the **TARMED↔TARDOC cross-walk**, and rule
-validation — on top of the frozen tariff facts served by TarifCore (Layer 1). Runs fully
+*reasoning* (combinability/cumulation rules, the **TARMED↔TARDOC cross-walk**, and rule
+validation) on top of the frozen tariff facts served by TarifCore (Layer 1). Runs fully
 offline (bundled frozen tables, no network, no live LLM) so the suite is reproducible
 anywhere.
 
@@ -11,7 +11,7 @@ anywhere.
 Rule **evaluation is deterministic**: every endpoint is a pure function of the request
 and the frozen rule/cross-walk tables (each content-hashed and versioned, the same
 discipline L1 applies to tariff records). AI may only **suggest** a candidate rule or
-cross-walk entry *before* it is frozen — a single, clearly marked, replaceable seam
+cross-walk entry *before* it is frozen: a single, clearly marked, replaceable seam
 (`crosswalk/tarmed_tardoc.py::ai_rule_suggest`) that a human reviews and validates
 (`POST /v1/validate`) before freezing. Nothing here computes or mutates a billing value,
 and no endpoint calls a model. An AST boundary test enforces that the value path imports
@@ -30,7 +30,7 @@ no LLM client.
 
 ```
 src/tarifiq/
-├─ main.py                    FastAPI app (4 endpoints) — no LLM import
+├─ main.py                    FastAPI app (4 endpoints); no LLM import
 ├─ config.py                  12-factor settings (offline-first; SERVING_BASE_URL when live)
 ├─ models/rule_model.py       Pydantic contracts (rules carry NO billing value)
 ├─ rules/combinability.py     deterministic combinability/cumulation over the frozen rule set
