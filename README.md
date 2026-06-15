@@ -72,7 +72,7 @@ This repo holds **both** halves of the project:
 
 ## Documentation & decisions
 
-The architecture is documented as an arc42 site (MkDocs Material) under `docs/`, published to GitHub Pages via `.github/workflows/docs.yml` at **https://erhanuenlue.github.io/tarifhub/**. Architecture decisions are recorded in `docs/adr/` (18 ADRs). The [**Criterion Map**](docs/criterion-map.md) (published as *Criterion Map* on the docs site) indexes each CAS grading criterion to its evidence in the repo. Contributors should read `AGENTS.md` (project facts, layout, the inviolable rule) and `CLAUDE.md` (the working pipeline).
+The architecture is documented as an arc42 site (MkDocs Material) under `docs/`, published to GitHub Pages via `.github/workflows/docs.yml` at **https://erhanuenlue.github.io/tarifhub/**. Architecture decisions are recorded in `docs/adr/` (18 ADRs). Contributors should read `AGENTS.md` (project facts, layout, the inviolable rule) and `CLAUDE.md` (the working pipeline).
 
 ## Scope
 
