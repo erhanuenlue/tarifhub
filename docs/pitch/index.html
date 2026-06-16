@@ -1,0 +1,1071 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>tarifhub: one trustworthy API for Swiss ambulatory tariff data</title>
+  <meta name="description" content="tarifhub: one versioned, deterministic API for Swiss ambulatory tariff data. Investor and partner brief.">
+  <link rel="icon" href="data:,">
+
+  <!-- Reveal.js core, vendored locally (pinned 5.1.0) so the deck renders fully offline:
+       no live service or CDN at read time. Mirrors the CAS deck under docs/presentation/. -->
+  <link rel="stylesheet" href="reveal/reveal.css">
+  <!-- Brand fonts vendored locally (Inter + JetBrains Mono, SIL OFL 1.1, latin subset,
+       variable weight) so the deck renders fully offline. See fonts/LICENSE.txt -->
+
+  <style>
+    @font-face {
+      font-family: "Inter";
+      font-style: normal;
+      font-weight: 100 900;
+      font-display: swap;
+      src: url("fonts/inter-latin.woff2") format("woff2");
+    }
+    @font-face {
+      font-family: "JetBrains Mono";
+      font-style: normal;
+      font-weight: 100 800;
+      font-display: swap;
+      src: url("fonts/jetbrainsmono-latin.woff2") format("woff2");
+    }
+
+    /* ---- tarifhub brand tokens (mirrors docs/brand/tokens.css and the CAS deck) ---- */
+    :root {
+      --sky:   #0EA5E9;   /* primary accent */
+      --navy:  #0C4A6E;   /* ink / headlines / frozen values */
+      --cyan:  #06B6D4;   /* secondary accent (motion, future phases) */
+      --blue:  #2563EB;
+      --body:  #475569;   /* slate body text */
+      --muted: #94A3B8;
+      --line:  #E2E8F0;
+      --bg:    #FFFFFF;
+      --sky-tint: #E0F2FE;
+      --frost:  #F0F9FF;
+      --font-sans: "Inter", "Helvetica Neue", Arial, system-ui, sans-serif;
+      --font-mono: "JetBrains Mono", ui-monospace, monospace;
+    }
+
+    /* ---- minimalist layout ---- */
+    .reveal { font-family: var(--font-sans); color: var(--body); font-weight: 400; }
+    .reveal-viewport { background: var(--bg); }
+
+    .reveal .slides { text-align: left; }
+    .reveal section { line-height: 1.4; }
+
+    .reveal h1, .reveal h2, .reveal h3 {
+      font-family: var(--font-sans);
+      color: var(--navy);
+      font-weight: 700;
+      letter-spacing: -0.02em;
+      line-height: 1.1;
+      margin: 0 0 0.4em 0;
+      text-transform: none;
+    }
+    .reveal h1 { font-size: 2.5rem; }
+    .reveal h2 { font-size: 2.0rem; }
+    .reveal h3 { font-size: 1.3rem; }
+
+    /* eyebrow / kicker label above the headline */
+    .kicker {
+      font-size: 0.85rem;
+      font-weight: 600;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--navy);   /* eyebrow is running text, not a logotype: keep WCAG-AA ink */
+      margin: 0 0 0.5em 0;
+    }
+    /* short accent rule */
+    .rule { width: 64px; height: 4px; background: var(--sky); border: 0; margin: 0.1em 0 0.7em 0; border-radius: 2px; }
+
+    .reveal ul { list-style: none; margin: 0.3em 0 0 0; padding: 0; }
+    .reveal ul li {
+      position: relative;
+      padding-left: 1.15em;
+      margin: 0 0 0.5em 0;
+      font-size: 1.22rem;
+      color: var(--body);
+    }
+    .reveal ul li::before {
+      content: "";
+      position: absolute; left: 0; top: 0.62em;
+      width: 0.42em; height: 0.42em; border-radius: 50%;
+      background: var(--sky);
+    }
+    .reveal strong { color: var(--navy); font-weight: 600; }
+    .reveal .mono, .reveal code { font-family: var(--font-mono); font-size: 0.92em; color: var(--navy); }
+    .reveal em { font-style: italic; }
+
+    /* two-column: text left, figure right */
+    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; align-items: center; }
+    .cols.wide-fig { grid-template-columns: 0.85fr 1.15fr; }
+    .cols.text-fig { grid-template-columns: 1.05fr 0.95fr; }
+    .figure { text-align: center; }
+    .caption { font-size: 0.8rem; color: var(--body); margin-top: 0.5em; }
+
+    /* title / cover slide */
+    .title-wrap { text-align: left; }
+    .wordmark { font-size: 4.2rem; font-weight: 300; color: var(--navy); letter-spacing: -0.03em; line-height: 1; }
+    .wordmark b { font-weight: 700; color: var(--sky); }
+    .tagline { font-size: 1.55rem; color: var(--navy); margin: 0.5em 0 0 0; font-weight: 600; letter-spacing: -0.01em; }
+    .subtagline { font-size: 1.15rem; color: var(--body); margin: 0.35em 0 0 0; font-weight: 400; }
+    .byline { font-size: 0.95rem; color: var(--body); margin-top: 1.4em; font-family: var(--font-mono); }
+
+    .lead { font-size: 1.4rem; color: var(--body); }
+    .big-quote { font-size: 1.75rem; color: var(--navy); font-weight: 600; line-height: 1.25; }
+    .pull { border-left: 3px solid var(--sky); padding: 0.15em 0 0.15em 0.8em; color: var(--navy);
+            font-weight: 600; font-size: 1.15rem; margin: 0.7em 0 0 0; }
+    .pull span { color: var(--body); font-weight: 400; font-size: 0.92rem; display: block; margin-top: 0.15em;
+                 font-family: var(--font-mono); }
+
+    /* footer brand chip + progress accent */
+    .reveal .progress { color: var(--sky); height: 4px; }
+    .reveal .slide-number { background: transparent; color: var(--body); font-family: var(--font-mono); }
+    .footer { position: fixed; bottom: 14px; left: 24px; font-family: var(--font-mono); font-size: 0.72rem; color: var(--body); z-index: 30; }
+    .footer b { color: var(--navy); font-weight: 600; }
+    .footer i { color: var(--sky); font-style: normal; }
+
+    /* ============================================================= *
+     *  ON-SLIDE MOTION: animation dramatises the value, it does not
+     *  decorate. Every keyframe lives inside (prefers-reduced-motion:
+     *  no-preference); the resting state is the FINAL composed state,
+     *  so reduced motion and no-JS both degrade to a correct static slide.
+     * ============================================================= */
+
+    /* ---- cover convergence mark: many streams resolve into one ---- */
+    .mark { width: 100%; height: auto; max-height: 420px; }
+    .mark .stream { fill: none; stroke: var(--muted); stroke-width: 2; stroke-linecap: round;
+                    stroke-dasharray: 360; stroke-dashoffset: 0; opacity: 0.85; }
+    .mark .out { stroke: var(--sky); stroke-width: 3.5; stroke-dasharray: 140; }
+    .mark .node { fill: var(--frost); stroke: var(--line); stroke-width: 1.5; }
+    .mark .hub { fill: var(--navy); }
+    .mark .hub-ring { fill: none; stroke: var(--sky); stroke-width: 2; opacity: 0.5; }
+    .mark .end { fill: var(--sky); }
+    .mark .dot { fill: var(--cyan); opacity: 0; }
+
+    /* ---- convergence flow (problem slide): named fragmented sources into one API ---- */
+    .flow { width: 100%; height: auto; max-height: 420px; }
+    .flow .stream { fill: none; stroke: var(--muted); stroke-width: 2.5; stroke-linecap: round;
+                    stroke-dasharray: 340; stroke-dashoffset: 0; }
+    .flow .out { stroke: var(--sky); stroke-width: 3.5; }
+    .flow .src { fill: var(--frost); stroke: var(--line); }
+    .flow .src-t { fill: var(--navy); font-family: var(--font-mono); font-size: 12px; font-weight: 600; }
+    .flow .hub { fill: var(--navy); }
+    .flow .hub-t { fill: #fff; font-family: var(--font-sans); font-weight: 700; font-size: 14px; }
+    .flow .cert { fill: var(--navy); font-family: var(--font-mono); font-weight: 600; font-size: 13px; }
+    .flow .cert-s { fill: var(--body); font-family: var(--font-mono); font-size: 10.5px; }
+    .flow .dot { fill: var(--sky); opacity: 0; }
+
+    /* ---- four-layer stack + freeze bar (solution slide) ---- */
+    .stack { display: flex; flex-direction: column; gap: 7px; }
+    .layer { border-radius: 8px; padding: 0.5em 0.8em; border: 1px solid var(--line);
+             font-size: 1.0rem; color: var(--body); }
+    .layer .lt { font-weight: 700; color: var(--navy); }
+    .layer .lk { font-family: var(--font-mono); font-size: 0.76rem; color: var(--body); }
+    .layer.l0  { background: var(--sky-tint); border-color: #bae6fd; }
+    .layer.l1  { background: var(--frost); }
+    .layer.l2  { background: #fff; }
+    .layer.l3  { background: #fff; }
+    .layer { position: relative; }
+    /* a layer that is roadmap, not shipped: dashed + muted, with a "planned" pill */
+    .layer.planned { border-style: dashed; border-color: var(--muted); opacity: 0.82; }
+    .planned-tag { position: absolute; right: 0.8em; top: 50%; transform: translateY(-50%);
+                   font-family: var(--font-mono); font-size: 0.62rem; letter-spacing: 0.08em;
+                   text-transform: uppercase; color: var(--muted); border: 1px solid var(--line);
+                   border-radius: 999px; padding: 0.1em 0.55em; background: #fff; }
+    .freezebar { display: flex; align-items: center; gap: 0.5em;
+                 background: var(--navy); color: #fff; border-radius: 8px;
+                 padding: 0.45em 0.8em; font-weight: 700; letter-spacing: 0.02em; }
+    .freezebar .lock { width: 18px; height: 18px; flex: none; }
+    .freezebar .fz-sub { font-family: var(--font-mono); font-weight: 400; font-size: 0.72rem;
+                         color: #bae6fd; margin-left: auto; }
+    .above-tag, .below-tag { font-family: var(--font-mono); font-size: 0.72rem; color: var(--muted);
+                             letter-spacing: 0.08em; text-transform: uppercase; margin: 0.1em 0; }
+
+    /* ---- freeze-line seal (how-it-works slide) ---- */
+    .seal-svg { display: block; margin: 0 auto; max-height: 470px; max-width: 100%; }
+    .seal-svg .spine { stroke: var(--sky); stroke-width: 2; opacity: 0.45; }
+    .seal-svg .midline { stroke: var(--navy); stroke-width: 3; stroke-dasharray: 6 5; }
+    .seal-svg .seal-halo { fill: #fff; }
+    .seal-svg .hash-bg { fill: #fff; }
+    .seal-svg .card { fill: #fff; stroke: var(--line); stroke-width: 1.5; }
+    .seal-svg .card-ai { stroke: var(--sky); stroke-width: 2; }
+    .seal-svg .lbl { font-family: var(--font-mono); font-size: 12px; fill: var(--body); }
+    .seal-svg .lbl-n { fill: var(--navy); font-weight: 600; }
+    .seal-svg .badge { fill: var(--sky); }
+    .seal-svg .badge-t { fill: #fff; font-family: var(--font-sans); font-weight: 700; font-size: 11px; }
+    .seal-svg .lock-body { fill: var(--navy); }
+    .seal-svg .lock-shackle { fill: none; stroke: var(--navy); stroke-width: 6; }
+    .seal-svg .ring { fill: none; stroke: var(--sky); stroke-width: 3; opacity: 0; }
+    .seal-svg .hash { font-family: var(--font-mono); font-size: 12px; fill: var(--navy); }
+    .seal-svg .chip { fill: var(--frost); stroke: var(--line); }
+    .seal-svg .chip-t { font-family: var(--font-mono); font-size: 11px; fill: var(--navy); font-weight: 600; }
+
+    /* ---- trust guarantees (moat slide) ---- */
+    .guard { display: flex; flex-direction: column; gap: 0.55em; margin-top: 0.2em; }
+    .grow { display: flex; align-items: flex-start; gap: 0.7em; }
+    .grow .gi { flex: none; width: 34px; height: 34px; border-radius: 9px; background: var(--frost);
+                border: 1px solid #bae6fd; display: grid; place-items: center; }
+    .grow .gi svg { width: 18px; height: 18px; }
+    .grow .gt { font-weight: 700; color: var(--navy); font-size: 1.05rem; }
+    .grow .gd { font-size: 0.92rem; color: var(--body); }
+
+    /* ---- by-the-numbers grid + counters ---- */
+    .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7em 1.0em; margin-top: 0.3em; }
+    .grid.g3 { grid-template-columns: repeat(3, 1fr); }
+    .stat { border: 1px solid var(--line); border-radius: 10px; padding: 0.6em 0.7em; background: #fff; }
+    .stat .num { font-family: var(--font-sans); font-weight: 700; color: var(--navy);
+                 font-size: 2.0rem; line-height: 1; letter-spacing: -0.02em; white-space: nowrap; }
+    .stat .num .u { color: var(--sky); font-size: 1.15rem; font-weight: 700; }
+    .stat .num .p { color: var(--sky); font-size: 1.05rem; font-weight: 700; }
+    .stat .lab { font-size: 0.76rem; color: var(--body); margin-top: 0.3em; }
+    .oops { margin-top: 0.7em; font-size: 1.0rem; color: var(--body);
+            border-left: 3px solid var(--sky); padding: 0.1em 0 0.1em 0.7em; }
+    .oops b { color: var(--navy); }
+
+    /* ---- generic card tiles (product, why-now) ---- */
+    .tiles { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.7em; margin-top: 0.3em; }
+    .tiles.t2 { grid-template-columns: repeat(2, 1fr); }
+    .tile { border: 1px solid var(--line); border-radius: 10px; padding: 0.7em 0.8em; background: #fff; }
+    .tile .tk { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+                color: var(--sky); font-weight: 700; }
+    .tile .tt { font-weight: 700; color: var(--navy); font-size: 1.05rem; margin: 0.18em 0 0.1em 0; }
+    .tile .td { font-size: 0.86rem; color: var(--body); }
+    .tile.accent { background: var(--frost); border-color: #bae6fd; }
+
+    /* metric strip */
+    .mstrip { display: flex; flex-wrap: wrap; gap: 0.5em 1.4em; margin-top: 0.8em;
+              font-family: var(--font-mono); font-size: 0.86rem; color: var(--body); }
+    .mstrip b { color: var(--navy); }
+    .mstrip i { color: var(--sky); font-style: normal; }
+
+    /* ---- market segment cards ---- */
+    .segs { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.7em 0.9em; margin-top: 0.3em; }
+    .seg { display: flex; gap: 0.75em; align-items: flex-start; border: 1px solid var(--line);
+           border-radius: 10px; padding: 0.7em 0.85em; background: #fff; }
+    .seg .si { flex: none; width: 38px; height: 38px; border-radius: 10px; background: var(--frost);
+               border: 1px solid #bae6fd; display: grid; place-items: center; }
+    .seg .si svg { width: 20px; height: 20px; }
+    .seg .st { font-weight: 700; color: var(--navy); font-size: 1.02rem; }
+    .seg .sd { font-size: 0.85rem; color: var(--body); }
+    .seg .sx { font-family: var(--font-mono); font-size: 0.72rem; color: var(--sky); margin-top: 0.2em; }
+
+    /* ---- pricing tier cards ---- */
+    .tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7em; margin-top: 0.4em; align-items: stretch; }
+    .tier { border: 1px solid var(--line); border-radius: 12px; padding: 0.85em 0.8em; background: #fff;
+            display: flex; flex-direction: column; }
+    .tier.feature { border-color: var(--sky); box-shadow: 0 6px 22px -12px rgba(14,165,233,0.55); background: var(--frost); }
+    .tier .tn { font-weight: 700; color: var(--navy); font-size: 1.1rem; }
+    .tier .tp { font-family: var(--font-mono); font-size: 0.78rem; color: var(--sky); font-weight: 600; margin: 0.2em 0 0.5em 0; }
+    .tier .tb { font-size: 0.84rem; color: var(--body); line-height: 1.35; }
+    .tier .tag { align-self: flex-start; margin-top: auto; padding-top: 0.6em; font-family: var(--font-mono);
+                 font-size: 0.68rem; color: var(--muted); letter-spacing: 0.05em; text-transform: uppercase; }
+    .tier.feature .tag { color: var(--sky); }
+
+    /* ---- live-property chips (traction) ---- */
+    .live { display: grid; grid-template-columns: repeat(2, 1fr); gap: 0.8em; margin-top: 0.3em; }
+    .lcard { border: 1px solid var(--line); border-radius: 12px; overflow: hidden; background: #fff; }
+    .lbar { display: flex; align-items: center; gap: 0.45em; padding: 0.45em 0.7em; background: var(--frost);
+            border-bottom: 1px solid var(--line); }
+    .lbar .dotrow { display: flex; gap: 5px; }
+    .lbar .dotrow span { width: 9px; height: 9px; border-radius: 50%; background: var(--line); }
+    .lbar .url { font-family: var(--font-mono); font-size: 0.78rem; color: var(--navy); }
+    .lbody { padding: 0.6em 0.75em; }
+    .lbody .lt { font-weight: 700; color: var(--navy); font-size: 1.0rem; }
+    .lbody .ld { font-size: 0.84rem; color: var(--body); margin-top: 0.15em; }
+
+    /* ---- roadmap timeline ---- */
+    .rmap-line { width: 100%; height: 54px; }
+    .rmap-line .track { fill: none; stroke: var(--line); stroke-width: 3; }
+    .rmap-line .fill { fill: none; stroke: var(--sky); stroke-width: 3; stroke-linecap: round;
+                       stroke-dasharray: 880; stroke-dashoffset: 880; }
+    .rmap-line .node { fill: #fff; stroke: var(--sky); stroke-width: 3; }
+    .rmap-line .node.future { stroke: var(--cyan); }
+    .phases { display: grid; grid-template-columns: repeat(4, 1fr); gap: 0.7em; margin-top: 0.2em; }
+    .phase { border: 1px solid var(--line); border-radius: 10px; padding: 0.6em 0.7em; background: #fff; }
+    .phase .pn { font-family: var(--font-mono); font-size: 0.72rem; letter-spacing: 0.08em; text-transform: uppercase;
+                 font-weight: 700; color: var(--sky); }
+    .phase.fut .pn { color: var(--cyan); }
+    .phase .ph { font-weight: 700; color: var(--navy); font-size: 0.98rem; margin: 0.1em 0 0.3em 0; }
+    .phase ul { margin: 0; }
+    .phase ul li { font-size: 0.82rem; padding-left: 0.9em; margin: 0 0 0.28em 0; }
+    .phase ul li::before { top: 0.5em; width: 0.32em; height: 0.32em; }
+
+    /* ---- founder card (team) ---- */
+    .founder { display: flex; gap: 1.1em; align-items: center; border: 1px solid var(--line);
+               border-radius: 14px; padding: 1.0em 1.2em; background: var(--frost); }
+    .founder .av { flex: none; width: 92px; height: 92px; border-radius: 50%; background: var(--navy);
+                   color: #fff; display: grid; place-items: center; font-family: var(--font-sans);
+                   font-weight: 700; font-size: 2.0rem; letter-spacing: -0.02em; }
+    .founder .fn { font-weight: 700; color: var(--navy); font-size: 1.4rem; }
+    .founder .fr { font-family: var(--font-mono); font-size: 0.86rem; color: var(--sky); margin: 0.1em 0 0.4em 0; }
+    .founder .fd { font-size: 0.95rem; color: var(--body); }
+    .founder .fl { font-family: var(--font-mono); font-size: 0.82rem; color: var(--navy); margin-top: 0.5em; }
+
+    /* ---- CTA list ---- */
+    .cta { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.8em; margin-top: 0.5em; }
+    .cta .c { border: 1px solid var(--line); border-radius: 12px; padding: 0.85em; background: #fff; }
+    .cta .c.accent { background: var(--frost); border-color: #bae6fd; }
+    .cta .ck { font-family: var(--font-mono); font-size: 0.7rem; letter-spacing: 0.1em; text-transform: uppercase;
+               color: var(--sky); font-weight: 700; }
+    .cta .ch { font-weight: 700; color: var(--navy); font-size: 1.05rem; margin: 0.15em 0; }
+    .cta .cd { font-size: 0.84rem; color: var(--body); }
+    .cta .cd .mono { display: block; margin-top: 0.25em; font-size: 0.8rem; }
+
+    /* fragment bullets / cards: gentle lift (content reveal, guarded for reduced motion) */
+    @media (prefers-reduced-motion: no-preference) {
+      .reveal .fragment.lift { transform: translateY(10px); transition: all 0.45s ease; }
+      .reveal .fragment.lift.visible { transform: translateY(0); }
+
+      /* cover mark: draw streams when the slide is present, staggered */
+      section.present .mark .stream { animation: draw 1.1s ease both; }
+      section.present .mark .m1 { animation-delay: 0.05s; }
+      section.present .mark .m2 { animation-delay: 0.13s; }
+      section.present .mark .m3 { animation-delay: 0.21s; }
+      section.present .mark .m4 { animation-delay: 0.29s; }
+      section.present .mark .m5 { animation-delay: 0.37s; }
+      section.present .mark .m6 { animation-delay: 0.45s; }
+      section.present .mark .m7 { animation-delay: 0.53s; }
+      section.present .mark .out { animation: draw 0.9s ease 0.7s both; }
+      section.present .mark .dot { animation: travel 2.6s linear 1.3s infinite; }
+      section.present .mark .hub-ring { animation: ringpulse2 2.8s ease-out 1.2s infinite; }
+
+      /* problem flow: draw the streams when the slide is present, staggered */
+      section.present .flow .stream { animation: draw 1.0s ease both; }
+      section.present .flow .s1 { animation-delay: 0.10s; }
+      section.present .flow .s2 { animation-delay: 0.26s; }
+      section.present .flow .s3 { animation-delay: 0.42s; }
+      section.present .flow .s4 { animation-delay: 0.58s; }
+      section.present .flow .s5 { animation-delay: 0.74s; }
+      section.present .flow .out { animation-delay: 0.98s; }
+      section.present .flow .dot { animation: travel 2.4s linear 1.2s infinite; }
+
+      @keyframes draw   { from { stroke-dashoffset: 360; } to { stroke-dashoffset: 0; } }
+      @keyframes travel { 0% { opacity: 0; } 8% { opacity: 1; } 92% { opacity: 1; } 100% { opacity: 0; } }
+      @keyframes ringpulse2 { 0% { transform: scale(0.8); opacity: 0.6; transform-box: fill-box; transform-origin: center; }
+                              70% { opacity: 0; } 100% { transform: scale(1.6); opacity: 0; transform-box: fill-box; transform-origin: center; } }
+
+      /* roadmap line draws on present; nodes pop with the line */
+      section.present .rmap-line .fill { animation: drawline 1.4s ease 0.2s both; }
+      @keyframes drawline { from { stroke-dashoffset: 880; } to { stroke-dashoffset: 0; } }
+
+      /* seal sequence: each step fires when its fragment becomes visible */
+      .seal-svg .ring.go            { animation: ringpulse 1.1s ease-out 1; }
+      .seal-svg .lock-shackle.go    { transform-box: fill-box; transform-origin: 50% 100%; animation: snap 0.5s ease-out 1; }
+      .seal-svg .lock-grp.go        { animation: pop 0.45s ease-out 1; }
+      @keyframes ringpulse { 0% { transform: scale(0.5); opacity: 0.6; transform-box: fill-box; transform-origin: center; }
+                             100% { transform: scale(1.25); opacity: 0; transform-box: fill-box; transform-origin: center; } }
+      @keyframes snap { 0% { transform: translateY(-7px) rotate(-8deg); } 70% { transform: translateY(1px); } 100% { transform: translateY(0); } }
+      @keyframes pop  { 0% { transform: scale(0.82); opacity: 0; transform-box: fill-box; transform-origin: center; }
+                        100% { transform: scale(1); opacity: 1; transform-box: fill-box; transform-origin: center; } }
+
+      /* feature tier highlight: a subtle resting lift */
+      .tier.feature { transform: translateY(-4px); }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="footer"><b>tarif</b><i>hub</i> &nbsp;·&nbsp; Investor &amp; partner brief</div>
+
+  <div class="reveal">
+    <div class="slides">
+
+      <!-- 1 · COVER -->
+      <section data-transition="fade">
+        <div class="cols text-fig">
+          <div class="title-wrap">
+            <p class="kicker">Swiss tariff harmonization</p>
+            <div class="wordmark">tarif<b>hub</b></div>
+            <p class="tagline">One trustworthy API for Swiss ambulatory tariff data.</p>
+            <p class="subtagline">All Swiss tariff data. One API. Trustworthy by construction.</p>
+            <hr class="rule" style="margin-top:1em;">
+            <p class="byline">Erhan Ünlü &nbsp;·&nbsp; Founder &nbsp;·&nbsp; Investor &amp; partner brief, 2026</p>
+          </div>
+          <div class="figure">
+            <!-- elegant convergence mark: many streams resolve into one -->
+            <svg class="mark" viewBox="0 0 440 360" role="img"
+                 aria-label="Many fragmented data streams converging into one tarifhub endpoint">
+              <!-- source nodes -->
+              <g>
+                <circle class="node" cx="26" cy="30"  r="8"/>
+                <circle class="node" cx="26" cy="80"  r="8"/>
+                <circle class="node" cx="26" cy="130" r="8"/>
+                <circle class="node" cx="26" cy="180" r="8"/>
+                <circle class="node" cx="26" cy="230" r="8"/>
+                <circle class="node" cx="26" cy="280" r="8"/>
+                <circle class="node" cx="26" cy="330" r="8"/>
+              </g>
+              <!-- converging streams -->
+              <path class="stream m1" d="M34 30  C 180 30, 200 180, 296 180"/>
+              <path class="stream m2" d="M34 80  C 180 80, 210 180, 296 180"/>
+              <path class="stream m3" d="M34 130 C 180 130, 230 180, 296 180"/>
+              <path class="stream m4" d="M34 180 H 296"/>
+              <path class="stream m5" d="M34 230 C 180 230, 230 180, 296 180"/>
+              <path class="stream m6" d="M34 280 C 180 280, 210 180, 296 180"/>
+              <path class="stream m7" d="M34 330 C 180 330, 200 180, 296 180"/>
+              <!-- hub -->
+              <circle class="hub-ring" cx="320" cy="180" r="34"/>
+              <circle class="hub" cx="320" cy="180" r="22"/>
+              <!-- output to one endpoint -->
+              <path class="out" d="M342 180 H 430"/>
+              <circle class="end" cx="430" cy="180" r="6"/>
+              <circle class="dot" cx="0" cy="0" r="4">
+                <animateMotion dur="2.6s" begin="1.3s" repeatCount="indefinite" path="M342 180 H 430"/>
+              </circle>
+            </svg>
+          </div>
+        </div>
+        <aside class="notes">
+          [Cover] tarifhub turns fragmented Swiss ambulatory tariff data into one API you can actually
+          trust. I am Erhan, the founder. This is the commercial vision: the problem, the product, the
+          moat, the market, and the ask.
+        </aside>
+      </section>
+
+      <!-- 2 · PROBLEM -->
+      <section data-transition="fade">
+        <p class="kicker">The problem</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>Why tariff data hurts today.</h2>
+            <hr class="rule">
+            <ul>
+              <li class="fragment lift"><strong>Fragmented sources.</strong> TARDOC, EAL, SL, MiGeL, AL: each a different source, format, and update cycle.</li>
+              <li class="fragment lift"><strong>Manual maintenance.</strong> Hundreds of hours per year parsing PDFs, XML, and proprietary formats.</li>
+              <li class="fragment lift"><strong>Outdated formats.</strong> No unified API. Data arrives as PDF or XML, not modern REST or FHIR.</li>
+              <li class="fragment lift">One uncaught mapping error silently becomes a <strong>wrong invoice</strong>.</li>
+            </ul>
+          </div>
+          <div class="figure">
+            <!-- convergence: fragmented named sources resolve into one API -->
+            <svg class="flow" viewBox="0 0 480 300" role="img"
+                 aria-label="Five fragmented Swiss tariff sources converging into one tarifhub API">
+              <g class="src-grp">
+                <rect class="src" x="6" y="8"   width="128" height="34" rx="7"/>
+                <text class="src-t" x="20" y="29">TARDOC</text>
+                <rect class="src" x="6" y="64"  width="128" height="34" rx="7"/>
+                <text class="src-t" x="20" y="85">EAL · XLSX</text>
+                <rect class="src" x="6" y="120" width="128" height="34" rx="7"/>
+                <text class="src-t" x="20" y="141">SL · FHIR</text>
+                <rect class="src" x="6" y="176" width="128" height="34" rx="7"/>
+                <text class="src-t" x="20" y="197">MiGeL</text>
+                <rect class="src" x="6" y="232" width="128" height="34" rx="7"/>
+                <text class="src-t" x="20" y="253">AL · PDF</text>
+              </g>
+              <!-- converging streams -->
+              <path class="stream s1" d="M134 25  C 230 25, 250 128, 320 128"/>
+              <path class="stream s2" d="M134 81  C 230 81, 260 128, 320 128"/>
+              <path class="stream s3" d="M134 137 H 320"/>
+              <path class="stream s4" d="M134 193 C 230 193, 260 128, 320 128"/>
+              <path class="stream s5" d="M134 249 C 230 249, 250 128, 320 128"/>
+              <!-- hub -->
+              <circle class="hub" cx="350" cy="128" r="30"/>
+              <text class="hub-t" x="350" y="133" text-anchor="middle">hub</text>
+              <!-- output -->
+              <path class="stream out" d="M380 128 H 452"/>
+              <circle class="dot" cx="0" cy="0" r="4">
+                <animateMotion dur="2.4s" begin="1.2s" repeatCount="indefinite" path="M380 128 H 452"/>
+              </circle>
+              <text class="cert" x="416" y="118" text-anchor="middle">one API</text>
+              <text class="cert-s" x="416" y="148" text-anchor="middle">REST · FHIR · MCP</text>
+            </svg>
+            <p class="caption">110+ tariff types across 20+ sources, with no single machine interface.</p>
+          </div>
+        </div>
+        <aside class="notes">
+          [Problem] Swiss ambulatory tariff data is scattered across more than 110 types and 20+ sources,
+          in XLSX, XML, PDF, and FHIR, with no single authoritative machine interface. Every vendor
+          re-implements parsing, version transitions are reconciled by hand, and a single uncaught
+          mapping error becomes a wrong invoice downstream.
+        </aside>
+      </section>
+
+      <!-- 3 · THE COST -->
+      <section data-transition="fade" data-counters>
+        <p class="kicker">The cost of the status quo</p>
+        <h2 style="margin-bottom:0.15em;">Every vendor pays to re-solve the same problem.</h2>
+        <hr class="rule">
+        <div class="grid">
+          <div class="stat">
+            <div class="num"><span class="p">CHF </span><span data-target="200">0</span><span class="u">k+</span></div>
+            <div class="lab">per vendor, per year (CHF 50k to 200k+): license fees, staffing, custom dev</div>
+          </div>
+          <div class="stat">
+            <div class="num"><span data-target="100">0</span><span class="u">s</span></div>
+            <div class="lab">of hours per year spent parsing PDF, XML, and proprietary formats</div>
+          </div>
+          <div class="stat">
+            <div class="num"><span data-target="110">0</span><span class="u">+</span></div>
+            <div class="lab">active tariff types, each re-integrated by every vendor</div>
+          </div>
+          <div class="stat">
+            <div class="num"><span data-target="20">0</span><span class="u">+</span></div>
+            <div class="lab">disconnected sources, formats, and update cadences</div>
+          </div>
+        </div>
+        <p class="oops fragment">
+          <b>The real cost is not the licence.</b> It is the risk: an uncaught mapping error reaches a
+          billing system as a wrong invoice, and nobody can prove which value was served, or why.
+        </p>
+        <aside class="notes">
+          [Cost] The published cost of the status quo is CHF 50,000 to 200,000+ per vendor per year in
+          license fees, staffing, and custom development, plus hundreds of hours of manual upkeep. The
+          deeper cost is unprovable provenance: when a wrong value reaches billing, there is no record of
+          what was served.
+        </aside>
+      </section>
+
+      <!-- 4 · WHY NOW -->
+      <section data-transition="fade">
+        <p class="kicker">Why now</p>
+        <h2>Three shifts make this the moment.</h2>
+        <hr class="rule">
+        <div class="tiles">
+          <div class="tile fragment lift">
+            <div class="tk">Regulatory</div>
+            <div class="tt">TARMED to TARDOC</div>
+            <div class="td">The national outpatient tariff is being replaced. Every vendor must re-integrate, and would rather do it once, cleanly.</div>
+          </div>
+          <div class="tile fragment lift">
+            <div class="tk">Standards</div>
+            <div class="tt">FHIR adoption</div>
+            <div class="td">Swiss healthcare is standardizing on FHIR R4. Tariff data should arrive as a modern API, not a PDF or a spreadsheet.</div>
+          </div>
+          <div class="tile fragment lift accent">
+            <div class="tk">AI</div>
+            <div class="tt">Agents need trust</div>
+            <div class="td">AI agents now consume tariffs over MCP. They need provable, versioned data, not scraped documents.</div>
+          </div>
+        </div>
+        <aside class="notes">
+          [Why now] Three tailwinds converge: the TARMED to TARDOC transition forces a re-integration
+          everyone wants to do once; FHIR R4 is becoming the Swiss standard; and AI agents now consume
+          tariff data over MCP and need provenance they can trust.
+        </aside>
+      </section>
+
+      <!-- 5 · SOLUTION (auto-animate pair A: freeze bar) -->
+      <section data-transition="fade" data-auto-animate>
+        <p class="kicker">The solution</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>One versioned, deterministic API.</h2>
+            <hr class="rule">
+            <ul>
+              <li>AI-assisted harmonization <strong>above</strong> a freeze line</li>
+              <li>Served immutable and provable <strong>below</strong> it</li>
+              <li>Read surface: <strong>REST · FHIR R4 · MCP</strong></li>
+              <li>Every record carries its proof: a <strong>SHA-256 hash</strong></li>
+            </ul>
+          </div>
+          <div>
+            <p class="above-tag">above · AI-assisted, pre-freeze</p>
+            <div class="stack">
+              <div class="layer l0 fragment lift" data-fragment-index="1">
+                <span class="lt">L0 harmonize</span> &nbsp;<span class="lk">adapters → ai_map → validate → score</span>
+              </div>
+              <!-- shared auto-animate element: the freeze line -->
+              <div class="freezebar" data-id="freeze-bar">
+                <svg class="lock" viewBox="0 0 24 24" aria-hidden="true">
+                  <path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="2"/>
+                  <rect x="5" y="11" width="14" height="9" rx="2" fill="#fff"/>
+                </svg>
+                <span>FREEZE LINE</span>
+                <span class="fz-sub">immutable · hashed · versioned</span>
+              </div>
+              <div class="layer l1 fragment lift" data-fragment-index="2">
+                <span class="lt">L1 serving</span> &nbsp;<span class="lk">TarifCore (REST + FHIR R4) · TarifMCP</span>
+              </div>
+              <div class="layer l2 planned fragment lift" data-fragment-index="3">
+                <span class="lt">L2 rules</span> &nbsp;<span class="lk">TarifIQ (deterministic)</span><span class="planned-tag">planned</span>
+              </div>
+              <div class="layer l3 fragment lift" data-fragment-index="4">
+                <span class="lt">L3 apps</span> &nbsp;<span class="lk">TarifGuard console</span>
+              </div>
+            </div>
+            <p class="below-tag">below · fully deterministic, read-only</p>
+          </div>
+        </div>
+        <aside class="notes">
+          [Solution] One versioned, deterministic API. Four layers, split by one freeze line. Above the
+          line we harmonize, AI-assisted, before freezing. Below it we serve, fully deterministic and
+          read-only, over REST, FHIR R4, and MCP. Every record carries its own proof: a SHA-256 hash.
+        </aside>
+      </section>
+
+      <!-- 6 · HOW IT WORKS (auto-animate pair A continues: freeze bar morphs wide) -->
+      <section data-transition="fade" data-auto-animate>
+        <p class="kicker">How it works</p>
+        <h2 style="margin-bottom:0.15em;">Harmonize above. Freeze. Serve below.</h2>
+        <!-- the same freeze bar morphs in from the previous slide, now centered + wide -->
+        <div class="freezebar" data-id="freeze-bar" style="margin:0.2em 0 0.4em 0;">
+          <svg class="lock" viewBox="0 0 24 24" aria-hidden="true">
+            <path d="M7 11V8a5 5 0 0 1 10 0v3" fill="none" stroke="#fff" stroke-width="2"/>
+            <rect x="5" y="11" width="14" height="9" rx="2" fill="#fff"/>
+          </svg>
+          <span>FREEZE LINE</span>
+          <span class="fz-sub">SHA-256 · append-only audit</span>
+        </div>
+
+        <div class="figure" style="margin-top:0.1em;">
+          <svg class="seal-svg" viewBox="0 0 760 312" role="img"
+               aria-label="A record is harmonized above the freeze line, sealed with a SHA-256 hash, then served read-only below">
+            <line class="spine" x1="140" y1="124" x2="140" y2="202"/>
+
+            <!-- ABOVE: AI-harmonized record (non-billing fields) -->
+            <text class="lbl" x="40" y="26">ABOVE · harmonize (AI-assisted, non-billing fields)</text>
+            <g class="fragment" data-fragment-index="1">
+              <rect class="card card-ai" x="40" y="38" width="200" height="84" rx="10"/>
+              <text class="lbl-n lbl" x="58" y="66">code: EAL/1000</text>
+              <text class="lbl" x="58" y="88">designation_de: …</text>
+              <text class="lbl" x="58" y="110">designation_fr/it: …</text>
+              <rect class="badge" x="180" y="46" width="44" height="20" rx="10"/>
+              <text class="badge-t" x="202" y="60" text-anchor="middle">AI</text>
+            </g>
+
+            <!-- THE LINE -->
+            <line class="midline" x1="20" y1="166" x2="740" y2="166"/>
+            <text class="lbl" x="740" y="160" text-anchor="end" style="fill:#94A3B8;">the freeze line</text>
+
+            <!-- the seal: a lock snaps shut on the line, then the hash appears -->
+            <g class="fragment" data-fragment-index="2">
+              <circle class="ring" cx="140" cy="166" r="28"/>
+              <rect class="seal-halo" x="112" y="146" width="56" height="42" rx="10"/>
+              <g class="lock-grp">
+                <path class="lock-shackle" d="M126 164 v-7 a14 14 0 0 1 28 0 v7"/>
+                <rect class="lock-body" x="122" y="164" width="36" height="24" rx="5"/>
+              </g>
+              <rect class="hash-bg" x="184" y="156" width="404" height="20" rx="5"/>
+              <text class="hash" x="192" y="171">record_hash = 9f2a…c41b · SHA-256, immutable</text>
+            </g>
+
+            <!-- BELOW: served, read-only, deterministic -->
+            <text class="lbl" x="40" y="210">BELOW · serve (deterministic, read-only)</text>
+            <g class="fragment" data-fragment-index="3">
+              <rect class="card" x="40" y="222" width="200" height="76" rx="10"/>
+              <text class="lbl-n lbl" x="58" y="250">EAL/1000 · frozen</text>
+              <text class="lbl" x="58" y="272">tax_points · price_chf</text>
+              <text class="lbl" x="58" y="292" style="fill:#0EA5E9;font-weight:600;">verbatim · versioned</text>
+              <rect class="chip" x="300" y="230" width="78" height="26" rx="13"/>
+              <text class="chip-t" x="339" y="247" text-anchor="middle">REST</text>
+              <rect class="chip" x="388" y="230" width="92" height="26" rx="13"/>
+              <text class="chip-t" x="434" y="247" text-anchor="middle">FHIR R4</text>
+              <rect class="chip" x="490" y="230" width="70" height="26" rx="13"/>
+              <text class="chip-t" x="525" y="247" text-anchor="middle">MCP</text>
+              <text class="lbl" x="300" y="290">No AI on the value path. Ever.</text>
+            </g>
+          </svg>
+        </div>
+        <aside class="notes">
+          [How it works] Follow one record. Above the line it is harmonized: AI assists, but only on
+          non-billing fields, before freezing. At the line it is sealed with a SHA-256 hash over its
+          canonical content; any change is a new version and the audit log is append-only. Below the line
+          it is served, read-only and deterministic, over REST, FHIR, and MCP.
+        </aside>
+      </section>
+
+      <!-- 7 · THE TRUST MODEL / MOAT -->
+      <section data-transition="fade">
+        <p class="kicker">The moat</p>
+        <div class="cols text-fig">
+          <div>
+            <h2>A served value is provably the value that was reviewed and frozen.</h2>
+            <hr class="rule">
+            <p class="pull">Reproducible billing guaranteed.
+              <span>the public promise, made provable underneath</span></p>
+          </div>
+          <div>
+            <div class="guard">
+              <div class="grow fragment lift">
+                <div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><path d="M4 12l5 5L20 6"/></svg></div>
+                <div><div class="gt">Provable provenance</div><div class="gd">SHA-256 <span class="mono">record_hash</span> over canonical content. The value is its own receipt.</div></div>
+              </div>
+              <div class="grow fragment lift">
+                <div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div>
+                <div><div class="gt">Immutable versions</div><div class="gd">Updates create new versions, never edits. History is never rewritten.</div></div>
+              </div>
+              <div class="grow fragment lift">
+                <div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><path d="M5 4h14v16l-7-3-7 3z"/></svg></div>
+                <div><div class="gt">Append-only audit</div><div class="gd">Every freeze and read is logged. Nothing disappears, nothing is silently changed.</div></div>
+              </div>
+              <div class="grow fragment lift">
+                <div class="gi"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M6 6l12 12"/></svg></div>
+                <div><div class="gt">No AI on the value path</div><div class="gd">AI works above the line only. At serve time, no model touches a billing value.</div></div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          [Moat] This is the differentiator. Competitors can parse the same sources. What they cannot
+          easily copy is the trust contract: provable provenance, immutable versions, an append-only
+          audit, and a hard boundary that keeps AI off the value path. The public promise is reproducible
+          billing; underneath, it is provable.
+        </aside>
+      </section>
+
+      <!-- 8 · PRODUCT -->
+      <section data-transition="fade" data-counters>
+        <p class="kicker">The product</p>
+        <h2 style="margin-bottom:0.15em;">Built and running today.</h2>
+        <hr class="rule">
+        <div class="tiles">
+          <div class="tile fragment lift"><div class="tk">API</div><div class="tt">Unified REST + FHIR R4</div><div class="td">All tariffs through one interface. JSON REST or FHIR R4, your choice.</div></div>
+          <div class="tile fragment lift"><div class="tk">Agents</div><div class="tt">MCP for AI</div><div class="td"><span class="mono">search_tariffs</span>, <span class="mono">get_tariff</span>, <span class="mono">explain_crosswalk</span>, read-only.</div></div>
+          <div class="tile fragment lift"><div class="tk">History</div><div class="tt">Point-in-time + diff</div><div class="td">Query any value <span class="mono">?as_of</span> a date, or diff <span class="mono">?from</span> and <span class="mono">?to</span> versions.</div></div>
+          <div class="tile fragment lift"><div class="tk">Search</div><div class="tt">Multilingual semantic</div><div class="td">DE / FR / IT search over frozen records (pgvector, cosine).</div></div>
+          <div class="tile fragment lift"><div class="tk">Console</div><div class="tt">TarifGuard</div><div class="td">Search to frozen-record detail, review form, labelled AI explain panel.</div></div>
+          <div class="tile fragment lift accent"><div class="tk">Versioning</div><div class="tt">Deterministic</div><div class="td">Every version uniquely addressable. Reproducible billing guaranteed.</div></div>
+        </div>
+        <div class="mstrip fragment">
+          <span><b><span data-target="15.8" data-decimals="1">0</span> ms</b> p95 read latency <i>(target &lt; 200 ms)</i></span>
+          <span><b><span data-target="11588">0</span></b> records frozen <i>(EAL + SL, live)</i></span>
+          <span><b>DE · FR · IT</b> semantic search</span>
+        </div>
+        <aside class="notes">
+          [Product] What is live today: a unified REST and FHIR R4 read API, an MCP server for agents,
+          point-in-time and diff queries, multilingual semantic search, and the TarifGuard console.
+          Reads return in 15.8 ms at p95 against a 200 ms target, over 11,588 frozen records.
+        </aside>
+      </section>
+
+      <!-- 8b · TARIFGUARD CONSOLE (the product, in motion) -->
+      <section data-transition="fade">
+        <p class="kicker">TarifGuard console</p>
+        <h2 style="margin-bottom:0.15em;">Search, then a provable answer.</h2>
+        <hr class="rule">
+        <div style="border:1px solid var(--line); border-radius:12px; overflow:hidden; margin-top:0.5em;">
+          <div style="display:flex; align-items:center; gap:0.6em; background:var(--frost); padding:0.5em 0.8em; border-bottom:1px solid var(--line);">
+            <span style="font-family:var(--font-mono); font-weight:700; color:var(--navy); font-size:0.95rem;">Tarif<span style="color:var(--sky);">Guard</span></span>
+            <span style="display:flex; align-items:center; gap:0.45em; background:#fff; border:1px solid var(--line); border-radius:8px; padding:0.25em 0.7em; font-family:var(--font-mono); font-size:0.85rem; color:var(--body); flex:1; max-width:340px;">
+              <svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="#94A3B8" stroke-width="2"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4-4"/></svg>
+              Hämoglobin
+            </span>
+            <span style="margin-left:auto; font-family:var(--font-mono); font-size:0.74rem; color:var(--muted);">DE · FR · IT · semantic</span>
+          </div>
+          <div style="display:grid; grid-template-columns: minmax(0,0.82fr) minmax(0,1fr) minmax(0,1fr);">
+            <div style="border-right:1px solid var(--line); padding:0.6em 0.7em;">
+              <div style="font-family:var(--font-mono); font-size:0.7rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.06em; margin-bottom:0.45em;">results</div>
+              <div style="border:1px solid var(--sky); background:var(--sky-tint); border-radius:8px; padding:0.4em 0.55em; margin-bottom:0.4em;">
+                <div style="font-family:var(--font-mono); font-weight:600; color:var(--navy); font-size:0.86rem;">EAL 1773.00</div>
+                <div style="font-size:0.82rem; color:var(--body);">Hämoglobin</div>
+              </div>
+              <div style="padding:0.25em 0.55em;">
+                <div style="font-family:var(--font-mono); font-size:0.86rem; color:var(--body);">EAL 1771.00</div>
+                <div style="font-size:0.8rem; color:var(--muted);">Hämatokrit</div>
+              </div>
+              <div style="padding:0.25em 0.55em;">
+                <div style="font-family:var(--font-mono); font-size:0.86rem; color:var(--body);">EAL 1775.00</div>
+                <div style="font-size:0.8rem; color:var(--muted);">Erythrozyten</div>
+              </div>
+            </div>
+            <div class="fragment lift" style="border-right:1px solid var(--line); padding:0.6em 0.8em;">
+              <div style="display:flex; align-items:center; gap:0.45em; margin-bottom:0.45em;">
+                <span style="font-family:var(--font-mono); font-weight:600; color:var(--navy); font-size:0.92rem;">EAL 1773.00</span>
+                <span style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:#fff; background:var(--navy); border-radius:99px; padding:0.08em 0.6em;">FROZEN</span>
+              </div>
+              <div style="font-size:0.84rem; color:var(--body); line-height:1.55;">
+                <div><span style="color:var(--muted); display:inline-block; width:1.4em;">de</span> Hämoglobin</div>
+                <div><span style="color:var(--muted); display:inline-block; width:1.4em;">fr</span> Hémoglobine</div>
+                <div><span style="color:var(--muted); display:inline-block; width:1.4em;">it</span> Emoglobina</div>
+              </div>
+              <div style="display:flex; gap:1.0em; margin-top:0.5em; padding-top:0.45em; border-top:1px solid var(--line);">
+                <div><div style="font-family:var(--font-mono); font-size:0.68rem; color:var(--muted);">tax points</div><div style="font-family:var(--font-mono); font-weight:700; color:var(--navy); font-size:1.05rem;">2.30</div></div>
+                <div><div style="font-family:var(--font-mono); font-size:0.68rem; color:var(--muted);">price</div><div style="font-family:var(--font-mono); font-weight:700; color:var(--navy); font-size:1.05rem;">CHF 2.51</div></div>
+              </div>
+              <div style="font-family:var(--font-mono); font-size:0.74rem; color:var(--sky); margin-top:0.45em;">record_hash 9f2a…c41b</div>
+            </div>
+            <div class="fragment lift" style="padding:0.6em 0.8em; background:var(--frost);">
+              <div style="display:flex; align-items:center; gap:0.45em; margin-bottom:0.45em;">
+                <span style="font-family:var(--font-mono); font-size:0.68rem; font-weight:700; color:#fff; background:var(--sky); border-radius:99px; padding:0.08em 0.6em;">AI</span>
+                <span style="font-family:var(--font-mono); font-size:0.76rem; color:var(--body);">explain · read-only</span>
+              </div>
+              <div style="font-size:0.84rem; color:var(--body); line-height:1.55;">
+                Frozen value, served verbatim. The AI adds context and crosswalk hints only.
+              </div>
+              <div style="font-size:0.8rem; color:var(--navy); margin-top:0.5em; border-left:3px solid var(--sky); padding-left:0.6em; font-weight:600;">
+                Never computes or alters a billing value.
+              </div>
+            </div>
+          </div>
+        </div>
+        <aside class="notes">
+          [Console] This is TarifGuard. You search in any of the three languages, pick a record, and see
+          the frozen value served verbatim with its hash and version. The AI explain panel is clearly
+          labelled and read-only: it adds context and crosswalk hints, but it never computes or alters a
+          billing value. The trust boundary is visible in the product itself.
+        </aside>
+      </section>
+
+      <!-- 9 · MARKET / WHO BUYS -->
+      <section data-transition="fade">
+        <p class="kicker">Who buys</p>
+        <h2>The buyers who feel this pain.</h2>
+        <hr class="rule">
+        <div class="segs">
+          <div class="seg fragment lift">
+            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 20h8"/></svg></div>
+            <div><div class="st">PIS / HIS vendors</div><div class="sd">Practice and hospital information systems that re-implement parsers per source.</div><div class="sx">consume: REST · FHIR R4</div></div>
+          </div>
+          <div class="seg fragment lift">
+            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><path d="M3 21V8l9-5 9 5v13"/><path d="M9 21v-6h6v6"/></svg></div>
+            <div><div class="st">Payers &amp; insurers</div><div class="sd">Insurers reconciling invoices against one authoritative, versioned source.</div><div class="sx">consume: REST · point-in-time</div></div>
+          </div>
+          <div class="seg fragment lift">
+            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><path d="M9 3v6l-5 9a2 2 0 0 0 2 3h12a2 2 0 0 0 2-3l-5-9V3"/><path d="M7 3h10"/></svg></div>
+            <div><div class="st">Labs &amp; diagnostics</div><div class="sd">Laboratory networks integrating EAL and SL across DE, FR, and IT.</div><div class="sx">consume: REST · search</div></div>
+          </div>
+          <div class="seg fragment lift">
+            <div class="si"><svg viewBox="0 0 24 24" fill="none" stroke="#0EA5E9" stroke-width="2"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M12 8V4"/><circle cx="9" cy="14" r="1"/><circle cx="15" cy="14" r="1"/></svg></div>
+            <div><div class="st">AI &amp; health-tech</div><div class="sd">Builders whose agents need provable tariff data, served over MCP.</div><div class="sx">consume: MCP</div></div>
+          </div>
+        </div>
+        <aside class="notes">
+          [Market] The buyers are the people who feel the pain directly: PIS and HIS vendors, payers and
+          insurers, lab and diagnostics networks, and the new wave of AI and health-tech builders. Swiss
+          ambulatory billing touches every practice, vendor, and payer in the country.
+        </aside>
+      </section>
+
+      <!-- 10 · BUSINESS MODEL -->
+      <section data-transition="fade">
+        <p class="kicker">Business model</p>
+        <h2 style="margin-bottom:0.1em;">Transparent pricing. No lock-in.</h2>
+        <hr class="rule">
+        <div class="tiers">
+          <div class="tier fragment lift">
+            <div class="tn">Open Data</div>
+            <div class="tp">free</div>
+            <div class="tb">Open access to public tariff data with attribution. Build trust, drive adoption.</div>
+            <div class="tag">developers</div>
+          </div>
+          <div class="tier feature fragment lift">
+            <div class="tn">Pro</div>
+            <div class="tp">annual flat</div>
+            <div class="tb">Full API, FHIR R4, point-in-time and diff, semantic search, SLA. The vendor default.</div>
+            <div class="tag">PIS / HIS vendors</div>
+          </div>
+          <div class="tier fragment lift">
+            <div class="tn">Scale</div>
+            <div class="tp">usage / per call</div>
+            <div class="tb">Metered API and MCP access for high-volume and agent-driven workloads.</div>
+            <div class="tag">platforms &amp; AI</div>
+          </div>
+          <div class="tier fragment lift">
+            <div class="tn">Enterprise</div>
+            <div class="tp">on-prem</div>
+            <div class="tb">Private deployment via Helm, dedicated support, custom sources.</div>
+            <div class="tag">payers &amp; large vendors</div>
+          </div>
+        </div>
+        <p class="pull fragment" style="margin-top:0.7em;">No lock-in, no hidden costs.
+          <span>pricing model being validated with the market through the live survey</span></p>
+        <aside class="notes">
+          [Business model] Transparent, with no lock-in. An open-data tier drives adoption, a flat annual
+          Pro plan is the vendor default, usage-based Scale serves high-volume and agent workloads, and
+          Enterprise offers private on-prem deployment. The exact price points are being validated with
+          the market through the live survey.
+        </aside>
+      </section>
+
+      <!-- 11 · TRACTION -->
+      <section data-transition="fade" data-counters>
+        <p class="kicker">Traction</p>
+        <h2 style="margin-bottom:0.15em;">Real, today.</h2>
+        <hr class="rule">
+        <div class="live">
+          <div class="lcard fragment lift">
+            <div class="lbar"><span class="dotrow"><span></span><span></span><span></span></span><span class="url">tarifhub-landing.vercel.app</span></div>
+            <div class="lbody"><div class="lt">Live landing</div><div class="ld">Bilingual (DE / EN), positioning the open tariff-data service.</div></div>
+          </div>
+          <div class="lcard fragment lift">
+            <div class="lbar"><span class="dotrow"><span></span><span></span><span></span></span><span class="url">tarifhub-survey.vercel.app</span></div>
+            <div class="lbody"><div class="lt">Live customer-discovery survey</div><div class="ld">5 sections, targeting PIS / HIS vendors. Buyer, spend, and pricing signal.</div></div>
+          </div>
+        </div>
+        <div class="grid g3" style="margin-top:0.8em;">
+          <div class="stat"><div class="num"><span data-target="11588">0</span></div><div class="lab">records frozen, served deterministically (EAL + SL)</div></div>
+          <div class="stat"><div class="num"><span data-target="15.8" data-decimals="1">0</span><span class="u"> ms</span></div><div class="lab">p95 read latency, well inside the 200 ms target</div></div>
+          <div class="stat"><div class="num"><span data-target="0">0</span></div><div class="lab">duplicate hashes: reproducibility proven, not promised</div></div>
+        </div>
+        <aside class="notes">
+          [Traction] Two properties are live and bilingual: the landing page and a five-section
+          customer-discovery survey aimed at the exact buyer. Behind them is a working MVP: 11,588 records
+          frozen and served deterministically, p95 reads at 15.8 ms, and zero duplicate hashes, so
+          reproducibility is proven rather than promised.
+        </aside>
+      </section>
+
+      <!-- 12 · ROADMAP -->
+      <section data-transition="fade">
+        <p class="kicker">Roadmap</p>
+        <h2 style="margin-bottom:0.2em;">From two sources to the standard.</h2>
+        <svg class="rmap-line" viewBox="0 0 1000 54" role="img" aria-label="Roadmap timeline from now to vision">
+          <line class="track" x1="60" y1="27" x2="940" y2="27"/>
+          <path class="fill" d="M60 27 H 940"/>
+          <circle class="node" cx="125" cy="27" r="9"/>
+          <circle class="node" cx="375" cy="27" r="9"/>
+          <circle class="node future" cx="625" cy="27" r="9"/>
+          <circle class="node future" cx="875" cy="27" r="9"/>
+        </svg>
+        <div class="phases">
+          <div class="phase fragment lift">
+            <div class="pn">Now · built</div>
+            <div class="ph">Foundation, live</div>
+            <ul><li>EAL + SL, frozen</li><li>REST · FHIR R4 · MCP</li><li>Semantic search + console</li></ul>
+          </div>
+          <div class="phase fragment lift">
+            <div class="pn">Next</div>
+            <div class="ph">More sources</div>
+            <ul><li>TARDOC · MiGeL · AL</li><li>Wider FHIR coverage</li><li>Update automation</li></ul>
+          </div>
+          <div class="phase fut fragment lift">
+            <div class="pn">Then</div>
+            <div class="ph">TarifIQ rules</div>
+            <ul><li>Combinability rules</li><li>TARMED to TARDOC crosswalk</li><li>Deterministic, versioned</li></ul>
+          </div>
+          <div class="phase fut fragment lift">
+            <div class="pn">Vision</div>
+            <div class="ph">Apps &amp; enterprise</div>
+            <ul><li>KassenFlow (payer)</li><li>MeldePilot (reporting)</li><li>On-prem deployment</li></ul>
+          </div>
+        </div>
+        <aside class="notes">
+          [Roadmap] Today the foundation is live: two BAG sources, the full read surface, search, and the
+          console. Next come more sources and update automation. Then TarifIQ adds a deterministic rules
+          layer and the TARMED to TARDOC crosswalk. The longer vision is L3 apps, KassenFlow and
+          MeldePilot, and enterprise on-prem. Now is built; Then and Vision are planned.
+        </aside>
+      </section>
+
+      <!-- 13 · TEAM -->
+      <section data-transition="fade">
+        <p class="kicker">Team</p>
+        <h2>Built by one engineer, end to end.</h2>
+        <hr class="rule">
+        <div class="founder">
+          <div class="av">EÜ</div>
+          <div>
+            <div class="fn">Erhan Ünlü</div>
+            <div class="fr">Founder · technical solo founder</div>
+            <div class="fd">Designed and shipped the whole platform: ingestion, the freeze line, the
+              serving API, the MCP server, and the console, with an AI-assisted, gate-enforced pipeline.
+              Now looking for the right partners to take it to market.</div>
+            <div class="fl">linkedin.com/in/erhanuenlue &nbsp;·&nbsp; github.com/erhanuenlue</div>
+          </div>
+        </div>
+        <aside class="notes">
+          [Team] tarifhub was built end to end by one technical founder: the ingestion pipeline, the
+          freeze line, the serving API, the MCP server, and the console. The platform exists and runs.
+          The next step is the right commercial partners to scale it.
+        </aside>
+      </section>
+
+      <!-- 14 · THE ASK / CTA -->
+      <section data-transition="fade">
+        <p class="kicker">The ask</p>
+        <div class="wordmark" style="font-size:2.8rem;">Let's make it the standard.</div>
+        <hr class="rule" style="margin-top:0.7em;">
+        <div class="cta">
+          <div class="c accent">
+            <div class="ck">Pilot</div>
+            <div class="ch">Design partners</div>
+            <div class="cd">PIS / HIS vendors to integrate against the API and shape the roadmap.</div>
+          </div>
+          <div class="c">
+            <div class="ck">Validate</div>
+            <div class="ch">Take the survey</div>
+            <div class="cd">10 minutes, confidential.<span class="mono">tarifhub-survey.vercel.app</span></div>
+          </div>
+          <div class="c">
+            <div class="ck">Contact</div>
+            <div class="ch">Talk to the founder</div>
+            <div class="cd">Erhan Ünlü<span class="mono">linkedin.com/in/erhanuenlue</span><span class="mono">github.com/erhanuenlue</span></div>
+          </div>
+        </div>
+        <p class="lead" style="margin-top:1.0em;"><strong>All Swiss tariff data. One API. Trustworthy by construction.</strong></p>
+        <aside class="notes">
+          [Ask] Three ways to move forward: become a design partner, take the 10-minute survey, or talk
+          to me directly. The pitch in one line: all Swiss tariff data, one API, trustworthy by
+          construction.
+        </aside>
+      </section>
+
+    </div>
+  </div>
+
+  <!-- Reveal.js runtime + speaker-notes plugin, vendored locally (offline-safe) -->
+  <script src="reveal/reveal.js"></script>
+  <script src="reveal/plugin/notes/notes.js"></script>
+  <script>
+    var reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+    // Reduced motion: neutralise the per-slide data-transition="fade" so the global
+    // 'none' actually wins (reveal.css fade rule excludes sections that set their own).
+    if (reduceMotion) {
+      document.querySelectorAll('.slides section[data-transition]')
+        .forEach(function (s) { s.setAttribute('data-transition', 'none'); });
+    }
+
+    Reveal.initialize({
+      hash: true,
+      transition: reduceMotion ? 'none' : 'fade',
+      transitionSpeed: 'fast',
+      controls: true,
+      progress: true,
+      slideNumber: 'c/t',
+      width: 1280,
+      height: 720,
+      margin: 0.06,
+      autoAnimate: !reduceMotion,   /* calm cross-slide morph of the freeze line; cuts under reduced motion */
+      plugins: [ RevealNotes ]
+    });
+
+    /* ---- on-slide-enter seal sequence: re-arm CSS keyframes per fragment show ---- */
+    function armSeal(fragEl) {
+      if (reduceMotion || !fragEl) return;
+      var idx = fragEl.getAttribute('data-fragment-index');
+      if (idx === '2') {  /* the seal step */
+        var ring = fragEl.querySelector('.ring');
+        var shackle = fragEl.querySelector('.lock-shackle');
+        var grp = fragEl.querySelector('.lock-grp');
+        [ring, shackle, grp].forEach(function (el) {
+          if (!el) return;
+          el.classList.remove('go');
+          void el.getBoundingClientRect();   /* reflow so the animation restarts */
+          el.classList.add('go');
+        });
+      }
+    }
+    Reveal.on('fragmentshown', function (e) { armSeal(e.fragment); });
+
+    /* ---- number roll-ups: prefix/suffix are static sibling spans; this animates the
+            numeric span only. Supports data-decimals for non-integer targets (e.g. 15.8). ---- */
+    function animateCounters(slide) {
+      slide.querySelectorAll('[data-target]').forEach(function (el) {
+        var target = parseFloat(el.getAttribute('data-target'));
+        var decimals = parseInt(el.getAttribute('data-decimals') || '0', 10);
+        function render(v) {
+          el.textContent = decimals > 0 ? v.toFixed(decimals) : String(Math.round(v));
+        }
+        if (reduceMotion) { render(target); return; }
+        var dur = 1200, start = null;
+        function step(ts) {
+          if (!start) start = ts;
+          var p = Math.min((ts - start) / dur, 1);
+          var eased = 1 - Math.pow(1 - p, 3);
+          render(target * eased);
+          if (p < 1) requestAnimationFrame(step); else render(target);
+        }
+        render(0);
+        requestAnimationFrame(step);
+      });
+    }
+    Reveal.on('slidechanged', function (e) {
+      if (e.currentSlide.hasAttribute('data-counters')) animateCounters(e.currentSlide);
+    });
+    Reveal.on('ready', function (e) {
+      if (e.currentSlide && e.currentSlide.hasAttribute('data-counters')) animateCounters(e.currentSlide);
+    });
+  </script>
+</body>
+</html>

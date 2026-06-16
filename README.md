@@ -11,7 +11,7 @@
 ![FastAPI](https://img.shields.io/badge/FastAPI-Pydantic_v2-009688.svg)
 ![Postgres](https://img.shields.io/badge/PostgreSQL_16-pgvector-336791.svg)
 
-[Documentation](https://erhanuenlue.github.io/tarifhub/) · [Architecture (arc42)](https://erhanuenlue.github.io/tarifhub/arc42/01-introduction-goals/) · [How it was built](aise-harness/) · [Landing page](https://tarifhub-landing.vercel.app/) · [Survey](https://tarifhub-survey.vercel.app/)
+[Documentation](https://erhanuenlue.github.io/tarifhub/) · [Architecture (arc42)](https://erhanuenlue.github.io/tarifhub/arc42/01-introduction-goals/) · [How it was built](aise-harness/) · [Landing page](https://tarifhub-landing.vercel.app/) · [Survey](https://tarifhub-survey.vercel.app/) · [Pitch deck](https://erhanuenlue.github.io/tarifhub/pitch/)
 
 </div>
 
