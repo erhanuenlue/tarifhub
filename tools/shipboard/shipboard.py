@@ -809,8 +809,7 @@ def project():
             preview = [l for l in today_file.read_text(encoding="utf-8").splitlines() if l.strip()][:26]
         except Exception:
             pass
-    # blocks are PROGRESS stages now — measured by cas_check (owner: no deadlines);
-    # only the Moodle submission date survives as days_left.
+    # blocks are PROGRESS stages now — measured by cas_check (owner: no deadlines).
     flags = {
         "compose": (ROOT / "deploy" / "docker-compose.yml").exists(),
         "helm": any((ROOT / "deploy").rglob("Chart.yaml")) if (ROOT / "deploy").is_dir() else False,

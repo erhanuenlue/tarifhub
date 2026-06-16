@@ -1,6 +1,6 @@
 # tarifhub — Project Facts (read first)
 
-Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (post-CAS) → L3 apps (demo now). **CAS capstone due Mon 6 July 2026, 00:00** (submit as Gruppe K: PDF with clickable repo URL). Grading strategy lives in Erhan's corpus (CAS Dossier v3.1); the operative grading anchors every session must honour are below.
+Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (post-CAS) → L3 apps (demo now). **CAS capstone due Mon 6 July 2026, 00:00.** Deliverable: the public repository + the GitHub Pages documentation site. Grading strategy lives in Erhan's corpus (CAS Dossier v3.1); the operative grading anchors every session must honour are below.
 
 ## CAS grading anchors — operative (official Bewertungskriterien, 12 Jun 2026)
 
@@ -11,8 +11,8 @@ Scoring is **conjunctive**: a criterion's level is awarded only if **all** of it
 - **Spec shape (crits 1–3):** a marked core set of **3–5 Kernfunktionen** with actors + business benefit, stakeholders identified; ≥3 NfAs each with **Zielwert + Messverfahren + visible ADR link**; **one KI-Nutzen sentence per Kernfunktion** in the vision.
 - **Acceptance criteria (crit 11):** testable, per Kernfunktion, with **explicit cross-references to the NfAs**.
 - **Test strategy (crit 12):** must explicitly address **Tests der KI-Anteile** — guardrail behaviour and non-deterministic responses (our boundary test, gap-gate tests, fill-reuse determinism tests, named as such).
-- **AI-tools chapter (crit 15):** structured **by phase — Generierung · Review · Refactoring · Recherche** — each claim evidenced by prompts/diffs/commit refs; closes with a **complete Erklärung der Eigenständigkeit** (standard self-authored academic form; Erhan signs).
-- **Fazit (crit 18):** built on **three veto decisions ("nie an die KI delegiert") — concrete, justified, evidenced** — plus the transfer to future working practice. House vetoes: the freeze line · human gates over plans/merges · final acceptance (go-live, the Moodle submission and the Eigenständigkeitserklärung).
+- **AI-tools chapter (crit 15):** tools named; structured **by phase — Generierung · Review · Refactoring · Recherche** — each claim evidenced by prompts/diffs/commit refs. That is the whole of crit 15 for this CAS; nothing further is required (exact level conditions in the git-ignored rubric reference).
+- **Fazit (crit 18):** built on **three veto decisions ("nie an die KI delegiert") — concrete, justified, evidenced** — plus the transfer to future working practice. House vetoes: the freeze line · human gates over plans/merges · final acceptance (the go-live decision and making the work public).
 - **Report-wide (crits 4/8/17):** a **durchgängiger roter Faden** Problemstellung→Lösung→Fazit; framework choice justified in the report (ADR-001); container/architecture style choice justified (ADR-002/006).
 
 **Full anchor text (all 18 criteria, all levels):** `docs/cas/bewertungskriterien-anker.md` — local working reference, **git-ignored** (course-internal material; this repo goes public in Block 3). Consult it whenever a criterion's exact level conditions matter.
