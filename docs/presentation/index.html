@@ -93,8 +93,8 @@
     .reveal .mono, .reveal code { font-family: var(--font-mono); font-size: 0.92em; color: var(--navy); }
 
     /* two-column: text left, figure right */
-    .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 1.2em; align-items: center; }
-    .cols.wide-fig { grid-template-columns: 0.85fr 1.15fr; }
+    .cols { display: grid; grid-template-columns: minmax(0,1fr) minmax(0,1fr); gap: 1.2em; align-items: center; }
+    .cols.wide-fig { grid-template-columns: minmax(0,0.85fr) minmax(0,1.15fr); }
     .figure { text-align: center; }
     .figure img {
       max-height: 560px; max-width: 100%;
@@ -443,6 +443,38 @@
         </aside>
       </section>
 
+      <!-- 5b · DEV ENVIRONMENT: the repo carries its own operating manual -->
+      <section data-transition="fade">
+        <p class="kicker">The dev environment</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>The repo carries its own operating manual.</h2>
+            <hr class="rule">
+            <ul>
+              <li class="fragment lift"><strong>AGENTS.md</strong>: the project facts and the freeze-line invariant</li>
+              <li class="fragment lift"><strong>CLAUDE.md</strong>: the workflow, plus one model pin (ADR-018)</li>
+              <li class="fragment lift">The rules are <strong>enforced by hooks</strong>, not by trust</li>
+            </ul>
+          </div>
+          <div>
+            <div class="stack">
+              <div class="layer l0"><span class="lt">AGENTS.md</span> &nbsp;<span class="lk">facts · layers · "no AI on the value path"</span></div>
+              <div class="layer l1"><span class="lt">CLAUDE.md</span> &nbsp;<span class="lk">workflow · plan-gate · effort policy</span></div>
+              <div class="layer"><span class="lt">.claude/</span> &nbsp;<span class="lk">model-pinned agents · hooks · skills</span></div>
+              <div class="layer"><span class="lt">.mcp.json</span> &nbsp;<span class="lk">Eraser diagrams · Context7 docs</span></div>
+            </div>
+            <p class="caption" style="text-align:left;">Checked in, so every session starts from the same constraints.</p>
+          </div>
+        </div>
+        <aside class="notes">
+          [~20s] Bevor die erste Zeile Code entstand, habe ich die Umgebung aufgesetzt: Das Repository
+          trägt seine eigene Betriebsanleitung. AGENTS.md hält die Projektfakten und die eine Invariante,
+          kein KI-Client auf dem Wertpfad. CLAUDE.md hält den Arbeitsablauf und genau einen Modell-Pin.
+          Im .claude-Ordner sitzen die modell-fixierten Agenten, Hooks und Skills; .mcp.json bindet
+          Eraser und Context7 an. Alles eingecheckt: Jede Session startet aus denselben Bedingungen.
+        </aside>
+      </section>
+
       <!-- 6 · /ship: MULTI-MODEL ASSEMBLY LINE -->
       <section data-transition="fade">
         <p class="kicker">How it was built</p>
@@ -635,10 +667,20 @@
       <!-- 13 · THE DASHBOARD -->
       <section data-transition="fade">
         <p class="kicker">Observable end to end</p>
-        <h3>The whole system is inspectable while it runs.</h3>
-        <div class="figure shot" style="margin-top:0.3em;">
-          <img src="../img/shipboard-overview.png" alt="Shipboard: the live /ship pipeline dashboard" style="max-height:500px;">
-          <p class="caption">Shipboard: the live /ship pipeline, per-agent cost, and the CAS grading floor. Captured while this deck was being built.</p>
+        <div class="cols wide-fig">
+          <div>
+            <h2>The whole system is inspectable while it runs.</h2>
+            <hr class="rule">
+            <ul>
+              <li class="fragment lift">Reads real pipeline events, git and CI state, the fitness function</li>
+              <li class="fragment lift">Tabs: pipeline · per-agent cost · grading floor · the loop</li>
+              <li class="fragment lift">Its rule: <strong>never assert a state it cannot show evidence for</strong></li>
+            </ul>
+          </div>
+          <div class="figure shot">
+            <img src="../img/shipboard-overview.png" alt="Shipboard: the live /ship pipeline dashboard" style="max-height:460px;">
+            <p class="caption">Shipboard: the live /ship pipeline, per-agent cost, and the CAS grading floor. Captured while this deck was being built.</p>
+          </div>
         </div>
         <aside class="notes">
           [~19s] Ein einziges, abhängigkeitsfreies Dashboard macht das System lesbar: Es liest echte
