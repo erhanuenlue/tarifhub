@@ -1,17 +1,18 @@
 // diagramType: flowchart-diagram
 // Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
 // this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
-// No boundary box: a group around all 12 components forces a single 12-wide row (aspect ~6:1,
+// No boundary box: a group around all in-service components forces a single wide row (aspect ~6:1,
 // unreadable in the PDF). The ingestion-service scope is carried by the title and by colour
 // (orange = in-service components; gray/yellow/green = externals), matching the data-flow diagram.
 // Labels are concise; the full per-component responsibility table lives in arc42 section 5.
-title Component view: ingestion service (L0, pre-freeze)
+title Component view: ingestion service (L0, pre-freeze + human review write-back)
 direction right
 colorMode pastel
 typeface clean
 
 Sources [icon: download, color: gray, label: "Public tariff sources (BAG EAL, BAG ePL)"]
 Claude [icon: cpu, color: yellow, label: "Claude API (structured output, pre-freeze only)"]
+Console [icon: monitor, color: gray, label: "TarifGuard console (L3): human review write-back"]
 DB [icon: database, color: green, label: "PostgreSQL + pgvector (frozen records, audit log, embeddings)"]
 
 Pipeline [icon: server, color: orange, label: "Pipeline orchestrator: pipeline.py run_pipeline (load to audit)"]
@@ -22,6 +23,7 @@ AiMap [icon: cpu, color: yellow, label: "ai_map seam: fill-only non-billing, gap
 Validator [icon: check-circle, color: orange, label: "Validator: tariff_validator.py to ValidationResult"]
 Scorer [icon: bar-chart-2, color: orange, label: "Confidence scorer: scorer.py, score 0..1"]
 Review [icon: eye, color: orange, label: "Review routing: requires_review below 0.85"]
+ReviewAPI [icon: server, color: orange, label: "Review API: GET /review/queue, POST /review; rejects billing-field edits (400)"]
 Freeze [icon: lock, color: red, label: "Freeze: freeze_record.py SHA-256 record_hash, immutable versions"]
 Embedder [icon: layers, color: orange, label: "Embedder: embedder.py e5 1024-dim, hashing stub offline"]
 Repo [icon: database, color: orange, label: "Repository: tariff_repository.py persists rows + embeddings"]
@@ -38,6 +40,9 @@ Mapper > Validator: canonical TariffRecord
 Validator > Scorer: validated record
 Scorer > Review: confidence
 Review > Freeze: record plus requires_review
+Console > ReviewAPI: POST /review (approve or correct) [color: gray]
+ReviewAPI > Validator: re-validate the decided record [color: gray]
+ReviewAPI > Freeze: freeze a new immutable version (version + 1) [color: gray]
 Freeze > Repo: frozen record, record_hash [color: red]
 Embedder > Repo: 1024-dim embedding
 Repo > DB: INSERT immutable tariff rows [color: green]

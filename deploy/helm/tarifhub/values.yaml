@@ -3,11 +3,16 @@
 nameOverride: ""
 fullnameOverride: ""
 
+# Ingestion has two distinct workloads sharing one image (ADR-009 addendum):
+#   1. review   -> the long-running review/read API (Deployment + Service, below);
+#   2. batch    -> the load->harmonise->freeze pipeline, run-to-completion (Job/CronJob).
+# The image's default CMD serves the review API; the batch overrides it with the CLI.
 ingestion:
   image:
     repository: ghcr.io/tarifhub/ingestion
     tag: latest
     pullPolicy: IfNotPresent
+  # The long-running review API (ingestion-review-deploy.yaml).
   replicas: 1
   port: 8000
   env:
@@ -20,6 +25,17 @@ ingestion:
     limits:
       cpu: "1"
       memory: 512Mi
+  # The run-to-completion batch pipeline (ingestion-batch-job.yaml).
+  batch:
+    enabled: true
+    # Empty schedule => a one-shot Job (the honest default: BAG releases are irregular).
+    # Set a cron expression (e.g. "0 3 * * 1") to render a CronJob instead.
+    schedule: ""
+    restartPolicy: Never
+    backoffLimit: 1
+    # The bundled sample source the batch ingests, and its tariff system (selects the parser).
+    system: EAL
+    path: /app/sample-data/input/eal_sample.xlsx
 
 serving:
   image:

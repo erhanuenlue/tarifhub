@@ -1,0 +1,68 @@
+# L0 ingestion: the BATCH pipeline (load -> harmonise -> freeze), run-to-completion.
+# This is the second of the two distinct ingestion workloads (the first is the long-running
+# review API in ingestion-review-deploy.yaml). A batch that runs to completion must NOT be a
+# Deployment: a Deployment would restart the finished pod forever and report 0/1 not-ready.
+# It is therefore a Kubernetes Job (or a CronJob when .Values.ingestion.batch.schedule is set,
+# e.g. a quarterly BAG release cadence). It overrides the image command to run the ingestion
+# CLI over a bundled source, exits 0 on success and reports Completed. It writes new frozen
+# versions only; it stays on the deterministic side of the freeze line.
+{{- define "tarifhub.ingestionBatch.podTemplate" -}}
+metadata:
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: ingestion-batch
+spec:
+  restartPolicy: {{ .Values.ingestion.batch.restartPolicy | default "Never" }}
+  containers:
+    - name: ingestion-batch
+      image: "{{ .Values.ingestion.image.repository }}:{{ .Values.ingestion.image.tag }}"
+      imagePullPolicy: {{ .Values.ingestion.image.pullPolicy }}
+      # Run-to-completion: override the image's review-API CMD with the batch CLI.
+      command: ["python", "-m", "tarifhub_ingest.cli"]
+      args: ["--path", {{ .Values.ingestion.batch.path | quote }}, "--system", {{ .Values.ingestion.batch.system | quote }}]
+      env:
+        - name: TARIFHUB_DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: {{ .Release.Name }}-db
+              key: password
+        - name: TARIFHUB_DB_URL
+          value: "postgresql://{{ .Values.postgres.username }}:$(TARIFHUB_DB_PASSWORD)@{{ .Release.Name }}-postgres:{{ .Values.postgres.port }}/{{ .Values.postgres.database }}"
+        {{- range $key, $value := .Values.ingestion.env }}
+        - name: {{ $key }}
+          value: {{ $value | quote }}
+        {{- end }}
+      resources:
+        {{- toYaml .Values.ingestion.resources | nindent 8 }}
+{{- end -}}
+{{- if .Values.ingestion.batch.enabled }}
+{{- if .Values.ingestion.batch.schedule }}
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: {{ .Release.Name }}-ingestion-batch
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: ingestion-batch
+spec:
+  schedule: {{ .Values.ingestion.batch.schedule | quote }}
+  concurrencyPolicy: Forbid
+  jobTemplate:
+    spec:
+      backoffLimit: {{ .Values.ingestion.batch.backoffLimit | default 1 }}
+      template:
+        {{- include "tarifhub.ingestionBatch.podTemplate" . | nindent 8 }}
+{{- else }}
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-ingestion-batch
+  labels:
+    app.kubernetes.io/name: tarifhub
+    app.kubernetes.io/component: ingestion-batch
+spec:
+  backoffLimit: {{ .Values.ingestion.batch.backoffLimit | default 1 }}
+  template:
+    {{- include "tarifhub.ingestionBatch.podTemplate" . | nindent 4 }}
+{{- end }}
+{{- end }}

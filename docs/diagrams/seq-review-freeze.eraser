@@ -1,35 +1,33 @@
 // diagramType: sequence-diagram
 // Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
 // this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
-title Runtime view: review to freeze loop (design level, ADR-013)
+title Runtime view: implemented review to freeze loop (ADR-013)
 colorMode pastel
 typeface clean
 
 Expert [icon: user, color: purple]
-Console [icon: monitor, color: purple, label: "TarifGuard console (review form, designed)"]
-API [icon: server, color: orange, label: "Review API (ingestion, designed)"]
+Console [icon: monitor, color: purple, label: "TarifGuard console (review form)"]
+API [icon: server, color: orange, label: "Review API (ingestion): GET /review/queue, POST /review"]
 Validator [icon: check-circle, color: orange, label: "Validator + scorer"]
 Freeze [icon: lock, color: red, label: "freeze() versioning/freeze_record.py"]
 Audit [icon: book, color: green, label: "AuditLogger"]
 DB [icon: database, color: green, label: "PostgreSQL"]
 
 Expert > Console: open flagged record (master-detail view)
-Console > API: fetch record + confidence detail
-API > Console: record, scores, review flags
+Console > API: GET /review/queue
+API > Console: flagged records: scores, requires_review flags
 Expert > Console: submit correction or approval (review form)
-Console > API: POST review decision
-API > Validator: re-validate (validate + score)
-Validator > API: ValidationResult + confidence
-alt [label: "decision = approve"] {
-  API > Freeze: freeze(corrected record)
-  Freeze > Freeze: SHA-256 record_hash over sorted canonical content, re-freezing raises ValueError, guard_frozen protects versioning and audit
-  Freeze > DB: INSERT new immutable version, supersedes the flagged one
-  API > Audit: append review_decision + freeze events
-  Audit > DB: INSERT audit_log rows, append-only
-  API > Console: frozen, record leaves the review queue
+Console > API: POST /review (action: approve or correct)
+alt [label: "correction targets a billing field (tax_points / price_chf)"] {
+  API > Console: HTTP 400 rejected, the value path is never human-edited
 }
-else [label: "decision = reject or needs rework"] {
-  API > Audit: append review_decision event
-  Audit > DB: INSERT audit_log row, append-only
-  API > Console: record stays in the review queue
+else [label: "approve or non-billing correction"] {
+  API > Validator: re-validate via the same deterministic validate + score
+  Validator > API: ValidationResult + confidence (HTTP 422 if still invalid)
+  API > Freeze: freeze(decided record)
+  Freeze > Freeze: new version (version + 1), fresh SHA-256 record_hash over sorted canonical content; the flagged version stays immutable, re-freezing it raises ValueError; guard_frozen protects versioning and audit
+  Freeze > DB: INSERT new immutable version, supersedes the flagged one
+  API > Audit: append review_approve / review_correct event plus freeze
+  Audit > DB: INSERT audit_log rows, append-only
+  API > Console: frozen v+1, requires_review = false, record leaves the queue
 }

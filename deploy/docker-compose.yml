@@ -1,10 +1,18 @@
 # Local development stack. Default: just the database.
 #   docker compose -f deploy/docker-compose.yml up -d db
 # Profiles:
-#   --profile app      the wired ingestion + serving + console stack (the review loop)
+#   --profile app      the wired ingestion review API + serving + console stack (the review loop)
+#   --profile batch    the run-to-completion batch ingestion (load -> harmonise -> freeze)
 #   --profile objects  MinIO object store
+# Ingestion has two distinct workloads (mirrors the Helm Deployment-vs-Job split):
+#   - ingestion        the long-running REVIEW API (GET /review/queue, POST /review); the
+#                      console proxies to it via INGEST_BASE_URL. Profile: app.
+#   - ingestion-batch  the run-to-completion pipeline (the CLI over a bundled source). It
+#                      exits when done; it is NOT a long-running service. Profile: batch.
 # The review write-back loop end to end (console -> ingestion POST /review -> freeze):
 #   docker compose -f deploy/docker-compose.yml --profile app up -d
+# Run the batch pipeline once against the db (run-to-completion, then exits):
+#   docker compose -f deploy/docker-compose.yml --profile batch run --rm ingestion-batch
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -16,6 +24,10 @@ services:
     ports: ["5432:5432"]
     volumes:
       - tarifhub-pgdata:/var/lib/postgresql/data
+      # Apply the canonical schema on first start so the review API and batch start cleanly
+      # (init_schema is a deliberate no-op on Postgres; the DDL lives in db/).
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
+      - ../db/migrations/001_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U tarifhub"]
       interval: 5s
@@ -28,6 +40,8 @@ services:
   ingestion:
     build:
       context: ../services/ingestion
+    # Shared image: the batch one-shot (ingestion-batch) reuses it with a CMD override.
+    image: tarifhub-ingestion
     container_name: tarifhub-ingestion
     profiles: [app]
     depends_on:
@@ -44,6 +58,29 @@ services:
       timeout: 5s
       retries: 5
       start_period: 15s
+
+  # L0 ingestion (batch): the run-to-completion pipeline, distinct from the review API above.
+  # Same image, but it overrides the CMD to run the ingestion CLI (load, harmonise, freeze)
+  # over a bundled sample, then exits, so restart is "no" and it has no healthcheck (a one-shot
+  # is never "healthy"). It defaults to the offline SQLite mirror so it runs to completion with
+  # the bundled stub embedder, exactly as the offline test suite does.
+  #   docker compose -f deploy/docker-compose.yml --profile batch run --rm ingestion-batch
+  ingestion-batch:
+    build:
+      context: ../services/ingestion
+    image: tarifhub-ingestion
+    container_name: tarifhub-ingestion-batch
+    profiles: [batch]
+    restart: "no"
+    environment:
+      # Offline run-to-completion: the bundled stub embedder (16-dim) writes the SQLite mirror.
+      # Override INGEST_BATCH_DB_URL to target the shared Postgres, which requires the e5
+      # (1024-dim) embedder (TARIFHUB_EMBEDDINGS=e5, ai extra): its vector(1024) column rejects
+      # the 16-dim stub. This is the same offline/online split as the rest of the stack.
+      TARIFHUB_DB_URL: ${INGEST_BATCH_DB_URL:-sqlite:////data/tarifhub.db}
+      TARIFHUB_REVIEW_THRESHOLD: "0.85"
+      TARIFHUB_EMBEDDINGS: ${INGEST_BATCH_EMBEDDINGS:-stub}
+    command: ["python", "-m", "tarifhub_ingest.cli", "--path", "/app/sample-data/input/bag_epl_sample.ndjson", "--system", "SL"]
 
   # L1 serving: deterministic read-only API the console reads frozen records from.
   serving:

@@ -1,26 +1,36 @@
+# L0 ingestion: the long-running REVIEW API (crit-16).
+# This is one of the two distinct ingestion workloads (see ingestion-batch-job.yaml for the
+# other): a perpetual HTTP service that hosts the human-in-the-loop review surface
+# (GET /review/queue, POST /review) plus the read endpoints. The console targets its Service
+# via INGEST_BASE_URL. Because it is long-running it is correctly a Deployment with a working
+# readiness/liveness probe, so it reports 1/1, never the 0/1 artifact a run-to-completion
+# batch produces under a Deployment. It stays on the deterministic side of the freeze line
+# (the image ships no LLM client on this path).
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: {{ .Release.Name }}-ingestion
   labels:
     app.kubernetes.io/name: tarifhub
-    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/component: ingestion-review
 spec:
   replicas: {{ .Values.ingestion.replicas }}
   selector:
     matchLabels:
       app.kubernetes.io/name: tarifhub
-      app.kubernetes.io/component: ingestion
+      app.kubernetes.io/component: ingestion-review
   template:
     metadata:
       labels:
         app.kubernetes.io/name: tarifhub
-        app.kubernetes.io/component: ingestion
+        app.kubernetes.io/component: ingestion-review
     spec:
       containers:
-        - name: ingestion
+        - name: ingestion-review
           image: "{{ .Values.ingestion.image.repository }}:{{ .Values.ingestion.image.tag }}"
           imagePullPolicy: {{ .Values.ingestion.image.pullPolicy }}
+          # The image default CMD serves the review/read API (uvicorn ...main:app); the batch
+          # Job overrides this command to run the run-to-completion CLI instead.
           ports:
             - name: http
               containerPort: {{ .Values.ingestion.port }}

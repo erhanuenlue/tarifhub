@@ -5,8 +5,17 @@
  * review endpoint is implemented now (GET /review/queue, POST /review); when INGEST_BASE_URL
  * is set the BFF route (app/api/review/route.ts) proxies to it and these fixtures are unused.
  * The items model what the endpoint returns: flagged records (requires_review === true) with
- * the deterministic raw extract beside the ai_map proposal, per field. Billing fields
- * (tax_points / price_chf) are never AI-filled — they appear unchanged and certified.
+ * the deterministic raw extract beside the ai_map proposal, per field.
+ *
+ * WHAT AI_MAP ACTUALLY DOES (so the demo never overclaims): ai_map is fill-only for
+ * designation.fr / designation.it / category, and only where the source value is absent.
+ * Such a field is shown with raw === null and proposal === the AI value (aiFilled: true).
+ * Every field the deterministic extract already provides — designation.de, unit, and the
+ * billing fields — is shown raw === proposal with aiFilled: false; ai_map never cleans,
+ * normalises, or re-authors a value the rules already produced. Billing fields
+ * (tax_points / price_chf) are never AI-filled — they appear unchanged and certified. See
+ * services/ingestion/src/tarifhub_ingest/mappers/tariff_mapper.py (the AIRefinement schema
+ * and the fill-only merge in _claude_assisted_map).
  */
 import type { ReviewItem } from "@/lib/api";
 
@@ -41,10 +50,13 @@ export const REVIEW_QUEUE: ReviewItem[] = [
     confidence: 0.71,
     requires_review: true,
     ai_model: "claude-opus-4-8",
-    flagged_reason: "low confidence 0.71 — noisy source designation normalised by ai_map",
+    flagged_reason: "harmonization_confidence 0.71 < 0.85 — fr/it and category absent in source",
     fields: [
-      { field: "designation.de", label: "Designation (DE)", raw: "Haemoglobln A1c  (HbA1 c)", proposal: "Hämoglobin A1c (HbA1c)", aiFilled: true, billing: false },
-      { field: "unit", label: "Unit", raw: null, proposal: "Bestimmung", aiFilled: true, billing: false },
+      { field: "designation.de", label: "Designation (DE)", raw: "Hämoglobin A1c (HbA1c)", proposal: "Hämoglobin A1c (HbA1c)", aiFilled: false, billing: false },
+      { field: "designation.fr", label: "Designation (FR)", raw: null, proposal: "Hémoglobine A1c (HbA1c)", aiFilled: true, billing: false },
+      { field: "designation.it", label: "Designation (IT)", raw: null, proposal: "Emoglobina A1c (HbA1c)", aiFilled: true, billing: false },
+      { field: "category", label: "Category", raw: null, proposal: "Klinische Chemie", aiFilled: true, billing: false },
+      { field: "unit", label: "Unit", raw: "Bestimmung", proposal: "Bestimmung", aiFilled: false, billing: false },
       { field: "tax_points", label: "Tax points", raw: "23.00", proposal: "23.00", aiFilled: false, billing: true },
     ],
   },
@@ -57,9 +69,9 @@ export const REVIEW_QUEUE: ReviewItem[] = [
     confidence: 0.83,
     requires_review: true,
     ai_model: "claude-opus-4-8",
-    flagged_reason: "confidence 0.83 < 0.85 — fr designation and category proposed by ai_map",
+    flagged_reason: "harmonization_confidence 0.83 < 0.85 — fr and category absent in source",
     fields: [
-      { field: "designation.de", label: "Designation (DE)", raw: "DAFALGAN cpr 500mg", proposal: "Dafalgan, Tabletten 500 mg", aiFilled: true, billing: false },
+      { field: "designation.de", label: "Designation (DE)", raw: "Dafalgan, Tabletten 500 mg", proposal: "Dafalgan, Tabletten 500 mg", aiFilled: false, billing: false },
       { field: "designation.fr", label: "Designation (FR)", raw: null, proposal: "Dafalgan, comprimés 500 mg", aiFilled: true, billing: false },
       { field: "category", label: "Category", raw: null, proposal: "Analgetika", aiFilled: true, billing: false },
       { field: "price_chf", label: "Price (CHF)", raw: "4.85", proposal: "4.85", aiFilled: false, billing: true },

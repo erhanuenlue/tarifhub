@@ -18,4 +18,13 @@ We package each sub-system as its own Docker image, deploy them with one Helm ch
 - (+) Operational surface stays small for a solo operator because unshipped components ship `enabled: false`.
 - (–) A Helm chart is one more artifact to keep in sync with the services, and k3d evidence must be captured as screenshots since nothing is deployed for grading. Revisit when a paying production target exists (managed-K8s sizing, TLS, secret management beyond the demo defaults).
 
+## Addendum (2026-06-19): ingestion is modelled as two workloads
+
+After the crit-16 review API landed, ingestion has two distinct runtime shapes that must be deployed differently, so the single ingestion Deployment is split:
+
+- the **review API** is a long-running HTTP service (the human-in-the-loop review surface the console reaches via `INGEST_BASE_URL`), so it stays a Deployment plus Service with a `/health` readiness and liveness probe and reports 1/1;
+- the **batch pipeline** (load, harmonise, freeze) is run-to-completion, so it becomes a Kubernetes Job (a CronJob when `ingestion.batch.schedule` is set, for example a quarterly BAG release cadence). Modelling a run-to-completion batch as a Deployment is what produced the earlier 0/1 not-ready artifact: a Deployment restarts the finished pod forever.
+
+Both share one image (the image's default CMD serves the review API; the Job overrides the command to run the ingestion CLI). The local Compose stack mirrors the split: the review API under `--profile app`, the batch one-shot under `--profile batch`.
+
 *Lineage: new, no legacy counterpart.*

@@ -8,7 +8,8 @@ typeface clean
 Ingress [icon: globe, color: blue, label: "nginx Ingress: tarifhub.local (/api, /ingest, /mcp), tarifguard.local, tarifiq.local"]
 
 Cluster [color: blue, label: "k3d cluster (Helm chart tarifhub)"] {
-  Ingestion [icon: server, color: orange, label: "ingestion x1 :8000 (L0, pre-freeze)"]
+  IngestionReview [icon: server, color: orange, label: "ingestion-review x1 :8000 (L0 review API: Deployment + Service)"]
+  IngestionBatch [icon: clock, color: orange, label: "ingestion-batch (L0 batch: Job/CronJob, run-to-completion)"]
   Serving [icon: server, color: green, label: "serving x2 :8000 (L1, read-only)"]
   MCP [icon: search, color: green, label: "mcp x1 :8090 (L1, read-only)"]
   Console [icon: monitor, color: purple, label: "tarifguard x2 :3000 (L3)"]
@@ -29,14 +30,16 @@ CICD [color: gray, label: "CI/CD (GitHub Actions)"] {
 LocalDev [icon: box, color: gray, label: "Local dev: docker-compose db (pgvector) + optional minio"]
 
 Ingress > Serving
-Ingress > Ingestion
+Ingress > IngestionReview
 Ingress > MCP
 Ingress > Console
 Ingress > Intelligence
-Ingestion > Postgres
+IngestionReview > Postgres
+IngestionBatch > Postgres: writes frozen versions
 Serving > Postgres
 MCP > Serving
 Intelligence > Serving
 Console > Serving
+Console > IngestionReview: review write-back (INGEST_BASE_URL)
 Build > GHCR: build evidence (push not yet wired)
 GHCR > Cluster: pulled by Helm

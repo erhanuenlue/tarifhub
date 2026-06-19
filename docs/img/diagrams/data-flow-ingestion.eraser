@@ -15,7 +15,7 @@ Flag [shape: diamond, color: orange, icon: eye, label: "set requires_review (con
 Freeze [icon: lock, color: red, label: "freeze: every record freezes, flag carried; SHA-256 record_hash (never gated by a human)"]
 Store [icon: database, color: green, label: "store (idempotent) + audit_log (append-only)"]
 Serve [icon: server, color: green, label: "L1 serving (read-only): REST, FHIR R4, diff, search"]
-Review [shape: oval, color: purple, icon: user, label: "Review queue (TarifGuard, design-level): approve or correct non-billing"]
+Review [shape: oval, color: purple, icon: user, label: "Review queue (TarifGuard): approve or correct non-billing"]
 NewVersion [icon: layers, color: green, label: "new frozen version (prev + 1, new record_hash)"]
 
 Source > Parse > MapRaw > AiMap > Validate > Score > Flag > Freeze > Store > Serve

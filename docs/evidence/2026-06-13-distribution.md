@@ -101,7 +101,71 @@ tarifhub-ingestion      0/1     1            0           42s
 The read/serve sub-systems (serving ×2, mcp, intelligence ×2, tarifguard ×2) and Postgres
 are `Running`. `tarifhub-ingestion` is `0/1` by design: ingestion is a one-shot batch
 pipeline, so running it as a long-lived `Deployment` means it runs to completion and the
-ReplicaSet restarts it (in production it belongs in a `Job`/`CronJob`, noted as
-follow-up). Functional data serving is demonstrated under Compose above (the chart's
+ReplicaSet restarts it (in production it belongs in a `Job`/`CronJob`; this is done in the
+2026-06-19 update below, which splits ingestion into a review-API Deployment and a batch Job).
+Functional data serving is demonstrated under Compose above (the chart's
 Postgres starts schema-empty); the k3d run proves the chart deploys every sub-system as an
 independent, individually-scaled workload on real Kubernetes.
+
+## Update 2026-06-19: ingestion modelled as two workloads (crit-17)
+
+Codex docked criterion 17 because the k3d capture in section 3 above shows `tarifhub-ingestion 0/1`:
+a run-to-completion batch was modelled as a `Deployment`. The chart now splits ingestion into the
+**review API** (a Deployment plus Service) and the **batch** pipeline (a run-to-completion Job, or a
+CronJob when `ingestion.batch.schedule` is set). See the [ADR-009 addendum](../adr/009-docker-kubernetes-helm.md)
+and [arc42 section 7, Evidence 3](../arc42/07-deployment-view.md). All commands below were run on 2026-06-19.
+
+### Helm renders the intended kinds (a Job for the batch, a Deployment plus Service for the review API)
+
+```text
+$ helm lint deploy/helm/tarifhub
+1 chart(s) linted, 0 chart(s) failed
+
+$ helm template tarifhub deploy/helm/tarifhub | grep '^kind:' | sort | uniq -c
+   6 kind: Deployment
+   1 kind: Ingress
+   1 kind: Job
+   1 kind: PersistentVolumeClaim
+   1 kind: Secret
+   6 kind: Service
+```
+
+The six Deployments are the long-running services (serving x2, intelligence x2, tarifguard x2, mcp,
+postgres and the ingestion review API at one each); the one Job is the run-to-completion ingestion
+batch; the six Services front the long-running workloads only (the batch Job has none). With
+`--set ingestion.batch.schedule="0 3 * * 1"` the same template renders a `CronJob` instead of a `Job`.
+
+### Compose runs the dual workload from current source
+
+```text
+# review API: long-running service, healthy (the console's INGEST_BASE_URL target)
+$ docker compose -f deploy/docker-compose.yml --profile app ps db ingestion
+SERVICE     IMAGE                    STATUS         PORTS
+db          pgvector/pgvector:pg16   Up (healthy)   0.0.0.0:5432->5432/tcp
+ingestion   tarifhub-ingestion       Up (healthy)   0.0.0.0:8000->8000/tcp
+
+$ curl -s localhost:8000/health       -> {"status":"ok","service":"tarifhub-ingest","version":"0.1.0"}
+$ curl -s localhost:8000/review/queue -> []          # crit-16 endpoint live; empty, nothing flagged
+
+# batch: run-to-completion, exits 0
+$ docker compose -f deploy/docker-compose.yml --profile batch run --rm ingestion-batch
+{"system": "SL", "path": "/app/sample-data/input/bag_epl_sample.ndjson", "refill": false,
+ "processed": 3, "frozen": 3, "skipped_existing": 0, "flagged_for_review": 0, "parse_failures": 0}
+$ echo $?
+0
+```
+
+The same image is the long-running review API under its default CMD and a one-shot batch under the CLI
+command. The batch writes the offline SQLite mirror with the bundled stub embedder; the shared-Postgres
+path needs the e5 (1024-dim) embedder (the `vector(1024)` column rejects the 16-dim stub, the same
+dimension limitation section 2 notes for search).
+
+### TODO (owner): re-capture the live k3d pod list
+
+The section 3 `kubectl get pods` capture and `docs/img/k3d-pods.png` predate this split and still show
+`0/1`. They should be re-captured against the current chart, where the review API is `1/1 Running` and
+`tarifhub-ingestion-batch` is `Completed`. A full k3d bring-up of all five service images was not re-run
+in this session (the local Docker BuildKit cache had a corrupted frontend lease, cleared with
+`docker builder prune`); the `helm template` kinds above are the authoritative manifest proof, and the
+dual workload is shown running under Compose above. The in-cluster batch Job writes Postgres and so needs
+the e5 image; the offline-stub batch is proven under Compose against the SQLite mirror.

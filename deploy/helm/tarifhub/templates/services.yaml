@@ -1,15 +1,18 @@
+# Fronts the long-running ingestion REVIEW API only (component: ingestion-review).
+# The batch Job (component: ingestion-batch) is run-to-completion and has no Service.
+# The console reaches this Service via INGEST_BASE_URL.
 apiVersion: v1
 kind: Service
 metadata:
   name: {{ .Release.Name }}-ingestion
   labels:
     app.kubernetes.io/name: tarifhub
-    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/component: ingestion-review
 spec:
   type: ClusterIP
   selector:
     app.kubernetes.io/name: tarifhub
-    app.kubernetes.io/component: ingestion
+    app.kubernetes.io/component: ingestion-review
   ports:
     - name: http
       port: {{ .Values.ingestion.port }}
