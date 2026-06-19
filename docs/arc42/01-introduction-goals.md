@@ -17,7 +17,7 @@ One trustworthy machine interface to ambulatory tariff data, in its three elemen
 
 - **Target group:** PIS/HIS vendors as machine consumers (REST/OpenAPI + FHIR R4 read), tariff experts who review uncertain mappings, practice users who look up records in the console, and AI agents that read frozen data over MCP.
 - **Need:** one versioned, provenance-carrying interface where a *served value is provably the value that was reviewed and frozen*, replacing per-vendor parsing and hand-reconciled version transitions with a single auditable source.
-- **Scope:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, benchmarking, and the store-backed review write path (the ingestion review endpoint behind `INGEST_BASE_URL`; the console review route and form themselves are implemented and tested).
+- **Scope:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, and benchmarking. The human-in-the-loop review write-back is now implemented: the console review form proxies to the ingestion review endpoint (behind `INGEST_BASE_URL`), which validates, freezes and audits a new immutable version.
 
 Across all of this, no AI computes or mutates a billing value at serve time; this is the value-path invariant established in §8 (Crosscutting Concepts).
 
@@ -41,7 +41,7 @@ Across all of this, no AI computes or mutates a billing value at serve time; thi
 | FR-6 | Point-in-time and diff queries over record versions | UC-05 |
 | FR-7 | Multilingual semantic search (pgvector HNSW cosine, multilingual-e5 embeddings) | UC-06 |
 | FR-8 | Read-only MCP tools: search_tariffs, get_tariff, explain_crosswalk | UC-07, UC-09 |
-| FR-9 | TarifGuard console: master-detail lookup, review form (implemented; store-backed freeze design scope), labelled AI explain panel | UC-02, UC-08, UC-09 |
+| FR-9 | TarifGuard console: master-detail lookup, review form (implemented, store-backed freeze via the ingestion review endpoint), labelled AI explain panel | UC-02, UC-08, UC-09 |
 
 ## Use-case catalogue
 
@@ -52,7 +52,7 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 | ID | Use case | Actor | Trigger | Outcome | Realises | Status |
 |---|---|---|---|---|---|---|
 | UC-01 | Trigger ingest | Operator (CLI/scheduler) | new BAG source version published / operator runs pipeline | validated, scored records frozen + audited | FR-1, FR-2 | live |
-| UC-03 | Freeze record | Pipeline (automatic post-validation; expert approval loop designed) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
+| UC-03 | Freeze record | Pipeline (automatic post-validation; expert approval loop via the ingestion review endpoint) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
 | UC-04 | Read tariff by code | API consumer (PIS/HIS) | GET /api/v1/tariffs/{system}/{code} | frozen record, served verbatim | FR-5 | live |
 | UC-06 | Semantic search | API consumer | free-text query (DE/FR/IT) against the search endpoint | ranked frozen records via pgvector cosine similarity | FR-7 | live |
 | UC-09 | Explain (crosswalk) | Practice user | user requests an explanation of a record (serving endpoint; console explain panel) | serving returns a deterministic, record-grounded explanation; the L3 console additionally shows a labelled, de-identified AI explanation; served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded; console AI panel + de-id live) |
@@ -63,7 +63,7 @@ These parameterise or proxy the core functions: the review threshold loop, versi
 
 | ID | Use case | Actor | Trigger | Outcome | Realises | Status |
 |---|---|---|---|---|---|---|
-| UC-02 | Review low-confidence mapping | Tariff expert (console form) | confidence score < 0.85 flags a frozen record into the review queue | expert approves or corrects the flagged mapping; an accepted correction becomes a new frozen version | FR-3, FR-9 | partial: console form live; ingestion endpoint design scope (ADR-013) |
+| UC-02 | Review low-confidence mapping | Tariff expert (console form) | confidence score < 0.85 flags a frozen record into the review queue | expert approves or corrects the flagged mapping; an accepted correction becomes a new frozen version | FR-3, FR-9 | live: console form + ingestion review endpoint (ADR-013) |
 | UC-05 | Point-in-time / diff query | API consumer | query with a valid-at date or two record versions | record state as of that date / field-level diff | FR-6 | live (this release) |
 | UC-07 | MCP get/search | AI agent (MCP client) | MCP tool call search_tariffs / get_tariff | read-only frozen data, proxied from the serving API | FR-8 | live |
 | UC-08 | Console master-detail lookup | Practice user | search in the TarifGuard console | frozen record detail with provenance and hash | FR-9 | live |

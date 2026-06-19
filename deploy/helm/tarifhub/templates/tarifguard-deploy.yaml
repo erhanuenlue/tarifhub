@@ -29,6 +29,10 @@ spec:
             # Server-side only — never exposed to the browser. Defaults to the in-cluster serving Service.
             - name: SERVING_BASE_URL
               value: {{ .Values.tarifguard.servingBaseUrl | default (printf "http://%s-serving:%v" .Release.Name (.Values.serving.port | int)) | quote }}
+            # Server-side only. The review form proxies approve/correct decisions here.
+            # Defaults to the in-cluster ingestion Service (its review endpoint).
+            - name: INGEST_BASE_URL
+              value: {{ .Values.tarifguard.ingestBaseUrl | default (printf "http://%s-ingestion:%v" .Release.Name (.Values.ingestion.port | int)) | quote }}
           readinessProbe:
             httpGet:
               path: /

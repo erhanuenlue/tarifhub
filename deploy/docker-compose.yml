@@ -1,6 +1,10 @@
-# Local development stack. Default: just the database. Profiles add MinIO.
+# Local development stack. Default: just the database.
 #   docker compose -f deploy/docker-compose.yml up -d db
-#   docker compose -f deploy/docker-compose.yml --profile objects up -d
+# Profiles:
+#   --profile app      the wired ingestion + serving + console stack (the review loop)
+#   --profile objects  MinIO object store
+# The review write-back loop end to end (console -> ingestion POST /review -> freeze):
+#   docker compose -f deploy/docker-compose.yml --profile app up -d
 services:
   db:
     image: pgvector/pgvector:pg16
@@ -17,6 +21,72 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  # L0 ingestion: the long-running review + read API (distinct from the batch pipeline
+  # CLI). Hosts GET /review/queue and POST /review — the human-in-the-loop write-back that
+  # validates -> freezes -> audits a new immutable version. The console proxies to it.
+  ingestion:
+    build:
+      context: ../services/ingestion
+    container_name: tarifhub-ingestion
+    profiles: [app]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TARIFHUB_DB_URL: postgresql://tarifhub:tarifhub@db:5432/tarifhub
+      TARIFHUB_REVIEW_THRESHOLD: "0.85"
+      TARIFHUB_EMBEDDINGS: stub
+    ports: ["8000:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # L1 serving: deterministic read-only API the console reads frozen records from.
+  serving:
+    build:
+      context: ..
+      dockerfile: services/serving/Dockerfile
+    container_name: tarifhub-serving
+    profiles: [app]
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TARIFHUB_DB_URL: postgresql://tarifhub:tarifhub@db:5432/tarifhub
+    ports: ["8001:8000"]
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health').read()"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  # L3 TarifGuard console. Server-side only env: it reads frozen records from serving and
+  # proxies the review form's decisions to the ingestion review endpoint.
+  tarifguard:
+    build:
+      context: ../apps/tarifguard
+    container_name: tarifhub-tarifguard
+    profiles: [app]
+    depends_on:
+      serving:
+        condition: service_healthy
+      ingestion:
+        condition: service_healthy
+    environment:
+      SERVING_BASE_URL: http://serving:8000
+      INGEST_BASE_URL: http://ingestion:8000
+    ports: ["3000:3000"]
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O /dev/null http://localhost:3000/ || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   minio:
     image: minio/minio:latest

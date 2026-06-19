@@ -67,9 +67,7 @@ class TariffRepository:
         columns = ", ".join(_COLUMNS)
         markers = ", ".join([self._ph] * len(_COLUMNS))
         values = self._record_to_row(record, embedding)
-        self._conn.execute(
-            f"INSERT INTO tariff ({columns}) VALUES ({markers})", values
-        )
+        self._conn.execute(f"INSERT INTO tariff ({columns}) VALUES ({markers})", values)
         self._conn.commit()
         return True
 
@@ -97,7 +95,9 @@ class TariffRepository:
         )
         return cur.fetchone() is not None
 
-    def get(self, tariff_code: str, system: TariffSystem | str | None = None) -> TariffRecord | None:
+    def get(
+        self, tariff_code: str, system: TariffSystem | str | None = None
+    ) -> TariffRecord | None:
         """Return the highest-version record for a code (optionally scoped to a system).
 
         When ``system`` is omitted the same code can exist in two tariff systems; the
@@ -121,6 +121,30 @@ class TariffRepository:
 
         rows = self._conn.execute(
             "SELECT * FROM tariff ORDER BY tariff_system, tariff_code, version"
+        ).fetchall()
+        return [self._row_to_record(row) for row in rows]
+
+    def list_flagged(self) -> list[TariffRecord]:
+        """Return the review queue: latest-version records still flagged for review.
+
+        One row per ``(tariff_system, tariff_code)`` — the highest version — and only when
+        that current version still has ``requires_review = true``. A key whose latest
+        version was reviewed (flag cleared) or superseded never appears, so an already
+        approved/corrected record drops out of the queue. Read-only; no AI on this path.
+        """
+
+        # Real bool param: psycopg sends a boolean for the BOOLEAN column; sqlite3 adapts
+        # it to 1 for the INTEGER column (bool is an int subclass) — same as ``add``'s write.
+        rows = self._conn.execute(
+            "SELECT t.* FROM tariff t "
+            "JOIN (SELECT tariff_system, tariff_code, MAX(version) AS v FROM tariff "
+            "      GROUP BY tariff_system, tariff_code) latest "
+            "  ON t.tariff_system = latest.tariff_system "
+            " AND t.tariff_code = latest.tariff_code "
+            " AND t.version = latest.v "
+            f"WHERE t.requires_review = {self._ph} "
+            "ORDER BY t.tariff_system, t.tariff_code",
+            (True,),
         ).fetchall()
         return [self._row_to_record(row) for row in rows]
 

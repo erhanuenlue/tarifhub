@@ -100,12 +100,14 @@ export interface ExplainResponse {
 /* -------------------------------------------------------------------------- *
  *  Review contract (console-defined).
  *
- *  No serving/ingestion endpoint accepts review decisions yet, and the raw-vs-proposal
- *  pair does not survive freeze (ADR-013: the review POST is design scope at the MVP).
+ *  The ingestion review endpoint accepts these decisions (GET /review/queue, POST /review).
+ *  The deterministic raw-vs-proposal pair is reconstructed server-side from
+ *  metadata.ai_fields — an AI-filled field had an empty raw extract (raw === null); the raw
+ *  text of a value the AI merely normalised does not survive freeze and is not invented.
  *  These types are the contract the console's review form is built against; the BFF route
- *  app/api/review/route.ts serves it from fixtures offline and would proxy to a future
- *  ingestion review endpoint (INGEST_BASE_URL) that freezes server-side. The console
- *  itself never touches the DB and never freezes.
+ *  app/api/review/route.ts serves the fixture queue offline and proxies to the ingestion
+ *  endpoint when INGEST_BASE_URL is set (it freezes server-side). The console itself never
+ *  touches the DB and never freezes.
  * -------------------------------------------------------------------------- */
 
 /** One field in the review diff: deterministic raw extract vs the ai_map proposal. */

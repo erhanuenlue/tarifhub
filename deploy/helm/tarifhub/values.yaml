@@ -47,6 +47,9 @@ tarifguard:
   port: 3000
   # Server-side only; never exposed to the browser. Points at the in-cluster serving Service.
   servingBaseUrl: ""
+  # Server-side only. The review form proxies to the ingestion review endpoint here;
+  # empty defaults to the in-cluster ingestion Service.
+  ingestBaseUrl: ""
   resources:
     requests:
       cpu: 100m

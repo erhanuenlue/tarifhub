@@ -1,20 +1,18 @@
 /**
- * Demo review queue — the contract the console's review form is built against.
+ * Demo review queue — the offline contract the console's review form is built against.
  *
- * WHY FIXTURES: no serving/ingestion endpoint accepts review decisions yet, and the
- * raw-extract-vs-ai_map-proposal pair does not survive freeze (ADR-013: the review POST is
- * design scope at the MVP, not implemented). These items model exactly what a future
- * ingestion review endpoint would return: flagged records (requires_review === true) with
- * the deterministic raw extract beside the ai_map proposal, per field. The BFF route
- * (app/api/review/route.ts) serves these offline and would proxy to that endpoint
- * (INGEST_BASE_URL) once it exists. Billing fields (tax_points / price_chf) are never
- * AI-filled — they appear unchanged and certified.
+ * WHY FIXTURES: these back the offline demo when INGEST_BASE_URL is unset. The ingestion
+ * review endpoint is implemented now (GET /review/queue, POST /review); when INGEST_BASE_URL
+ * is set the BFF route (app/api/review/route.ts) proxies to it and these fixtures are unused.
+ * The items model what the endpoint returns: flagged records (requires_review === true) with
+ * the deterministic raw extract beside the ai_map proposal, per field. Billing fields
+ * (tax_points / price_chf) are never AI-filled — they appear unchanged and certified.
  */
 import type { ReviewItem } from "@/lib/api";
 
-// NOTE: `field` keys here (e.g. "designation.de") are the console's own contract. When the
-// real ingestion review endpoint lands, reconcile these with the ingestion field names
-// (the corrections map is keyed by them) — see app/api/review/route.ts.
+// NOTE: `field` keys here (e.g. "designation.de") are the console's contract. They are
+// reconciled with the canonical TariffRecord field names in one place,
+// services/ingestion/src/tarifhub_ingest/review.py (the corrections map is keyed by them).
 export const REVIEW_QUEUE: ReviewItem[] = [
   {
     tariff_system: "TARDOC",

@@ -5,10 +5,15 @@ Endpoints:
     GET  /tariffs
     GET  /tariffs/{tariff_code}
     POST /ingest/sample          (runs the offline sample pipeline)
+    GET  /review/queue           (flagged records awaiting human review)
+    POST /review                 (apply a human approve/correct decision; re-freezes)
 
 This module is deliberately on the deterministic side of the freeze line: the GET
 endpoints only read frozen records, and NO LLM client is imported here. The single
-AI seam lives behind ``ingestion.pipeline`` (pre-freeze) and is import-guarded.
+AI seam lives behind ``ingestion.pipeline`` (pre-freeze) and is import-guarded. The
+review write-back is human-driven and likewise AI-free: it runs the SAME deterministic
+``validate`` -> ``freeze`` -> audit pipeline as ingest, persisting an immutable new
+version (``tests/test_review_boundary.py`` proves no LLM client is importable here).
 """
 
 from __future__ import annotations
@@ -25,8 +30,19 @@ from tarifhub_ingest.config import Settings, get_settings
 from tarifhub_ingest.embeddings.embedder import get_embedder
 from tarifhub_ingest.ingestion.pipeline import run_pipeline
 from tarifhub_ingest.ingestion.source_loader import default_sample_dir, discover_samples
+from tarifhub_ingest.review import (
+    ReviewDecision,
+    ReviewError,
+    ReviewItem,
+    ReviewResult,
+    prepare_reviewed_record,
+    review_message,
+    to_review_item,
+)
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
+from tarifhub_ingest.validators.tariff_validator import validate
+from tarifhub_ingest.versioning.freeze_record import freeze
 
 
 class IngestSampleResponse(BaseModel):
@@ -112,6 +128,131 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             flagged_for_review=report.flagged_for_review,
             refill=refill,
             tariff_codes=[record.tariff_code for record in report.records],
+        )
+
+    @app.get(
+        "/review/queue",
+        response_model=list[ReviewItem],
+        summary="List flagged records awaiting human review (the review queue)",
+    )
+    def review_queue(request: Request) -> list[ReviewItem]:
+        """Return the latest flagged version of each key, shaped to the console contract.
+
+        Read-only: it never mutates a record. Each item carries the per-field
+        raw-vs-proposal diff, the billing flags, the harmonisation confidence and the
+        proposing model, exactly as the review form consumes it.
+        """
+
+        repo: TariffRepository = request.app.state.repo
+        settings: Settings = request.app.state.settings
+        return [
+            to_review_item(record, threshold=settings.review_threshold)
+            for record in repo.list_flagged()
+        ]
+
+    @app.post(
+        "/review",
+        response_model=ReviewResult,
+        summary="Apply a human approve/correct decision and freeze a new version",
+    )
+    def submit_review(decision: ReviewDecision, request: Request) -> ReviewResult:
+        """Close the human-in-the-loop: a reviewed decision becomes a new frozen version.
+
+        Loads the current flagged version, rejects any billing-field correction (400),
+        applies the decision, then runs the SAME deterministic pipeline as ingest —
+        ``validate`` (422 if the reviewed record is still invalid) then ``freeze`` — and
+        persists an immutable new version (``version + 1``, new ``record_hash``) with an
+        appended audit event. The prior version and the audit log are never rewritten.
+        """
+
+        repo: TariffRepository = request.app.state.repo
+        audit: AuditLogger = request.app.state.audit
+        settings: Settings = request.app.state.settings
+
+        record = repo.get(decision.tariff_code, decision.tariff_system)
+        if record is None:
+            raise HTTPException(
+                status_code=404,
+                detail=(
+                    f"no record for system={decision.tariff_system.value} "
+                    f"code={decision.tariff_code}"
+                ),
+            )
+        if not record.requires_review:
+            raise HTTPException(
+                status_code=409,
+                detail=(
+                    f"record {decision.tariff_system.value}/{decision.tariff_code} "
+                    "is not flagged for review"
+                ),
+            )
+        # Optimistic concurrency: if the client names a version, it must be the live one.
+        if decision.record_hash and record.record_hash != decision.record_hash:
+            raise HTTPException(
+                status_code=409,
+                detail="record_hash does not match the current flagged version (stale read)",
+            )
+
+        try:
+            prepared = prepare_reviewed_record(record, decision)
+        except ReviewError as exc:
+            raise HTTPException(status_code=exc.status, detail=exc.message) from exc
+
+        result = validate(prepared)
+        if not result.ok:
+            raise HTTPException(
+                status_code=422,
+                detail={"error": "reviewed record fails validation", "errors": result.errors},
+            )
+
+        frozen = freeze(prepared)
+        # Re-embed exactly as the pipeline does so the corrected designation stays
+        # searchable. The embedder is optional (None when skipped on the Postgres leg,
+        # whose vector(1024) column rejects the 16-dim offline stub) — mirror the
+        # pipeline's guard rather than assuming a vector.
+        embedder = get_embedder(settings)
+        embedding = None
+        if embedder is not None:
+            text = f"{frozen.tariff_system.value} {frozen.tariff_code} {frozen.designation.de}"
+            embedding = embedder.embed(text)
+        stored = repo.add(frozen, embedding=embedding)
+        if not stored:
+            raise HTTPException(
+                status_code=409, detail="this exact reviewed version already exists"
+            )
+
+        # Re-read for the authoritative version the repository assigned (hash is stable).
+        current = repo.get(decision.tariff_code, decision.tariff_system)
+        assert current is not None  # just persisted
+
+        corrected_fields = (
+            sorted(decision.corrections or {}) if decision.action == "correct" else []
+        )
+        audit.log(
+            event_type=f"review_{decision.action}",
+            record=current,
+            source_file="console-review",
+            confidence=current.harmonization_confidence,
+            validation_ok=result.ok,
+            detail={
+                "action": decision.action,
+                "reviewer": decision.reviewer,
+                "note": decision.note,
+                "corrected_fields": corrected_fields,
+                "prev_version": record.version,
+                "prev_record_hash": record.record_hash,
+            },
+        )
+
+        return ReviewResult(
+            ok=True,
+            tariff_system=current.tariff_system.value,
+            tariff_code=current.tariff_code,
+            action=decision.action,
+            frozen=True,
+            version=current.version,
+            record_hash=current.record_hash,
+            message=review_message(decision.action, current.version, corrected_fields),
         )
 
     return app

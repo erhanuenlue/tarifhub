@@ -1,6 +1,6 @@
 # Runtime View
 
-Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (the console review route and its fixture-backed form are implemented and tested; the ingestion-backed write path that persists a new frozen version in the store remains design scope, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`. Across all three, the value-path invariant holds: no AI computes or mutates a billing value at serve time. This is the determinism boundary established in §8 (Crosscutting Concepts).
+Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (now implemented end to end: the console review form proxies to the ingestion review endpoint, which persists a new frozen version in the store, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`. Across all three, the value-path invariant holds: no AI computes or mutates a billing value at serve time. This is the determinism boundary established in §8 (Crosscutting Concepts).
 
 ## Scenario 1: harmonise to freeze (the pipeline)
 
@@ -33,18 +33,18 @@ Three scenarios show the architecture at work: the deterministic harmonisation p
 5. Rows are rehydrated verbatim into `TariffRecord` and returned as ranked `SearchHit` items; no field is recomputed or rewritten.
 6. **Read-only guarantee.** The AST boundary test (`services/serving/tests/test_serving_boundary.py`) proves no LLM client is importable on this path; CI fails otherwise.
 
-## Scenario 3: review to freeze loop (console form live; ingestion-backed freeze design scope)
+## Scenario 3: review to freeze loop (implemented end to end)
 
-The console review route (`apps/tarifguard/app/api/review`) and its fixture-backed review form **are implemented and tested**: the form GETs the review queue and POSTs an approve/correct decision, the server-side billing-field guard rejects any attempt to correct `tax_points`/`price_chf`, and offline the route simulates the server-side freeze with a genuine SHA-256 over the decided content (the Vitest specs and the Playwright smoke exercise this path, see [§13](13-test-strategy.md#console-component-tests)). What remains **design scope ([ADR-013](../adr/013-demo-scope.md))** is the real ingestion review endpoint behind `INGEST_BASE_URL` that persists the decision as a new frozen version in the store. Also live today: the pipeline flags low-confidence records (`requires_review`), and `freeze` plus the append-only audit log are exercised on every run. The loop below describes how the pieces close the cycle, marking which are live and which are design scope.
+The console review form (`apps/tarifguard/app/api/review`) GETs the review queue and POSTs an approve/correct decision, and the ingestion review endpoint behind `INGEST_BASE_URL` (`GET /review/queue`, `POST /review`) persists it as a new frozen version in the store. The full loop is implemented and tested: the console BFF proxy is covered by Vitest (see [§13](13-test-strategy.md#console-component-tests)), and the ingestion endpoint by cross-engine API tests (`services/ingestion/tests/test_review_api.py`: approve and correct each yield a new version plus an audit entry, a billing correction is rejected, the prior version stays immutable). The server-side billing-field guard rejects any attempt to correct `tax_points`/`price_chf` (HTTP 400) on both the BFF and the ingestion side. With `INGEST_BASE_URL` unset the route still simulates the freeze offline with a genuine SHA-256 over the decided content. The loop below traces how the pieces close the cycle.
 
 ![Runtime: review to freeze loop](../diagrams/seq-review-freeze.svg)
 
-1. The pipeline flags a record (confidence < 0.85 or validation failure); it freezes with `requires_review = true` and enters the review queue *(live)*.
-2. A tariff expert opens the flagged record in the console master-detail view and corrects or approves the mapping in the review form *(console form live, fixture-backed)*.
-3. The correction passes back through the same deterministic `validate` in the ingestion service; an expert edit gets no shortcut around the rules *(design scope: the offline console route simulates the freeze rather than re-running `validate`)*.
-4. `freeze` produces a **new version** with a new `record_hash`; the flagged version remains immutable and re-freezing it raises `ValueError` *(freeze primitive live; the store-backed re-version through the ingestion endpoint is design scope, simulated offline by the console route)*.
-5. Audit events are appended for the review decision and the new freeze; the append-only `audit_log` keeps the full lineage *(audit live)*.
-6. The new version carries `requires_review = false` and the record leaves the queue *(design scope)*.
+1. The pipeline flags a record (confidence < 0.85 or validation failure); it freezes with `requires_review = true` and enters the review queue, served by `GET /review/queue` *(live)*.
+2. A tariff expert opens the flagged record in the console master-detail view and corrects or approves the mapping in the review form, which POSTs the decision to the ingestion endpoint *(live)*.
+3. The decision passes back through the same deterministic `validate` in the ingestion service (`POST /review`); an expert edit gets no shortcut around the rules, and a billing-field correction is rejected with HTTP 400 *(live)*.
+4. `freeze` produces a **new version** with a new `record_hash` (`version + 1`); the flagged version remains immutable and re-freezing it raises `ValueError` *(live)*.
+5. An audit event is appended for the review decision (`review_approve` / `review_correct`) alongside the freeze; the append-only `audit_log` keeps the full lineage *(live)*.
+6. The new version carries `requires_review = false` and the record leaves the queue *(live)*.
 
 The freeze line itself is defended in depth: `versioning/` and `audit/` are write-protected against AI edits by the `guard_frozen` hook, and the boundary is CI-enforced by `test_determinism_boundary.py`.
 

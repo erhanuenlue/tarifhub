@@ -14,8 +14,13 @@ import { findReviewItem, REVIEW_QUEUE } from "@/lib/review-fixtures";
  *   - INGEST_BASE_URL set  -> proxy to the ingestion review endpoint; surface its failures
  *     (a configured backend erroring is a real failure, never masked as success).
  *   - INGEST_BASE_URL unset -> offline demo: serve the fixture queue and simulate the
- *     server-side freeze (a real SHA-256 over the decided content). Building the actual
- *     ingestion endpoint is a separate, freeze-line-adjacent task (ADR-013: design scope).
+ *     server-side freeze (a real SHA-256 over the decided content).
+ *
+ * The ingestion review endpoint is implemented (GET /review/queue, POST /review in
+ * services/ingestion/src/tarifhub_ingest/review.py + main.py); it runs the same
+ * deterministic validate -> freeze -> audit pipeline as ingest and persists an immutable
+ * new version (ADR-013 update). Set INGEST_BASE_URL to proxy to it; the console contract
+ * (the types below) is identical in both modes.
  */
 
 // Billing values are frozen at ingest and are never AI-filled or human-corrected here.
@@ -105,11 +110,11 @@ export async function POST(req: NextRequest) {
 }
 
 /**
- * Stand in for the server-side freeze the future ingestion endpoint will perform (offline
- * demo only). The new version is prev + 1 and the new record_hash is a genuine SHA-256 over
- * the decided content, so the UI shows a real proposal→frozen transition rather than a fake
- * string. (The real ingestion freeze hashes the full canonical record; this demo hash covers
- * only the decision, which is sufficient to make the transition tangible.)
+ * Stand in for the server-side freeze the ingestion endpoint performs (offline demo only).
+ * The new version is prev + 1 and the new record_hash is a genuine SHA-256 over the decided
+ * content, so the UI shows a real proposal→frozen transition rather than a fake string. The
+ * real ingestion freeze (now implemented) hashes the full canonical record; this demo hash
+ * covers only the decision, which is sufficient to make the transition tangible offline.
  */
 function simulateFreeze(decision: ReviewDecision): ReviewResult {
   const item = findReviewItem(decision.tariff_system, decision.tariff_code);
