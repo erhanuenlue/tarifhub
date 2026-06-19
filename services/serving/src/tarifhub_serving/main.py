@@ -17,7 +17,7 @@ from __future__ import annotations
 from datetime import date
 from typing import Annotated
 
-from fastapi import Depends, FastAPI, HTTPException, Path, Query
+from fastapi import Depends, FastAPI, Path, Query
 from tarifhub_ingest.embeddings.embedder import E5_DIMENSION, get_embedder
 from tarifhub_ingest.models.tariff_model import TariffRecord
 
@@ -28,6 +28,11 @@ from tarifhub_serving.config import (
     get_settings,
 )
 from tarifhub_serving.db import Database
+from tarifhub_serving.errors import (
+    SearchBackendUnavailable,
+    TariffNotFound,
+    register_exception_handlers,
+)
 from tarifhub_serving.explain import build_diff, build_explanation
 from tarifhub_serving.fhir import (
     ChargeItemDefinition,
@@ -48,6 +53,11 @@ app = FastAPI(
     description="Deterministic read API over frozen Swiss ambulatory tariff records.",
     version="0.1.0",
 )
+
+# Centralised RFC 7807 problem+json error handling (domain errors, validation, any
+# HTTPException, and a catch-all that turns an unexpected error into a structured 500
+# with a correlation id instead of a bare 500). See tarifhub_serving.errors.
+register_exception_handlers(app)
 
 
 def _database() -> Database:
@@ -125,10 +135,7 @@ def get_tariff(
 
     record = repo.get_latest(system, code, as_of=as_of)
     if record is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"no frozen record for system={system} code={code}",
-        )
+        raise TariffNotFound(f"no frozen record for system={system} code={code}")
     return record
 
 
@@ -155,16 +162,10 @@ def diff_tariff(
 
     from_record = repo.get_version(system, code, from_version)
     if from_record is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"no version {from_version} for system={system} code={code}",
-        )
+        raise TariffNotFound(f"no version {from_version} for system={system} code={code}")
     to_record = repo.get_version(system, code, to_version)
     if to_record is None:
-        raise HTTPException(
-            status_code=404,
-            detail=f"no version {to_version} for system={system} code={code}",
-        )
+        raise TariffNotFound(f"no version {to_version} for system={system} code={code}")
     return build_diff(system, code, from_record, to_record)
 
 
@@ -189,7 +190,7 @@ def explain(
 
     records = repo.list_versions_by_code(code, system=system)
     if not records:
-        raise HTTPException(status_code=404, detail=f"no frozen record for code={code}")
+        raise TariffNotFound(f"no frozen record for code={code}")
     return ExplainResponse(
         code=code,
         records=records,
@@ -242,17 +243,11 @@ def fhir_charge_item_definition(
     if version is not None:
         record = repo.get_version(system, code, version)
         if record is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"no version {version} for system={system} code={code}",
-            )
+            raise TariffNotFound(f"no version {version} for system={system} code={code}")
     else:
         record = repo.get_latest(system, code, as_of=as_of)
         if record is None:
-            raise HTTPException(
-                status_code=404,
-                detail=f"no frozen record for system={system} code={code}",
-            )
+            raise TariffNotFound(f"no frozen record for system={system} code={code}")
 
     # is_latest drives the deterministic status rule: compare the selected version with
     # the unfiltered highest version of the key. No wall-clock is consulted.
@@ -289,10 +284,7 @@ def fhir_code_system(
 
     total = repo.count_latest_keys(system, as_of=as_of)
     if total == 0:
-        raise HTTPException(
-            status_code=404,
-            detail=f"no frozen records for system={system}",
-        )
+        raise TariffNotFound(f"no frozen records for system={system}")
     records = repo.list_latest(system=system, as_of=as_of, limit=limit, offset=offset)
     return to_code_system(system, records, count=total)
 
@@ -330,12 +322,9 @@ def search(
         # stub) would trigger a dimension-mismatch error inside pgvector mid-request; fail
         # closed with the same explicit 501 instead of issuing the doomed query.
         if len(vector) != E5_DIMENSION:
-            raise HTTPException(
-                status_code=501,
-                detail=(
-                    f"search requires a {E5_DIMENSION}-dim embedder (multilingual-e5); "
-                    f"current backend produces {len(vector)} dims"
-                ),
+            raise SearchBackendUnavailable(
+                f"search requires a {E5_DIMENSION}-dim embedder (multilingual-e5); "
+                f"current backend produces {len(vector)} dims"
             )
         records = repo.search_by_embedding(vector, limit)
     else:

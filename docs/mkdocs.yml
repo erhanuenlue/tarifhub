@@ -84,6 +84,7 @@ nav:
           - "ADR-016 · Canonical Decimal scale contract (stored bytes == hashed bytes)": adr/016-decimal-scale-contract.md
           - "ADR-017 · Deterministic search fallback; record-grounded explain endpoint": adr/017-deterministic-search-fallback-explain.md
           - "ADR-018 · Orchestrator model lifecycle (Fable 5, then Opus 4.8)": adr/018-orchestrator-model-lifecycle.md
+          - "ADR-019 · Centralised RFC 7807 error handling in the serving API": adr/019-rfc7807-error-handling.md
       - 10 · Quality Requirements: arc42/10-quality-requirements.md
       - 11 · Risks & Technical Debt: arc42/11-risks-technical-debt.md
       - 12 · Test Strategy: arc42/13-test-strategy.md
