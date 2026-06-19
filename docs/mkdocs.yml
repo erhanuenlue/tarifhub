@@ -94,6 +94,7 @@ nav:
           - Decision Matrix: method/decision-matrix.md
           - Journal (excerpts): method/journal.md
           - Conclusion: method/fazit.md
+          - Eigenständigkeit: method/eigenstaendigkeit.md
       - Criterion Map: criterion-map.md
 
 plugins:
