@@ -22,7 +22,13 @@ From the broad, fast base to the narrow, high-leverage apex:
    (`services/serving/tests/test_api.py`, `conftest.py`): health, latest-version list,
    system filter, pagination edges, 404 on unknown keys, input-validation 422s, and the
    search ranking and dimension-guard paths. The client reads the seeded DB via `TARIFHUB_DB_URL`,
-   the same env-only config production uses.
+   the same env-only config production uses. Error responses are themselves a tested contract:
+   `services/serving/tests/test_errors.py` (6 tests) pins the centralised RFC 7807
+   `application/problem+json` layer ([ADR-019](../adr/019-rfc7807-error-handling.md)), asserting a
+   domain `TariffNotFound` renders a 404 problem document, a `RequestValidationError` a 422 with
+   field-level detail, an unexpected error a structured 500 that carries a correlation id and leaks
+   no stack trace or internal string (and honours an inbound `X-Request-ID`), and that a successful
+   call stays plain `application/json` with no correlation header.
 3. **Cross-engine read parity.** Every read endpoint is run against **both** SQLite and
    Postgres via the `engine` fixture, and each test asserts the endpoint's **full JSON
    body** equals an engine-independent expected snapshot
@@ -90,10 +96,15 @@ AST and asserts that none imports `anthropic`, `openai`, `cohere`, `langchain` o
   (`main.py`, `storage/db.py`, `storage/tariff_repository.py`).
 - `services/intelligence/tests/test_determinism_boundary.py` scans the TarifIQ rule-
   evaluation path (`main.py`, rules, crosswalk, validators, store).
+- `services/ingestion/tests/test_review_boundary.py` extends the same AST guard to the
+  human-in-the-loop review write-back path (`review.py` and the review routes in `main.py`),
+  so the one write seam that AI-flagged fills pass through before a human freezes them also
+  cannot import a model client.
 
-All three run in the offline suite and in CI's per-service test loop on every push; the
-ingestion and serving (value-path) suites run **again, visibly**, as a dedicated CI step
-that prints them with `-v`. CI fails if any LLM client appears on a value path. Because
+All four run in the offline suite and in CI's per-service test loop on every push; the
+ingestion `test_determinism_boundary.py` and serving `test_serving_boundary.py` value-path
+suites additionally run **again, visibly**, as a dedicated CI step that prints them with `-v`.
+CI fails if any LLM client appears on a value path. Because
 the guarantee is structural (the import graph cannot reach a model), the boundary stays
 green by construction, not by reviewer discipline.
 
@@ -104,10 +115,11 @@ the AI components are themselves tested, not just
 the deterministic majority. tarifhub's AI
 portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
 only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path
-for search. Its tests therefore fall into four families: a **guardrail** test of the
+for search. Its tests therefore fall into five families: a **guardrail** test of the
 boundary itself, **no-call** tests of the gap gate, **non-deterministic-output handling**
-tests of fill-reuse, and **fail-closed parsing** tests of the schema validation that treats
-model output as untrusted.
+tests of fill-reuse, **fail-closed parsing** tests of the schema validation that treats
+model output as untrusted, and a **human-in-the-loop write-back** family that pins the review
+queue where flagged AI fills are approved or corrected before a human freezes them.
 
 ### 1 · Guardrail: the boundary itself
 
@@ -150,7 +162,28 @@ and `services/ingestion/tests/test_mapper.py`'s
 `test_ai_map_offline_does_not_alter_billing_values` confirms billing fields are structurally
 unreachable for the seam to touch.
 
-All four families run in the **offline default suite** (no key, no network) and again in CI
+### 5 · Human-in-the-loop write-back: the review queue that closes the loop
+
+The fill-only seam is only safe because a human, not the model, has the last word on every
+flagged record, and that write-back is now built and tested.
+`services/ingestion/tests/test_review_api.py` (11 tests) drives the ingestion review endpoints
+(`GET /review/queue`, `POST /review`) end to end against the seeded database: the queue returns
+only flagged records, an **approve** freezes a new immutable version, a non-billing **correct**
+applies and leaves the queue, and every illegitimate decision is refused with the right status
+(`test_correct_billing_field_is_rejected` and `test_correct_unknown_field_is_rejected` give a
+`400`, `test_review_stale_record_hash_is_409` and `test_review_unflagged_record_is_409` a `409`,
+`test_review_unknown_record_is_404` a `404`, and `test_correct_emptying_de_fails_validation_422`
+and `test_correct_oversized_value_is_rejected_422` a `422`). The write-back runs the *same*
+deterministic pipeline as ingest (validate → freeze → new immutable version → append-only
+`audit_log`), so a reviewed value is provably the value that was frozen and the prior version is
+never rewritten. `services/ingestion/tests/test_review_contract.py` (5 tests) asserts the review
+models expose exactly the keys the console consumes, and the matching console BFF proxy is covered
+by `apps/tarifguard/tests/unit/review-route.test.ts` (5 cases, including the same billing-field
+guard enforced before any proxy call). The path's own AST guard,
+`services/ingestion/tests/test_review_boundary.py`, is listed with the boundary tests above. These
+pin the **UC-02** review acceptance ([§10](10-quality-requirements.md#acceptance-criteria)).
+
+All five families run in the **offline default suite** (no key, no network) and again in CI
 on every push: the AI portion is tested without ever needing the AI.
 
 ## What CI runs per PR
