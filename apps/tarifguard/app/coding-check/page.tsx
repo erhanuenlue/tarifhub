@@ -37,7 +37,7 @@ export default function CodingCheckPage() {
         body: JSON.stringify({ positions }),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "coding check failed");
+      if (!res.ok) throw new Error(data.detail ?? data.error ?? "coding check failed");
       setFlags(data.flags as CodingFlag[]);
     } catch (err) {
       setError((err as Error).message);

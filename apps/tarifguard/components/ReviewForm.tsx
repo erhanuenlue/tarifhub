@@ -36,7 +36,7 @@ export function ReviewForm() {
       try {
         const res = await fetch("/api/review");
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error ?? "failed to load review queue");
+        if (!res.ok) throw new Error(data.detail ?? data.error ?? "failed to load review queue");
         if (cancelled) return;
         setQueue(data as ReviewItem[]);
         setActiveKey((data as ReviewItem[])[0] ? keyOf((data as ReviewItem[])[0]) : null);
@@ -84,7 +84,7 @@ export function ReviewForm() {
         body: JSON.stringify(decision),
       });
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "submit failed");
+      if (!res.ok) throw new Error(data.detail ?? data.error ?? "submit failed");
       setResult(data as ReviewResult);
       // Remove the now-frozen item from the queue.
       setQueue((q) => q.filter((i) => keyOf(i) !== keyOf(active)));

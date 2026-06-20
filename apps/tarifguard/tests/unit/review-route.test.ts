@@ -104,7 +104,15 @@ describe("review BFF route", () => {
     const body = await res.json();
 
     expect(res.status).toBe(400);
-    expect(body.error).toContain("tax_points");
+    // The BFF's own error is the same RFC 7807 envelope the Python services emit.
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(body.detail).toContain("tax_points");
+    expect(body).toMatchObject({
+      type: expect.any(String),
+      title: expect.any(String),
+      status: 400,
+      instance: "/api/review",
+    });
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
@@ -118,6 +126,30 @@ describe("review BFF route", () => {
     const body = await res.json();
 
     expect(res.status).toBe(409);
+    // A proxy surfaces the upstream problem+json body verbatim under the problem media type,
+    // so the console sees ONE envelope end to end (never a re-wrapped or masked failure).
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
     expect(body).toEqual({ detail: "record_hash stale" });
+  });
+
+  it("POST surfaces a full upstream problem+json document verbatim (one envelope end to end)", async () => {
+    process.env.INGEST_BASE_URL = BASE;
+    const upstream = {
+      type: "https://tarifhub.example/problems/review-conflict",
+      title: "Review conflict",
+      status: 409,
+      detail: "record_hash does not match the current flagged version (stale read)",
+      instance: "/review",
+    };
+    fetchMock.mockResolvedValueOnce(okResponse(upstream, 409));
+
+    const res = await POST(
+      postRequest({ tariff_system: "EAL", tariff_code: "0010.00", record_hash: "stale", action: "approve" })
+    );
+    const body = await res.json();
+
+    expect(res.status).toBe(409);
+    expect(res.headers.get("content-type")).toContain("application/problem+json");
+    expect(body).toEqual(upstream); // relayed unchanged, not re-wrapped
   });
 });

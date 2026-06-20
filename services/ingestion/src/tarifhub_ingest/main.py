@@ -21,18 +21,25 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, HTTPException, Query, Request
+from fastapi import FastAPI, Query, Request
 from pydantic import BaseModel
 
 from tarifhub_ingest import __version__
 from tarifhub_ingest.audit.audit_logger import AuditLogger
 from tarifhub_ingest.config import Settings, get_settings
 from tarifhub_ingest.embeddings.embedder import get_embedder
+from tarifhub_ingest.errors import (
+    ReviewConflict,
+    ReviewRecordNotFound,
+    ReviewValidationError,
+    SampleSourcesNotFound,
+    TariffCodeNotFound,
+    register_exception_handlers,
+)
 from tarifhub_ingest.ingestion.pipeline import run_pipeline
 from tarifhub_ingest.ingestion.source_loader import default_sample_dir, discover_samples
 from tarifhub_ingest.review import (
     ReviewDecision,
-    ReviewError,
     ReviewItem,
     ReviewResult,
     prepare_reviewed_record,
@@ -82,6 +89,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Centralised RFC 7807 problem+json error handling, identical to the serving layer:
+    # domain errors -> mapped status, validation -> 422, any HTTPException, and a catch-all
+    # that turns an unexpected error into a structured 500 with a correlation id. The review
+    # write path raises domain exceptions (no bare HTTPException). See tarifhub_ingest.errors.
+    register_exception_handlers(app)
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "tarifhub-ingest", "version": __version__}
@@ -96,7 +109,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         repo: TariffRepository = request.app.state.repo
         record = repo.get(tariff_code)
         if record is None:
-            raise HTTPException(status_code=404, detail=f"tariff_code {tariff_code!r} not found")
+            raise TariffCodeNotFound(f"tariff_code {tariff_code!r} not found")
         return record.model_dump(mode="json")
 
     @app.post(
@@ -117,7 +130,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         sample_dir = active.sample_dir or default_sample_dir()
         specs = discover_samples(sample_dir)
         if not specs:
-            raise HTTPException(status_code=404, detail=f"no sample sources under {sample_dir}")
+            raise SampleSourcesNotFound(f"no sample sources under {sample_dir}")
         report = run_pipeline(
             specs, repo, audit, settings=active, embedder=get_embedder(active), refill=refill
         )
@@ -171,38 +184,29 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
         record = repo.get(decision.tariff_code, decision.tariff_system)
         if record is None:
-            raise HTTPException(
-                status_code=404,
-                detail=(
-                    f"no record for system={decision.tariff_system.value} "
-                    f"code={decision.tariff_code}"
-                ),
+            raise ReviewRecordNotFound(
+                f"no record for system={decision.tariff_system.value} "
+                f"code={decision.tariff_code}"
             )
         if not record.requires_review:
-            raise HTTPException(
-                status_code=409,
-                detail=(
-                    f"record {decision.tariff_system.value}/{decision.tariff_code} "
-                    "is not flagged for review"
-                ),
+            raise ReviewConflict(
+                f"record {decision.tariff_system.value}/{decision.tariff_code} "
+                "is not flagged for review"
             )
         # Optimistic concurrency: if the client names a version, it must be the live one.
         if decision.record_hash and record.record_hash != decision.record_hash:
-            raise HTTPException(
-                status_code=409,
-                detail="record_hash does not match the current flagged version (stale read)",
+            raise ReviewConflict(
+                "record_hash does not match the current flagged version (stale read)"
             )
 
-        try:
-            prepared = prepare_reviewed_record(record, decision)
-        except ReviewError as exc:
-            raise HTTPException(status_code=exc.status, detail=exc.message) from exc
+        # A refused decision (billing/unknown-field correction) raises ReviewError, a domain
+        # exception the registered handler renders as the same problem+json envelope (400).
+        prepared = prepare_reviewed_record(record, decision)
 
         result = validate(prepared)
         if not result.ok:
-            raise HTTPException(
-                status_code=422,
-                detail={"error": "reviewed record fails validation", "errors": result.errors},
+            raise ReviewValidationError(
+                "reviewed record fails validation", extra={"errors": result.errors}
             )
 
         frozen = freeze(prepared)
@@ -217,9 +221,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             embedding = embedder.embed(text)
         stored = repo.add(frozen, embedding=embedding)
         if not stored:
-            raise HTTPException(
-                status_code=409, detail="this exact reviewed version already exists"
-            )
+            raise ReviewConflict("this exact reviewed version already exists")
 
         # Re-read for the authoritative version the repository assigned (hash is stable).
         current = repo.get(decision.tariff_code, decision.tariff_system)

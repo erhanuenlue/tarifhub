@@ -1,10 +1,12 @@
-"""Centralised error handling for the serving API (RFC 7807 + structured logging).
+"""Centralised error handling for the ingestion API (RFC 7807 + structured logging).
 
-Every failure on the read path leaves this service as one consistent shape: an
-``application/problem+json`` body (RFC 7807) with the members ``type``, ``title``,
-``status``, ``detail`` and ``instance``. Four handlers are registered on the app:
+This is the SAME problem+json layer the serving API ships in
+``tarifhub_serving/errors.py``, replicated here so the ingestion admin / read / review
+surface leaves every failure as one consistent shape: an ``application/problem+json``
+body (RFC 7807) with the members ``type``, ``title``, ``status``, ``detail`` and
+``instance``. Four handlers are registered on the app:
 
-* the domain base :class:`TariffServiceError` -> its mapped status (404 / 501 today);
+* the domain base :class:`IngestionError` -> its mapped status (404 / 409 / 422 today);
 * :class:`fastapi.exceptions.RequestValidationError` -> 422 (declarative input errors);
 * Starlette's :class:`HTTPException` -> the same problem+json envelope (so a library- or
   router-raised HTTP error, e.g. an unknown path's 404, is never a bare ``{"detail": ...}``);
@@ -12,14 +14,16 @@ Every failure on the read path leaves this service as one consistent shape: an
   message: an unexpected repository or driver error becomes a structured 500, never a bare
   500 and never a leaked stack trace or internal string.
 
-Each handler emits one structured log line (level, method, path, status, correlation id,
-and ``record_hash`` when a route set ``request.state.record_hash``). The full traceback of
-an unexpected error goes to the log via ``exc_info`` — to the operator, not to the caller.
+The generic plumbing below (``_correlation_id``, ``_problem``, ``_log_problem``, the four
+handlers and ``register_exception_handlers``) is intentionally byte-for-byte identical to
+the serving and intelligence copies; only the logger name and the service's domain
+exception vocabulary differ. The module is replicated, not shared, so each service keeps a
+self-contained determinism boundary and no new cross-service Python coupling is introduced.
 
 Determinism note: client-error (4xx) bodies carry no correlation id, so they stay
 byte-reproducible; only the 500 path, whose whole purpose is to correlate a caller report
 with a server-side log line, embeds the (random) id in the body and the ``X-Correlation-ID``
-response header. This module imports no LLM client — ``test_serving_boundary`` enforces it.
+response header. This module imports no LLM client — the determinism-boundary tests enforce it.
 """
 
 from __future__ import annotations
@@ -34,7 +38,7 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 from starlette.exceptions import HTTPException as StarletteHTTPException
 
-_LOG = logging.getLogger("tarifhub_serving.errors")
+_LOG = logging.getLogger("tarifhub_ingest.errors")
 
 PROBLEM_CONTENT_TYPE = "application/problem+json"
 _PROBLEM_BASE = "https://tarifhub.example/problems"
@@ -43,8 +47,8 @@ _PROBLEM_BASE = "https://tarifhub.example/problems"
 # --- domain exceptions -------------------------------------------------------
 
 
-class TariffServiceError(Exception):
-    """Base for serving-layer domain errors, each carrying its HTTP mapping.
+class IngestionError(Exception):
+    """Base for ingestion-layer domain errors, each carrying its HTTP mapping.
 
     Subclasses set the class attributes ``status``, ``title`` and ``type_`` (an RFC 7807
     problem-type URI); the instance carries the occurrence-specific ``detail`` message and
@@ -55,8 +59,8 @@ class TariffServiceError(Exception):
     """
 
     status: int = 500
-    title: str = "Tariff service error"
-    type_: str = f"{_PROBLEM_BASE}/tariff-service-error"
+    title: str = "Ingestion service error"
+    type_: str = f"{_PROBLEM_BASE}/ingestion-service-error"
 
     def __init__(self, detail: str, *, extra: dict[str, Any] | None = None) -> None:
         self.detail = detail
@@ -64,24 +68,51 @@ class TariffServiceError(Exception):
         super().__init__(detail)
 
 
-class TariffNotFound(TariffServiceError):
-    """No frozen record matches the requested key / version / point-in-time date (404)."""
+class TariffCodeNotFound(IngestionError):
+    """No frozen record matches the requested tariff_code (404)."""
 
     status = 404
     title = "Tariff record not found"
     type_ = f"{_PROBLEM_BASE}/tariff-not-found"
 
 
-class SearchBackendUnavailable(TariffServiceError):
-    """Semantic search cannot run on the active backend (501).
+class SampleSourcesNotFound(IngestionError):
+    """The sample-pipeline run found no source files under the configured directory (404)."""
 
-    Raised when the configured embedder's dimension does not match the pgvector column on
-    Postgres: the request fails closed instead of issuing a doomed query (ADR-017).
+    status = 404
+    title = "No sample sources found"
+    type_ = f"{_PROBLEM_BASE}/sample-sources-not-found"
+
+
+class ReviewRecordNotFound(IngestionError):
+    """The review decision names a (system, code) with no current record (404)."""
+
+    status = 404
+    title = "Review record not found"
+    type_ = f"{_PROBLEM_BASE}/review-record-not-found"
+
+
+class ReviewConflict(IngestionError):
+    """The review decision cannot apply to the current state (409).
+
+    Raised when the named record is not flagged for review, the supplied ``record_hash``
+    is stale (optimistic-concurrency miss), or the exact reviewed version already exists.
     """
 
-    status = 501
-    title = "Semantic search unavailable on this backend"
-    type_ = f"{_PROBLEM_BASE}/search-backend-unavailable"
+    status = 409
+    title = "Review conflict"
+    type_ = f"{_PROBLEM_BASE}/review-conflict"
+
+
+class ReviewValidationError(IngestionError):
+    """A reviewed record still fails deterministic validation (422).
+
+    The field-level ``errors`` ride along as an RFC 7807 extension member via ``extra``.
+    """
+
+    status = 422
+    title = "Reviewed record failed validation"
+    type_ = f"{_PROBLEM_BASE}/review-validation-error"
 
 
 # --- problem+json plumbing ---------------------------------------------------
@@ -160,7 +191,7 @@ def _log_problem(
 # --- handlers ----------------------------------------------------------------
 
 
-async def _handle_domain_error(request: Request, exc: TariffServiceError) -> JSONResponse:
+async def _handle_domain_error(request: Request, exc: IngestionError) -> JSONResponse:
     correlation_id = _correlation_id(request)
     _log_problem(
         request, status=exc.status, correlation_id=correlation_id, error=type(exc).__name__
@@ -241,9 +272,9 @@ async def _handle_unexpected_error(request: Request, exc: Exception) -> JSONResp
 
 
 def register_exception_handlers(app: FastAPI) -> None:
-    """Register the four problem+json handlers on ``app`` (called once from ``main``)."""
+    """Register the four problem+json handlers on ``app`` (called once from ``create_app``)."""
 
-    app.add_exception_handler(TariffServiceError, _handle_domain_error)
+    app.add_exception_handler(IngestionError, _handle_domain_error)
     app.add_exception_handler(RequestValidationError, _handle_validation_error)
     app.add_exception_handler(StarletteHTTPException, _handle_http_exception)
     app.add_exception_handler(Exception, _handle_unexpected_error)

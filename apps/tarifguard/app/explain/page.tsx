@@ -12,6 +12,8 @@ interface ExplainData {
   records?: TariffRecord[];
   explanation?: string;
   deident?: { scrubbed: string | null; redactions: { rule: string; count: number }[] };
+  /** RFC 7807 problem detail on a failure (BFF + upstream share the envelope). */
+  detail?: string;
   error?: string;
 }
 
@@ -35,7 +37,7 @@ export default function ExplainPage() {
       });
       const body = (await res.json()) as ExplainData;
       setData(body);
-      if (!res.ok) throw new Error(body.error ?? "explain failed");
+      if (!res.ok) throw new Error(body.detail ?? body.error ?? "explain failed");
     } catch (err) {
       setError((err as Error).message);
     } finally {

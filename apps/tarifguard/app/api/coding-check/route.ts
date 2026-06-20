@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 
 import { getTariff, ServingError, type CodingFlag, type CodingPosition } from "@/lib/api";
+import { problem } from "@/lib/problem";
 
 /**
  * Server-side proxy for the coding-check screen.
@@ -11,28 +12,30 @@ import { getTariff, ServingError, type CodingFlag, type CodingPosition } from "@
  * value relayed verbatim. No combinability verdict and no billing value are computed here.
  */
 export async function POST(req: NextRequest) {
+  const instance = req.nextUrl.pathname;
   let positions: CodingPosition[];
   try {
     const body = await req.json();
     positions = Array.isArray(body?.positions) ? body.positions : [];
   } catch {
-    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
+    return problem({ status: 400, detail: "invalid JSON body", instance });
   }
   if (positions.length === 0) {
-    return NextResponse.json({ error: "no positions supplied" }, { status: 400 });
+    return problem({ status: 400, detail: "no positions supplied", instance });
   }
   // Bound the fan-out (each position is one upstream lookup) and validate element shape.
   if (positions.length > 50) {
-    return NextResponse.json({ error: "too many positions (max 50)" }, { status: 400 });
+    return problem({ status: 400, detail: "too many positions (max 50)", instance });
   }
   const wellFormed = positions.every(
     (p) => p && typeof p.system === "string" && typeof p.code === "string"
   );
   if (!wellFormed) {
-    return NextResponse.json(
-      { error: "each position needs a string system and code" },
-      { status: 400 }
-    );
+    return problem({
+      status: 400,
+      detail: "each position needs a string system and code",
+      instance,
+    });
   }
 
   const today = new Date().toISOString().slice(0, 10);
@@ -43,7 +46,7 @@ export async function POST(req: NextRequest) {
     }
   } catch (err) {
     const status = err instanceof ServingError ? 502 : 500;
-    return NextResponse.json({ error: String((err as Error).message) }, { status });
+    return problem({ status, detail: String((err as Error).message), instance });
   }
   return NextResponse.json({ source: "structural", flags });
 }

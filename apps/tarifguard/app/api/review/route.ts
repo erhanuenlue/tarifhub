@@ -3,7 +3,11 @@ import { createHash } from "node:crypto";
 import { NextRequest, NextResponse } from "next/server";
 
 import type { ReviewDecision, ReviewResult } from "@/lib/api";
+import { problem, upstreamProblem } from "@/lib/problem";
 import { findReviewItem, REVIEW_QUEUE } from "@/lib/review-fixtures";
+
+const QUEUE_INSTANCE = "/api/review/queue";
+const REVIEW_INSTANCE = "/api/review";
 
 /**
  * The console's ONE write path. The review form GETs the queue here and POSTs an
@@ -42,16 +46,20 @@ export async function GET() {
     });
     const body = await res.json().catch(() => null);
     if (!res.ok) {
-      return NextResponse.json(body ?? { error: `ingestion review queue -> ${res.status}` }, {
+      return upstreamProblem({
         status: res.status,
+        body,
+        instance: QUEUE_INSTANCE,
+        fallbackDetail: `ingestion review queue -> ${res.status}`,
       });
     }
     return NextResponse.json(body);
   } catch (err) {
-    return NextResponse.json(
-      { error: `ingestion review endpoint unreachable: ${String((err as Error).message)}` },
-      { status: 502 }
-    );
+    return problem({
+      status: 502,
+      detail: `ingestion review endpoint unreachable: ${String((err as Error).message)}`,
+      instance: QUEUE_INSTANCE,
+    });
   }
 }
 
@@ -60,25 +68,31 @@ export async function POST(req: NextRequest) {
   try {
     decision = (await req.json()) as ReviewDecision;
   } catch {
-    return NextResponse.json({ error: "invalid JSON body" }, { status: 400 });
+    return problem({ status: 400, detail: "invalid JSON body", instance: REVIEW_INSTANCE });
   }
   if (!decision?.tariff_code || !decision?.tariff_system || !decision?.action) {
-    return NextResponse.json(
-      { error: "decision requires tariff_system, tariff_code and action" },
-      { status: 400 }
-    );
+    return problem({
+      status: 400,
+      detail: "decision requires tariff_system, tariff_code and action",
+      instance: REVIEW_INSTANCE,
+    });
   }
   if (decision.action !== "approve" && decision.action !== "correct") {
-    return NextResponse.json({ error: `unknown action '${decision.action}'` }, { status: 400 });
+    return problem({
+      status: 400,
+      detail: `unknown action '${decision.action}'`,
+      instance: REVIEW_INSTANCE,
+    });
   }
   // The inviolable boundary, enforced server-side: a billing value is never corrected here.
   if (decision.action === "correct" && decision.corrections) {
     const offending = Object.keys(decision.corrections).filter((k) => BILLING_FIELDS.has(k));
     if (offending.length > 0) {
-      return NextResponse.json(
-        { error: `billing values cannot be corrected: ${offending.join(", ")}` },
-        { status: 400 }
-      );
+      return problem({
+        status: 400,
+        detail: `billing values cannot be corrected: ${offending.join(", ")}`,
+        instance: REVIEW_INSTANCE,
+      });
     }
   }
 
@@ -95,15 +109,19 @@ export async function POST(req: NextRequest) {
       cache: "no-store",
     });
   } catch (err) {
-    return NextResponse.json(
-      { error: `ingestion review endpoint unreachable: ${String((err as Error).message)}` },
-      { status: 502 }
-    );
+    return problem({
+      status: 502,
+      detail: `ingestion review endpoint unreachable: ${String((err as Error).message)}`,
+      instance: REVIEW_INSTANCE,
+    });
   }
   const body = await res.json().catch(() => null);
   if (!res.ok) {
-    return NextResponse.json(body ?? { error: `ingestion review -> ${res.status}` }, {
+    return upstreamProblem({
       status: res.status,
+      body,
+      instance: REVIEW_INSTANCE,
+      fallbackDetail: `ingestion review -> ${res.status}`,
     });
   }
   return NextResponse.json(body);

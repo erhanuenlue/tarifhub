@@ -33,6 +33,7 @@ from typing import Annotated, Literal, Optional
 from pydantic import BaseModel, Field, StringConstraints
 
 from tarifhub_ingest.confidence.scorer import score
+from tarifhub_ingest.errors import IngestionError
 from tarifhub_ingest.models.tariff_model import Designation, TariffRecord, TariffSystem
 
 # --- field maps (the one canonical reconciliation place) ---------------------
@@ -152,13 +153,22 @@ class ReviewResult(BaseModel):
     message: str
 
 
-class ReviewError(Exception):
-    """A review decision the server refuses, carrying the HTTP status to surface."""
+class ReviewError(IngestionError):
+    """A review decision the server refuses, carrying the HTTP status to surface.
+
+    A domain exception (subclass of :class:`~tarifhub_ingest.errors.IngestionError`) so the
+    registered problem+json handler renders it as the SAME envelope as every other failure,
+    with no inline ``HTTPException`` translation in ``main.py``. ``status`` is per-instance
+    (400 for a billing-field or unknown-field correction); ``title`` / ``type_`` are fixed.
+    """
+
+    title = "Review decision rejected"
+    type_ = "https://tarifhub.example/problems/review-rejected"
 
     def __init__(self, status: int, message: str) -> None:
+        super().__init__(message)
         self.status = status
         self.message = message
-        super().__init__(message)
 
 
 # --- queue shaping (read-only) -----------------------------------------------

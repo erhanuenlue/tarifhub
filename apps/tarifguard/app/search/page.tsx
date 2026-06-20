@@ -24,7 +24,7 @@ export default function SearchPage() {
     try {
       const res = await fetch(url);
       const data = await res.json();
-      if (!res.ok) throw new Error(data.error ?? "request failed");
+      if (!res.ok) throw new Error(data.detail ?? data.error ?? "request failed");
       const next: Row[] = asHits
         ? (data as SearchHit[]).map((h) => ({ record: h.record, rank: h.rank }))
         : (data as TariffRecord[]).map((r) => ({ record: r }));

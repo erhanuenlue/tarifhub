@@ -16,11 +16,12 @@ from __future__ import annotations
 
 from contextlib import asynccontextmanager
 
-from fastapi import FastAPI, HTTPException, Request
+from fastapi import FastAPI, Request
 
 from tarifiq import __version__
 from tarifiq.config import Settings, get_settings
 from tarifiq.crosswalk.tarmed_tardoc import lookup_crosswalk
+from tarifiq.errors import CrosswalkNotFound, register_exception_handlers
 from tarifiq.models.rule_model import (
     CombinabilityCheckRequest,
     CombinabilityCheckResult,
@@ -51,6 +52,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=lifespan,
     )
 
+    # Centralised RFC 7807 problem+json error handling, identical to the serving and
+    # ingestion layers: domain errors -> mapped status, validation -> 422, any HTTPException,
+    # and a catch-all that turns an unexpected error into a structured 500 with a correlation
+    # id and no leaked internals. See tarifiq.errors.
+    register_exception_handlers(app)
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "tarifiq", "version": __version__}
@@ -65,9 +72,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     def crosswalk(tarmed_code: str) -> CrosswalkResult:
         result = lookup_crosswalk(tarmed_code)
         if not result.found:
-            raise HTTPException(
-                status_code=404,
-                detail=f"TARMED code {tarmed_code!r} not in the frozen cross-walk table",
+            raise CrosswalkNotFound(
+                f"TARMED code {tarmed_code!r} not in the frozen cross-walk table"
             )
         return result
 

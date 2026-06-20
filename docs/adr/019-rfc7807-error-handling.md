@@ -1,12 +1,16 @@
-# ADR-019: Centralised RFC 7807 error handling in the serving API
+# ADR-019: Centralised RFC 7807 error handling, uniform across all HTTP surfaces
 
-*Status: Accepted · Date: 2026-06-19 · Decider: Erhan (+ AI-assisted analysis)*
+*Status: Accepted · Date: 2026-06-19 · Amended: 2026-06-20 (extended to ingestion, intelligence and the BFF) · Decider: Erhan (+ AI-assisted analysis)*
 
 ## Context
 The serving API raised `HTTPException` inline at roughly eight sites and had no application-level exception handler. An unexpected repository or driver error therefore surfaced as a bare, unstructured HTTP 500, and the error envelope was defined route by route rather than once. For a read API that is part of the graded deliverable, error responses are part of the contract and need one predictable, documented shape (crosscutting concept "error handling", arc42 §8).
 
+The first version of this layer covered only serving. The other HTTP surfaces still diverged: the ingestion review endpoint (the riskiest, mutating path) raised about eight bare `HTTPException`, the intelligence service returned default FastAPI/Starlette bodies, and the TarifGuard BFF used ad hoc `{ "error": ... }` JSON. Uniformity across every surface is what the "error handling" crosscutting concept actually asks for.
+
 ## Decision
 We centralise error handling in `tarifhub_serving/errors.py`: a small domain-exception vocabulary (`TariffNotFound` to 404, `SearchBackendUnavailable` to 501) plus four handlers registered on the FastAPI app that render every failure as an RFC 7807 `application/problem+json` document (`type`, `title`, `status`, `detail`, `instance`), with a catch-all on `Exception` that turns any unexpected error into a structured 500 carrying a correlation id and no leaked internals.
+
+The same handler layer is registered on the ingestion (`tarifhub_ingest/errors.py`) and intelligence (`tarifiq/errors.py`) services. The problem+json core is kept byte-identical and replicated per service rather than imported from one shared package, so each service keeps a self-contained determinism boundary and no new cross-service Python coupling is introduced; each service adds only its own domain-exception vocabulary on top (ingestion: `TariffCodeNotFound`, `ReviewRecordNotFound`, `ReviewConflict`, `ReviewValidationError`, the billing-field `ReviewError`; intelligence: `CrosswalkNotFound`). The ingestion review write path now raises these domain exceptions instead of bare `HTTPException`. The TarifGuard BFF (`apps/tarifguard/lib/problem.ts`) emits the same envelope for its own errors and surfaces an upstream service's problem+json verbatim, so the console sees one error shape end to end.
 
 ## Alternatives weighed
 - **Keep inline `HTTPException` per route**: no central place for the status mapping, and the catch-all 500 stays bare and unstructured.
@@ -15,4 +19,5 @@ We centralise error handling in `tarifhub_serving/errors.py`: a small domain-exc
 ## Consequences
 - (+) One consistent, standard error envelope across every route; an unexpected error is now a structured 500 whose correlation id ties the caller's report to a server-side log line.
 - (+) The status-to-condition mapping lives in one module and routes read more clearly (`raise TariffNotFound(...)`); the `detail` strings stay the existing per-route messages, so the change is contract-preserving.
-- (–) The handler layer is serving-only for now; if the MCP service grows its own failure modes we would revisit sharing the envelope. The errors module imports no LLM client, so the serving determinism boundary (`test_serving_boundary.py`) is unaffected.
+- (+) The envelope is uniform across the serving, ingestion and intelligence services and the BFF: the riskiest, mutating path (ingestion review) returns the same structured problem document as the read API, and the console sees one error shape end to end. None of the three `errors.py` modules imports an LLM client, so every determinism boundary stays green (`test_serving_boundary.py`, the ingestion `test_determinism_boundary.py` / `test_review_boundary.py` / new `test_value_path_boundary.py`, and intelligence's `test_determinism_boundary.py`).
+- (–) The problem+json core is replicated in three files rather than imported from one shared package. The cost is deliberate: no cross-service Python coupling and each determinism boundary stays self-contained. The three cores are kept byte-identical, with only a small per-service domain vocabulary on top.
