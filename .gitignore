@@ -55,6 +55,7 @@ graphify-out/
 # Eraser MCP render scratchpad (diagram deliverables are committed under docs/img/diagrams/)
 .eraser/
 docs/cas/bewertungskriterien-anker.md
+docs/cas/grading-anchors-operative.md
 
 vault/00-index.md
 

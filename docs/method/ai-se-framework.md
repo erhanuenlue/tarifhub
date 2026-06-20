@@ -100,7 +100,7 @@ Codex login and reviews every pull request (section 7).
 
 Two loops sit on top of the pipeline. The fixed loop (`tools/loop.sh`) runs a known list of prompts
 back to back, headless, checking a completion contract between each step and halting to me with a
-reason if anything fails. Its between-step contract is explicit: zero CAS ratchet regressions, a
+reason if anything fails. Its between-step contract is explicit: zero completeness ratchet regressions, a
 non-decreasing fitness floor, a clean working tree, and no secret leak. The self-prompting loop
 (the auto-loop) closes the planning layer too: each iteration reads the current state, writes the
 next task as a prompt itself, runs it through `/ship`, checks the contract, and repeats until a
@@ -140,7 +140,7 @@ An enforced, tested boundary is what makes increasing autonomy safe.
 - The green-contract governs autonomous merge. Phase 09 merges only when all four conditions hold:
   CI is fully green including the security and boundary tests, every review finding is resolved or
   explicitly dispositioned with no open P1 or P2, the diff touches no frozen path beyond what I
-  authorised this session, and the working tree is clean with the branch current. The CAS fitness
+  authorised this session, and the working tree is clean with the branch current. The completeness
   ratchet showing no regression is folded into the same contract: a regression is a failing check
   that blocks the merge. Anything less stops for me.
 - A secret gate runs on every loop iteration (gitleaks, with a key-shaped grep fallback) so no
@@ -168,7 +168,7 @@ isolated commit with the diff shown first. The worked record is in the
 GitHub Actions enforces the same standards a reviewer would, on every push and pull request
 (`.github/workflows/ci.yml`): lint and format (ruff), the full offline test suite, the determinism
 boundary tests printed visibly in the log, a secrets scan (gitleaks), a vulnerability and SBOM scan
-(Trivy and Syft), and a dedicated ratchet job (`cas-anchors`) that runs the fitness function in
+(Trivy and Syft), and a dedicated ratchet job (`structure-floor`) that runs the fitness function in
 read-only mode (`python3 tools/cas_check.py --ci`) and fails only on a regression. Container images
 are built on the main branch as the distribution evidence. The
 documentation site builds under strict mode and deploys to GitHub Pages
@@ -181,7 +181,7 @@ before it proceeds, so a red pipeline halts the automation. The pipeline rationa
 
 ![The CI/CD pipeline](../img/diagrams/cicd-pipeline.png)
 
-> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the anchor ratchet); on main, an images job builds every container, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
+> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the completeness ratchet); on main, an images job builds every container, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
 
 ## 7. Independent second-model review
 
@@ -200,7 +200,7 @@ engineering safeguard and, for this course, evidence of genuine multi-tool AI-as
 A single-file, dependency-free dashboard (`tools/shipboard/shipboard.py`) makes the whole system
 legible. It reads explicit pipeline events, the session transcript, the git and GitHub state, the
 vault, and the fitness function, and presents them as tabs: the pipeline rail, per-agent activity
-and cost, the project and CI state, the grading floor, and a Loop tab showing run milestones plus
+and cost, the project and CI state, the completeness floor, and a Loop tab showing run milestones plus
 live agent activity. The Loop tab also carries the approval bridge: an Approvals panel, with a
 count badge in the header, that lists any side-effectful action waiting on a human and resolves it
 with an Approve or Deny button. It is one queue with two surfaces, the panel and a Telegram bot

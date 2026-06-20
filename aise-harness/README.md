@@ -27,7 +27,7 @@ billing value at serve time* — is enforced by a git hook, not by good intentio
 | Governance hooks | [`../.claude/hooks/`](../.claude/hooks/) | `guard_frozen` (freeze‑line gate), `approval_gate`, `format`, `brain_sync`, journal + session tracking. |
 | Skills | [`../.claude/skills/`](../.claude/skills/) | `/ship` (the multi‑model pipeline), `/cas-audit`, `/cas-status`, `/new-source`. |
 | Live dashboard | [`../tools/shipboard/`](../tools/shipboard/) | The "shipboard" cockpit that watches a run in real time (`python3 tools/shipboard/shipboard.py` → :8787). |
-| Deterministic grade floor | [`../tools/cas_check.py`](../tools/cas_check.py) | ~60 anchor checks the loop and CI both ratchet against. |
+| Deterministic completeness floor | [`../tools/cas_check.py`](../tools/cas_check.py) | ~60 structural checks the loop and CI both ratchet against. |
 | Model lifecycle | [`../tools/switch_model.sh`](../tools/switch_model.sh) | Single source of truth for the orchestrator model (ADR‑018). |
 | Journal & knowledge | [`../vault/`](../vault/) · [`../knowledge/`](../knowledge/) | The contemporaneous AI‑workflow journal and decision/research notes. Excerpts feed the graded chapter `docs/method/`. |
 | AI accept / correct / reject log | [`../LEARNINGS.md`](../LEARNINGS.md) | Where AI suggestions were taken, fixed, or rejected — with refs. |
@@ -40,7 +40,7 @@ billing value at serve time* — is enforced by a git hook, not by good intentio
 # One prompt, dry run (no model spend) — replaces the model with `true`
 LOOP_CMD='true' bash tools/loop.sh 06
 
-# The grading floor the loop and CI both enforce
+# The completeness floor the loop and CI both enforce
 python3 tools/cas_check.py
 
 # Fresh-machine setup

@@ -149,8 +149,8 @@ jobs:
       - run: pip install mkdocs-material mkdocs-enumerate-headings-plugin
       - run: mkdocs build -f docs/mkdocs.yml --strict
 
-  # CAS grading-anchor ratchet: structural floor must never regress (tools/cas_check.py).
-  cas-anchors:
+  # Structural-completeness ratchet: the definition-of-done floor must never regress (tools/cas_check.py).
+  structure-floor:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6

@@ -1244,7 +1244,7 @@ def state():
             "alerts": al[:8], "sessions": discover_sessions(), "loop": loop_state(),
             "approvals": approvals()}
 
-# ---------------- CAS structural floor (tools/cas_check.py, cached 60s) ----------------
+# ---------------- Structural-completeness floor (tools/cas_check.py, cached 60s) ----------------
 
 _CAS = {"ts": 0.0, "data": None, "mod": None}
 
@@ -1923,7 +1923,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
     </div>
   </div>
 </div>
-<div class="foot">shipboard v9 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify + grading anchors · keys: 1-9 tabs, Esc closes inspector</div>
+<div class="foot">shipboard v9 · one file · stdlib · click anything for its evidence · data: /ship emits + hooks + transcripts (sidechain x-ray, UTC→local) + gh + repo + vault wikilinks + graphify + completeness floor · keys: 1-9 tabs, Esc closes inspector</div>
 </div>
 <div id="ovl" onclick="closeInsp()"></div>
 <div id="insp"><div class="ih"><span class="it" id="it">inspector</span><span class="ix" onclick="closeInsp()">✕</span></div><div class="ib" id="ib">—</div></div>
@@ -2547,7 +2547,7 @@ async function tick(){
       '<span class="meta">'+bar+' '+c.passed+'/'+c.applicable+(c.due?(' +'+c.due):'')+
       (c.est!=null?' · ≈'+c.est+'/'+c.w:'')+(c.reg?' 🔻':'')+'</span></div>';
   }).join('')+(cas.audit?'<div class="s" style="margin-top:6px">audit estimate ≈'+cas.audit.total+'/100 · '+esc(cas.audit.date)+' (estimate, not the grader)</div>':'')
-   : '<div class="empty">tools/cas_check.py not found — sync it to enable the grading floor</div>';
+   : '<div class="empty">tools/cas_check.py not found — sync it to enable the completeness floor</div>';
   document.getElementById('svc').innerHTML=(p.services||[]).map(x=>'<div class="prow" style="margin:4px 0"><span class="pk">'+esc(x.n)+'</span><span class="pv">'+x.src+' / <span style="color:var(--ok)">'+x.tests+'</span></span></div>').join('')||'<div class="s">no services yet</div>';
   document.getElementById('adrn2').textContent=p.adrs.count;
   document.getElementById('adrlist').innerHTML=p.adrs.list.map(a=>{

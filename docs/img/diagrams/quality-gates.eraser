@@ -9,7 +9,7 @@ Change [shape: oval, color: blue, icon: edit, label: "AI proposes an edit"]
 Guard [shape: hexagon, color: red, icon: shield, label: "guard_frozen (PreToolUse): blocks edits to versioning, audit, applied migrations, boundary test"]
 Commit [icon: git-commit, color: blue, label: "Commit and open PR"]
 CI [color: gray, label: "CI gates (run in parallel)"] {
-  Ratchet [shape: hexagon, color: red, icon: bar-chart-2, label: "Fitness ratchet cas_check.py: the anchor floor must never regress"]
+  Ratchet [shape: hexagon, color: red, icon: bar-chart-2, label: "Completeness ratchet cas_check.py: the definition-of-done floor must never regress"]
   Secret [shape: hexagon, color: red, icon: key, label: "Secret gate: gitleaks + Trivy HIGH/CRITICAL + Syft SBOM"]
   BoundaryTest [shape: hexagon, color: red, icon: lock, label: "Boundary tests: AST proves no LLM client on the value path"]
 }

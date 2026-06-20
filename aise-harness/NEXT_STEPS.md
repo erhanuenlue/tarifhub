@@ -36,7 +36,7 @@ Step 6 below to build the framework chapter, diagrams, deck, and the independent
 
 - Foundation, two real sources (EAL XLSX + ePL FHIR R5), parity, search tuning,
   scale/fill-reuse hash-integrity, services + MCP: **PRs #1-#15 merged, CI green**.
-- CAS floor **51/52**, 0 regressions. Blocks measure progress, not dates:
+- Completeness floor **51/52**, 0 regressions. Blocks measure progress, not dates:
   Block 0 done 40/40 · Block 1 active 9/10 · Block 2 at 2/4 · Block 3 at 0/8.
 - Journal + fazit-note drafting is fully delegated to Codex gpt-5.5 (`tools/curate.sh`,
   owner decision 13 Jun); the loop runs it at start, after every prompt, and after the
@@ -123,7 +123,7 @@ contract check → curate → runs prompt 07 (includes the Codex gpt-5.5 documen
 and the FFHS-LaTeX PDF build) → contract check → curate → **runs /cas-audit** (grade
 estimate → CAS tab) → **codex second opinion on the estimate** (disagreements and
 missed gaps → `vault/cas-audit/`) → final curate. Between prompts the completion contract
-(zero ratchet regressions · CAS floor non-decreasing · working tree clean · latest CI
+(zero ratchet regressions · completeness floor non-decreasing · working tree clean · latest CI
 on main green) must hold, else it **halts to you with the printed reason**; fix what
 it names (or ask the orchestrator why) and rerun the printed command, it resumes from the halted
 prompt. Log: `.shipboard/loop.log` (tail -f friendly). The board shows everything
@@ -277,7 +277,7 @@ approvals off.
 ## If something looks wrong
 
 - Board badge red / phase fail → click the phase, read the evidence.
-- CAS tab shows a regression marker → a once-passing anchor element regressed; CI is
+- CAS tab shows a regression marker → a once-passing structural element regressed; CI is
   already red on it; paste the gap row's text into a session and say "fix this, then
   /ship".
 - Loop halted → read the printed reason (also in `.shipboard/loop.log`), fix, rerun
@@ -288,4 +288,4 @@ approvals off.
 ## Done means
 
 PDF uploaded and rendering on Moodle · repo public and frozen on the submitted commit ·
-`/cas-status` floor all green · journal curated through the final day. Then stop.
+`/cas-status` completeness floor all green · journal curated through the final day. Then stop.
