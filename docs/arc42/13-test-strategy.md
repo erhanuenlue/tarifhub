@@ -206,13 +206,13 @@ Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision)
 Target: **core modules (model, freeze, pipeline, mapper) > 80 % line coverage**
 ([§10](10-quality-requirements.md)). Measured on the offline suite (`pytest-cov`, line
 coverage) and re-measured on every CI run in the `python` job's coverage step. Measured
-2026-06-19; the per-module figures and the residual misses are quoted and interpreted in
+2026-06-20; the per-module figures and the residual misses are quoted and interpreted in
 [§10 Test and pipeline results](10-quality-requirements.md#coverage-pytest-cov-line-coverage):
 
 | Service | Core modules in scope | Measured |
 |---|---|---|
 | `services/serving` | `main` 100 %, `repository` 94 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %) | **97 % total** |
-| `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 % | **91 % total** |
+| `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 %, `errors` 99 % | **91 % total** |
 | `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **91 % total** |
 
 Every core module is above the 80 % target. The figures are evidence, not a gate: CI
@@ -228,7 +228,7 @@ and has done so since the console landed (PR #16, commit `265b2e3`, 2026-06-13).
 `console` job (`.github/workflows/ci.yml`) runs `npm ci`, lint, build, installs Chromium, and
 then the suite, on every push to `main` and every pull request.
 
-The suite is **18 Vitest tests across four files** plus a **Playwright end-to-end
+The suite is **24 Vitest tests across five files** plus a **Playwright end-to-end
 smoke**. The component tests assert the brand visual law: that frozen values render in navy mono
 with version and truncated `record_hash` provenance chips, and that every AI output renders
 inside its `.ai-content` labelled surface, marked as AI-generated content that is not a billing
@@ -241,15 +241,15 @@ The CI `console` job on the latest `main` run produced this result (Vitest summa
 Playwright run):
 
 ```
- Test Files  4 passed (4)
-      Tests  18 passed (18)
+ Test Files  5 passed (5)
+      Tests  24 passed (24)
 ...
 Running 2 tests using 1 worker
   1 skipped
   1 passed (17.2s)
 ```
 
-All 18 Vitest tests pass (the seven `brand` cases are the visual-law checks named
+All 24 Vitest tests pass (the seven `brand` cases are the visual-law checks named
 above), and the Playwright run is 1 end-to-end smoke passed plus 1 screenshot-capture spec
 skipped (it runs only with `CAPTURE=1`). The console is additionally covered by the serving API
 contract tests it consumes, with manual smoke captured into `docs/evidence/`.

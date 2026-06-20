@@ -32,7 +32,7 @@ wrong and scaled (PR #4).
 **Agentic** governs breadth: the parsers, the API surfaces and the demo, dispatched to
 model-pinned workers with an independent second model (Codex gpt-5.5) reviewing every PR. It
 caught defects that both the test suite and the first-pass reviews missed (PR #2; the
-server-side billing-field guard in PR #16, `0524f9a`). Its honest limit is that it is not a
+server-side billing-field guard in PR #16, `265b2e3`). Its honest limit is that it is not a
 safety net: a reviewer and a worker each produced a confidently-wrong diagnosis (PR #7, PR #8),
 so the human merge gate remains the backstop.
 

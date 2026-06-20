@@ -48,15 +48,15 @@ test. I also rejected the AI workflow suggestion to use parallel implementation 
 implementation in-orchestrator on Opus 4.8, because the console was one tightly-coupled contract and
 brand layer.
 
-## Codex finds the client-only billing guard (2026-06-13, PR #16, 0524f9a)
+## Codex finds the client-only billing guard (2026-06-13, PR #16, 265b2e3)
 
 I accepted the codex gpt-5.5 finding that the verifier and security pass under-weighted: the
 billing-field guard was client-side only, plus the review BFF silently masked a configured upstream
 failure as success. Diff pointer: the codex prompt "try to find what the first-pass reviews missed"
 flagged the client-only billing guard, then the diff added server-side `BILLING_FIELDS` rejection in
-`app/api/review/route.ts` (commit `0524f9a`).
+`app/api/review/route.ts` (commit `265b2e3`).
 
-## Distribution evidence captured into the repo (2026-06-13, PR #18, 3a12440)
+## Distribution evidence captured into the repo (2026-06-13, PR #18, 7e0e4da)
 
 Graders never deploy, so I captured real runtime evidence into the repo: `docker compose ps` with 8
 independent containers, a live `EAL/1000` read at p95 15.8 ms, and a k3d `helm install` with 8 of 9

@@ -126,7 +126,7 @@ the billing-field guard was implemented client-side only. The verifier and the s
 did not flag it strongly enough. A Codex prompt, "try to find what the first-pass reviews
 missed," surfaced it (alongside a review BFF that masked an upstream failure as success), and
 the accepted fix added a server-side `BILLING_FIELDS` rejection in
-`app/api/review/route.ts` (PR #16, `0524f9a`). Defence in depth is not redundancy when the
+`app/api/review/route.ts` (PR #16, `265b2e3`). Defence in depth is not redundancy when the
 layers have different blind spots.
 
 ## Refactoring
