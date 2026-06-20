@@ -1,5 +1,7 @@
 # KassenFlow
 
+> **Out of scope for the CAS submission.** This is future-work scaffolding, not part of the graded deliverable. The graded scope is the L0/L1 platform plus the TarifGuard console (ADR-13). Nothing here is wired up. It is retained only to show that the deterministic platform extends to further L3 apps.
+
 **Layer-3 app stub (in development).** KassenFlow automates payer correspondence and
 **Kostengutsprache** (cost-approval) workflows: insurer queries, MiGeL/medication
 approvals, and multi-payer handling. Like TarifGuard, it is a thin **Next.js (App Router,
