@@ -23,7 +23,13 @@ FROM node:22-alpine@sha256:9385cd9f3001dfc3431e8ead12c43e9e1f87cc1b9b5c6cfd0f738
 WORKDIR /app
 ENV NODE_ENV=production \
     NEXT_TELEMETRY_DISABLED=1 \
+    HOSTNAME=:: \
     PORT=3000
+# HOSTNAME=:: makes the Next standalone server.js bind all interfaces, dual-stack (IPv4 +
+# IPv6). Without it, server.js reads the HOSTNAME env Docker injects (the container id) and
+# binds only that address, so the container's loopback healthcheck is refused. Binding ::
+# (not 0.0.0.0) is needed because `localhost` resolves to the IPv6 loopback ::1 first in this
+# Alpine image; an IPv4-only 0.0.0.0 bind would still refuse the http://localhost:3000/ probe.
 # SERVING_BASE_URL is injected at deploy time (Helm / compose); never baked in.
 
 RUN addgroup -g 10001 tarifguard && adduser -u 10001 -G tarifguard -D tarifguard
