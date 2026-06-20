@@ -211,9 +211,9 @@ coverage) and re-measured on every CI run in the `python` job's coverage step. M
 
 | Service | Core modules in scope | Measured |
 |---|---|---|
-| `services/serving` | `main` 100 %, `repository` 94 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %) | **97 % total** |
+| `services/serving` | `main` 90 %, `db` 76 %, `repository` 94 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %) | **94 % total** |
 | `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 %, `errors` 99 % | **91 % total** |
-| `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **91 % total** |
+| `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **92 % total** |
 
 Every core module is above the 80 % target. The figures are evidence, not a gate: CI
 prints them on every run (report-only by owner decision at gate 01); a hard

@@ -11,7 +11,7 @@ Targets from Architecture v2.1 §12, carried as stable ids NfA-1…NfA-6; each r
 | NfA-3 | Harmonisation review rate | <15% flagged on the two BAG sources | `PipelineReport` flagged/frozen ratio on full live ingests, cross-checked against `audit_log` | EAL 0.0 % (1 279), SL 1.08 % (111/10 299), runs 2026-06-11 | [ADR-005](../adr/005-single-ai-seam.md) (confidence scoring), [ADR-013](../adr/013-demo-scope.md) (review loop scope) |
 | NfA-4 | API read latency | p95 < 200 ms single-record (cached), < 500 ms search | p95 over repeated requests against the live compose serving container | **single-record measured 2026-06-13**: p95 **15.8 ms** (p50 10.1 ms) over n=200 warm reads against the running container, well inside the 200 ms target; search-latency method-defined (see [§7](07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose)) | [ADR-002](../adr/002-freeze-line-decomposition.md) (read side isolated), [ADR-006](../adr/006-postgres-pgvector.md) (point-read store) |
 | NfA-5 | Freshness | New source version frozen + served within 24 h of publication | Pipeline wall clock of full live ingests as the bounding proxy | EAL 70.6 s, SL 574 s end-to-end incl. embeddings, both orders of magnitude inside 24 h | n/a |
-| NfA-6 | Test coverage | Core modules > 80% line coverage | `pytest-cov` line coverage, printed by the CI `python` job on every run (report-only by owner decision, see [§13](13-test-strategy.md)) | **measured 2026-06-20**: serving 97 %, mcp 91 %, ingestion 91 % totals; every core module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 100 %, review write-back 93 %, error layer 99 %), quoted in [Test and pipeline results](#test-and-pipeline-results) | report-only floor, gate-01 owner decision (see [§13](13-test-strategy.md)) |
+| NfA-6 | Test coverage | Core modules > 80% line coverage | `pytest-cov` line coverage, printed by the CI `python` job on every run (report-only by owner decision, see [§13](13-test-strategy.md)) | **measured 2026-06-20**: serving 94 %, mcp 92 %, ingestion 91 % totals, with every core module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 90 %, review write-back 93 %, error layer 99 %), quoted in [Test and pipeline results](#test-and-pipeline-results) | report-only floor, gate-01 owner decision (see [§13](13-test-strategy.md)) |
 
 The section below documents measured harmonisation evidence for the determinism, reproducibility and review-rate rows (EAL run 2026-06-11: 1 279/1 279 frozen, review rate 0.0 %; SL run 2026-06-11: 10 299 frozen, review rate 1.08 %, with a measured reproducibility caveat on the 47 AI-gap records, see below).
 
@@ -22,22 +22,24 @@ on, quoted verbatim from the offline suite and the CI pipeline and then interpre
 This is deliberate: a screenshot or an unbacked "all tests green" claim says little, so the
 pipeline output is quoted verbatim and interpreted here. The numbers
 below are the interpretation; the CI link and the screenshots in [§7](07-deployment-view.md)
-only illustrate. The pipeline figures were produced on 2026-06-13; the offline test counts and coverage tables below were re-run on
-2026-06-20, after the review write-back and the uniform error-handling work landed, with the
-headline coverage totals (ingestion 91 %, serving 97 %, mcp 91 %) unchanged from the prior
-2026-06-19 measurement. The offline figures are
-reproducible with `uv run pytest` in each service (no network, no container, no API key).
+only illustrate. The pipeline figures were produced on 2026-06-13. The offline test counts and
+coverage tables below were re-run on 2026-06-20, after the review write-back, the uniform
+error-handling and the serving connection-pool work landed. The connection-pool change adds a
+serving `db.py` pool module and pool wiring in `main.py` whose Postgres-only legs run in the
+`python-parity` job rather than offline, so serving's total moves to 94 % and, through the MCP
+client-timeout config it also touched, mcp's to 92 %, while ingestion holds at 91 %. The offline
+figures are reproducible with `uv run pytest` in each service (no network, no container, no API key).
 
 ### Unit and contract tests (offline suite)
 
 ```text
 ingestion:    192 passed, 3 skipped in 3.08s
-serving:      102 passed, 1 skipped in 0.71s
+serving:      104 passed, 1 skipped in 0.71s
 mcp:          8 passed in 0.16s
 intelligence: 28 passed in 0.23s
 ```
 
-**Interpretation.** 330 tests pass and 4 are skipped (the skips are the Postgres-only
+**Interpretation.** 332 tests pass and 4 are skipped (the skips are the Postgres-only
 parity legs that have no `TARIFHUB_PG_TEST_URL` offline; they run in the `python-parity`
 CI job against a real pgvector container). What this proves: the core logic, **including
 its error cases**, runs green in the build. The error-case coverage is
@@ -56,7 +58,7 @@ or the real Postgres engine (the `python-parity` job).
 
 ### Coverage (pytest-cov, line coverage)
 
-Measured locally on 2026-06-20 (ingestion 91 %, serving 97 %, mcp 91 %); line coverage is
+Measured locally on 2026-06-20 (ingestion 91 %, serving 94 %, mcp 92 %). Line coverage is
 platform-independent, so the same offline test set yields the same per-module coverage on
 the CI Linux `python` job.
 
@@ -74,33 +76,39 @@ src/tarifhub_ingest/errors.py                           81      1    99%
 TOTAL                                                 1597    138    91%
 
 # services/serving: uv run --extra dev pytest --cov=tarifhub_serving
-src/tarifhub_serving/main.py            83      0   100%
+src/tarifhub_serving/main.py           114     11    90%
+src/tarifhub_serving/db.py              37      9    76%
 src/tarifhub_serving/errors.py          69      1    99%
 src/tarifhub_serving/repository.py     136      8    94%
 src/tarifhub_serving/explain.py         35      0   100%
 src/tarifhub_serving/fhir.py           104      1    99%
 src/tarifhub_serving/models.py          25      0   100%
-TOTAL                                  493     14    97%
+TOTAL                                  536     30    94%
 
 # services/mcp: uv run --extra dev pytest --cov=server --cov=config
-config.py      17      0   100%
+config.py      23      0   100%
 server.py      28      4    86%
-TOTAL          45      4    91%
+TOTAL          51      4    92%
 ```
 
 **Interpretation.** Every named core module is well above the NfA-6 target of 80 %: the
-model, freeze, pipeline and validator are at 100 %, the mapper at 98 %, the serving routes
-(`main`) at 100 % and the read repository at 94 %. The two modules added since the last
-measurement clear the floor comfortably: the human-review write-back (`review.py`) at 93 %
-and the centralised error layer (`errors.py`) at 99 %. The residual misses are bounded and
-named, not blind spots: the four uncovered lines in each `db.py` are the Postgres
-`connect()` legs that require a live driver and server (exercised in the `python-parity`
-CI job, not offline), the two mapper lines are the `import anthropic` guard that the
-AI seam falls back from when the optional extra is absent, the eleven `review.py` lines are
-individual non-billing correction branches and defensive fallbacks, and the single uncovered line in each
-`errors.py` is the optional `record_hash` log-enrichment field. Coverage is reported, not gated:
-CI prints these figures on every run, and a hard `--cov-fail-under` floor is deliberately
-deferred (owner decision at gate 01) until the figures have a few weeks of history.
+model, freeze, pipeline and validator are at 100 %, the mapper at 98 %, the serving read
+repository at 94 % and the serving routes (`main`) at 90 %. The human-review write-back
+(`review.py`) at 93 % and the centralised error layer (`errors.py`) at 99 % clear the floor
+comfortably, and the serving connection-pool facade (`db.py`) added in this measurement sits
+at 76 %. The residual misses are bounded and named, not blind spots, and on the serving side
+they are all the Postgres-only legs that need a live driver and server and run in the
+`python-parity` CI job rather than offline: the nine uncovered `db.py` lines are the Postgres
+`connect()` and `create_pool()` paths, and the eleven uncovered `main.py` lines are the lazy
+pool creation, the pooled-connection borrow and the shutdown pool-close, none of which execute
+on the offline SQLite path (SQLite is never pooled, so the per-request `connect()` branch runs
+instead). For the same reason the ingestion `db.py` keeps four uncovered Postgres `connect()`
+lines. The two mapper lines are the `import anthropic` guard that the AI seam falls back from
+when the optional extra is absent, the eleven `review.py` lines are individual non-billing
+correction branches and defensive fallbacks, and the single uncovered line in each `errors.py`
+is the optional `record_hash` log-enrichment field. Coverage is reported, not gated: CI prints
+these figures on every run, and a hard `--cov-fail-under` floor is deliberately deferred (owner
+decision at gate 01) until the figures have a few weeks of history.
 
 ### Determinism boundary (the apex test, a visible CI step)
 
