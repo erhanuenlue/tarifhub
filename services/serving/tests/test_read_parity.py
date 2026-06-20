@@ -18,6 +18,7 @@ contract is asserted (in scope only as that contract).
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import date, datetime, timezone
 from decimal import Decimal
 
@@ -130,15 +131,21 @@ def _seed(engine) -> None:
 
 
 @pytest.fixture()
-def serving_client(engine, monkeypatch) -> TestClient:
-    """Seed the engine, then a TestClient over the serving app bound to it."""
+def serving_client(engine, monkeypatch) -> Iterator[TestClient]:
+    """Seed the engine, then a TestClient over the serving app bound to it.
+
+    Entered as a context manager so the app lifespan runs: on Postgres it warms (and on
+    teardown disposes) the shared connection pool the read path borrows from, so the parity
+    job exercises the pooled path end to end. On SQLite no pool is warmed.
+    """
 
     _seed(engine)
     monkeypatch.setenv("TARIFHUB_DB_URL", engine.db_url)
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     from tarifhub_serving.main import app
 
-    return TestClient(app)
+    with TestClient(app) as client:
+        yield client
 
 
 # --- engine-independent expected snapshots --------------------------------------
@@ -451,15 +458,17 @@ def test_pgvector_search_sql_deterministic(engine, monkeypatch):
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     from tarifhub_serving.main import app
 
-    client = TestClient(app)
-    first = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
-    assert first.status_code == 200, first.text
-    order1 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in first.json()]
-    assert order1, "search must return at least one ranked hit"
-    # Ranks are 1..n and strictly increasing (deterministic ordering contract).
-    assert [h["rank"] for h in first.json()] == list(range(1, len(first.json()) + 1))
+    # Context-managed so the lifespan disposes the warmed pool on teardown, before the
+    # engine fixture drops the scratch DB (mirrors the serving_client fixture above).
+    with TestClient(app) as client:
+        first = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
+        assert first.status_code == 200, first.text
+        order1 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in first.json()]
+        assert order1, "search must return at least one ranked hit"
+        # Ranks are 1..n and strictly increasing (deterministic ordering contract).
+        assert [h["rank"] for h in first.json()] == list(range(1, len(first.json()) + 1))
 
-    # Same query -> identical ordering (pgvector cosine SQL is deterministic).
-    second = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
-    order2 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in second.json()]
-    assert order2 == order1
+        # Same query -> identical ordering (pgvector cosine SQL is deterministic).
+        second = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
+        order2 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in second.json()]
+        assert order2 == order1

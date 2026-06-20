@@ -16,6 +16,14 @@ Each handler emits one structured log line (level, method, path, status, correla
 and ``record_hash`` when a route set ``request.state.record_hash``). The full traceback of
 an unexpected error goes to the log via ``exc_info`` — to the operator, not to the caller.
 
+Replication, by design: ``tarifhub_ingest/errors.py`` and ``tarifiq/errors.py`` carry a
+byte-for-byte identical problem+json core (only the logger name and the per-service domain
+exception vocabulary differ). The layer is replicated, not imported from one shared
+package, so each service stays an independent microservice with no shared runtime
+dependency and each service's value-path import graph stays independently boundary-testable
+(``test_serving_boundary`` here, the ingestion and intelligence ``test_determinism_boundary``
+there). The duplication is a deliberate decision (ADR-019), not an oversight.
+
 Determinism note: client-error (4xx) bodies carry no correlation id, so they stay
 byte-reproducible; only the 500 path, whose whole purpose is to correlate a caller report
 with a server-side log line, embeds the (random) id in the body and the ``X-Correlation-ID``

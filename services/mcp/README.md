@@ -47,4 +47,6 @@ cd services/mcp && pytest -q     # fully offline; serving is mocked
 | `SERVING_BASE_URL` | `http://localhost:8000` | deterministic serving API base URL |
 | `MCP_TRANSPORT` | `streamable-http` | `streamable-http` (container) or `stdio` (local agent) |
 | `MCP_HOST` / `MCP_PORT` | `0.0.0.0` / `8090` | bind address for the HTTP transport |
-| `MCP_HTTP_TIMEOUT` | `10` | per-request timeout (seconds) |
+| `MCP_HTTP_CONNECT_TIMEOUT` | `5` | connect-phase timeout to the serving API (seconds) |
+| `MCP_HTTP_READ_TIMEOUT` | `30` | read-phase timeout to the serving API (seconds) |
+| `MCP_HTTP_TIMEOUT` | (unset) | optional blanket timeout that seeds both phases when set |

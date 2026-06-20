@@ -53,3 +53,34 @@ class Database:
         conn = psycopg.connect(self.db_url, autocommit=True)
         conn.row_factory = psycopg.rows.dict_row
         return conn
+
+    def create_pool(self, *, min_size: int, max_size: int):
+        """Open a connection pool for the Postgres read path (``None`` for SQLite).
+
+        SQLite connections are cheap and file-local, so they are not pooled: this returns
+        ``None`` and the caller keeps opening a fresh per-request connection via
+        :meth:`connect`. On Postgres an opened ``psycopg_pool.ConnectionPool`` is returned,
+        and the caller (the app lifespan or the request dependency) borrows a connection per
+        request and returns it to the pool. Borrowed connections are ``autocommit`` with a
+        ``dict_row`` row factory, byte-for-byte the same connection surface :meth:`connect`
+        configures, so the repository and the served rows are identical on either path. The
+        caller owns the pool's lifetime and must ``close()`` it on shutdown.
+        """
+
+        if self.dialect != "postgresql":
+            return None
+        # Imports guarded so SQLite-only runs need neither the driver nor the pool package.
+        from psycopg.rows import dict_row  # noqa: PLC0415
+        from psycopg_pool import ConnectionPool  # noqa: PLC0415
+
+        pool = ConnectionPool(
+            self.db_url,
+            min_size=min_size,
+            max_size=max_size,
+            # Passed to psycopg.connect() for every pooled connection (same as connect()).
+            kwargs={"autocommit": True, "row_factory": dict_row},
+            # Open explicitly below rather than in the constructor (psycopg_pool 3.2+ idiom).
+            open=False,
+        )
+        pool.open()
+        return pool

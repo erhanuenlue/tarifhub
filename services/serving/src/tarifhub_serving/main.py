@@ -14,10 +14,12 @@ This is enforced by ``tests/test_serving_boundary.py``.
 
 from __future__ import annotations
 
+import threading
+from contextlib import asynccontextmanager
 from datetime import date
-from typing import Annotated
+from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Path, Query
+from fastapi import Depends, FastAPI, Path, Query, Request
 from tarifhub_ingest.embeddings.embedder import E5_DIMENSION, get_embedder
 from tarifhub_ingest.models.tariff_model import TariffRecord
 
@@ -48,10 +50,67 @@ from tarifhub_serving.models import (
 )
 from tarifhub_serving.repository import ServingRepository
 
+# Process-wide Postgres connection pools, keyed by db_url. A pool is expensive to build
+# and is meant to be shared across requests, so we create at most one per URL and reuse
+# it. SQLite is never pooled (cheap, file-local per-request connections) and is absent
+# from this registry. The app lifespan warms the pool for the configured URL at startup
+# and disposes every pool at shutdown. Double-checked locking guards lazy creation when
+# the app is exercised without its lifespan (a bare TestClient), so the same single pool
+# is shared either way.
+_POOLS: dict[str, Any] = {}
+_POOLS_LOCK = threading.Lock()
+
+
+def _get_pool(db: Database, settings: Settings):
+    """Return the shared pool for ``db`` (``None`` for SQLite), creating it once per URL."""
+
+    if db.dialect != "postgresql":
+        return None
+    pool = _POOLS.get(db.db_url)
+    if pool is None:
+        with _POOLS_LOCK:
+            pool = _POOLS.get(db.db_url)  # re-check inside the lock
+            if pool is None:
+                pool = db.create_pool(
+                    min_size=settings.db_pool_min_size, max_size=settings.db_pool_max_size
+                )
+                _POOLS[db.db_url] = pool
+    return pool
+
+
+def _close_pools() -> None:
+    """Close and forget every pool (called from the lifespan on shutdown)."""
+
+    with _POOLS_LOCK:
+        for pool in _POOLS.values():
+            pool.close()
+        _POOLS.clear()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    """Warm the Postgres connection pool once at startup, dispose it at shutdown.
+
+    On Postgres this opens the shared pool the request dependency then borrows from, so
+    connections are pooled rather than opened per request. On SQLite there is no pool to
+    warm (``_get_pool`` returns ``None``), so the dependency opens a cheap per-request
+    connection exactly as before. Resolving settings here means the configured URL is read
+    once at startup.
+    """
+
+    settings = get_settings()
+    _get_pool(Database.from_url(settings.db_url), settings)
+    try:
+        yield
+    finally:
+        _close_pools()
+
+
 app = FastAPI(
     title="tarifhub Serving (L1 TarifCore)",
     description="Deterministic read API over frozen Swiss ambulatory tariff records.",
     version="0.1.0",
+    lifespan=lifespan,
 )
 
 # Centralised RFC 7807 problem+json error handling (domain errors, validation, any
@@ -60,18 +119,29 @@ app = FastAPI(
 register_exception_handlers(app)
 
 
-def _database() -> Database:
-    return Database.from_url(get_settings().db_url)
+def get_repository(request: Request):
+    """Yield a read-only repository bound to a pooled (Postgres) or fresh (SQLite) conn.
 
+    On Postgres a connection is borrowed from the shared process pool for the duration of
+    the request and returned to the pool on completion (``with pool.connection()``). On
+    SQLite there is no pool, so a fresh connection is opened and closed per request, the
+    prior behaviour byte-for-byte. The repository API and the served rows are identical on
+    both paths. Settings are read per request so a test that repoints ``TARIFHUB_DB_URL``
+    still takes effect.
+    """
 
-def get_repository(db: Annotated[Database, Depends(_database)]):
-    """Yield a read-only repository bound to a fresh connection per request."""
-
-    conn = db.connect()
-    try:
-        yield ServingRepository(conn, db)
-    finally:
-        conn.close()
+    settings = get_settings()
+    db = Database.from_url(settings.db_url)
+    pool = _get_pool(db, settings)
+    if pool is None:
+        conn = db.connect()
+        try:
+            yield ServingRepository(conn, db)
+        finally:
+            conn.close()
+    else:
+        with pool.connection() as conn:
+            yield ServingRepository(conn, db)
 
 
 RepoDep = Annotated[ServingRepository, Depends(get_repository)]

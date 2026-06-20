@@ -28,3 +28,15 @@ def test_from_url_detects_postgres():
 def test_from_url_rejects_unsupported_scheme():
     with pytest.raises(ValueError, match="unsupported database URL scheme"):
         Database.from_url("redis://h")
+
+
+def test_create_pool_returns_none_for_sqlite():
+    """SQLite is not pooled: ``create_pool`` returns None so the caller connects per request.
+
+    The Postgres ``create_pool`` leg (which opens a real ``psycopg_pool.ConnectionPool``)
+    is exercised by the CI ``python-parity`` job against a live pgvector container, like
+    the ``connect()`` Postgres leg above.
+    """
+
+    db = Database.from_url("sqlite:///x.db")
+    assert db.create_pool(min_size=1, max_size=5) is None
