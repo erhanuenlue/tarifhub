@@ -43,7 +43,7 @@ async def search_tariffs(query: str, system: str | None = None, limit: int = 10)
 
     Args:
         query: free-text query (e.g. "blood glucose measurement").
-        system: optional tariff system filter (e.g. "TARDOC", "TARMED").
+        system: optional tariff system filter (e.g. "TARDOC", "EAL", "SL").
         limit: maximum number of ranked hits.
 
     Returns the serving service's ranked hits unchanged (each wraps a frozen record).

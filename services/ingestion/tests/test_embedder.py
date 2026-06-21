@@ -15,6 +15,7 @@ from tarifhub_ingest.embeddings.embedder import (
     HashingEmbedder,
     _build_e5_embedder,
     _e5_input,
+    get_embedder,
 )
 
 
@@ -77,3 +78,21 @@ def test_hashing_embedder_satisfies_embedder_protocol_with_query_method():
     stub = HashingEmbedder()
     assert hasattr(stub, "embed")
     assert hasattr(stub, "embed_query")
+
+
+def test_get_embedder_is_built_once_and_reused():
+    """get_embedder memoises per backend: repeated fetches return the SAME instance.
+
+    The embedder (the real multilingual-e5 model especially) is expensive to build, and
+    both the serving ``/search`` path and the ingestion ``/review`` write-back fetch it per
+    request. Constructing it once per process and reusing it keeps a heavyweight model off
+    the request hot path. Reuse must not change offline behaviour: the shared instance is
+    the deterministic stub and still yields identical vectors for identical text.
+    """
+
+    first = get_embedder()
+    second = get_embedder()
+    assert first is second  # not rebuilt per call
+    assert isinstance(first, HashingEmbedder)  # offline default is unchanged
+    # Identity does not change behaviour: the stub stays a pure function of its input.
+    assert first.embed("Glukose") == second.embed("Glukose")

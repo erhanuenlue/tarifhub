@@ -367,16 +367,22 @@ def fhir_code_system(
         "Ranks frozen records by cosine similarity to the embedded query, using the same "
         "embedder as ingestion. On Postgres+pgvector the ranking runs in SQL. On the "
         "offline SQLite mirror it runs in-process over stored embeddings of matching "
-        "dimension (deterministic, ties broken by tariff_system then tariff_code). On "
-        "Postgres with a non-1024-dim embedder the endpoint fails closed with HTTP 501 "
-        "rather than issue a doomed pgvector query. Hits are unaltered frozen records — "
-        "search only ranks, it never computes a value."
+        "dimension (deterministic, ties broken by tariff_system then tariff_code). An "
+        "optional system filter restricts the ranked candidates to one tariff system "
+        "(TARDOC, EAL or SL); omit it to rank across every system. On Postgres with a "
+        "non-1024-dim embedder the endpoint fails closed with HTTP 501 rather than issue a "
+        "doomed pgvector query. Hits are unaltered frozen records — search only ranks, it "
+        "never computes a value."
     ),
 )
 def search(
     repo: RepoDep,
     settings: SettingsDep,
     q: Annotated[str, Query(min_length=1, description="Free-text query")],
+    system: Annotated[
+        str | None,
+        Query(description="Optional tariff system filter, e.g. TARDOC, EAL or SL"),
+    ] = None,
     limit: Annotated[int, Query(ge=1, le=MAX_LIST_LIMIT)] = 10,
 ) -> list[SearchHit]:
     """Rank frozen records by cosine similarity to the embedded query (see description)."""
@@ -396,10 +402,10 @@ def search(
                 f"search requires a {E5_DIMENSION}-dim embedder (multilingual-e5); "
                 f"current backend produces {len(vector)} dims"
             )
-        records = repo.search_by_embedding(vector, limit)
+        records = repo.search_by_embedding(vector, limit, system=system)
     else:
         # SQLite has no pgvector; rank stored embeddings in-process (deterministic). Only
         # rows whose stored dimension matches the query vector's are candidates.
-        records = repo.search_offline(vector, limit)
+        records = repo.search_offline(vector, limit, system=system)
 
     return [SearchHit(rank=i, record=r) for i, r in enumerate(records, start=1)]
