@@ -472,3 +472,17 @@ def test_pgvector_search_sql_deterministic(engine, monkeypatch):
         second = client.get("/api/v1/search", params={"q": "Glukose", "limit": 3})
         order2 = [(h["record"]["tariff_system"], h["record"]["tariff_code"]) for h in second.json()]
         assert order2 == order1
+
+        # The optional system filter binds correctly on the pgvector path too: a scoped
+        # query returns only that system's rows, a strict subset of the unfiltered ranking.
+        # This guards the parameterised `tariff_system = ph` clause on the production engine
+        # (the offline cosine path is covered separately in test_api.py).
+        unfiltered = client.get("/api/v1/search", params={"q": "Glukose", "limit": 50}).json()
+        assert {h["record"]["tariff_system"] for h in unfiltered} == {"TARDOC", "EAL"}
+        eal = client.get("/api/v1/search", params={"q": "Glukose", "limit": 50, "system": "EAL"})
+        assert eal.status_code == 200, eal.text
+        eal_hits = eal.json()
+        assert eal_hits, "a system-filtered pgvector search must still return ranked hits"
+        assert {h["record"]["tariff_system"] for h in eal_hits} == {"EAL"}
+        assert [h["rank"] for h in eal_hits] == list(range(1, len(eal_hits) + 1))
+        assert len(eal_hits) < len(unfiltered)

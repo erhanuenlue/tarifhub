@@ -77,6 +77,26 @@ def test_integration_search_tariffs_returns_ranked_hits():
 
 
 @pytest.mark.usefixtures("wire_mcp_to_serving")
+def test_integration_search_tariffs_system_filter_changes_results():
+    """The tool's `system` argument is honoured end to end and genuinely narrows results.
+
+    Previously serving ignored the forwarded `system` parameter, so the advertised filter
+    was a silent no-op. With serving reading it, a system-filtered call returns only that
+    system's frozen records, a strict subset of the unfiltered ranking.
+    """
+
+    unfiltered = asyncio.run(server.search_tariffs(SEARCH_QUERY, limit=10))
+    # The seed spans both systems, so an unfiltered search returns TARDOC and EAL hits.
+    assert {h["record"]["tariff_system"] for h in unfiltered} == {"TARDOC", "EAL"}
+
+    eal_only = asyncio.run(server.search_tariffs(SEARCH_QUERY, system="EAL", limit=10))
+    assert eal_only, "a system-filtered tool call must still return ranked hits"
+    assert {h["record"]["tariff_system"] for h in eal_only} == {"EAL"}
+    # The filter is not a no-op: it strictly narrows the result set.
+    assert len(eal_only) < len(unfiltered)
+
+
+@pytest.mark.usefixtures("wire_mcp_to_serving")
 def test_integration_explain_crosswalk_returns_deterministic_explanation(serving_client):
     """explain_crosswalk returns {code, records, explanation}; records are all versions."""
 

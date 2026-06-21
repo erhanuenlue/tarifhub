@@ -12,6 +12,7 @@ Embeddings are a search/discovery aid only; they never influence a billing value
 
 from __future__ import annotations
 
+import functools
 import hashlib
 import math
 from typing import Protocol, runtime_checkable
@@ -131,18 +132,35 @@ def _build_e5_embedder(_model_cls=None):
     return _E5Embedder()
 
 
-def get_embedder(settings: Settings | None = None) -> Embedder:
-    """Return the configured embedder.
+@functools.lru_cache(maxsize=None)
+def _cached_embedder(backend: str) -> Embedder:
+    """Build the embedder for ``backend`` once per process and reuse it.
 
-    Default is the offline :class:`HashingEmbedder`. Set ``TARIFHUB_EMBEDDINGS=e5``
-    *and* install the optional ``ai`` extra to use the real multilingual-e5 model.
-    Any failure to load the real model degrades gracefully to the stub.
+    The embedder is a pure function of the backend string (the only setting that selects
+    one), and constructing the real multilingual-e5 model is expensive, so it is built a
+    single time and memoised. Callers on a request hot path (serving ``/search``, the
+    ingestion ``/review`` write-back) then reuse the same instance instead of rebuilding a
+    model per request. The offline :class:`HashingEmbedder` is stateless, so sharing it is
+    byte-identical to constructing a fresh one.
     """
 
-    settings = settings or get_settings()
-    if settings.embeddings_backend == "e5":
+    if backend == "e5":
         try:
             return _build_e5_embedder()
         except RuntimeError:
             return HashingEmbedder()
     return HashingEmbedder()
+
+
+def get_embedder(settings: Settings | None = None) -> Embedder:
+    """Return the configured embedder, built once per process and reused.
+
+    Default is the offline :class:`HashingEmbedder`. Set ``TARIFHUB_EMBEDDINGS=e5``
+    *and* install the optional ``ai`` extra to use the real multilingual-e5 model.
+    Any failure to load the real model degrades gracefully to the stub. The embedder is
+    memoised per backend (:func:`_cached_embedder`) so repeated fetches return the same
+    instance rather than reconstructing a heavyweight model on every call.
+    """
+
+    settings = settings or get_settings()
+    return _cached_embedder(settings.embeddings_backend)

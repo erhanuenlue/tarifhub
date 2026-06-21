@@ -116,6 +116,35 @@ def test_search_offline_respects_limit(client):
     assert len(hits) == 2
 
 
+def test_search_filters_by_system(client):
+    """The optional ?system= filter restricts ranked hits to one tariff system.
+
+    This is what makes the MCP tool's advertised `system` argument real: serving now reads
+    the parameter (it was previously dropped, so the filter was a silent no-op) and pushes
+    it into the ranking query as a `tariff_system` filter. Omitting it ranks across every
+    system, the prior behaviour.
+    """
+
+    unfiltered = client.get("/api/v1/search", params={"q": "Position", "limit": 50}).json()
+    # The seed spans both systems, so an unfiltered search returns TARDOC and EAL hits.
+    assert {h["record"]["tariff_system"] for h in unfiltered} == {"TARDOC", "EAL"}
+
+    eal = client.get(
+        "/api/v1/search", params={"q": "Position", "limit": 50, "system": "EAL"}
+    ).json()
+    assert eal, "a system-filtered search must still return ranked hits"
+    assert {h["record"]["tariff_system"] for h in eal} == {"EAL"}
+    # Ranks stay contiguous 1..n over the filtered set (the ordering contract holds).
+    assert [h["rank"] for h in eal] == list(range(1, len(eal) + 1))
+    # The filter genuinely narrows the result rather than being ignored.
+    assert len(eal) < len(unfiltered)
+
+    tardoc = client.get(
+        "/api/v1/search", params={"q": "Position", "limit": 50, "system": "TARDOC"}
+    ).json()
+    assert {h["record"]["tariff_system"] for h in tardoc} == {"TARDOC"}
+
+
 def test_search_offline_is_deterministic(client):
     a = client.get("/api/v1/search", params={"q": "Position", "limit": 5}).json()
     b = client.get("/api/v1/search", params={"q": "Position", "limit": 5}).json()
@@ -206,7 +235,7 @@ def test_search_embeds_query_via_query_path(monkeypatch):
             return [0.0] * 1024
 
     class _StubRepo:
-        def search_by_embedding(self, vector, limit):
+        def search_by_embedding(self, vector, limit, *, system=None):
             assert len(vector) == 1024
             return []
 

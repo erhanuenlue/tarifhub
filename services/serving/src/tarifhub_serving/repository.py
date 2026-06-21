@@ -193,12 +193,16 @@ class ServingRepository:
         )
         return clause, [iso, iso]
 
-    def search_by_embedding(self, embedding: list[float], limit: int) -> list[TariffRecord]:
+    def search_by_embedding(
+        self, embedding: list[float], limit: int, *, system: str | None = None
+    ) -> list[TariffRecord]:
         """Nearest frozen rows by pgvector cosine distance (Postgres only).
 
         The serving service ranks; it never fabricates or mutates a value. Every field
         in every hit is an unaltered frozen row. SQLite has no pgvector, so semantic
-        search is unavailable there (the API surfaces an honest 501 instead).
+        search is unavailable there (the API surfaces an honest 501 instead). An optional
+        ``system`` restricts the ranked candidates to one ``tariff_system`` (parameterised);
+        ``None`` ranks across every system, the prior behaviour.
         """
 
         if self._db.dialect != "postgresql":
@@ -206,13 +210,19 @@ class ServingRepository:
 
         ph = self._ph
         vector_literal = "[" + ",".join(repr(float(x)) for x in embedding) + "]"
+        where = "t.embedding IS NOT NULL"
+        params: list[Any] = []
+        if system is not None:
+            where += f" AND t.tariff_system = {ph}"
+            params.append(system)
         query = (
             "SELECT t.* FROM tariff t "
-            "WHERE t.embedding IS NOT NULL "
+            f"WHERE {where} "
             f"ORDER BY t.embedding <=> CAST({ph} AS vector) "
             f"LIMIT {ph}"
         )
-        rows = self._conn.execute(query, (vector_literal, limit)).fetchall()
+        params.extend([vector_literal, limit])
+        rows = self._conn.execute(query, tuple(params)).fetchall()
         return [self._row_to_record(row) for row in rows]
 
     def search_offline(
@@ -220,6 +230,8 @@ class ServingRepository:
         query_vector: list[float],
         limit: int,
         candidate_cap: int = OFFLINE_SEARCH_CANDIDATE_CAP,
+        *,
+        system: str | None = None,
     ) -> list[TariffRecord]:
         """Rank latest-version frozen rows by cosine similarity, computed in Python.
 
@@ -229,7 +241,8 @@ class ServingRepository:
         ``(tariff_system, tariff_code)`` ascending so the order is fully deterministic.
         Rows without an embedding, or whose stored dimension differs from the query
         vector's, are excluded — the ranker never fabricates a value, it only orders
-        unaltered frozen rows.
+        unaltered frozen rows. An optional ``system`` restricts the candidates to one
+        ``tariff_system`` (parameterised); ``None`` ranks across every system as before.
 
         ``candidate_cap`` bounds the in-process scan (the dev/demo path must not turn
         into a CPU sink on a large mirror): at most that many candidate rows are
@@ -238,8 +251,14 @@ class ServingRepository:
         """
 
         dim = len(query_vector)
+        ph = self._ph
         # Latest version per key, with its raw stored embedding text. The MAX(version)
         # subquery mirrors ``list_latest`` so search ranks current records only.
+        where = "t.embedding IS NOT NULL"
+        params: list[Any] = []
+        if system is not None:
+            where += f" AND t.tariff_system = {ph}"
+            params.append(system)
         query = (
             "SELECT t.*, t.embedding AS _emb FROM tariff t "
             "JOIN (SELECT tariff_system, tariff_code, MAX(version) AS max_version "
@@ -247,11 +266,12 @@ class ServingRepository:
             "  ON t.tariff_system = latest.tariff_system "
             " AND t.tariff_code = latest.tariff_code "
             " AND t.version = latest.max_version "
-            "WHERE t.embedding IS NOT NULL "
+            f"WHERE {where} "
             "ORDER BY t.tariff_system, t.tariff_code "
-            f"LIMIT {self._ph}"
+            f"LIMIT {ph}"
         )
-        rows = self._conn.execute(query, (candidate_cap,)).fetchall()
+        params.append(candidate_cap)
+        rows = self._conn.execute(query, tuple(params)).fetchall()
 
         scored: list[tuple[float, str, str, Any]] = []
         for row in rows:
