@@ -178,6 +178,6 @@ trace to current sources.
 
 ---
 
-**Eigenständigkeit.** The authorship confirmation for this work — that it was created
+**Selbständigkeitserklärung.** The authorship confirmation for this work, that it was created
 independently with AI support and that every part of the solution is explainable by the
-author — is recorded on the [Eigenständigkeit](eigenstaendigkeit.md) page (criterion 15(b)).
+author, is recorded on the [Selbständigkeitserklärung](eigenstaendigkeit.md) page (criterion 15(b)).

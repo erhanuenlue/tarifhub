@@ -16,5 +16,5 @@
 | **Solution — the code** | The running solution itself, which is part of the project work | [`github.com/erhanuenlue/tarifhub`](https://github.com/erhanuenlue/tarifhub): `services/`, `apps/`, `db/`, `deploy/` |
 
 The [Criterion Map](criterion-map.md) cross‑references the same material to the 18 assessment
-anchors, and the authorship confirmation is on the [Eigenständigkeit](method/eigenstaendigkeit.md)
+anchors, and the authorship confirmation is on the [Selbständigkeitserklärung](method/eigenstaendigkeit.md)
 page.

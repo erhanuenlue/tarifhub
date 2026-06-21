@@ -96,7 +96,7 @@ nav:
           - Decision Matrix: method/decision-matrix.md
           - Journal (excerpts): method/journal.md
           - Conclusion: method/fazit.md
-          - Eigenständigkeit: method/eigenstaendigkeit.md
+          - Selbständigkeitserklärung: method/eigenstaendigkeit.md
       - Criterion Map: criterion-map.md
 
 plugins:
@@ -108,6 +108,7 @@ plugins:
       exclude:
         - index.md
         - summary.md
+        - report-structure.md
         - adr/*.md
         - method/*.md
         - criterion-map.md

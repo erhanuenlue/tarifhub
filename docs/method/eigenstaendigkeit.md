@@ -1,4 +1,4 @@
-# Eigenständigkeit
+# Selbständigkeitserklärung
 
 *Authorship confirmation for the FFHS CAS "AI‑Assisted Software Engineering" Projektarbeit (criterion 15).*
 
@@ -8,8 +8,6 @@ in the [Conclusion](fazit.md). The use of AI does not dilute authorship: every s
 passed through a human gate and was accepted, corrected or rejected on the record (see
 [`LEARNINGS.md`](https://github.com/erhanuenlue/tarifhub/blob/main/LEARNINGS.md)), and **every
 part of the solution is explainable by me**.
-
-## Selbständigkeitserklärung
 
 Hiermit erkläre ich,
 
