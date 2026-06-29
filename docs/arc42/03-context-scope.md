@@ -10,7 +10,7 @@ inputs are public federal tariff lists, outputs are frozen tariff records.
 
 ![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
 
-> **Figure: The four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) lies above the freeze line; L1 serving, L2 rules, and L3 apps lie below it. The line is the boundary this context view protects: AI may shape records in L0, but every value L1 serves is frozen and read-only.
+> **Figure: The four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) lies above the freeze line. L1 serving, L2 rules, and L3 apps lie below it. The line is the boundary this context view protects: AI may shape records in L0, but every value L1 serves is frozen and read-only.
 
 | Communication partner | Interface | Data exchanged | Use cases |
 | --- | --- | --- | --- |
@@ -26,8 +26,8 @@ inputs are public federal tariff lists, outputs are frozen tariff records.
 
 The L0 ingestion layer harmonises public Swiss ambulatory tariff publications into the
 canonical `TariffRecord`. Each source is wired as an adapter (format reader) feeding the
-deterministic mapper. Raw artifacts live under `data/raw/` (gitignored, never committed);
-their SHA-256 is recorded so provenance can be verified from the code and docs alone.
+deterministic mapper. Raw artifacts live under `data/raw/` (gitignored, never committed).
+Their SHA-256 is recorded so provenance can be verified from the code and docs alone.
 
 | Source | Format | URL | Update cadence | Licence / re-use | Raw artifact |
 | --- | --- | --- | --- | --- | --- |

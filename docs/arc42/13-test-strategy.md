@@ -15,7 +15,7 @@ From the broad, fast base to the narrow, high-leverage apex:
 1. **Unit / mapping helpers.** Pure functions, namely `freeze` (hash over sorted canonical
    content), the deterministic `map_raw`, validators, the confidence scorer and the
    canonical-Decimal scale normalisation, are tested in isolation with fixed inputs.
-   No I/O, no clock branching, no randomness; the pipeline is a pure function of sorted
+   No I/O, no clock branching, no randomness. The pipeline is a pure function of sorted
    inputs by design ([§6](06-runtime-view.md)).
 2. **API contract (offline).** The serving REST surface is exercised through FastAPI's
    `TestClient` against a temp SQLite database seeded with frozen records
@@ -33,7 +33,7 @@ From the broad, fast base to the narrow, high-leverage apex:
    Postgres via the `engine` fixture, and each test asserts the endpoint's **full JSON
    body** equals an engine-independent expected snapshot
    (`services/serving/tests/test_read_parity.py`, mirrored for ingestion). Because both
-   engines must match the *same* snapshot, they match each other, so an engine-specific bug that only SQLite would tolerate can no longer pass silently. This layer exists because two Postgres-vs-SQLite drift defects surfaced in Block-0 (a JSONB dict crashed `json.loads`; an `int` for a BOOLEAN
+   engines must match the *same* snapshot, they match each other, so an engine-specific bug that only SQLite would tolerate can no longer pass silently. This layer exists because two Postgres-vs-SQLite drift defects surfaced in Block-0 (a JSONB dict crashed `json.loads`, and an `int` for a BOOLEAN
    column was rejected by psycopg), so the snapshots deliberately stress non-ASCII
    designations (umlauts, accented Latin letters, cedillas), nested metadata dicts, `requires_review` booleans,
    trailing-zero Decimals at the exact `NUMERIC` scale, dates, multi-version keys and
@@ -69,12 +69,12 @@ unavailability and never a faked result.
 ## Postgres opt-in parity harness
 
 The real engine is opt-in. Setting `TARIFHUB_PG_TEST_URL` adds a `postgres` parameter to
-the `engine` fixture; its setup connects to that server **only** to `CREATE` a
+the `engine` fixture. Its setup connects to that server **only** to `CREATE` a
 uniquely-named scratch database (`tarifhub_parity_<uuid>`), applies `db/schema.sql` into
 it, yields it to the test, and **drops it on teardown**, so the shared dev `tarifhub`
 database is never written to. This is our **purpose-built equivalent of Testcontainers**,
 a per-run, throwaway, schema-provisioned database with deterministic teardown, built
-directly on `psycopg` and `db/schema.sql`. **We do not use Testcontainers**; the harness
+directly on `psycopg` and `db/schema.sql`. **We do not use Testcontainers**. The harness
 is hand-rolled to keep the offline default container-free and the dependency surface
 minimal. In CI the `python-parity` job supplies the URL via a `pgvector/pgvector:pg16`
 service container, so the identical read tests run against a real Postgres 16 + pgvector
@@ -101,7 +101,7 @@ AST and asserts that none imports `anthropic`, `openai`, `cohere`, `langchain` o
   so the one write seam that AI-flagged fills pass through before a human freezes them also
   cannot import a model client.
 
-All four run in the offline suite and in CI's per-service test loop on every push; the
+All four run in the offline suite and in CI's per-service test loop on every push. The
 ingestion `test_determinism_boundary.py` and serving `test_serving_boundary.py` value-path
 suites additionally run **again, visibly**, as a dedicated CI step that prints them with `-v`.
 CI fails if any LLM client appears on a value path. Because
@@ -128,7 +128,7 @@ The AST boundary tests are described in full above (*The determinism acceptance 
 `services/ingestion/tests/test_determinism_boundary.py` and
 `services/intelligence/tests/test_determinism_boundary.py`. This is the test *of* the AI
 boundary, the AI-portion test with the highest leverage, since a single failure proves a
-model became reachable on a value path. Verifies **NfA-1** ([§10](10-quality-requirements.md)).
+model became reachable on a value path. Verifies **NFR-1** ([§10](10-quality-requirements.md)).
 
 ### 2 · Gap-gate: the no-call paths
 
@@ -143,13 +143,13 @@ behaviour observed at scale.
 ### 3 · Fill-reuse: handling non-deterministic AI output
 
 Live model output is **not** byte-stable across runs (the measured 55 re-versions,
-[§10](10-quality-requirements.md)); `services/ingestion/tests/test_fill_reuse.py` pins the
+[§10](10-quality-requirements.md)). `services/ingestion/tests/test_fill_reuse.py` pins the
 mechanism that makes the pipeline reproducible anyway:
 `test_reuse_makes_zero_api_calls`, `test_keyless_reuse_still_skips`,
 `test_changed_content_takes_normal_path`, `test_refill_bypasses_reuse` and
 `test_audit_detail_carries_reuse_provenance`, with further byte-exactness legs in the same
 suite (e.g. `test_strip_to_prefill_reverses_a_category_fill_byte_exactly`). Verifies
-**NfA-2** ([§10](10-quality-requirements.md)).
+**NFR-2** ([§10](10-quality-requirements.md)).
 
 ### 4 · Schema-validation: fail-closed on untrusted model output
 
@@ -157,8 +157,8 @@ Model output is treated as untrusted input. `services/ingestion/tests/test_ai_ma
 asserts that refusals, empty strings and parse failures all degrade to the deterministic
 path: `test_fill_only_does_not_overwrite_existing`,
 `test_empty_string_output_is_normalized_to_none`,
-`test_refusal_or_none_output_is_error_path` and `test_parse_raises_falls_back_safely`;
-and `services/ingestion/tests/test_mapper.py`'s
+`test_refusal_or_none_output_is_error_path` and `test_parse_raises_falls_back_safely`.
+`services/ingestion/tests/test_mapper.py`'s
 `test_ai_map_offline_does_not_alter_billing_values` confirms billing fields are structurally
 unreachable for the seam to touch.
 
@@ -206,7 +206,7 @@ Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision)
 Target: **core modules (model, freeze, pipeline, mapper) > 80 % line coverage**
 ([§10](10-quality-requirements.md)). Measured on the offline suite (`pytest-cov`, line
 coverage) and re-measured on every CI run in the `python` job's coverage step. Measured
-2026-06-20; the per-module figures and the residual misses are quoted and interpreted in
+2026-06-20. The per-module figures and the residual misses are quoted and interpreted in
 [§10 Test and pipeline results](10-quality-requirements.md#coverage-pytest-cov-line-coverage):
 
 | Service | Core modules in scope | Measured |
@@ -216,7 +216,7 @@ coverage) and re-measured on every CI run in the `python` job's coverage step. M
 | `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **92 % total** |
 
 Every core module is above the 80 % target. The figures are evidence, not a gate: CI
-prints them on every run (report-only by owner decision at gate 01); a hard
+prints them on every run (report-only by owner decision at gate 01). A hard
 `--cov-fail-under` floor is deliberately deferred until the figures have a few weeks of
 history.
 

@@ -11,12 +11,12 @@ We adopt one canonical `TariffRecord` with a locked, additive-only field set, Ge
 The locked field set: `tariff_code, tariff_system, designation (de canonical + fr/it), category, tax_points, price_chf, unit, valid_from, valid_to, source_url, source_version, harmonization_confidence, requires_review, metadata (JSONB), record_hash, version, created_at`. Values are `Decimal`/null.
 
 ## Alternatives weighed
-- **Flexible schema (per-source shapes, schemaless JSONB)**: rejected; it defers harmonisation to every consumer and makes the cross-service contract unstable by design.
-- **Separate models per service**: rejected; duplicated definitions drift (the repo already observed exactly this between Pydantic and the former Panache entity).
+- **Flexible schema (per-source shapes, schemaless JSONB)**: rejected. It defers harmonisation to every consumer and makes the cross-service contract unstable by design.
+- **Separate models per service**: rejected. Duplicated definitions drift (the repo already observed exactly this between Pydantic and the former Panache entity).
 
 ## Consequences
 - (+) Fields, columns and routes are a frozen contract: one Pydantic model end-to-end, extended additively, never broken.
 - (+) Idempotent re-ingestion by content hash makes pipeline re-runs safe.
-- (-) A breaking change requires a new ADR plus a coordinated migration; the additive-only discipline can accumulate awkward fields. Revisit when a real requirement cannot be expressed additively: that is the signal for a versioned contract change, not a workaround.
+- (-) A breaking change requires a new ADR plus a coordinated migration. The additive-only discipline can accumulate awkward fields. Revisit when a real requirement cannot be expressed additively: that is the signal for a versioned contract change, not a workaround.
 
 *Lineage: restates legacy/003-canonical-model.md, with its Panache-entity alignment clause removed per ADR-001 (one Pydantic model is now the only definition).*

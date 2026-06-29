@@ -16,7 +16,7 @@ The system answers this with one capability chain, harmonise → freeze → serv
 line lies the AI-assisted harmonisation (L0): adapters, parsers, the mapping into the
 canonical `TariffRecord` data model, the validation and the scoring. Below
 the line lies the deterministic, read-only serving API (L1, TarifCore with REST and FHIR
-R4, point-in-time and diff queries) together with the read-only MCP tools (TarifMCP); above
+R4, point-in-time and diff queries) together with the read-only MCP tools (TarifMCP). Above
 those sit the rules (L2, after the CAS) and the demo console (L3, TarifGuard). Frozen records
 are immutable: a SHA-256 `record_hash` over the sorted canonical content seals them, updates
 create new versions, and the `audit_log` is append-only. Persistence and multilingual semantic
@@ -37,5 +37,5 @@ The key result is that it is not the AI that makes billing data controllable, bu
 around it. An enforced, tested determinism boundary, comprising an AST test in CI that forbids any LLM
 client on the value path and the `guard_frozen` hook that actually stopped a faulty edit below
 the line, is exactly what makes the use of AI on billing data accountable and usable in the first
-place. Above the line, AI may deliver speed and breadth; below the line, the value stays
+place. Above the line, AI may deliver speed and breadth. Below the line, the value stays
 deterministic, traceable and under human responsibility.

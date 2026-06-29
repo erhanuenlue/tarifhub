@@ -14,4 +14,4 @@ One sentence, active voice: "We use X for Y."
 
 ## Consequences
 - (+) What this buys.
-- (–) What this costs, and when we'd revisit (the trigger, not a date).
+- (-) What this costs, and when we'd revisit (the trigger, not a date).

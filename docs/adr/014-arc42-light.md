@@ -10,11 +10,11 @@ We keep arc42 in a light profile (all 12 chapters present, only load-bearing sec
 
 ## Alternatives weighed
 - **Diátaxis**: optimised for product documentation (tutorials/how-tos), the wrong cut for a graded architecture dossier.
-- **Pure C4 + ADRs**: covers structure and decisions but has no home for requirements, quality, or risks (criteria 1–3).
+- **Pure C4 + ADRs**: covers structure and decisions but has no home for requirements, quality, or risks (criteria 1 to 3).
 - **Astro Starlight**: a prettier site, but a second JS toolchain for zero grading value, against Python-first minimalism.
 
 ## Consequences
-- (+) Chapters map roughly 1:1 onto the grading criteria (see [criterion-map](../criterion-map.md)); graders navigate a standard they already know.
-- (–) Some chapters stay thin, which is acceptable in the light profile; revisit if a grader or reviewer cannot locate a criterion's evidence via the criterion map.
+- (+) Chapters map roughly 1:1 onto the grading criteria (see [criterion-map](../criterion-map.md)). Graders navigate a standard they already know.
+- (-) Some chapters stay thin, which is acceptable in the light profile. Revisit if a grader or reviewer cannot locate a criterion's evidence via the criterion map.
 
-*Reference: fuller reasoning to appear in CAS Dossier §5 (forthcoming); this ADR is self-contained. Lineage: new.*
+*Reference: fuller reasoning to appear in CAS Dossier §5 (forthcoming). This ADR is self-contained. Lineage: new.*

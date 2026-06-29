@@ -6,7 +6,7 @@ Refactoring and Research. Every claim is tied to a prompt line, the file or diff
 PR plus commit reference taken from the contemporaneous journal (`vault/daily/`) and the
 `LEARNINGS.md` register. Where AI was wrong, that is recorded with what caught it. The
 companion mode analysis (vibe versus spec-driven versus agentic) lives in
-[the decision matrix](decision-matrix.md) and is not repeated here; this chapter is about
+[the decision matrix](decision-matrix.md) and is not repeated here. This chapter is about
 the apparatus and the worked evidence.
 
 ## The reproducible apparatus
@@ -14,7 +14,7 @@ the apparatus and the worked evidence.
 The workflow is reproducible because its rules are version-controlled, not held in a
 person's head. Two files act as the context set loaded into every session:
 `AGENTS.md` pins the project facts, the layout, the value-path invariant
-("no AI computes or mutates a billing value at serve time") and the model policy;
+("no AI computes or mutates a billing value at serve time") and the model policy, while
 `CLAUDE.md` pins the orchestration workflow on top of it. Because both are checked into the
 repository, any session starts from the same constraints, and the rules the AI was given
 are readable directly in the repository.
@@ -76,7 +76,7 @@ The journal pipeline is itself a worked generation example, and its disclosure i
 here. At session end the `vault_autocommit` hook drafts the day's `vault/daily/` entry. The
 `tools/curate.sh` script then sends that draft to Codex gpt-5.5, running sandboxed and
 read-only so it generates text only, and the model rewrites the draft into curated prose. The
-process is fully automated; the owner edits the result at his discretion before it counts as
+process is fully automated. The owner edits the result at his discretion before it counts as
 submission evidence. The journal entries this very chapter cites were produced through that
 pipeline.
 
@@ -84,7 +84,7 @@ A generation failure belongs here too. A previous AI scaffold for the console wr
 `lib/api.ts` against a camelCase, Java-flavoured contract (`id`, `taxPoints`, with POST
 explain and coding-check shapes) that did not match the real snake_case serving API. The
 result was that every served value rendered as a dash placeholder in the console. No test
-caught it; it was caught by reading both sides of the wire and comparing the generated client
+caught it. It was caught by reading both sides of the wire and comparing the generated client
 contract against the actual API response shape (PR #16). The lesson is that ungrounded
 generation is most dangerous exactly where it meets a real contract surface.
 
@@ -97,7 +97,7 @@ In the very first block, Codex (the independent model) caught two defects that 2
 missed. The first was an `ai_map` error path writing `ai_status` into record metadata on a
 transient API outage, which produced a different `record_hash` than the no-key fallback and
 silently broke re-ingest idempotency. The second was a `json.loads()` call on a Postgres JSONB
-column that is already a dict, which would have returned HTTP 500 on every Postgres read; the
+column that is already a dict, which would have returned HTTP 500 on every Postgres read. The
 SQLite-only tests were blind to it because the SQLite driver returns text. Both were corrected
 before merge (PR #2, `057a6c1`).
 
@@ -107,13 +107,13 @@ psycopg sends a smallint and Postgres rejects it for a boolean column. `guard_fr
 the edit, the work halted, and per protocol the owner authorised exactly one line in an
 isolated `fix(audit):` commit, with the frozen-file diff shown before commit, the guard
 re-armed, and a follow-up edit attempt confirmed BLOCKED (PR #2, `057a6c1`). The AI did not
-get to "just fix it"; the rule held.
+get to "just fix it". The rule held.
 
 A review failure here is the orchestrator's own error. A brief written by the orchestrator
 claimed `explain_crosswalk` returns 501, when the code returns 404 because no serving route
 existed at the time. The wrong status propagated into three files before a fresh-context
 verifier checked the actual httpx path and caught it (PR #4, `07cdfc5`). Self-review by the
-author who wrote the brief would not have found this; a reviewer with no stake in the brief did.
+author who wrote the brief would not have found this. A reviewer with no stake in the brief did.
 
 Review must also reject confident wrong suggestions. Codex raised a P1 invariant, "a billing
 value must exist at freeze," which is an invented constraint: it contradicts the gate-01
@@ -138,14 +138,14 @@ Engine parity drove two refactors. The `json.loads`-on-JSONB defect and an `int`
 parity bug both passed the SQLite suite and were only rejected by a real Postgres engine: a
 smallint in a boolean column where 51 green SQLite tests had not objected. The fix was not a
 patch but a cross-engine read-parity suite with full-body snapshots, so the class of bug is
-now tested rather than hoped against (PR #2, `057a6c1`; PR #6, `56b88cb`).
+now tested rather than hoped against (PR #2, `057a6c1`, and PR #6, `56b88cb`).
 
 The e5 embedding refactor carries an honest pairing of a fix and a rejected suggestion. The
 e5 model is asymmetric: queries need a `query:` prefix and passages a `passage:` prefix.
 Block-0 had embedded queries through the passage path, degrading cross-lingual ranking. The
 `query:` prefix fix lifted recall@5 from .833 to .917, and the MRR@5 dip it introduced was
 documented as a deliberate trade-off rather than hidden. In the same area, Codex proposed a
-fix built on the same prefix confusion; that proposal was wrong and was rejected (PR #7,
+fix built on the same prefix confusion. That proposal was wrong and was rejected (PR #7,
 `5da6472`). A review failure surfaced inside the refactoring phase, and the human gate kept
 the wrong fix out.
 

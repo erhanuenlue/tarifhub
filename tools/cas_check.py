@@ -106,7 +106,7 @@ def ELEMENTS():
     a(("2.zielwert", 2, "NfA mit Zielwerten", 0, lambda: has(A10, r"[Tt]arget value"), str(A10)))
     a(("2.messverfahren", 2, "Messverfahren-Spalte", 0, lambda: has(A10, r"[Mm]easurement method"), str(A10)))
     a(("2.adr", 2, "ADR-Bezug (≥3 Refs)", 0, lambda: cnt(A10, r"ADR-\d") >= 3, str(A10)))
-    a(("2.count", 2, "≥3 NfA", 0, lambda: cnt(A10, r"NfA-?\d") >= 3, str(A10)))
+    a(("2.count", 2, "≥3 NfA", 0, lambda: cnt(A10, r"NFR-?\d") >= 3, str(A10)))
     # 3 — Vision
     a(("3.problem", 3, "Problemstellung", 0, lambda: has(A01, r"Problemstellung|problem statement"), str(A01)))
     a(("3.vision", 3, "Vision mit Zielgruppe/Abgrenzung", 0, lambda: has(A01, r"Vision"), str(A01)))
@@ -150,7 +150,7 @@ def ELEMENTS():
     a(("10.url", 10, "Repo-URL im Bericht", 3, lambda: has_any([ROOT / "docs" / "index.md", ROOT / "README.md"], r"github\.com/\S+/tarifhub"), "docs/index.md"))
     # 11 — Abnahmekriterien
     a(("11.gwt", 11, "G/W/T je Kernfunktion (≥5)", 1, lambda: cnt(A10, r"\bGiven\b") >= 5, str(A10)))
-    a(("11.nfaref", 11, "NfA-Querverweise (≥5)", 1, lambda: cnt(A10, r"NfA-?\d") >= 5 and has(A10, r"Verif\w*"), str(A10)))
+    a(("11.nfaref", 11, "NfA-Querverweise (≥5)", 1, lambda: cnt(A10, r"NFR-?\d") >= 5 and has(A10, r"Verif\w*"), str(A10)))
     # 12 — Teststrategie
     a(("12.doc", 12, "Strategie-Dokument (§13)", 1, lambda: A13.exists(), str(A13)))
     a(("12.levels", 12, "Teststufen benannt+begründet", 1, lambda: has(A13, r"Unit") and has(A13, r"Integration"), str(A13)))

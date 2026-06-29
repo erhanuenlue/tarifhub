@@ -6,9 +6,9 @@ tarifhub harmonises Switzerland's fragmented ambulatory tariff data into **one c
 
 Switzerland's ambulatory tariff data is fragmented. Roughly 110 active tariff types are published across 20+ sources in XLSX, XML, PDF and FHIR, with **no single authoritative machine interface**: the public BAG lists alone arrive as semiannual EAL XLSX (three DE/FR/IT sheets) and monthly ePL FHIR NDJSON. The consequences compound downstream:
 
-- every PIS/HIS vendor re-implements parsing per source, multiplying the same brittle work;
-- tariff values reach billing systems **without verifiable provenance**: there is no way to prove a served value is the one that was reviewed;
-- version transitions (semiannual EAL updates on 1.1 / 1.7, monthly SL on the 1st) are reconciled by hand;
+- every PIS/HIS vendor re-implements parsing per source, multiplying the same brittle work.
+- tariff values reach billing systems **without verifiable provenance**: there is no way to prove a served value is the one that was reviewed.
+- version transitions (semiannual EAL updates on 1.1 / 1.7, monthly SL on the 1st) are reconciled by hand.
 - an uncaught mapping error propagates silently and becomes a wrong invoice.
 
 ## Vision
@@ -17,17 +17,17 @@ One trustworthy machine interface to ambulatory tariff data, in its three elemen
 
 - **Target group:** PIS/HIS vendors as machine consumers (REST/OpenAPI + FHIR R4 read), tariff experts who review uncertain mappings, practice users who look up records in the console, and AI agents that read frozen data over MCP.
 - **Need:** one versioned, provenance-carrying interface where a *served value is provably the value that was reviewed and frozen*, replacing per-vendor parsing and hand-reconciled version transitions with a single auditable source.
-- **Scope:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel; [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, and benchmarking. The human-in-the-loop review write-back is now implemented: the console review form proxies to the ingestion review endpoint (behind `INGEST_BASE_URL`), which validates, freezes and audits a new immutable version.
+- **Scope:** the CAS/MVP scope is the **data foundation** (two BAG sources: EAL XLSX, ePL FHIR R5), a **thin read-only serving API + MCP tools**, and the **TarifGuard console demo** (master-detail lookup, review form, labelled explain panel, [ADR-013](../adr/013-demo-scope.md)). Explicitly out of scope at MVP: TARDOC, patient data anywhere, and benchmarking. The human-in-the-loop review write-back is now implemented: the console review form proxies to the ingestion review endpoint (behind `INGEST_BASE_URL`), which validates, freezes and audits a new immutable version.
 
-Across all of this, no AI computes or mutates a billing value at serve time; this is the value-path invariant established in §8 (Crosscutting Concepts).
+Across all of this, no AI computes or mutates a billing value at serve time. This is the value-path invariant established in §8 (Crosscutting Concepts).
 
 ### AI value per core function
 
 - **UC-01 (harmonise):** fill-only AI gap-filling of non-billing fields pre-freeze through a single seam with structured output ([ADR-005](../adr/005-single-ai-seam.md)).
 - **UC-03 (freeze):** freeze seals AI contributions with provenance (`ai_model`, `ai_fields` recorded in metadata) into immutable, hash-verifiable versions. AI work becomes auditable, never silently mutable.
 - **UC-04 (serve deterministically):** deliberately zero AI. The value path is provably LLM-free, enforced by an AST boundary test in CI, so the determinism guarantee is itself a verified property of the deliverable.
-- **UC-06 (find):** multilingual-e5 embeddings give cross-lingual DE/FR/IT retrieval over frozen records; ML ranks, never alters, the served values.
-- **UC-09 (explain):** the serving `/api/v1/explain` endpoint is deterministic and record-grounded (no AI on the value path); the AI value is the L3 console's labelled, de-identified AI explanation seam, which can never change a served value.
+- **UC-06 (find):** multilingual-e5 embeddings give cross-lingual DE/FR/IT retrieval over frozen records. ML ranks, never alters, the served values.
+- **UC-09 (explain):** the serving `/api/v1/explain` endpoint is deterministic and record-grounded (no AI on the value path). The AI value is the L3 console's labelled, de-identified AI explanation seam, which can never change a served value.
 
 ## Functional requirements
 
@@ -35,7 +35,7 @@ Across all of this, no AI computes or mutates a billing value at serve time; thi
 |---|---|---|
 | FR-1 | Ingest & harmonise BAG sources (EAL XLSX, ePL FHIR R5) into the canonical TariffRecord | UC-01 |
 | FR-2 | AI-assisted gap-fill pre-freeze: fill-only, non-billing fields, single seam (ADR-005) | UC-01 |
-| FR-3 | Deterministic validation + confidence scoring; < 0.85 routes to human review | UC-02 |
+| FR-3 | Deterministic validation + confidence scoring, < 0.85 routes to human review | UC-02 |
 | FR-4 | Freeze: immutable versioned records, SHA-256 record_hash, append-only audit_log | UC-03 |
 | FR-5 | Serve frozen records deterministically by system+code (REST, OpenAPI) | UC-04 |
 | FR-6 | Point-in-time and diff queries over record versions | UC-05 |
@@ -52,10 +52,10 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 | ID | Use case | Actor | Trigger | Outcome | Realises | Status |
 |---|---|---|---|---|---|---|
 | UC-01 | Trigger ingest | Operator (CLI/scheduler) | new BAG source version published / operator runs pipeline | validated, scored records frozen + audited | FR-1, FR-2 | live |
-| UC-03 | Freeze record | Pipeline (automatic post-validation; expert approval loop via the ingestion review endpoint) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
+| UC-03 | Freeze record | Pipeline (automatic post-validation, expert approval loop via the ingestion review endpoint) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
 | UC-04 | Read tariff by code | API consumer (PIS/HIS) | GET /api/v1/tariffs/{system}/{code} | frozen record, served verbatim | FR-5 | live |
 | UC-06 | Semantic search | API consumer | free-text query (DE/FR/IT) against the search endpoint | ranked frozen records via pgvector cosine similarity | FR-7 | live |
-| UC-09 | Explain (crosswalk) | Practice user | user requests an explanation of a record (serving endpoint; console explain panel) | serving returns a deterministic, record-grounded explanation; the L3 console additionally shows a labelled, de-identified AI explanation; served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded; console AI panel + de-id live) |
+| UC-09 | Explain (crosswalk) | Practice user | user requests an explanation of a record (serving endpoint, console explain panel) | serving returns a deterministic, record-grounded explanation. The L3 console additionally shows a labelled, de-identified AI explanation. Served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded, console AI panel + de-id live) |
 
 ### Supporting use cases
 
@@ -63,7 +63,7 @@ These parameterise or proxy the core functions: the review threshold loop, versi
 
 | ID | Use case | Actor | Trigger | Outcome | Realises | Status |
 |---|---|---|---|---|---|---|
-| UC-02 | Review low-confidence mapping | Tariff expert (console form) | confidence score < 0.85 flags a frozen record into the review queue | expert approves or corrects the flagged mapping; an accepted correction becomes a new frozen version | FR-3, FR-9 | live: console form + ingestion review endpoint (ADR-013) |
+| UC-02 | Review low-confidence mapping | Tariff expert (console form) | confidence score < 0.85 flags a frozen record into the review queue | expert approves or corrects the flagged mapping. An accepted correction becomes a new frozen version | FR-3, FR-9 | live: console form + ingestion review endpoint (ADR-013) |
 | UC-05 | Point-in-time / diff query | API consumer | query with a valid-at date or two record versions | record state as of that date / field-level diff | FR-6 | live (this release) |
 | UC-07 | MCP get/search | AI agent (MCP client) | MCP tool call search_tariffs / get_tariff | read-only frozen data, proxied from the serving API | FR-8 | live |
 | UC-08 | Console master-detail lookup | Practice user | search in the TarifGuard console | frozen record detail with provenance and hash | FR-9 | live |
@@ -74,15 +74,15 @@ The actors and their nine use cases, with system boundary:
 
 ## Quality goals
 
-The top quality goals are **determinism** (the same query returns the same tariff value, with provable provenance), **reproducibility** (offline tests, pinned environments, hash-verifiable records) and **auditability** (every value traceable to source, version and append-only audit_log). They are quantified as SMART NFRs in [§10](10-quality-requirements.md); the solution approach that satisfies them is in [§4](04-solution-strategy.md), with the underlying decisions in [§9](09-architecture-decisions.md).
+The top quality goals are **determinism** (the same query returns the same tariff value, with provable provenance), **reproducibility** (offline tests, pinned environments, hash-verifiable records) and **auditability** (every value traceable to source, version and append-only audit_log). They are quantified as SMART NFRs in [§10](10-quality-requirements.md). The solution approach that satisfies them is in [§4](04-solution-strategy.md), with the underlying decisions in [§9](09-architecture-decisions.md).
 
 ## Stakeholders
 
 | Stakeholder | Concern | Key use cases |
 |---|---|---|
-| Medical practices (billing staff) | Correct, provenance-backed tariff values reach billing; a served value is provably the one that was reviewed and is never silently changed | UC-04, UC-05, UC-09 |
-| Tariff experts | Catch and correct uncertain mappings before freeze; trust that frozen values are never silently changed | UC-02, UC-03 |
+| Medical practices (billing staff) | Correct, provenance-backed tariff values reach billing. A served value is provably the one that was reviewed and is never silently changed | UC-04, UC-05, UC-09 |
+| Tariff experts | Catch and correct uncertain mappings before freeze. Trust that frozen values are never silently changed | UC-02, UC-03 |
 | PIS/HIS vendors (API consumers) | Stable, deterministic, versioned REST/OpenAPI access to tariff data | UC-04, UC-05, UC-06 |
-| Practice users | Fast, reliable tariff lookup in the console; AI assistance clearly labelled and never authoritative for values | UC-08, UC-09 |
+| Practice users | Fast, reliable tariff lookup in the console. AI assistance clearly labelled and never authoritative for values | UC-08, UC-09 |
 | AI agents (MCP clients) | Read-only, well-typed tool access to frozen tariff data | UC-07 |
 | Solo maintainer (Erhan Ünlü) | Few well-understood components, AI-assisted velocity, CAS hand-in on 6 July 2026 | UC-01 |

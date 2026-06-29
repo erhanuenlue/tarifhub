@@ -1,16 +1,16 @@
 # Journal Excerpts
 
 These are selected excerpts from the contemporaneous `vault/daily/` journal. They are a selection
-only, never backfilled; the full journal lives in the repository (`vault/daily/2026-06-11.md`,
-`2026-06-12.md`, `2026-06-13.md`). Each excerpt keeps its original commit or PR reference; typography
+only, never backfilled. The full journal lives in the repository (`vault/daily/2026-06-11.md`,
+`2026-06-12.md`, `2026-06-13.md`). Each excerpt keeps its original commit or PR reference. Typography
 is normalised to the house style.
 
 ## Freeze-line guard event (2026-06-11, PR #2, 057a6c1)
 
-Guard event, owner-authorized one-line type fix: the first real Postgres pipeline run exposed
+Guard event, owner-authorised one-line type fix: the first real Postgres pipeline run exposed
 `int(validation_ok)` in `audit/audit_logger.py` (below the freeze line). psycopg sends a smallint,
-Postgres rejects it for the boolean column. `guard_frozen` blocked my edit; per protocol I stopped
-and asked. Erhan authorized exactly one line (`"validation_ok": validation_ok,`), conditions met:
+Postgres rejects it for the boolean column. `guard_frozen` blocked my edit. Per protocol I stopped
+and asked. Erhan authorised exactly one line (`"validation_ok": validation_ok,`), conditions met:
 isolated commit `fix(audit): ...`, frozen-file diff shown pre-commit, guard re-armed and
 probe-verified (a follow-up Edit attempt was BLOCKED), and a Postgres round-trip regression test
 added outside the floor (True/False/None, opt-in via `TARIFHUB_PG_TEST_URL`, 3 passed live).
@@ -21,7 +21,7 @@ What AI got wrong, and what caught it: my `ai_map` error path wrote `ai_status` 
 producing a different `record_hash` than the no-key fallback and breaking re-ingest idempotency
 under transient API outages. This was caught by Codex review, not by the 28 green tests. In the
 same review, serving `_row_to_record` called `json.loads()` on Postgres JSONB (already a dict), so
-every Postgres response would have returned 500; Codex caught this too, while the SQLite-only tests
+every Postgres response would have returned 500. Codex caught this too, while the SQLite-only tests
 were blind to it. Both dispositioned as AI corrected.
 
 ## The explain-501 brief error (2026-06-11, PR #4, 07cdfc5)
@@ -29,7 +29,7 @@ were blind to it. Both dispositioned as AI corrected.
 What AI got wrong, and what caught it: my own brief told all writers "explain_crosswalk returns
 501." The code 404s, because no serving route existed. The accuracy verifier checked the actual
 httpx path and caught my orchestrator-level error after it had already propagated into 3 files. An
-error in the orchestrator's own brief scales as fast as the agents do; a fresh-context verifier
+error in the orchestrator's own brief scales as fast as the agents do. A fresh-context verifier
 against the real code is what bounded it.
 
 ## The e5 query-prefix recall gain (2026-06-12, PR #7, 5da6472)

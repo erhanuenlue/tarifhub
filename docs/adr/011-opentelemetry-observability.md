@@ -13,9 +13,9 @@ We use OpenTelemetry as the single telemetry standard (traces, metrics and logs 
 - **Vendor APM agent (e.g. Datadog)**: lock-in and recurring cost for capabilities the open standard plus Prometheus/Grafana already covers at this scale.
 
 ## Consequences
-- (+) One vendor-neutral standard across Python and Node; dashboards for API latency, scraper success and review-queue depth all hang off the same exporters.
+- (+) One vendor-neutral standard across Python and Node. Dashboards for API latency, scraper success and review-queue depth all hang off the same exporters.
 - (+) `record_hash`/version in every log line makes any served value traceable back to its immutable frozen record: observability reinforces the determinism story instead of sitting beside it.
-- (–) **Not yet implemented.** This ADR records the decided direction; no service emits OpenTelemetry today and the Prometheus/Grafana/Sentry wiring does not exist. Instrumentation is pending: the trigger to build it is the first deployment anyone besides the developer depends on, or the capstone's runtime-evidence capture, whichever comes first.
-- (–) The OTel SDK adds dependency weight to every service once wired; accepted as the price of one standard.
+- (-) **Not yet implemented.** This ADR records the decided direction. No service emits OpenTelemetry today and the Prometheus/Grafana/Sentry wiring does not exist. Instrumentation is pending: the trigger to build it is the first deployment anyone besides the developer depends on, or the capstone's runtime-evidence capture, whichever comes first.
+- (-) The OTel SDK adds dependency weight to every service once wired. Accepted as the price of one standard.
 
 *Lineage: new, no legacy counterpart.*
