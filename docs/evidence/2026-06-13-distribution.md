@@ -55,7 +55,7 @@ $ curl -s localhost:8000/api/v1/tariffs/EAL/1000
  "tax_points":"76.5","version":1,
  "record_hash":"33f658ff57952693dc45b51c2c7b11e567d2d3799278247d3231aa67e40f69a0"}
 
-point-read latency, n=200 warm GETs:   p50 = 10.1 ms   p95 = 15.8 ms   (NfA-4 target < 200 ms)
+point-read latency, n=200 warm GETs:   p50 = 10.1 ms   p95 = 15.8 ms   (NFR-4 target < 200 ms)
 GET /api/v1/search (embedder-dim mismatch on this leg): HTTP 501 (honest unavailability)
 ```
 

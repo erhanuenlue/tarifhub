@@ -1,11 +1,11 @@
 # The AI-SE Framework
 
-This chapter is the system view of how tarifhub was engineered with AI. AI here was not an autocomplete; I built a software-engineering system around the model: an orchestrator model
+This chapter is the system view of how tarifhub was engineered with AI. AI here was not an autocomplete. I built a software-engineering system around the model: an orchestrator model
 plans and reviews, worker models implement and verify, an independent second model family audits,
 a dedicated diagram tool generates diagrams as code, deterministic gates define and protect
 "done", a closed loop runs the work unattended, and a live dashboard makes every state
 inspectable. This chapter describes that framework in the order it is used. Its closing transfer
-feeds the [Conclusion](fazit.md); together with the worked, phase-structured evidence in
+feeds the [Conclusion](fazit.md). Together with the worked, phase-structured evidence in
 the companion [AI Tools and Workflow chapter](ai-tools.md) (Generation, Review, Refactoring,
 Research) it forms the account of the AI-assisted method. The two chapters do not overlap: this one is the
 apparatus, that one is the worked diffs. Where a mechanism here produced a concrete catch, I name
@@ -18,7 +18,7 @@ the engineering was genuinely multi-tool, not a single chat window.
 
 | Tool family | Role in the framework | Where it lives in the repo |
 |---|---|---|
-| Claude Code (Opus 4.8; Fable 5 ran the early blocks, access scheduled to end 22 June 2026) | Orchestrator and worker agents: plan, implement, verify, review, document. | `.claude/` (agents, hooks, skills, settings), `CLAUDE.md` |
+| Claude Code (Opus 4.8, Fable 5 ran the early blocks, access scheduled to end 22 June 2026) | Orchestrator and worker agents: plan, implement, verify, review, document. | `.claude/` (agents, hooks, skills, settings), `CLAUDE.md` |
 | OpenAI Codex CLI (gpt-5.5) | Independent second model family: reviews every pull request, reviews the assembled document, writes a second opinion on each grade estimate, and curates the journal. | `codex-reviewer` agent, `tools/curate.sh` |
 | Eraser MCP | Diagram-as-code generation: a described layout becomes Eraser source, rendered and committed as a static file. | `.mcp.json` (`@eraserlabs/eraser-mcp`), `docs/img/diagrams/` |
 
@@ -31,7 +31,7 @@ second model family in particular is that a defect that one model's blind spots 
 
 ![The four-layer architecture and the freeze line](../img/diagrams/four-layer-architecture.png)
 
-> **Figure: tarifhub's four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) sits above the line; L1 deterministic serving, L2 rules, and L3 apps sit below it. The single AI seam is confined to L0, and no AI computes or mutates a billing value at serve time.
+> **Figure: tarifhub's four layers and the freeze line.** L0 harmonisation (AI-assisted, pre-freeze) sits above the line. L1 deterministic serving, L2 rules, and L3 apps sit below it. The single AI seam is confined to L0, and no AI computes or mutates a billing value at serve time.
 
 ## 1. Project setup as reproducible context
 
@@ -79,7 +79,7 @@ collects runtime evidence, and a panel of reviewers (a fresh-context `verifier`,
 `determinism-auditor` over the protected paths, a `security-reviewer`) runs in parallel.
 
 Every seat that exercises judgment or writes anything runs the strongest available model at maximum
-reasoning effort; weaker models are excluded from those seats by policy (quality before cost).
+reasoning effort. Weaker models are excluded from those seats by policy (quality before cost).
 Models are pinned per seat and never switched mid-task, because model-scoped caches make switching
 wasteful. The independent `codex-reviewer` seat runs OpenAI gpt-5.5 via the Codex CLI on the owner's
 Codex login and reviews every pull request (section 7).
@@ -106,9 +106,9 @@ non-decreasing fitness floor, a clean working tree, and no secret leak. The self
 next task as a prompt itself, runs it through `/ship`, checks the contract, and repeats until a
 measurable goal is reached.
 
-The difference matters. A fixed list replays a recording; the self-prompting loop optimises a
+The difference matters. A fixed list replays a recording, whereas the self-prompting loop optimises a
 moving target, spending each iteration on whatever is most valuable now. It only works because
-"done" is machine-checkable (section 5); without that gradient, self-prompting drifts and wastes
+"done" is machine-checkable (section 5). Without that gradient, self-prompting drifts and wastes
 effort. The loop runs unattended, curating the engineering journal after each step, writing each
 generated prompt to disk so it remains inspectable and vetoable, and checkpointing its state to
 `.shipboard/loop-checkpoint.md` so a context refresh never loses progress.
@@ -161,7 +161,7 @@ isolated commit with the diff shown first. The worked record is in the
 
 ![The freeze line and its enforcement](../img/diagrams/freeze-line-boundary.png)
 
-> **Figure: The freeze line.** Above it, the AI seam (ai_map) and the read-only search and explain seams that never alter a value; below it, the immutable hashed records and the deterministic serving path. Two enforcement points, the pre-tool guard hook and the boundary test, hold the line.
+> **Figure: The freeze line.** Above it, the AI seam (ai_map) and the read-only search and explain seams that never alter a value. Below it, the immutable hashed records and the deterministic serving path. Two enforcement points, the pre-tool guard hook and the boundary test, hold the line.
 
 ## 6. The CI/CD pipeline
 
@@ -181,16 +181,16 @@ before it proceeds, so a red pipeline halts the automation. The pipeline rationa
 
 ![The CI/CD pipeline](../img/diagrams/cicd-pipeline.png)
 
-> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the completeness ratchet); on main, an images job builds every container, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
+> **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the completeness ratchet). On main, an images job builds every container, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
 
 ## 7. Independent second-model review
 
 A Claude-reviewed Claude diff can share blind spots. To break that, an independent model family
 (OpenAI gpt-5.5 via the Codex CLI, the `codex-reviewer` seat) reviews every pull request for
-correctness, edge cases, security, and missing tests; reviews the assembled final document; and
+correctness, edge cases, security, and missing tests, reviews the assembled final document, and
 writes a second opinion on each grade self-estimate, flagging disagreements and missed gaps. In
 practice this caught defects the same-family review missed, including a billing-field guard
-implemented client-side only and a review path that masked an upstream failure as success; both
+implemented client-side only and a review path that masked an upstream failure as success. Both
 were fixed before merge. The full worked catches, with prompts, diffs and commits, are in the
 [Review section of the companion chapter](ai-tools.md). Using a second family is both an
 engineering safeguard and, for this course, evidence of genuine multi-tool AI-assisted engineering.
@@ -206,9 +206,9 @@ count badge in the header, that lists any side-effectful action waiting on a hum
 with an Approve or Deny button. It is one queue with two surfaces, the panel and a Telegram bot
 (`tools/approval_telegram.py`), sharing a single decision file that the dashboard publishes
 atomically, so a later tap on either surface returns the standing decision and the other reflects it
-within one refresh tick; the gate appends each request and the decision it enforces to
+within one refresh tick. The gate appends each request and the decision it enforces to
 `.shipboard/approvals/log.jsonl`. The guiding rule is that the board never asserts a state it cannot
-show evidence for; it says "unknown" rather than inventing progress, which is what lets me trust it
+show evidence for. It says "unknown" rather than inventing progress, which is what lets me trust it
 while the loop runs unattended. The product's own runtime observability is a separate concern,
 recorded in [ADR-011](../adr/011-opentelemetry-observability.md).
 
@@ -223,7 +223,7 @@ Diagrams are generated the same way. A dedicated diagram tool (the Eraser MCP, c
 commits the result as a static PNG under `docs/img/diagrams/` with its diagram-as-code source
 beside it, embedded with a caption (every figure in this chapter was produced by exactly this
 step). Nothing in the repository depends on a live diagram service at read
-time; the rendered files are checked in, so the documentation is self-contained and reproducible.
+time. The rendered files are checked in, so the documentation is self-contained and reproducible.
 This makes diagramming a first-class, autonomous step in the loop rather than a manual afterthought,
 and it is the third external tool family in the workflow, alongside Claude Code and the independent
 OpenAI reviewer.
@@ -242,14 +242,14 @@ the release of the work to the public stay with me. The framework is built so
 that autonomy increases up to these lines and stops cleanly at them.
 
 The approval bridge upgrades how these lines are held at runtime. Before it, an unattended run could
-only stop hard and wait to be rerun; with it, a sensitive action (a push to `main`, a merge, a
+only stop hard and wait to be rerun. With it, a sensitive action (a push to `main`, a merge, a
 destructive git command, a publish) is paused, routed to me on the dashboard or by Telegram, and
 resumed on a tap, so the human floor becomes a routed and logged control rather than an asserted one.
 A `PreToolUse` hook (`.claude/hooks/approval_gate.sh`) classifies the action and blocks until a
 decision arrives. It is fail-safe and opt-in: a hard no-op unless `APPROVALS_ON=1`, and if no
 decision arrives within the timeout it denies, so the worst case is exactly the safe halt that
 already existed. Enabling live approvals is itself a deliberate owner step (the default permission
-mode, `APPROVALS_ON=1`, and the Telegram daemon running), recorded in `NEXT_STEPS.md`; the
+mode, `APPROVALS_ON=1`, and the Telegram daemon running), recorded in `NEXT_STEPS.md`. The
 unattended loop ships with the gate off, so its behaviour is unchanged. These vetoes are stated and
 justified in the [Conclusion](fazit.md).
 
@@ -260,5 +260,5 @@ framework: a build brief plus a bootstrap prompt that scaffolds a new project, i
 quality gates, its dashboard, and its auto-loop on its own. The lesson generalises beyond any one
 codebase: an enforced, tested definition of done is the precondition for trustworthy AI autonomy.
 Give the system a gradient it can measure and boundaries it cannot cross, and it can carry the
-work; withhold those, and more autonomy only produces faster drift. That is the principle I will
+work. Withhold those, and more autonomy only produces faster drift. That is the principle I will
 carry into future engineering, and it is the throughline I return to in the [Conclusion](fazit.md).

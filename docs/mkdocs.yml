@@ -97,7 +97,7 @@ nav:
           - Journal (excerpts): method/journal.md
           - Conclusion: method/fazit.md
           - Selbständigkeitserklärung: method/eigenstaendigkeit.md
-      - Criterion Map: criterion-map.md
+      - Evidence Index: criterion-map.md
 
 plugins:
   - search
