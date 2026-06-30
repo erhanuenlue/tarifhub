@@ -14,6 +14,7 @@ network, no API key, no optional extra installed. The contract under test:
 
 from __future__ import annotations
 
+import json
 import sys
 import types
 from dataclasses import dataclass, field
@@ -24,7 +25,12 @@ import pytest
 from tarifhub_ingest.config import Settings, get_settings
 from tarifhub_ingest.ingestion.pipeline import run_pipeline
 from tarifhub_ingest.ingestion.source_loader import discover_samples
-from tarifhub_ingest.mappers.tariff_mapper import AIRefinement, ai_map, map_raw
+from tarifhub_ingest.mappers.tariff_mapper import (
+    _SYSTEM_PROMPT,
+    AIRefinement,
+    ai_map,
+    map_raw,
+)
 from tarifhub_ingest.models.tariff_model import TariffSystem
 
 
@@ -247,6 +253,62 @@ def test_parse_kwargs_omit_removed_sampling_params(monkeypatch):
     assert kwargs["model"] == settings.ai_model
     for forbidden in ("temperature", "top_p", "top_k", "thinking"):
         assert forbidden not in kwargs
+
+
+def test_structured_output_call_and_fill_only_merge(monkeypatch):
+    """The real integration path, asserted in CI without a live key.
+
+    On a record with a genuine gap the seam calls ``client.messages.parse`` with the
+    structured-output contract (``output_format=AIRefinement``, ``max_tokens=1024``, the
+    fill-only system prompt, and a single user turn whose JSON payload carries no billing
+    field), and the merge fills ONLY the non-billing designation/category fields while every
+    billing and identity field stays byte-identical to ``map_raw`` and ``record_hash`` is
+    never set on the AI path. This pins the live Claude integration in the offline suite.
+    """
+    fake = _install_fake_anthropic(
+        monkeypatch,
+        parsed_output=AIRefinement(
+            designation_fr="Hématocrite", designation_it="Ematocrito", category="Hämatologie"
+        ),
+    )
+    settings = _settings(monkeypatch)
+
+    ai = ai_map(_EAL_RAW, system=TariffSystem.EAL, settings=settings)
+    rules = map_raw(_EAL_RAW, system=TariffSystem.EAL)
+
+    # --- the structured-output call shape ---
+    calls = fake._last.messages.calls
+    assert len(calls) == 1
+    kwargs = calls[0]
+    assert kwargs["output_format"] is AIRefinement
+    assert kwargs["max_tokens"] == 1024
+    assert kwargs["model"] == settings.ai_model
+    assert kwargs["system"] == _SYSTEM_PROMPT
+    for forbidden in ("temperature", "top_p", "top_k", "thinking"):
+        assert forbidden not in kwargs
+
+    # A single user turn whose JSON payload omits every billing field by construction.
+    messages = kwargs["messages"]
+    assert len(messages) == 1
+    assert messages[0]["role"] == "user"
+    payload = json.loads(messages[0]["content"])
+    assert payload["designation_de"] == "Hämatokrit"
+    assert "tax_points" not in payload
+    assert "price_chf" not in payload
+
+    # --- the fill-only merge: non-billing fields filled, everything else untouched ---
+    assert ai.designation.fr == "Hématocrite"
+    assert ai.designation.it == "Ematocrito"
+    assert ai.category == "Hämatologie"
+    assert ai.metadata["ai_fields"] == ["category", "designation_fr", "designation_it"]
+    # Billing + identity are byte-identical to the deterministic mapping; the hash is unset.
+    assert ai.tax_points == rules.tax_points
+    assert ai.price_chf == rules.price_chf
+    assert ai.unit == rules.unit
+    assert ai.tariff_code == rules.tariff_code
+    assert ai.designation.de == rules.designation.de
+    assert ai.record_hash is None
+    assert rules.record_hash is None
 
 
 def test_gap_gate_skips_call_when_nothing_fillable(monkeypatch):
