@@ -11,7 +11,7 @@ Targets from Architecture v2.1 §12, carried as stable ids NFR-1…NFR-6. Each r
 | NFR-3 | Harmonisation review rate | <15% flagged on the two BAG sources | `PipelineReport` flagged/frozen ratio on full live ingests, cross-checked against `audit_log` | EAL 0.0 % (1 279), SL 1.08 % (111/10 299), runs 2026-06-11 | [ADR-005](../adr/005-single-ai-seam.md) (confidence scoring), [ADR-013](../adr/013-demo-scope.md) (review loop scope) |
 | NFR-4 | API read latency | p95 < 200 ms single-record (cached, measured), < 500 ms search (design budget, not yet measured) | p95 over repeated requests against the live compose serving container | **single-record measured 2026-06-13**: p95 **15.8 ms** (p50 10.1 ms) over n=200 warm reads against the running container, well inside the 200 ms target. The search-latency p95 is a stated design budget, not yet measured (method defined, see [§7](07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose)) | [ADR-002](../adr/002-freeze-line-decomposition.md) (read side isolated), [ADR-006](../adr/006-postgres-pgvector.md) (point-read store) |
 | NFR-5 | Freshness | New source version frozen + served within 24 h of publication (operational goal) | Full-ingest pipeline wall clock as a **bounding proxy**. It measures end-to-end **processing time** (load to frozen-and-served), not the publish-to-serve latency from BAG's release, which also depends on when a run is triggered. A processing time orders of magnitude below 24 h is the evidence the goal is comfortably reachable once a run starts | EAL 70.6 s, SL 574 s end-to-end incl. embeddings, both orders of magnitude inside 24 h | [ADR-015](../adr/015-epl-sl-fhir-ingestion.md) (streaming bulk-export ingestion bounds the wall clock), [ADR-002](../adr/002-freeze-line-decomposition.md) (freeze-to-serve: a frozen record is already the serving contract) |
-| NFR-6 | Test coverage | Core logic modules > 80% line coverage | `pytest-cov` line coverage, printed and **gated** by the CI `python` job on every run (`--cov-fail-under=80`, see [§13](13-test-strategy.md)) | **measured 2026-06-30**: serving 93 %, mcp 92 %, ingestion 91 % totals, with every core logic module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 90 %, review write-back 93 %, error layer 99 %) and the Postgres-only connection facade (`db.py`) at 76 %, exercised in the `python-parity` job, quoted in [Test and pipeline results](#test-and-pipeline-results) | [ADR-010](../adr/010-github-actions-devsecops.md) (the CI `python` job runs the offline suite and gates each service's total line coverage with `--cov-fail-under=80`), so a regression below the 80 % floor fails CI (see [§13](13-test-strategy.md)) |
+| NFR-6 | Test coverage | Core logic modules > 80% line coverage | `pytest-cov` line coverage, printed and **gated** by the CI `python` job on every run (`--cov-fail-under=80`, see [§13](13-test-strategy.md)) | **measured 2026-07-01**: serving 93 %, mcp 92 %, ingestion 91 % totals, with every core logic module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 90 %, review write-back 93 %, error layer 99 %) and the Postgres-only connection facade (`db.py`) at 76 %, exercised in the `python-parity` job, quoted in [Test and pipeline results](#test-and-pipeline-results) | [ADR-010](../adr/010-github-actions-devsecops.md) (the CI `python` job runs the offline suite and gates each service's total line coverage with `--cov-fail-under=80`), so a regression below the 80 % floor fails CI (see [§13](13-test-strategy.md)) |
 
 The section below documents measured harmonisation evidence for the determinism, reproducibility and review-rate rows (EAL run 2026-06-11: 1 279/1 279 frozen, review rate 0.0 %. SL run 2026-06-11: 10 299 frozen, review rate 1.08 %, with a measured reproducibility caveat on the 47 AI-gap records, see below).
 
@@ -23,7 +23,7 @@ This is deliberate: a screenshot or an unbacked "all tests green" claim says lit
 pipeline output is quoted verbatim and interpreted here. The numbers
 below are the interpretation. The CI link and the screenshots in [§7](07-deployment-view.md)
 only illustrate. The pipeline figures were produced on 2026-06-13. The offline test counts and
-coverage tables below were re-run on 2026-06-30, after the review write-back, the uniform
+coverage tables below were re-run on 2026-07-01, after the review write-back, the uniform
 error-handling, the serving connection-pool work and the search-system filter landed. The
 connection-pool change adds a serving `db.py` pool module and pool wiring in `main.py`, and the
 search-system filter a Postgres-only branch on the pgvector `search_by_embedding` path, whose
@@ -59,7 +59,7 @@ or the real Postgres engine (the `python-parity` job).
 
 ### Coverage (pytest-cov, line coverage)
 
-Measured locally on 2026-06-30 (ingestion 91 %, serving 93 %, mcp 92 %). Line coverage is
+Measured locally on 2026-07-01 (ingestion 91 %, serving 93 %, mcp 92 %). Line coverage is
 platform-independent, so the same offline test set yields the same per-module coverage on
 the CI Linux `python` job.
 

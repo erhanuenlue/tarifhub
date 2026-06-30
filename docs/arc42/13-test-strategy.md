@@ -180,7 +180,7 @@ deterministic pipeline as ingest (validate → freeze → new immutable version 
 `audit_log`), so a reviewed value is provably the value that was frozen and the prior version is
 never rewritten. `services/ingestion/tests/test_review_contract.py` (5 tests) asserts the review
 models expose exactly the keys the console consumes, and the matching console BFF proxy is covered
-by `apps/tarifguard/tests/unit/review-route.test.ts` (5 cases, including the same billing-field
+by `apps/tarifguard/tests/unit/review-route.test.ts` (6 cases, including the same billing-field
 guard enforced before any proxy call). The path's own AST guard,
 `services/ingestion/tests/test_review_boundary.py`, is listed with the boundary tests above. These
 pin the **UC-02** review acceptance ([§10](10-quality-requirements.md#acceptance-criteria)).
@@ -238,7 +238,7 @@ Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision)
 Target: **core modules (model, freeze, pipeline, mapper) > 80 % line coverage**
 ([§10](10-quality-requirements.md)). Measured on the offline suite (`pytest-cov`, line
 coverage) and re-measured and **gated** on every CI run in the `python` job's coverage step
-(`--cov-fail-under=80`). Measured 2026-06-30. The per-module figures and the residual misses are quoted and interpreted in
+(`--cov-fail-under=80`). Measured 2026-07-01. The per-module figures and the residual misses are quoted and interpreted in
 [§10 Test and pipeline results](10-quality-requirements.md#coverage-pytest-cov-line-coverage):
 
 | Service | Core modules in scope | Measured |
@@ -260,7 +260,7 @@ and has done so since the console landed (PR #16, commit `265b2e3`, 2026-06-13).
 `console` job (`.github/workflows/ci.yml`) runs `npm ci`, lint, build, installs Chromium, and
 then the suite, on every push to `main` and every pull request.
 
-The suite is **24 Vitest tests across five files** plus a **Playwright end-to-end
+The suite is **40 Vitest tests across six files** plus a **Playwright end-to-end
 smoke**. The component tests assert the brand visual law: that frozen values render in navy mono
 with version and truncated `record_hash` provenance chips, and that every AI output renders
 inside its `.ai-content` labelled surface, marked as AI-generated content that is not a billing
@@ -273,15 +273,15 @@ The CI `console` job on the latest `main` run produced this result (Vitest summa
 Playwright run):
 
 ```
- Test Files  5 passed (5)
-      Tests  24 passed (24)
+ Test Files  6 passed (6)
+      Tests  40 passed (40)
 ...
 Running 2 tests using 1 worker
   1 skipped
   1 passed (17.2s)
 ```
 
-All 24 Vitest tests pass (the seven `brand` cases are the visual-law checks named
+All 40 Vitest tests pass (the seven `brand` cases are the visual-law checks named
 above), and the Playwright run is 1 end-to-end smoke passed plus 1 screenshot-capture spec
 skipped (it runs only with `CAPTURE=1`). The console is additionally covered by the serving API
 contract tests it consumes, with manual smoke captured into `docs/evidence/`.
