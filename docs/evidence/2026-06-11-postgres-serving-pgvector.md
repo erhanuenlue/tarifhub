@@ -2,7 +2,7 @@
 
 **Date:** 2026-06-11  
 **Branch:** feat/block0-completion  
-**DB state:** 1279 frozen EAL records, each with a 1024-dim multilingual-e5-large embedding; 1279 audit_log rows loaded from BAG Analysenliste per 01.01.2026
+**DB state:** 1279 frozen EAL records, each with a 1024-dim multilingual-e5-large embedding, plus 1279 audit_log rows loaded from BAG Analysenliste per 01.01.2026
 
 ---
 
@@ -22,7 +22,7 @@ $ docker exec tarifhub-db psql -U tarifhub -d tarifhub -c "SELECT count(*), coun
 
 ## 2. Serving startup
 
-Command used (e5 embedder loaded via ephemeral `--with` flag; model served from local HF cache):
+Command used (e5 embedder loaded via ephemeral `--with` flag, model served from local HF cache):
 
 ```
 cd services/serving
@@ -133,7 +133,7 @@ GET /api/v1/search?q=Glukose%20im%20Blut&limit=5  →  HTTP 200
 | 4    | 1359     | Glukose-Belastung       | Chemie   | 7.80       |
 | 5    | 1363     | Hämoglobin A1c          | Chemie   | 16.00      |
 
-**Result:** Glucose analyses rank 1-2; glucose tolerance test at rank 4; HbA1c (a glycaemic marker) ranks 3 and 5. Semantically coherent.
+**Result:** Glucose analyses rank 1-2, glucose tolerance test at rank 4, HbA1c (a glycaemic marker) ranks 3 and 5. Semantically coherent.
 
 ### 6b. French query: "hématocrite"
 
@@ -175,7 +175,7 @@ GET /api/v1/search?q=vitamin%20D%20blood%20test&limit=5  →  HTTP 200
 grep -i "error|traceback|critical|secret|password|key=" /tmp/serving.log
 ```
 
-Result: **No matches.** Log contains only INFO-level uvicorn access lines plus the HF weight-loading progress bars (expected) and one `Warning: You are sending unauthenticated requests to the HF Hub` (non-fatal; model was served from local cache, no download occurred).
+Result: **No matches.** Log contains only INFO-level uvicorn access lines plus the HF weight-loading progress bars (expected) and one `Warning: You are sending unauthenticated requests to the HF Hub` (non-fatal, model was served from local cache, no download occurred).
 
 ---
 
@@ -185,17 +185,17 @@ Result: **No matches.** Log contains only INFO-level uvicorn access lines plus t
 |------------------------------------------|--------|-------------------------------------------------------------------------|
 | DB: 1279 records with 1024-dim embedding | PASS   | `count(*)=1279, count(embedding)=1279`                                  |
 | GET /health                              | PASS   | HTTP 200 `{"status":"ok"}`                                              |
-| GET /api/v1/tariffs?limit=3              | PASS   | HTTP 200; deterministic order by tariff_code ascending                  |
-| GET /api/v1/tariffs?system=EAL&limit=3   | PASS   | HTTP 200; same first three records                                      |
-| GET /api/v1/tariffs/EAL/1000             | PASS   | HTTP 200; tax_points=76.5; FR+IT populated; ai_assisted=false           |
+| GET /api/v1/tariffs?limit=3              | PASS   | HTTP 200, deterministic order by tariff_code ascending                  |
+| GET /api/v1/tariffs?system=EAL&limit=3   | PASS   | HTTP 200, same first three records                                      |
+| GET /api/v1/tariffs/EAL/1000             | PASS   | HTTP 200, tax_points=76.5, FR+IT populated, ai_assisted=false           |
 | GET /api/v1/tariffs/EAL/9999999          | PASS   | HTTP 404 with descriptive error message                                 |
-| Search (DE) "Glukose im Blut"            | PASS   | Glucose analyses rank 1+2; HbA1c ranks 3+5; semantically coherent      |
-| Search (FR) "hématocrite"                | PARTIAL | Hématocrite at rank 3 (not rank 1); near-miss due to "hémat-" prefix   |
-| Search (EN) "vitamin D blood test"       | PASS   | Vitamin D rank 1; 1,25-Dihydroxy-VitD rank 2; cross-lingual confirmed  |
+| Search (DE) "Glukose im Blut"            | PASS   | Glucose analyses rank 1+2, HbA1c ranks 3+5, semantically coherent      |
+| Search (FR) "hématocrite"                | PARTIAL | Hématocrite at rank 3 (not rank 1), near-miss due to "hémat-" prefix   |
+| Search (EN) "vitamin D blood test"       | PASS   | Vitamin D rank 1 and 1,25-Dihydroxy-VitD rank 2, cross-lingual confirmed  |
 | Log scan (errors/secrets)                | PASS   | No errors, no tracebacks, no credentials in output                      |
 
 **One partial finding:** French "hématocrite" query: the exact hematocrit record surfaces at rank 3, not rank 1. The embeddings for "hémat-" prefix terms (Haemopexin, Hämophilien) score higher than the centrifuge-specific hematocrit record. This is a search-quality observation, not a failure of the serving infrastructure or embedding pipeline.
 
 ---
 
-*Evidence captured by e2e-tester agent on 2026-06-11. Serving process started with `TARIFHUB_EMBEDDINGS=e5` plus ephemeral `sentence-transformers>=2.7`; db container left running as instructed.*
+*Evidence captured by e2e-tester agent on 2026-06-11. Serving process started with `TARIFHUB_EMBEDDINGS=e5` plus ephemeral `sentence-transformers>=2.7`, db container left running as instructed.*
