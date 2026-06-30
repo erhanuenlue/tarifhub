@@ -1,9 +1,9 @@
 # d3 · Cockpit eval and adopt (OTLP export, run comparison, recurring eval)
 
-> **Gate-01: pre-approved for the in-scope work below.** The repository extraction at the end is a separate owner decision (ADR-022): stop and confirm before moving any file out of tarifhub. Stop also for any out-of-scope path, freeze-line contact, or a green-contract breach.
+> **Gate-01: pre-approved for the in-scope work below.** The repository extraction at the end is a separate owner decision (C-04): stop and confirm before moving any file out of tarifhub. Stop also for any out-of-scope path, freeze-line contact, or a green-contract breach.
 > **Precondition: do not run before CAS submission is confirmed merged.** Promote to `prompts/cockpit/` only post-submission.
 
-Run at `/effort ultracode`. Read ADR-022 and `01-contracts.md` section 3 (the OTel mapping). This stage adopts the observability category instead of rebuilding it, adds the eval surface, and finishes the module split.
+Run at `/effort ultracode`. Read C-04 and `01-contracts.md` section 3 (the OTel mapping). This stage adopts the observability category instead of rebuilding it, adds the eval surface, and finishes the module split.
 
 ## Constraints
 - Allowed paths: `tools/shipboard/**`, `tests/cockpit/**`, `docs/cockpit/**` (cockpit ADRs under `docs/cockpit/adr/**`). Not product `docs/adr/**` or `.github/workflows/**`.
@@ -14,7 +14,7 @@ Run at `/effort ultracode`. Read ADR-022 and `01-contracts.md` section 3 (the OT
 2. **Run comparison.** A read-model and view that diffs two runs across cost, duration, gates, CAS floor, and files touched; surface the ratchet trend.
 3. **Recurring eval.** Wire the dual-blind scorecard / grade-auditor as a tracked eval: score-over-time, regression flag like a CI status.
 4. **Finish the split.** Retire the monolith's remaining inline logic into `collector`/`api`/`web`; the thin `shipboard.py` shim still launches the package. Confirm the import/invocation contract (section 1.1 of the build spec).
-5. **Optional extraction (owner stop).** Per ADR-022, the emitters stay in tarifhub; the cockpit can move to its own repo reading the rail from a path argument and accepting `schema_version <= N`.
+5. **Optional extraction (owner stop).** Per C-04, the emitters stay in tarifhub; the cockpit can move to its own repo reading the rail from a path argument and accepting `schema_version <= N`.
 
 ## Done means (quote the evidence)
 - An e2e-tester run shows a run's spans exported and visible in a local OTLP collector (and, if adopted, Langfuse); `otlp.py` id-width validation rejects malformed ids in a unit test.

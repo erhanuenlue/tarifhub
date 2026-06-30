@@ -164,6 +164,8 @@ def test_subscale_value_cannot_reach_storage(tmp_path, monkeypatch):
     assert stored.metadata["raw_tax_points"] == "0.0000007"
     assert stored.requires_review is True  # fail-closed into review
 
+    conn.close()
+
 
 def test_unscoped_get_tie_break_is_deterministic():
     """An unscoped get() across two systems sharing a code is deterministically ordered.

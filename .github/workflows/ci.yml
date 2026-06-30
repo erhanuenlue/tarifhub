@@ -37,11 +37,14 @@ jobs:
         run: |
           (cd services/ingestion && uv run pytest -q tests/test_determinism_boundary.py -v)
           (cd services/serving && uv run pytest -q tests/test_serving_boundary.py -v)
-      - name: Coverage — core modules (report-only evidence, arc42 §10 target >80%)
+      - name: Coverage gate — core modules must stay >= 80% (arc42 §10 NFR-6)
+        # set -eo pipefail so a --cov-fail-under failure is NOT masked by the `| tail` pipe
+        # (a pipeline's exit status is tail's without it, so the gate would never fail CI).
         run: |
-          (cd services/ingestion && uv run --extra dev pytest -q --cov=tarifhub_ingest --cov-report=term | tail -40)
-          (cd services/serving && uv run --extra dev pytest -q --cov=tarifhub_serving --cov-report=term | tail -15)
-          (cd services/mcp && uv run --extra dev pytest -q --cov=server --cov=config --cov-report=term | tail -10)
+          set -eo pipefail
+          (cd services/ingestion && uv run --extra dev pytest -q --cov=tarifhub_ingest --cov-report=term --cov-fail-under=80 | tail -40)
+          (cd services/serving && uv run --extra dev pytest -q --cov=tarifhub_serving --cov-report=term --cov-fail-under=80 | tail -15)
+          (cd services/mcp && uv run --extra dev pytest -q --cov=server --cov=config --cov-report=term --cov-fail-under=80 | tail -10)
 
   # Cross-engine read parity: the SAME read tests run against a real Postgres 16 +
   # pgvector so SQLite-vs-Postgres drift (Block-0: json.loads on a JSONB dict; int for a
@@ -99,7 +102,7 @@ jobs:
             echo "console not yet scaffolded — skipping"
           fi
 
-  # Cockpit build-machinery tests (ADR-019..022). stdlib-only cockpit code, no uv. Guarded like
+  # Cockpit build-machinery tests (C-01..C-04). stdlib-only cockpit code, no uv. Guarded like
   # `console`: green (skips) until cockpit d0 creates tests/cockpit, then runs the fitness-function
   # suites for real. Authored pre-submission so a runner exists the moment d0 lands; it cannot run
   # before then. pytest is the runner only; the cockpit modules import stdlib only (test_zero_dep_core).

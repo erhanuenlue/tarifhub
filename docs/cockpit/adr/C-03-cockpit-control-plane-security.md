@@ -1,4 +1,4 @@
-# ADR-021: Cockpit control-plane security model
+# C-03: Cockpit control-plane security model
 
 *Status: Proposed · Date: 2026-06-14 · Decider: Erhan (+ AI-assisted design, security-reviewed)*
 
@@ -30,4 +30,4 @@ We protect every state-changing endpoint on the loopback service with a layered,
 - (–) The SSE read stream emits approval ids and `EventSource` cannot set headers, so the read plane is gated by a `SameSite=Strict` cookie set on first GET (or a loopback `?token`), and `approval_id` is treated as non-secret with the token as the sole authorizer. Any event-derived string rendered into the page is HTML-escaped so the token cannot be exfiltrated through a crafted commit message or PR title.
 - (–) A late dashboard decision after the hook's roughly 9-minute timeout must not mint a phantom allow. The gate writes a terminal `timeout` decision atomically (same `os.link` first-writer-wins discipline) before denying, so a late POST returns the timeout decision instead of an allow nobody is waiting on. Revisit trigger: any exposure beyond loopback makes this model insufficient and requires real authentication.
 
-*Lineage: new; hardens the approval bridge introduced in `prompts/12_approval_bridge.md`. Cross-reference ADR-019, ADR-020.*
+*Lineage: new; hardens the approval bridge introduced in `prompts/12_approval_bridge.md`. Cross-reference C-01, C-02.*
