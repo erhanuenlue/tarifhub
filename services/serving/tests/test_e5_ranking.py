@@ -86,3 +86,75 @@ def test_stub_embedder_does_not_make_the_cross_lingual_match() -> None:
     ]
     ranked = _rank(query_vector, passages)
     assert ranked[0][2] != "1375"
+
+
+def test_real_e5_ranking_through_production_search_offline(tmp_path) -> None:
+    """Drive the production ``search_offline`` over a seeded offline DB with the real vectors.
+
+    Unlike the cosine checks above, this exercises the whole production ranking path end to
+    end (candidate fetch, dimension filter, `_cosine_similarity`, the `(-score, system, code)`
+    sort and row rehydration), so a regression in `search_offline`'s filtering or ordering is
+    caught here too, not only the cosine helper. Seeding uses the ingestion write side (a
+    test-only import, exactly as the serving conftest does); the read goes through the real
+    `ServingRepository`.
+    """
+    from datetime import date, datetime, timezone  # noqa: PLC0415
+    from decimal import Decimal  # noqa: PLC0415
+
+    from tarifhub_ingest.models.tariff_model import (  # noqa: PLC0415
+        Designation,
+        TariffRecord,
+        TariffSystem,
+    )
+    from tarifhub_ingest.storage.db import Database as IngestDatabase  # noqa: PLC0415
+    from tarifhub_ingest.storage.tariff_repository import TariffRepository  # noqa: PLC0415
+    from tarifhub_ingest.versioning.freeze_record import freeze  # noqa: PLC0415
+    from tarifhub_serving.db import Database as ServingDatabase  # noqa: PLC0415
+    from tarifhub_serving.repository import ServingRepository  # noqa: PLC0415
+
+    fx = _load()
+    db_path = tmp_path / "e5_ranking.db"
+
+    # Seed each fixture passage as a frozen EAL record carrying its REAL e5 vector. The
+    # tax_points value is irrelevant to ranking (search never reads it) but keeps the record
+    # well-formed.
+    ingest_db = IngestDatabase.from_url(f"sqlite:///{db_path}")
+    conn = ingest_db.connect()
+    ingest_db.init_schema(conn)
+    repo = TariffRepository(conn, ingest_db)
+    for p in fx["passages"]:
+        record = TariffRecord(
+            tariff_code=p["tariff_code"],
+            tariff_system=TariffSystem.EAL,
+            designation=Designation(de=p["designation_de"]),
+            tax_points=Decimal("1.0"),
+            valid_from=date(2026, 1, 1),
+            source_url="https://www.bag.admin.ch",
+            source_version="2026-01-01",
+            harmonization_confidence=0.95,
+            requires_review=False,
+            created_at=datetime(2026, 1, 1, tzinfo=timezone.utc),
+        )
+        repo.add(freeze(record), embedding=p["vector"])
+    conn.close()
+
+    serving_db = ServingDatabase.from_url(f"sqlite:///{db_path}")
+    sconn = serving_db.connect()
+    ranked = ServingRepository(sconn, serving_db).search_offline(
+        fx["query"]["vector"], limit=len(fx["passages"])
+    )
+    sconn.close()
+
+    assert ranked[0].tariff_system == TariffSystem.EAL
+    assert ranked[0].tariff_code == fx["target_code"] == "1375"
+
+
+def test_passage_text_matches_the_ingest_embedding_recipe() -> None:
+    """Provenance guard: each recorded passage embeds exactly what ingest would embed.
+
+    The ingest pipeline embeds ``f"{system} {code} {designation_de}"``, so a fixture whose
+    `passage_text` drifted from that recipe would no longer represent the production vectors.
+    """
+    fx = _load()
+    for p in fx["passages"]:
+        assert p["passage_text"] == f"{p['tariff_system']} {p['tariff_code']} {p['designation_de']}"

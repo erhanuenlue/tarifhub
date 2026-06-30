@@ -201,13 +201,17 @@ demonstrate the intelligent behaviour itself in CI, still with no live key and n
   byte-identical to `map_raw`. The mock stands in for the network, but the asserted contract is exactly
   the one the opt-in `ai` extra exercises live.
 - **The real multilingual-e5 ranking.** `services/serving/tests/test_e5_ranking.py` ranks REAL
-  `intfloat/multilingual-e5-large` query and passage vectors with the production cosine ranker
-  (`tarifhub_serving.repository`, the same recipe as `search_offline`) and asserts that the French query
-  *hématocrite* ranks the German record EAL 1375 (*Hämatokrit, zentrifugiert*) top-1, the cross-lingual
-  match the 16-dim stub does not make (the test pins both sides). The vectors were recorded once from the
-  cached model by `services/serving/tests/fixtures/record_e5_fr_ranking.py` and committed, so the real
-  semantic search is demonstrated deterministically with no 2 GB download in CI. The full FR-ranking eval
-  is recorded at [evidence/2026-06-11-fr-ranking-eval.md](../evidence/2026-06-11-fr-ranking-eval.md).
+  `intfloat/multilingual-e5-large` query and passage vectors through the production ranker
+  (`ServingRepository.search_offline` over a seeded offline mirror, plus a direct `_cosine_similarity`
+  margin check) and asserts that the French query *hématocrite* ranks the German record EAL 1375
+  (*Hämatokrit, zentrifugiert*) top-1 within this curated seven-record set, the cross-lingual match the
+  16-dim stub does not make (the test pins both sides). The set deliberately excludes the near-duplicate
+  haematogram panel 1372.01: the full 1279-record eval ranks 1375 *second* behind that panel, whose own
+  text also contains *Hämatokrit*, so the fixture isolates the cross-lingual designation match rather than
+  the full-corpus result. The vectors were recorded once from the cached model by
+  `services/serving/tests/fixtures/record_e5_fr_ranking.py` and committed, so the real semantic search is
+  demonstrated deterministically with no 2 GB download in CI. The full FR-ranking eval is recorded at
+  [evidence/2026-06-11-fr-ranking-eval.md](../evidence/2026-06-11-fr-ranking-eval.md).
 
 All six families run in the **offline default suite** (no key, no network) and again in CI on every
 push. Families 1 to 5 test the guardrails without ever needing the AI. Family 6 demonstrates the real

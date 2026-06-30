@@ -33,7 +33,7 @@ Three scenarios show the architecture at work: the deterministic harmonisation p
 5. Rows are rehydrated verbatim into `TariffRecord` and returned as ranked `SearchHit` items. No field is recomputed or rewritten.
 6. **Read-only guarantee.** The AST boundary test (`services/serving/tests/test_serving_boundary.py`) proves no LLM client is importable on this path. CI fails otherwise.
 
-> **Honest note on the embedder.** The default offline build, including CI and the suite a grader runs, ranks on the deterministic 16-dim `HashingEmbedder` stub. The real `intfloat/multilingual-e5-large` embeddings and the pgvector engine are an opt-in `ai` extra. The real semantic ranking is demonstrated deterministically by `services/serving/tests/test_e5_ranking.py` over recorded e5 vectors (the French query *hématocrite* ranks the German record EAL 1375 top-1, the cross-lingual match the stub cannot make), so the intelligent search is shown in evidence without a 2 GB model download.
+> **Honest note on the embedder.** The default offline build, including CI and the suite a grader runs, ranks on the deterministic 16-dim `HashingEmbedder` stub. The real `intfloat/multilingual-e5-large` embeddings and the pgvector engine are an opt-in `ai` extra. The real semantic ranking is demonstrated deterministically by `services/serving/tests/test_e5_ranking.py` over recorded e5 vectors (the French query *hématocrite* ranks the German record EAL 1375 top-1 within a curated seven-record set, the cross-lingual match the stub cannot make, while the full 1279-record eval ranks 1375 second behind the near-duplicate panel 1372.01), so the intelligent search is shown in evidence without a 2 GB model download.
 
 ## Scenario 3: review to freeze loop (implemented end to end)
 

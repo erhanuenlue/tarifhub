@@ -309,6 +309,10 @@ def test_structured_output_call_and_fill_only_merge(monkeypatch):
     assert ai.designation.de == rules.designation.de
     assert ai.record_hash is None
     assert rules.record_hash is None
+    # Comprehensive: every field except the intended fills (designation, category) and the AI
+    # metadata additions is byte-identical to the deterministic mapping, so nothing else moved.
+    _ignore = {"designation", "category", "metadata", "created_at"}
+    assert ai.model_dump(exclude=_ignore) == rules.model_dump(exclude=_ignore)
 
 
 def test_gap_gate_skips_call_when_nothing_fillable(monkeypatch):
