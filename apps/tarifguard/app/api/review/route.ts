@@ -42,14 +42,18 @@ const TARIFF_SYSTEMS = ["TARDOC", "EAL", "SL", "MiGeL", "SwissDRG", "TARPSY", "S
  * explicit guard because it is the inviolable-boundary defence, not a shape check.
  */
 const ReviewDecisionBody = z.object({
-  tariff_system: z.enum(TARIFF_SYSTEMS),
-  tariff_code: z.string().min(1),
-  record_hash: z.string().nullable(),
-  action: z.enum(["approve", "correct"]),
+  tariff_system: z.enum(TARIFF_SYSTEMS, { error: "tariff_system is required and must be a known system" }),
+  tariff_code: z.string({ error: "tariff_code is required" }).min(1, "tariff_code is required"),
+  // Optional: the ingestion contract defaults record_hash to null, so a body that omits it is
+  // accepted (normalised to null below), matching the backend and the prior BFF behaviour.
+  record_hash: z.string().nullable().optional(),
+  action: z.enum(["approve", "correct"], { error: "action must be 'approve' or 'correct'" }),
   corrections: z.record(z.string(), z.string()).optional(),
   reviewer: z.string().optional(),
   note: z.string().optional(),
 });
+// Unknown keys are stripped by zod (its default), so the proxied decision carries exactly the
+// contract above and never forwards arbitrary client fields to the ingestion endpoint.
 
 function ingestBase(): string | null {
   const url = process.env.INGEST_BASE_URL?.trim();
@@ -94,7 +98,9 @@ export async function POST(req: NextRequest) {
   if (!parsed.success) {
     return problemFromZod(parsed.error, REVIEW_INSTANCE);
   }
-  const decision: ReviewDecision = parsed.data;
+  // Normalise an omitted record_hash to null so the decision matches the ReviewDecision
+  // contract and the ingestion default (record_hash is Optional[str] = None upstream).
+  const decision: ReviewDecision = { ...parsed.data, record_hash: parsed.data.record_hash ?? null };
 
   // The inviolable boundary, enforced server-side: a billing value is never corrected here.
   if (decision.action === "correct" && decision.corrections) {

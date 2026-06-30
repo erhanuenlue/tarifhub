@@ -155,3 +155,42 @@ describe("review BFF route validation", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("validation hardening (post-review)", () => {
+  it("caps the error detail for a large malformed positions array (no amplification)", async () => {
+    const positions = Array.from({ length: 60 }, () => ({}));
+    const res = await codingCheckPOST(post("/api/coding-check", { positions }));
+    const body = await expectProblem400(res);
+    // The detail is bounded with a "(+N more)" suffix rather than one issue per bad element:
+    // at most 10 field paths are listed however many elements are malformed.
+    expect(String(body.detail)).toContain("(+");
+    const pathCount = (String(body.detail).match(/positions\./g) || []).length;
+    expect(pathCount).toBeLessThanOrEqual(10);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects too many well-formed positions with a single clean message", async () => {
+    const positions = Array.from({ length: 51 }, () => ({ system: "EAL", code: "0010.00" }));
+    const res = await codingCheckPOST(post("/api/coding-check", { positions }));
+    const body = await expectProblem400(res);
+    expect(String(body.detail)).toContain("too many positions (max 50)");
+    expect(String(body.detail)).not.toContain("(+");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a review decision that omits record_hash (lenient, matches the backend)", async () => {
+    const res = await reviewPOST(
+      post("/api/review", { tariff_system: "EAL", tariff_code: "0010.00", action: "approve" })
+    );
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.frozen).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("names the missing field in the review 400 detail", async () => {
+    const res = await reviewPOST(post("/api/review", { action: "approve" }));
+    const body = await expectProblem400(res);
+    expect(String(body.detail)).toContain("tariff_system");
+  });
+});

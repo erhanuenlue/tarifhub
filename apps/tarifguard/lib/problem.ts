@@ -71,16 +71,21 @@ export function problem({ status, detail, instance, title, type, extra }: Proble
  * through here, so a malformed request always yields the same envelope as the hand-written
  * 400s above. The detail lists each failing field as "path: message" (the field path is
  * omitted for a root-level issue) so the caller learns what to fix without us leaking the
- * raw body back.
+ * raw body back. The issue list is capped so a body with many bad elements (for example a
+ * large malformed array) cannot amplify into an unbounded detail string.
  */
+const MAX_PROBLEM_ISSUES = 10;
+
 export function problemFromZod(error: ZodError, instance: string): NextResponse {
-  const detail =
-    error.issues
-      .map((issue) => {
-        const path = issue.path.join(".");
-        return path ? `${path}: ${issue.message}` : issue.message;
-      })
-      .join(", ") || "request body failed validation";
+  const shown = error.issues.slice(0, MAX_PROBLEM_ISSUES).map((issue) => {
+    const path = issue.path.join(".");
+    return path ? `${path}: ${issue.message}` : issue.message;
+  });
+  const extra = error.issues.length - shown.length;
+  if (extra > 0) {
+    shown.push(`(+${extra} more)`);
+  }
+  const detail = shown.join(", ") || "request body failed validation";
   return problem({ status: 400, detail, instance });
 }
 
