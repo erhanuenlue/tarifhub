@@ -155,3 +155,81 @@ describe("review BFF route validation", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 });
+
+describe("validation hardening (post-review)", () => {
+  it("caps the error detail for a large malformed positions array (no amplification)", async () => {
+    const positions = Array.from({ length: 60 }, () => ({}));
+    const res = await codingCheckPOST(post("/api/coding-check", { positions }));
+    const body = await expectProblem400(res);
+    // The detail is bounded with a "(+N more)" suffix rather than one issue per bad element:
+    // at most 10 field paths are listed however many elements are malformed.
+    expect(String(body.detail)).toContain("(+");
+    const pathCount = (String(body.detail).match(/positions\./g) || []).length;
+    expect(pathCount).toBeLessThanOrEqual(10);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects too many well-formed positions with a single clean message", async () => {
+    const positions = Array.from({ length: 51 }, () => ({ system: "EAL", code: "0010.00" }));
+    const res = await codingCheckPOST(post("/api/coding-check", { positions }));
+    const body = await expectProblem400(res);
+    expect(String(body.detail)).toContain("too many positions (max 50)");
+    expect(String(body.detail)).not.toContain("(+");
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("accepts a review decision that omits record_hash (lenient, matches the backend)", async () => {
+    const res = await reviewPOST(
+      post("/api/review", { tariff_system: "EAL", tariff_code: "0010.00", action: "approve" })
+    );
+    const body = await res.json();
+    expect(res.status).toBe(200);
+    expect(body.frozen).toBe(true);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("names the missing field in the review 400 detail", async () => {
+    const res = await reviewPOST(post("/api/review", { action: "approve" }));
+    const body = await expectProblem400(res);
+    expect(String(body.detail)).toContain("tariff_system");
+  });
+
+  it("emits no marker at exactly the cap and '(+1 more)' one issue past it", async () => {
+    // A position with a string system but no code yields exactly one issue, so the issue
+    // count equals the position count (no array-max issue at <= 50 length).
+    const atCap = await expectProblem400(
+      await codingCheckPOST(
+        post("/api/coding-check", { positions: Array.from({ length: 10 }, () => ({ system: "EAL" })) })
+      )
+    );
+    expect(String(atCap.detail)).not.toContain("(+");
+    expect((String(atCap.detail).match(/positions\./g) || []).length).toBe(10);
+
+    const overCap = await expectProblem400(
+      await codingCheckPOST(
+        post("/api/coding-check", { positions: Array.from({ length: 11 }, () => ({ system: "EAL" })) })
+      )
+    );
+    expect(String(overCap.detail)).toContain("(+1 more)");
+    expect((String(overCap.detail).match(/positions\./g) || []).length).toBe(10);
+  });
+
+  it("proxies an omitted record_hash as null and strips unknown keys before the upstream fetch", async () => {
+    process.env.INGEST_BASE_URL = "https://ingestion.internal";
+    fetchMock.mockResolvedValue(okJson({ ok: true, frozen: true, version: 2 }));
+    const res = await reviewPOST(
+      post("/api/review", {
+        tariff_system: "EAL",
+        tariff_code: "0010.00",
+        action: "approve",
+        bogus: "drop-me",
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.record_hash).toBeNull(); // omitted -> normalised to null
+    expect(sent).not.toHaveProperty("bogus"); // unknown key stripped before proxying
+    delete process.env.INGEST_BASE_URL;
+  });
+});
