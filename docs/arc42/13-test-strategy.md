@@ -115,11 +115,13 @@ the AI components are themselves tested, not just
 the deterministic majority. tarifhub's AI
 portion is small and sharply bounded: a single fill-only seam (`ai_map`, ADR-005) that may
 only add missing non-billing designations pre-freeze, plus an embeddings-based ranking path
-for search. Its tests therefore fall into five families: a **guardrail** test of the
+for search. Its tests therefore fall into six families: a **guardrail** test of the
 boundary itself, **no-call** tests of the gap gate, **non-deterministic-output handling**
 tests of fill-reuse, **fail-closed parsing** tests of the schema validation that treats
-model output as untrusted, and a **human-in-the-loop write-back** family that pins the review
-queue where flagged AI fills are approved or corrected before a human freezes them.
+model output as untrusted, a **human-in-the-loop write-back** family that pins the review
+queue where flagged AI fills are approved or corrected before a human freezes them, and a
+**demonstration** family that exercises the real Claude structured-output contract and the real
+multilingual-e5 ranking, so the intelligent behaviour is shown directly and not only mocked away.
 
 ### 1 · Guardrail: the boundary itself
 
@@ -183,8 +185,38 @@ guard enforced before any proxy call). The path's own AST guard,
 `services/ingestion/tests/test_review_boundary.py`, is listed with the boundary tests above. These
 pin the **UC-02** review acceptance ([§10](10-quality-requirements.md#acceptance-criteria)).
 
-All five families run in the **offline default suite** (no key, no network) and again in CI
-on every push: the AI portion is tested without ever needing the AI.
+### 6 · Demonstration: the real intelligent behaviour, shown not only mocked away
+
+Families 1 to 5 prove the *guardrails*, and they do so on the offline defaults: without a key
+`ai_map` falls back to deterministic `map_raw`, and search ranks on the 16-dim `HashingEmbedder`
+stub, so none of them invokes the real Claude or e5 models. Two tests close that honest gap and
+demonstrate the intelligent behaviour itself in CI, still with no live key and no model download:
+
+- **The real Claude structured-output call.** `services/ingestion/tests/test_ai_mapper.py`'s
+  `test_structured_output_call_and_fill_only_merge` mocks the `anthropic` client (injected via
+  `sys.modules`, so no key and no network) and asserts the seam makes exactly the live call: a single
+  `client.messages.parse` with `output_format=AIRefinement`, `max_tokens=1024`, the fill-only system
+  prompt, and a user payload that carries no billing field, after which the merge fills only
+  `designation_fr` / `designation_it` / `category` while every billing value and the record hash stay
+  byte-identical to `map_raw`. The mock stands in for the network, but the asserted contract is exactly
+  the one the opt-in `ai` extra exercises live.
+- **The real multilingual-e5 ranking.** `services/serving/tests/test_e5_ranking.py` ranks REAL
+  `intfloat/multilingual-e5-large` query and passage vectors through the production ranker
+  (`ServingRepository.search_offline` over a seeded offline mirror, plus a direct `_cosine_similarity`
+  margin check) and asserts that the French query *hématocrite* ranks the German record EAL 1375
+  (*Hämatokrit, zentrifugiert*) top-1 within this curated seven-record set, the cross-lingual match the
+  16-dim stub does not make (the test pins both sides). The set deliberately excludes the near-duplicate
+  haematogram panel 1372.01: the full 1279-record eval ranks 1375 *second* behind that panel, whose own
+  text also contains *Hämatokrit*, so the fixture isolates the cross-lingual designation match rather than
+  the full-corpus result. The vectors were recorded once from the cached model by
+  `services/serving/tests/fixtures/record_e5_fr_ranking.py` and committed, so the real semantic search is
+  demonstrated deterministically with no 2 GB download in CI. The full FR-ranking eval is recorded at
+  [evidence/2026-06-11-fr-ranking-eval.md](../evidence/2026-06-11-fr-ranking-eval.md).
+
+All six families run in the **offline default suite** (no key, no network) and again in CI on every
+push. Families 1 to 5 test the guardrails without ever needing the AI. Family 6 demonstrates the real
+Claude call shape and the real e5 ranking, using a mocked client and recorded vectors, so the intelligent
+behaviour is exercised in CI without a live key or a model download.
 
 ## What CI runs per PR
 
