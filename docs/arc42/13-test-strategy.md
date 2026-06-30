@@ -211,7 +211,7 @@ coverage) and re-measured on every CI run in the `python` job's coverage step. M
 
 | Service | Core modules in scope | Measured |
 |---|---|---|
-| `services/serving` | `main` 90 %, `db` 76 %, `repository` 94 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %) | **94 % total** |
+| `services/serving` | `main` 90 %, `db` 76 %, `repository` 91 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %) | **93 % total** |
 | `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 %, `errors` 99 % | **91 % total** |
 | `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **92 % total** |
 
