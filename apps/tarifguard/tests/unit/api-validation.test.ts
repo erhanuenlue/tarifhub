@@ -193,4 +193,43 @@ describe("validation hardening (post-review)", () => {
     const body = await expectProblem400(res);
     expect(String(body.detail)).toContain("tariff_system");
   });
+
+  it("emits no marker at exactly the cap and '(+1 more)' one issue past it", async () => {
+    // A position with a string system but no code yields exactly one issue, so the issue
+    // count equals the position count (no array-max issue at <= 50 length).
+    const atCap = await expectProblem400(
+      await codingCheckPOST(
+        post("/api/coding-check", { positions: Array.from({ length: 10 }, () => ({ system: "EAL" })) })
+      )
+    );
+    expect(String(atCap.detail)).not.toContain("(+");
+    expect((String(atCap.detail).match(/positions\./g) || []).length).toBe(10);
+
+    const overCap = await expectProblem400(
+      await codingCheckPOST(
+        post("/api/coding-check", { positions: Array.from({ length: 11 }, () => ({ system: "EAL" })) })
+      )
+    );
+    expect(String(overCap.detail)).toContain("(+1 more)");
+    expect((String(overCap.detail).match(/positions\./g) || []).length).toBe(10);
+  });
+
+  it("proxies an omitted record_hash as null and strips unknown keys before the upstream fetch", async () => {
+    process.env.INGEST_BASE_URL = "https://ingestion.internal";
+    fetchMock.mockResolvedValue(okJson({ ok: true, frozen: true, version: 2 }));
+    const res = await reviewPOST(
+      post("/api/review", {
+        tariff_system: "EAL",
+        tariff_code: "0010.00",
+        action: "approve",
+        bogus: "drop-me",
+      })
+    );
+    expect(res.status).toBe(200);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+    const sent = JSON.parse(fetchMock.mock.calls[0][1].body);
+    expect(sent.record_hash).toBeNull(); // omitted -> normalised to null
+    expect(sent).not.toHaveProperty("bogus"); // unknown key stripped before proxying
+    delete process.env.INGEST_BASE_URL;
+  });
 });
