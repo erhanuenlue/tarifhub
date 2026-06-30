@@ -53,15 +53,21 @@ profiles for local development ([ADR-009](../adr/009-docker-kubernetes-helm.md))
 
 ## Local development: Docker Compose with profiles
 
-Two compose files cover the two halves of the stack. The root `docker-compose.yml` layers the
-read/serve sub-systems via profiles so the offline test suite needs nothing running:
+Two compose files cover two deliberately different jobs, and both are kept because the
+documentation and scripts reference both. The root `docker-compose.yml` is the **full
+local-development profile**: it layers every read/serve sub-system, including the two
+out-of-scope L3 demo stubs, on top of the database via profiles, so the offline test suite
+needs nothing running and a developer brings up as much or as little of the stack as a task
+needs:
 
 - default: `db` + `minio` only.
 - `--profile services`: adds `serving` (FastAPI) and `intelligence` (TarifIQ).
 - `--profile apps`: adds `tarifguard`, `mcp`, `kassenflow`, `meldepilot`.
 
-The wired write-side review loop lives in `deploy/docker-compose.yml`, which makes the two
-distinct ingestion workloads explicit (mirroring the Helm Deployment-vs-Job split):
+`deploy/docker-compose.yml` is the **canonical app-plus-batch deployment**: the wired
+write-side review loop and the run-to-completion ingestion batch, mirroring the Helm
+Deployment-vs-Job split. It is intentionally a smaller, production-shaped service set (no
+MCP, no `intelligence`, no demo stubs), not a second copy of the local-development file:
 
 - `--profile app`: `db` + the ingestion **review API** (`GET /review/queue`, `POST /review`)
   + `serving` + the `tarifguard` console. The console reaches the review API through
@@ -74,6 +80,15 @@ distinct ingestion workloads explicit (mirroring the Helm Deployment-vs-Job spli
   not a service. Run it with `docker compose -f deploy/docker-compose.yml --profile batch run
   --rm ingestion-batch`.
 - `--profile objects`: `minio` for raw source artifacts.
+
+The two files therefore differ on purpose in both service set and host ports. The root
+local-development file is built around a host-run serving: its app sub-systems default to
+`http://host.docker.internal:8000` (and TarifIQ at `:8070`, started via `scripts/run_serving.sh`),
+so there the published host port 8000 is the wiring. `deploy/docker-compose.yml` instead keeps
+everything on the Compose network, where the ingestion **review API** takes host 8000 and
+`serving` is therefore published on host 8001 (both still listen on container port 8000) while
+the console reaches its backends container-to-container (`http://serving:8000`,
+`http://ingestion:8000`). There the host-port choice is only a developer-convenience detail.
 
 ## Evidence 1: every sub-system image builds in CI
 

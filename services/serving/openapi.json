@@ -1,0 +1,1390 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "tarifhub Serving (L1 TarifCore)",
+    "description": "Deterministic read API over frozen Swiss ambulatory tariff records.",
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/health": {
+      "get": {
+        "summary": "Liveness probe",
+        "description": "Return ``{\"status\": \"ok\"}`` when the service is up.",
+        "operationId": "health_health_get",
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HealthResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tariffs": {
+      "get": {
+        "summary": "List the latest (or as-of) version of each frozen tariff record",
+        "description": "Returns one frozen record per (tariff_system, tariff_code), ordered by (tariff_system, tariff_code). Without as_of this is the latest version; with as_of it is the point-in-time version (see the as_of parameter). Paginated.",
+        "operationId": "list_tariffs_api_v1_tariffs_get",
+        "parameters": [
+          {
+            "name": "system",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Filter by tariff system, e.g. TARDOC",
+              "title": "System"
+            },
+            "description": "Filter by tariff system, e.g. TARDOC"
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour).",
+              "title": "As Of"
+            },
+            "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TariffRecord"
+                  },
+                  "title": "Response List Tariffs Api V1 Tariffs Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tariffs/{system}/{code}": {
+      "get": {
+        "summary": "Get the latest (or as-of) frozen record for a (system, code) key",
+        "description": "Returns the highest-version frozen record for the key, or the point-in-time version when as_of is supplied (see the as_of parameter). 404 if no version matches.",
+        "operationId": "get_tariff_api_v1_tariffs__system___code__get",
+        "parameters": [
+          {
+            "name": "system",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "System"
+            }
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "title": "Code"
+            }
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour).",
+              "title": "As Of"
+            },
+            "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TariffRecord"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/tariffs/{system}/{code}/diff": {
+      "get": {
+        "summary": "Field-level diff between two versions of a frozen record",
+        "description": "Compares two versions of a (tariff_system, tariff_code) record and returns the fields that differ. Values are rendered exactly as served elsewhere (verbatim frozen values; the nested designation diffs as dotted leaves, e.g. designation.de). record_hash, version and created_at are never diffed. Changes are sorted by field name. 404 if either version is missing.",
+        "operationId": "diff_tariff_api_v1_tariffs__system___code__diff_get",
+        "parameters": [
+          {
+            "name": "system",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Tariff system, e.g. TARDOC",
+              "title": "System"
+            },
+            "description": "Tariff system, e.g. TARDOC"
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Tariff code",
+              "title": "Code"
+            },
+            "description": "Tariff code"
+          },
+          {
+            "name": "from",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Source version",
+              "title": "From"
+            },
+            "description": "Source version"
+          },
+          {
+            "name": "to",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "minimum": 1,
+              "description": "Target version",
+              "title": "To"
+            },
+            "description": "Target version"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/DiffResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/explain": {
+      "get": {
+        "summary": "Deterministic, record-grounded explanation of a tariff code",
+        "description": "Returns ALL versions of every (tariff_system, tariff_code) matching the code (verbatim frozen records, ordered by tariff_system then version) plus a deterministic explanation assembled only from record fields. The explanation is rule-generated (labelled '[deterministic]') with no AI, no randomness and no wall-clock. 404 if the code is unknown.",
+        "operationId": "explain_api_v1_explain_get",
+        "parameters": [
+          {
+            "name": "code",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Tariff code to explain",
+              "title": "Code"
+            },
+            "description": "Tariff code to explain"
+          },
+          {
+            "name": "system",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional tariff system filter",
+              "title": "System"
+            },
+            "description": "Optional tariff system filter"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ExplainResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fhir/ChargeItemDefinition/{system}/{code}": {
+      "get": {
+        "summary": "FHIR R4 ChargeItemDefinition for one frozen tariff record",
+        "description": "Maps ONE frozen TariffRecord to a minimal valid R4 ChargeItemDefinition over the same value path as the REST routes (read-only; no AI, no value computation). Version selection precedence: ?version wins over ?as_of; both absent -> latest version. Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour). status is derived ONLY from record data, never from the wall-clock: the selected version is 'active' when it is the highest version of its (system, code) key, else 'retired' (a superseded version). No 'today' is consulted anywhere. The FHIR resource id is built as '{system}-{code}-{version}', lower-cased, with every character outside [a-z0-9-] (notably the '.' in tariff codes) replaced by '-' so it is FHIR-id-safe (e.g. TARDOC/AA.00.0010 v2 -> 'tardoc-aa-00-0010-2'). price_chf maps to a 'base' priceComponent with a CHF Money amount; tax_points maps to an 'informational' priceComponent factor (a component is omitted when its field is None). FHIR decimals are JSON numbers emitted via float(); at our scales they round-trip the stored Decimal exactly. record_hash and source_url are carried as valueString extensions under the tarifhub canonical URL space. 404 when the key, version or as_of date matches no frozen record.",
+        "operationId": "fhir_charge_item_definition_api_v1_fhir_ChargeItemDefinition__system___code__get",
+        "parameters": [
+          {
+            "name": "system",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Tariff system, e.g. TARDOC",
+              "title": "System"
+            },
+            "description": "Tariff system, e.g. TARDOC"
+          },
+          {
+            "name": "code",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Tariff code, e.g. AA.00.0010",
+              "title": "Code"
+            },
+            "description": "Tariff code, e.g. AA.00.0010"
+          },
+          {
+            "name": "version",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "integer",
+                  "minimum": 1
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Exact version; wins over as_of when both are supplied",
+              "title": "Version"
+            },
+            "description": "Exact version; wins over as_of when both are supplied"
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour).",
+              "title": "As Of"
+            },
+            "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour)."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ChargeItemDefinition"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/fhir/CodeSystem/{system}": {
+      "get": {
+        "summary": "FHIR R4 CodeSystem for a tariff system's latest-version records",
+        "description": "Maps a tariff system's latest-version (or as-of) records to ONE minimal valid R4 CodeSystem (read-only; no AI). content='fragment' is honest: the response carries a windowed page (limit/offset), not necessarily the whole catalogue. count is the TOTAL number of (system, code) keys in the system, independent of the window. status is always 'active' (an aggregate of current records, derived from data not the clock). concept entries are ordered by tariff_code ascending (deterministic); each carries the German display plus fr/it as concept.designation entries (only when non-null). Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour). An unknown or empty system returns 404, consistent with the other routes.",
+        "operationId": "fhir_code_system_api_v1_fhir_CodeSystem__system__get",
+        "parameters": [
+          {
+            "name": "system",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "description": "Tariff system, e.g. TARDOC",
+              "title": "System"
+            },
+            "description": "Tariff system, e.g. TARDOC"
+          },
+          {
+            "name": "as_of",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "format": "date"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour).",
+              "title": "As Of"
+            },
+            "description": "Point-in-time date (ISO YYYY-MM-DD). Return the version of each key whose validity window covers this date: valid_from <= as_of AND (valid_to IS NULL OR valid_to >= as_of), then MAX(version) among matches. A record with a NULL valid_from is treated as valid from the beginning of time. Omit for the latest version (default behaviour)."
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 100,
+              "title": "Limit"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "minimum": 0,
+              "default": 0,
+              "title": "Offset"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CodeSystem"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/search": {
+      "get": {
+        "summary": "Semantic search over frozen records (pgvector, or offline ranking on SQLite)",
+        "description": "Ranks frozen records by cosine similarity to the embedded query, using the same embedder as ingestion. On Postgres+pgvector the ranking runs in SQL. On the offline SQLite mirror it runs in-process over stored embeddings of matching dimension (deterministic, ties broken by tariff_system then tariff_code). An optional system filter restricts the ranked candidates to one tariff system (TARDOC, EAL or SL); omit it to rank across every system. On Postgres with a non-1024-dim embedder the endpoint fails closed with HTTP 501 rather than issue a doomed pgvector query. Hits are unaltered frozen records — search only ranks, it never computes a value.",
+        "operationId": "search_api_v1_search_get",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "required": true,
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "description": "Free-text query",
+              "title": "Q"
+            },
+            "description": "Free-text query"
+          },
+          {
+            "name": "system",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Optional tariff system filter, e.g. TARDOC, EAL or SL",
+              "title": "System"
+            },
+            "description": "Optional tariff system filter, e.g. TARDOC, EAL or SL"
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "maximum": 1000,
+              "minimum": 1,
+              "default": 10,
+              "title": "Limit"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Successful Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SearchHit"
+                  },
+                  "title": "Response Search Api V1 Search Get"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Validation Error",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "ChargeItemDefinition": {
+        "properties": {
+          "resourceType": {
+            "type": "string",
+            "title": "Resourcetype",
+            "default": "ChargeItemDefinition"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "version": {
+            "type": "string",
+            "title": "Version"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "date": {
+            "type": "string",
+            "title": "Date"
+          },
+          "extension": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FhirExtension"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Extension"
+          },
+          "code": {
+            "$ref": "#/components/schemas/FhirCodeableConcept"
+          },
+          "effectivePeriod": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FhirPeriod"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "propertyGroup": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FhirPropertyGroup"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Propertygroup"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "version",
+          "status",
+          "name",
+          "title",
+          "date",
+          "code"
+        ],
+        "title": "ChargeItemDefinition",
+        "description": "Minimal valid R4 ChargeItemDefinition for one frozen tariff record."
+      },
+      "CodeSystem": {
+        "properties": {
+          "resourceType": {
+            "type": "string",
+            "title": "Resourcetype",
+            "default": "CodeSystem"
+          },
+          "id": {
+            "type": "string",
+            "title": "Id"
+          },
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "status": {
+            "type": "string",
+            "title": "Status",
+            "default": "active"
+          },
+          "content": {
+            "type": "string",
+            "title": "Content",
+            "default": "fragment"
+          },
+          "caseSensitive": {
+            "type": "boolean",
+            "title": "Casesensitive",
+            "default": true
+          },
+          "publisher": {
+            "type": "string",
+            "title": "Publisher",
+            "default": "tarifhub"
+          },
+          "name": {
+            "type": "string",
+            "title": "Name"
+          },
+          "title": {
+            "type": "string",
+            "title": "Title"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0.0,
+            "title": "Count"
+          },
+          "concept": {
+            "items": {
+              "$ref": "#/components/schemas/CodeSystemConcept"
+            },
+            "type": "array",
+            "title": "Concept"
+          }
+        },
+        "type": "object",
+        "required": [
+          "id",
+          "url",
+          "name",
+          "title",
+          "count",
+          "concept"
+        ],
+        "title": "CodeSystem",
+        "description": "Minimal valid R4 CodeSystem for a tariff system's latest-version records."
+      },
+      "CodeSystemConcept": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display": {
+            "type": "string",
+            "title": "Display"
+          },
+          "designation": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/CodeSystemConceptDesignation"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Designation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "display"
+        ],
+        "title": "CodeSystemConcept",
+        "description": "One R4 CodeSystem.concept (code + German display + fr/it designations)."
+      },
+      "CodeSystemConceptDesignation": {
+        "properties": {
+          "language": {
+            "type": "string",
+            "title": "Language"
+          },
+          "value": {
+            "type": "string",
+            "title": "Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "language",
+          "value"
+        ],
+        "title": "CodeSystemConceptDesignation",
+        "description": "An R4 CodeSystem.concept.designation (a non-canonical-language label)."
+      },
+      "Designation": {
+        "properties": {
+          "de": {
+            "type": "string",
+            "title": "De",
+            "description": "Canonical German designation"
+          },
+          "fr": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fr",
+            "description": "French designation"
+          },
+          "it": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "It",
+            "description": "Italian designation"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "de"
+        ],
+        "title": "Designation",
+        "description": "Multilingual designation. German is the canonical reference language."
+      },
+      "DiffResponse": {
+        "properties": {
+          "tariff_system": {
+            "type": "string",
+            "title": "Tariff System"
+          },
+          "tariff_code": {
+            "type": "string",
+            "title": "Tariff Code"
+          },
+          "from_version": {
+            "type": "integer",
+            "title": "From Version"
+          },
+          "to_version": {
+            "type": "integer",
+            "title": "To Version"
+          },
+          "from_record_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "From Record Hash"
+          },
+          "to_record_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "To Record Hash"
+          },
+          "changes": {
+            "items": {
+              "$ref": "#/components/schemas/FieldChange"
+            },
+            "type": "array",
+            "title": "Changes"
+          }
+        },
+        "type": "object",
+        "required": [
+          "tariff_system",
+          "tariff_code",
+          "from_version",
+          "to_version",
+          "changes"
+        ],
+        "title": "DiffResponse",
+        "description": "Field-level diff between two versions of a frozen ``(system, code)`` record."
+      },
+      "ExplainResponse": {
+        "properties": {
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "records": {
+            "items": {
+              "$ref": "#/components/schemas/TariffRecord"
+            },
+            "type": "array",
+            "title": "Records"
+          },
+          "explanation": {
+            "type": "string",
+            "title": "Explanation"
+          }
+        },
+        "type": "object",
+        "required": [
+          "code",
+          "records",
+          "explanation"
+        ],
+        "title": "ExplainResponse",
+        "description": "All versions of a code plus a deterministic, record-grounded explanation.\n\n``explanation`` is assembled by a rule from record fields only — no LLM, no\nrandomness, no wall-clock — and is labelled ``[deterministic]`` to mark its\nprovenance. This is the payload ``services/mcp`` ``explain_crosswalk`` proxies."
+      },
+      "FhirCodeableConcept": {
+        "properties": {
+          "coding": {
+            "anyOf": [
+              {
+                "items": {
+                  "$ref": "#/components/schemas/FhirCoding"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Coding"
+          },
+          "text": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Text"
+          }
+        },
+        "type": "object",
+        "title": "FhirCodeableConcept",
+        "description": "R4 CodeableConcept; ``text`` alone is valid when there is no coding."
+      },
+      "FhirCoding": {
+        "properties": {
+          "system": {
+            "type": "string",
+            "title": "System"
+          },
+          "code": {
+            "type": "string",
+            "title": "Code"
+          },
+          "display": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Display"
+          }
+        },
+        "type": "object",
+        "required": [
+          "system",
+          "code"
+        ],
+        "title": "FhirCoding",
+        "description": "One R4 Coding (system + code + display)."
+      },
+      "FhirExtension": {
+        "properties": {
+          "url": {
+            "type": "string",
+            "title": "Url"
+          },
+          "valueString": {
+            "type": "string",
+            "title": "Valuestring"
+          }
+        },
+        "type": "object",
+        "required": [
+          "url",
+          "valueString"
+        ],
+        "title": "FhirExtension",
+        "description": "A single R4 extension carrying record provenance as a ``valueString``."
+      },
+      "FhirMoney": {
+        "properties": {
+          "value": {
+            "type": "number",
+            "title": "Value"
+          },
+          "currency": {
+            "type": "string",
+            "title": "Currency"
+          }
+        },
+        "type": "object",
+        "required": [
+          "value",
+          "currency"
+        ],
+        "title": "FhirMoney",
+        "description": "R4 Money: a JSON-number ``value`` plus an ISO-4217 ``currency`` code."
+      },
+      "FhirPeriod": {
+        "properties": {
+          "start": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "title": "FhirPeriod",
+        "description": "R4 Period; open ends (``None``) are omitted from the wire payload."
+      },
+      "FhirPriceComponent": {
+        "properties": {
+          "type": {
+            "type": "string",
+            "title": "Type"
+          },
+          "code": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FhirCodeableConcept"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/FhirMoney"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "factor": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Factor"
+          }
+        },
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "title": "FhirPriceComponent",
+        "description": "One R4 ChargeItemDefinition.propertyGroup.priceComponent.\n\n``base`` carries a CHF :class:`FhirMoney` ``amount``; ``informational`` carries the\ntax-point ``factor`` (a unitless multiplier) labelled via ``code.text``."
+      },
+      "FhirPropertyGroup": {
+        "properties": {
+          "priceComponent": {
+            "items": {
+              "$ref": "#/components/schemas/FhirPriceComponent"
+            },
+            "type": "array",
+            "title": "Pricecomponent"
+          }
+        },
+        "type": "object",
+        "required": [
+          "priceComponent"
+        ],
+        "title": "FhirPropertyGroup",
+        "description": "One R4 ChargeItemDefinition.propertyGroup."
+      },
+      "FieldChange": {
+        "properties": {
+          "field": {
+            "type": "string",
+            "title": "Field"
+          },
+          "from_value": {
+            "title": "From Value"
+          },
+          "to_value": {
+            "title": "To Value"
+          }
+        },
+        "type": "object",
+        "required": [
+          "field"
+        ],
+        "title": "FieldChange",
+        "description": "One field that differs between two versions of a frozen record.\n\n``from_value`` / ``to_value`` are the values exactly as the API serialises them\nelsewhere (verbatim frozen values; nested designation leaves use dotted field names\nsuch as ``designation.de``). ``None`` is preserved as null."
+      },
+      "HTTPValidationError": {
+        "properties": {
+          "detail": {
+            "items": {
+              "$ref": "#/components/schemas/ValidationError"
+            },
+            "type": "array",
+            "title": "Detail"
+          }
+        },
+        "type": "object",
+        "title": "HTTPValidationError"
+      },
+      "HealthResponse": {
+        "properties": {
+          "status": {
+            "type": "string",
+            "title": "Status"
+          }
+        },
+        "type": "object",
+        "required": [
+          "status"
+        ],
+        "title": "HealthResponse",
+        "description": "Liveness probe payload."
+      },
+      "SearchHit": {
+        "properties": {
+          "rank": {
+            "type": "integer",
+            "title": "Rank"
+          },
+          "record": {
+            "$ref": "#/components/schemas/TariffRecord"
+          }
+        },
+        "type": "object",
+        "required": [
+          "rank",
+          "record"
+        ],
+        "title": "SearchHit",
+        "description": "A ranked semantic-search hit wrapping a frozen record (values verbatim)."
+      },
+      "TariffRecord": {
+        "properties": {
+          "tariff_code": {
+            "type": "string",
+            "title": "Tariff Code",
+            "description": "Code, primary key within a tariff system"
+          },
+          "tariff_system": {
+            "$ref": "#/components/schemas/TariffSystem"
+          },
+          "designation": {
+            "$ref": "#/components/schemas/Designation"
+          },
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "tax_points": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Tax Points"
+          },
+          "price_chf": {
+            "anyOf": [
+              {
+                "type": "string",
+                "pattern": "^(?!^[-+.]*$)[+-]?0*\\d*\\.?\\d*$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Price Chf"
+          },
+          "unit": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unit"
+          },
+          "valid_from": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid From"
+          },
+          "valid_to": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Valid To"
+          },
+          "source_url": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Url"
+          },
+          "source_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Source Version"
+          },
+          "harmonization_confidence": {
+            "type": "number",
+            "maximum": 1.0,
+            "minimum": 0.0,
+            "title": "Harmonization Confidence",
+            "default": 0.0
+          },
+          "requires_review": {
+            "type": "boolean",
+            "title": "Requires Review",
+            "default": true
+          },
+          "metadata": {
+            "additionalProperties": true,
+            "type": "object",
+            "title": "Metadata"
+          },
+          "record_hash": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Record Hash",
+            "description": "SHA-256 content hash; set at freeze"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1.0,
+            "title": "Version",
+            "default": 1
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time",
+            "title": "Created At"
+          }
+        },
+        "additionalProperties": false,
+        "type": "object",
+        "required": [
+          "tariff_code",
+          "tariff_system",
+          "designation"
+        ],
+        "title": "TariffRecord",
+        "description": "A single harmonized tariff position (LOCKED field set).\n\nThe record is *mutable* only while it travels through the pre-freeze pipeline.\nOnce :func:`tarifhub_ingest.versioning.freeze_record.freeze` stamps a\n``record_hash`` it must be treated as immutable, and the repository stores it\nwithout ever updating it in place."
+      },
+      "TariffSystem": {
+        "type": "string",
+        "enum": [
+          "TARDOC",
+          "EAL",
+          "SL",
+          "MiGeL",
+          "SwissDRG",
+          "TARPSY",
+          "ST_REHA"
+        ],
+        "title": "TariffSystem",
+        "description": "Swiss ambulatory tariff systems handled by tarifhub.\n\nValues are the canonical short identifiers used across the whole platform."
+      },
+      "ValidationError": {
+        "properties": {
+          "loc": {
+            "items": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "integer"
+                }
+              ]
+            },
+            "type": "array",
+            "title": "Location"
+          },
+          "msg": {
+            "type": "string",
+            "title": "Message"
+          },
+          "type": {
+            "type": "string",
+            "title": "Error Type"
+          },
+          "input": {
+            "title": "Input"
+          },
+          "ctx": {
+            "type": "object",
+            "title": "Context"
+          }
+        },
+        "type": "object",
+        "required": [
+          "loc",
+          "msg",
+          "type"
+        ],
+        "title": "ValidationError"
+      }
+    }
+  }
+}

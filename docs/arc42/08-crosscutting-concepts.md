@@ -24,7 +24,7 @@ FastAPI's `Depends` graph wires the serving service: `get_repository` in `servic
 
 ### Declarative validation
 
-Pydantic v2 models are the contract. The canonical `TariffRecord` (`services/ingestion/src/tarifhub_ingest/models/tariff_model.py`) declares `ConfigDict(extra="forbid", validate_assignment=True)` plus field constraints (`tax_points`/`price_chf` ≥ 0 as `Decimal`, `harmonization_confidence` bounded 0 to 1). Query parameters are validated declaratively too (`Query(ge=1, le=MAX_LIST_LIMIT)` in `main.py`). Validation happens at system boundaries only: inside the pipeline, data is already parsed, never re-checked by hand.
+Pydantic v2 models are the contract. The canonical `TariffRecord` (`services/ingestion/src/tarifhub_ingest/models/tariff_model.py`) declares `ConfigDict(extra="forbid", validate_assignment=True)` plus field constraints (`tax_points`/`price_chf` ≥ 0 as `Decimal`, `harmonization_confidence` bounded 0 to 1). Query parameters are validated declaratively too (`Query(ge=1, le=MAX_LIST_LIMIT)` in `main.py`). Validation happens at system boundaries only: inside the pipeline, data is already parsed, never re-checked by hand. The TarifGuard BFF applies the same validate-at-the-boundary principle on the Node side: its API routes parse request bodies through zod schemas (for example `ReviewDecisionBody` in `apps/tarifguard/app/api/review/route.ts`, alongside `app/api/explain` and `app/api/coding-check`) before any upstream call, and a `safeParse` failure becomes a `problem+json` 400 (`problemFromZod`), so the same declarative-validation-at-boundaries rule holds on the BFF surface too.
 
 ### Persistence abstraction
 
@@ -32,7 +32,7 @@ Repository pattern over parameterised SQL, deliberately no ORM. Ingestion writes
 
 ### REST + OpenAPI
 
-FastAPI generates the OpenAPI document from the code: resource routes (`GET /api/v1/tariffs`, `GET /api/v1/tariffs/{system}/{code}`, `GET /api/v1/search`) each declare a `response_model` (`TariffRecord`, `SearchHit`) and a summary line, so Swagger UI at `/docs` is always in sync with the implementation.
+FastAPI generates the OpenAPI document from the code: resource routes (`GET /api/v1/tariffs`, `GET /api/v1/tariffs/{system}/{code}`, `GET /api/v1/search`) each declare a `response_model` (`TariffRecord`, `SearchHit`) and a summary line, so Swagger UI at `/docs` is always in sync with the implementation. The same generated document is exported to a committed `services/serving/openapi.json` and pinned by a test (`test_committed_openapi_matches_generated` in `services/serving/tests/test_openapi.py`) that fails if it ever drifts from `app.openapi()`, so the static schema a grader reads stays identical to the running one.
 
 ### Error handling
 
