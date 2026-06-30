@@ -209,7 +209,17 @@ atomically, so a later tap on either surface returns the standing decision and t
 within one refresh tick. The gate appends each request and the decision it enforces to
 `.shipboard/approvals/log.jsonl`. The guiding rule is that the board never asserts a state it cannot
 show evidence for. It says "unknown" rather than inventing progress, which is what lets me trust it
-while the loop runs unattended. The product's own runtime observability is a separate concern,
+while the loop runs unattended.
+
+Alongside the pipeline the board tracks the session itself, with a context gauge against the one-million-token window and a compaction warning, the cumulative tokens in and out, the cache-hit rate, and an estimated cost per model from an editable price table, all parsed incrementally from the Claude Code transcript.
+
+<a id="fig-shipboard"></a>
+
+![The Shipboard dashboard](../img/shipboard-overview.png)
+
+> **Figure: The Shipboard dashboard.** The Overview tab as a command centre. Across the top sit the live session and its context gauge against the one-million-token window, the cumulative token spend and estimated cost, and the days to submission. Below them run the nine-phase pipeline rail with each phase's state, then the agent and tool activity, the project and CI state, and trend charts for context and cost. Every tile is clickable and opens an inspector that shows the evidence behind the number.
+
+The product's own runtime observability is a separate concern,
 recorded in [ADR-011](../adr/011-opentelemetry-observability.md).
 
 ## 9. Documentation and diagrams as code

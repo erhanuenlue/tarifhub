@@ -14,7 +14,7 @@ prefix. The fix routes queries through `embed_query` (`"query: "`).
   repo's own `get_embedder`, ranks with the same pgvector cosine SQL the serving API
   uses (`ServingRepository.search_by_embedding`), top-5.
 - **Corpus:** EAL only, **1 279 frozen records** (1 279/1 279 carry a 1024-dim
-  multilingual-e5-large embedding; verified). No TARDOC in the corpus for this run.
+  multilingual-e5-large embedding, verified). No TARDOC in the corpus for this run.
 - **Model:** `intfloat/multilingual-e5-large`, loaded from the local HF cache.
 - **Modes:** `--prefix passage` (`embed`, the faithful Block-0 baseline) vs
   `--prefix query` (`embed_query`, the fix).
@@ -98,8 +98,8 @@ The fix is a **deliberate trade-off, not a uniform win**:
 
 - **Same-name `.01` variant swaps (cosmetic).** For `glucose_de`, `hba1c_de` and
   `cholesterol_en` the displacing code is a billing variant of the *same* analyte with a
-  **byte-identical German designation**: 1356 and 1356.01 are both *"Glukose"*; 1363 and
-  1363.01 are both *"Hämoglobin A1c"*; 1410.1 and 1410.01 are both *"HDL-Cholesterin"*.
+  **byte-identical German designation**: 1356 and 1356.01 are both *"Glukose"*, 1363 and
+  1363.01 are both *"Hämoglobin A1c"*, 1410.1 and 1410.01 are both *"HDL-Cholesterin"*.
   When the e5 query embedding ranks 1356.01 above 1356, the user still sees the correct
   analyte at the top: the "wrong" rank-1 is the same test under a sibling code. These
   slips are presentation-neutral for the search use case.
@@ -120,7 +120,7 @@ The fix is a **deliberate trade-off, not a uniform win**:
 **Ship the `"query: "` prefix.** It is the *correct* use of multilingual-e5 (the model is
 trained for the query/passage asymmetry), and cross-lingual recall, the exact Block-0
 defect, improves (+0.084 recall@5, both IT misses recovered, French headline 3 → 2). The
-MRR@5 dip is dominated by same-name `.01` variant swaps that are cosmetic for search; the
+MRR@5 dip is dominated by same-name `.01` variant swaps that are cosmetic for search. The
 single real precision regression (1472 on `glucose_de`) and the persistent hematocrit
 rank-2 are tracked, not blocking.
 
@@ -128,5 +128,5 @@ rank-2 are tracked, not blocking.
 because the indexed **passage text** is `"{system} {code} {designation_de}"`, German only.
 Extending the passage to include the FR/IT designations (and the broader-vs-exact panel
 disambiguation) and **re-embedding** the corpus is the next lever. That is explicitly out
-of scope here (it requires re-embedding all stored vectors); this PR ships the e5-correct
+of scope here (it requires re-embedding all stored vectors). This PR ships the e5-correct
 query usage and the eval harness that will measure that next change.

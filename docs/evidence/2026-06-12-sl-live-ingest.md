@@ -61,7 +61,7 @@ $ docker exec tarifhub-db psql -U tarifhub -d tarifhub -c \
 (2 rows)
 ```
 
-**Proves:** 111 records flagged (1.08 %), all at exactly 0.75; the rest at 1.0. Matches
+**Proves:** 111 records flagged (1.08 %), all at exactly 0.75, the rest at 1.0. Matches
 the histogram (`docs/img/sl_confidence_hist_2026-06-01.png`, version=1 rows).
 Composition of the 111 (derivable from the scorer, no new analysis): SL records are
 born-trilingual and always carry a `unit` and a filename-derived `valid_from`, so for SL
@@ -207,16 +207,16 @@ GET /api/v1/search?q=Lamivudin&limit=5  →  HTTP 501
 **Note:** the serving process for this smoke ran with the **stub** embedder, which
 cannot answer semantic search, so the endpoint returns 501 by design rather than
 fabricate a ranking. The 10 299 stored e5 vectors (§2a) were written by the *ingest*
-process (e5 backend); search is exercised against e5 in the separate serving-evidence
+process (e5 backend). Search is exercised against e5 in the separate serving-evidence
 run (`docs/evidence/2026-06-11-postgres-serving-pgvector.md`).
 
 ---
 
 ## 5. Withheld-FR/IT AI-seam demonstration (in-memory, never frozen)
 
-Three real SL packages re-mapped with FR/IT product names withheld; Claude
+Three real SL packages re-mapped with FR/IT product names withheld. Claude
 (structured output, fill-only) filled the gaps, graded against BAG's official text.
-**Never stored as frozen records; billing fields (`price_chf`, `tax_points`)
+**Never stored as frozen records. Billing fields (`price_chf`, `tax_points`)
 byte-identical in all three.**
 
 | GTIN | designation (DE) | AI fr | AI it | result |
@@ -226,7 +226,7 @@ byte-identical in all three.**
 | 7680661410023 | Fosfomycin-Mepha Plv 3 g | **null** | **null** | correct conservative refusal: designed fill-only behaviour |
 
 The fills are clinically correct but diverge from BAG's compact-abbreviation house
-style; the model also correctly returned `null` for both languages on the third
+style. The model also correctly returned `null` for both languages on the third
 package rather than guess. In a real gap scenario all of these land in the review
 queue at 0.75 confidence for a human decision, never silently frozen.
 
@@ -251,11 +251,11 @@ Version chain for GTIN 4003053091007 (`Milupa GA 2-prima ab 1 Jahr`):
 | v3 | `Spezialnahrung bei Stoffwechselstörungen` |
 
 **Contained, not catastrophic:** UNIQUE constraints + append-only versioning produced
-**zero duplicate hashes**; every variant is audit-logged at 0.75 confidence and routes
-to the review queue. Precisely stated: the deterministic core is fully reproducible;
-the live-fill seam is not, which is exactly why fills are never trusted as final and
+**zero duplicate hashes**. Every variant is audit-logged at 0.75 confidence and routes
+to the review queue. Precisely stated: the deterministic core is fully reproducible.
+The live-fill seam is not, which is exactly why fills are never trusted as final and
 always land in review. Tracked as an open follow-up (re-version churn on re-ingest
-with a live key; decision pending with the owner; cf.
+with a live key, decision pending with the owner, cf.
 [ADR-015](../adr/015-epl-sl-fhir-ingestion.md)).
 
 ---
