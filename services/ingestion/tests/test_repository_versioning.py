@@ -10,6 +10,7 @@ All offline: in-memory SQLite mirror, no network, no embedder.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from datetime import date
 from decimal import Decimal
 
@@ -22,11 +23,12 @@ from tarifhub_ingest.versioning.freeze_record import compute_record_hash, freeze
 
 
 @pytest.fixture
-def repo() -> TariffRepository:
+def repo() -> Iterator[TariffRepository]:
     db = Database.from_url("sqlite://")  # in-memory
     conn = db.connect()
     db.init_schema(conn)
-    return TariffRepository(conn, db)
+    yield TariffRepository(conn, db)
+    conn.close()
 
 
 def _record(**overrides) -> TariffRecord:
@@ -150,3 +152,5 @@ def test_pipeline_over_eal_sample_is_idempotent(tmp_path, monkeypatch):
     assert first.frozen > 0
     assert second.frozen == 0
     assert second.skipped_existing == first.frozen
+
+    conn.close()

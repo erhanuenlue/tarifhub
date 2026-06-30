@@ -1,4 +1,4 @@
-# ADR-022: Cockpit build-vs-adopt and repository boundary
+# C-04: Cockpit build-vs-adopt and repository boundary
 
 *Status: Accepted (owner confirmed the three marked decisions 2026-06-14; build deferred post-submission) · Date: 2026-06-14 · Decider: Erhan*
 
@@ -21,8 +21,8 @@ A cockpit needs trace, cost and evaluation UIs. A mature open category already p
 - (–) Extraction needs a stable event-schema contract and a path-configurable rail; recorded now, implemented post-submission. Revisit trigger: owner confirmation of the three marked decisions below.
 
 ## Owner-confirmed decisions (2026-06-14)
-- **Frontend**: HTMX + Alpine + SSE, keep the bespoke Canvas. Confirmed. See ADR-020.
+- **Frontend**: HTMX + Alpine + SSE, keep the bespoke Canvas. Confirmed. See C-02.
 - **Adopt versus build**: adopt OTel + Langfuse, build only the control plane. Confirmed.
 - **Repository**: extract post-submission, emitters stay in tarifhub. Confirmed. The four staged prompts stay in `docs/cockpit/prompts/` until submission (glob-safety), promoted to `prompts/cockpit/` only post-6-July.
 
-*Lineage: new; reuses ADR-011 (OpenTelemetry) for the export path. Cross-reference ADR-019, ADR-020, ADR-021.*
+*Lineage: new; reuses ADR-011 (OpenTelemetry) for the export path. Cross-reference C-01, C-02, C-03.*

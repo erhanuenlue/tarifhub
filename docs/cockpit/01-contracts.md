@@ -1,6 +1,6 @@
 # Cockpit contracts: event schema, SQLite store, OTel mapping, SSE wire
 
-Machine-facing reference for the cockpit redesign. Authoritative for `events.py` (envelope and payload validation), `store.py` (DDL and projections), `otlp.py` (export), and `api.py` (SSE). Design artifact, em-dash-free per owner law. See ADR-019, ADR-020, ADR-021, ADR-022.
+Machine-facing reference for the cockpit redesign. Authoritative for `events.py` (envelope and payload validation), `store.py` (DDL and projections), `otlp.py` (export), and `api.py` (SSE). Design artifact, em-dash-free per owner law. See C-01, C-02, C-03, C-04.
 
 ---
 
@@ -21,7 +21,7 @@ Every event is a JSON object with a common envelope plus a type-specific `payloa
 | `seq` | integer | assigned by store | Monotonic insertion order, assigned by the single-writer collector. The sole total-order and replay authority. |
 | `session_id` | string | optional | Claude Code session that produced it; links transcript enrichment. |
 | `source` | enum | yes | `loop` \| `hook` \| `ship` \| `gate` \| `dashboard` \| `enrichment`. Encodes trust ordering (explicit emit wins over enrichment). |
-| `schema_version` | integer | yes | Starts at 1. The cockpit accepts `schema_version <= N`; for `> N` it ingests but does not project the event, with a warning, so a newer emitter cannot silently drop history (ADR-022 extraction contract). |
+| `schema_version` | integer | yes | Starts at 1. The cockpit accepts `schema_version <= N`; for `> N` it ingests but does not project the event, with a warning, so a newer emitter cannot silently drop history (C-04 extraction contract). |
 | `payload` | object | yes | Type-specific fields (section 1.2), validated by `events.py`. |
 
 `seq` is assigned by the store, not the emitter. Emitters that cannot reach the store (hooks, `emit.sh`) write the envelope without `seq`; the collector assigns it on ingest in arrival order.
@@ -52,7 +52,7 @@ approval.requested { approval_id:str, risk:"merge-to-main"|"destructive-git"|"pu
                      tool_name:str, summary:str, tool_input_ref:str? }
 approval.decided   { approval_id:str, decision:"allow"|"deny"|"timeout", via:"dashboard"|"telegram"|"cli",
                      by:str?, latency_s:number? }
-                     # decision=timeout is written by the gate on its ~9-minute fail-safe (ADR-021).
+                     # decision=timeout is written by the gate on its ~9-minute fail-safe (C-03).
 
 commit             { sha:str, branch:str, message:str, files:[str], insertions:int?, deletions:int? }
 merge              { sha:str, branch:str, target:str, pr:int? }
@@ -63,7 +63,7 @@ session.compacted  { session_id, count:int }
 session.ended      { session_id }
 
 control.action     { action:"start"|"stop"|"pause"|"resume"|"rerun", by:str, run_id:str?, mode:str, target:str? }
-                     # audit event for the loop control plane (ADR-021), one per control action.
+                     # audit event for the loop control plane (C-03), one per control action.
                      # mode records the launch permission mode (non-bypass, or APPROVALS_ON=1 forced).
 ```
 
@@ -232,11 +232,11 @@ data: <json>
 - `data:` is the event envelope plus payload, or for `snapshot` the materialized state.
 
 ### 4.2 Connection lifecycle
-1. Client connects (optionally `?run_id=<id>` to scope, optionally `Last-Event-ID:` header for replay). The read plane is gated by the Host allowlist and a `SameSite=Strict` cookie token set on first GET (ADR-021, S2): `EventSource` cannot set headers, so the cookie (or a loopback `?token`) carries authorization.
+1. Client connects (optionally `?run_id=<id>` to scope, optionally `Last-Event-ID:` header for replay). The read plane is gated by the Host allowlist and a `SameSite=Strict` cookie token set on first GET (C-03, S2): `EventSource` cannot set headers, so the cookie (or a loopback `?token`) carries authorization.
 2. The server immediately sends `event: snapshot`, `id: <current max seq>`, `data:` = current materialized state (active run, phase tree, agents, pending approvals), derived from projection tables in O(1), not an events-by-ts scan (N4). The client renders instantly without waiting for deltas.
 3. The server then streams every new event as `id: <seq>` / `event: <type>` / `data: <json>` as it is appended.
 4. **Heartbeat**: every 15 seconds a comment line `: ping` is written and flushed; the write raising `BrokenPipeError` is how a dead client is detected and reaped.
-5. **Reconnect and replay**: on disconnect, `EventSource` auto-reconnects with `Last-Event-ID: <last seq seen>`. The server replays events with `seq > Last-Event-ID` from the store (durable across server restart, the ADR-019 payoff), then resumes live. Replay is bounded to roughly 500 events (default scoped to the current run); beyond the bound the server sends `event: gap` and the client re-fetches a fresh `snapshot` rather than replaying thousands of rows. `?since=0` requests full history explicitly.
+5. **Reconnect and replay**: on disconnect, `EventSource` auto-reconnects with `Last-Event-ID: <last seq seen>`. The server replays events with `seq > Last-Event-ID` from the store (durable across server restart, the C-01 payoff), then resumes live. Replay is bounded to roughly 500 events (default scoped to the current run); beyond the bound the server sends `event: gap` and the client re-fetches a fresh `snapshot` rather than replaying thousands of rows. `?since=0` requests full history explicitly.
 
 ### 4.3 Push mechanism and concurrency (must-fix M7)
 - The collector and the HTTP server run in **one process** sharing the SQLite file. A single always-on collector **tailer thread** (`collector.py`) continuously follows the run-scoped logs plus approvals and session, and appends to the store; nothing is read lazily per request (the old `read_events()` per-request scan is retired). After each committed ingest batch, the tailer pushes `(seq, type, payload)` into an in-process thread-safe fan-out: one `queue.Queue` per connected client under a `Lock`.
@@ -245,4 +245,4 @@ data: <json>
 - **Degraded fallback (S12)**: the `/state` poll endpoint stays alive through d2 and d3. The client uses `EventSource.onerror` to fall back to polling, so a single SSE defect cannot blank the board.
 
 ### 4.4 Security of the read plane
-`/events` enforces the Host allowlist (ADR-021). Cross-origin `EventSource` is blocked by the browser because no `Access-Control-Allow-Origin` header is sent. `approval_id` values that appear in the stream are treated as non-secret; the bearer token is the sole authorizer for any state change (ADR-021), and event-derived strings rendered into the page are HTML-escaped.
+`/events` enforces the Host allowlist (C-03). Cross-origin `EventSource` is blocked by the browser because no `Access-Control-Allow-Origin` header is sent. `approval_id` values that appear in the stream are treated as non-secret; the bearer token is the sole authorizer for any state change (C-03), and event-derived strings rendered into the page are HTML-escaped.

@@ -1,6 +1,6 @@
 # Cockpit build spec
 
-How the `tools/shipboard/shipboard.py` dashboard becomes an event-sourced agentic cockpit. Design artifact, em-dash-free. Pairs with `01-contracts.md` (the machine contracts) and the staged prompts under `docs/cockpit/prompts/`. Decisions recorded in `docs/cockpit/adr/` (ADR-019 to ADR-022). The whole `docs/cockpit/` tree, including `adr/`, is excluded from the MkDocs build (`exclude_docs`) and from the PDF, and is deferred to post-submission per ADR-022. Red-teamed 2026-06-14; the must-fixes from that review are baked in below and tagged `(Mn)`/`(Sn)`. A second principal red-team pass (fixes 4 to 11) is folded in and tagged `(fix N)`.
+How the `tools/shipboard/shipboard.py` dashboard becomes an event-sourced agentic cockpit. Design artifact, em-dash-free. Pairs with `01-contracts.md` (the machine contracts) and the staged prompts under `docs/cockpit/prompts/`. Decisions recorded in `docs/cockpit/adr/` (C-01 to C-04). The whole `docs/cockpit/` tree, including `adr/`, is excluded from the MkDocs build (`exclude_docs`) and from the PDF, and is deferred to post-submission per C-04. Red-teamed 2026-06-14; the must-fixes from that review are baked in below and tagged `(Mn)`/`(Sn)`. A second principal red-team pass (fixes 4 to 11) is folded in and tagged `(fix N)`.
 
 ---
 
@@ -31,12 +31,12 @@ tools/shipboard/
 ```
 
 ### 1.1 Invocation contract (decide up front, must-fix M7)
-Pick one and keep it: package run via `python3 -m tools.shipboard` for the real entry, with `shipboard.py` a thin shim that delegates to `__main__`. Absolute imports only (no implicit relative), so the package survives extraction to its own repo (ADR-022) without an import rewrite.
+Pick one and keep it: package run via `python3 -m tools.shipboard` for the real entry, with `shipboard.py` a thin shim that delegates to `__main__`. Absolute imports only (no implicit relative), so the package survives extraction to its own repo (C-04) without an import rewrite.
 
 ### 1.2 What is preserved (hard constraint)
 - The everything-clickable to evidence inspector model. Every `/detail?type=...` endpoint keeps resolving, now from the store, so a past run resolves after restart (the "delegation not found (server restarted?)" amnesia is gone).
 - The bespoke Canvas vault-graph, unchanged.
-- Zero-dependency Python core. The only deviations, both named and justified: vendored HTMX/Alpine JS assets (ADR-020), and a quarantined OTLP exporter dependency in `otlp.py` if hand-rolled OTLP/JSON proves insufficient (ADR-022).
+- Zero-dependency Python core. The only deviations, both named and justified: vendored HTMX/Alpine JS assets (C-02), and a quarantined OTLP exporter dependency in `otlp.py` if hand-rolled OTLP/JSON proves insufficient (C-04).
 
 ---
 
@@ -46,7 +46,7 @@ Four stages, four prompt files. Each is independently valuable and shippable, an
 ### d0 Harden (no SQLite yet)
 Cheap, high-ROI, no rewrite. Makes everything after it loop-able by giving the package a test harness and closing the security hole now that approvals are real.
 - `ThreadingHTTPServer` with `daemon_threads=True`, socket timeout, BrokenPipe handling (replaces the single-thread bind).
-- Security triad on all POSTs and `/reset` (ADR-021, must-fix M3): per-session `X-Cockpit-Token` (mandatory authorizer), Host allowlist, Origin check. `/reset` joins the protected set.
+- Security triad on all POSTs and `/reset` (C-03, must-fix M3): per-session `X-Cockpit-Token` (mandatory authorizer), Host allowlist, Origin check. `/reset` joins the protected set.
 - Time fix (must-fix M4): `emit.sh` switches to UTC `gmtime` + `Z`; the dashboard stops force-tagging naive local as UTC.
 - Gate-timeout TOCTOU fix (should-fix S1): `approval_gate.sh` writes a terminal `decided/<id>.json` with `decision:timeout` atomically before denying, so a late dashboard POST returns timeout, not a phantom allow.
 - Definitive `run.ended` and a `loop.sh` `trap` so stale "running" is killed (groundwork for S4).
@@ -56,7 +56,7 @@ Cheap, high-ROI, no rewrite. Makes everything after it loop-able by giving the p
 ### d1 Event store (the keystone). Run STANDALONE, never through `loop.sh` (must-fix M2)
 Because d1 edits `tools/loop.sh`, and `loop.sh` reads its own script incrementally, this stage must not be driven by `loop.sh`. Ordered sub-steps, each its own green PR:
 1. `events.py` + `store.py` + `collector.py`: the collector reads the EXISTING legacy `.shipboard/events.jsonl`, synthesizes the envelope for each flat line with a DETERMINISTIC content-addressed `event_id` (a hash of `(file-identity, line-number, line-bytes)`, so re-reading the same line yields the same id and ingest is exactly-once across a collector restart, before the `(inode, offset)` cursor of sub-step 2 exists) and the active `run_id` (must-fix M1, d1 dedup fix), and the board reads from the store. Truncation still happens; prove old-board parity.
-2. Run-scoped append-only logs `.shipboard/runs/<run_id>/events.jsonl`; stop truncating; the collector tails by `(inode, offset)` so a rotate is a new file, not an offset reset. Implement the bounded-retention sweep (keep the last N runs, age out older `events` rows and `runs/<run_id>/` dirs) and partial-run reconciliation as pure functions of the log (fix 10, S4, ADR-019). `.shipboard/` stays gitignored; confirm the SQLite file and `runs/` are ignored too (repo-fit).
+2. Run-scoped append-only logs `.shipboard/runs/<run_id>/events.jsonl`; stop truncating; the collector tails by `(inode, offset)` so a rotate is a new file, not an offset reset. Implement the bounded-retention sweep (keep the last N runs, age out older `events` rows and `runs/<run_id>/` dirs) and partial-run reconciliation as pure functions of the log (fix 10, S4, C-01). `.shipboard/` stays gitignored; confirm the SQLite file and `runs/` are ignored too (repo-fit).
 3. `loop.sh` mints `run_id` (env `SHIPBOARD_RUN_ID`, additive: defaults to a generated ULID if unset so an un-migrated loop keeps emitting) and emits `run.started`/`run.ended` (with the `trap` from d0).
 
 Result: run history, multi-run comparison, restart-survival. Frontend largely unchanged.
@@ -68,10 +68,10 @@ Result: run history, multi-run comparison, restart-survival. Frontend largely un
 This is when it becomes a cockpit, not a viewer.
 
 ### d3 Eval and adopt
-- `otlp.py`: spans to OTLP/HTTP-JSON via `urllib`, targeting a generic OTLP collector by default; Langfuse dependency-gated after its ingestion contract is verified (should-fix S6, ADR-022).
+- `otlp.py`: spans to OTLP/HTTP-JSON via `urllib`, targeting a generic OTLP collector by default; Langfuse dependency-gated after its ingestion contract is verified (should-fix S6, C-04).
 - Run-comparison read-model and view (diff two runs across cost, duration, gates, CAS floor, files).
 - The dual-blind scorecard / grade-auditor wired as a recurring tracked eval, score-over-time, regression flag.
-- Finish the collector/api/web split; retire the monolith's remaining inline logic. Optional repository extraction (ADR-022), owner-gated.
+- Finish the collector/api/web split; retire the monolith's remaining inline logic. Optional repository extraction (C-04), owner-gated.
 
 ---
 
@@ -98,9 +98,9 @@ Plus a contract assertion (S8): `tools/cas_check.py` and `tools/cas_baseline.jso
 ### 4.1 Owner-marked (await confirmation)
 | Decision | Recommendation | Why |
 |---|---|---|
-| Frontend | HTMX + Alpine + SSE, keep bespoke Canvas | Server owns state, minimal JS, no build step, closest to the maintainer's comfort zone; Svelte's SPA weight is unjustified for one operator. ADR-020. |
-| Adopt vs build | Adopt OTel + self-hosted Langfuse for trace/cost/eval; build only the control plane | The observability category is solved; the differentiated value (and product seed) is build-loop control, which nothing off-the-shelf provides. ADR-022. |
-| Repo location | Extract post-submission into its own repo; emitters stay in tarifhub | Build-machinery and a product seed must not entangle the CAS freeze; the typed event schema is the stable contract between them. ADR-022. |
+| Frontend | HTMX + Alpine + SSE, keep bespoke Canvas | Server owns state, minimal JS, no build step, closest to the maintainer's comfort zone; Svelte's SPA weight is unjustified for one operator. C-02. |
+| Adopt vs build | Adopt OTel + self-hosted Langfuse for trace/cost/eval; build only the control plane | The observability category is solved; the differentiated value (and product seed) is build-loop control, which nothing off-the-shelf provides. C-04. |
+| Repo location | Extract post-submission into its own repo; emitters stay in tarifhub | Build-machinery and a product seed must not entangle the CAS freeze; the typed event schema is the stable contract between them. C-04. |
 
 ### 4.2 Stdlib boundary
 SQLite (`sqlite3`), SSE (`http.server`), OTLP/HTTP-JSON (`urllib`) are all stdlib, so the core is **zero new dependencies through d2**. The first justified dependency appears at **d3**: an OpenTelemetry exporter, only if hand-rolled OTLP/JSON proves insufficient for the chosen collector, quarantined to `otlp.py` and policed by `test_zero_dep_core.py`. HTMX and Alpine are vendored JS assets (not Python deps), a named deviation from zero-JS, vendored rather than CDN-loaded to preserve "runs anywhere."
@@ -117,7 +117,7 @@ SQLite (`sqlite3`), SSE (`http.server`), OTLP/HTTP-JSON (`urllib`) are all stdli
 ---
 
 ## 6. Deliverable index
-- ADRs: `docs/cockpit/adr/019` (event-sourced store), `020` (push UI/SSE), `021` (control-plane security), `022` (build-vs-adopt and repo boundary). Product ADRs 001 to 018 stay in `docs/adr/`.
+- ADRs: `docs/cockpit/adr/C-01` (event-sourced store), `C-02` (push UI/SSE), `C-03` (control-plane security), `C-04` (build-vs-adopt and repo boundary). Product ADRs 001 to 018 stay in `docs/adr/`.
 - Contracts: `docs/cockpit/01-contracts.md` (event schema, DDL, OTel mapping, SSE wire).
 - This spec: module split, migration, test plan, decisions, safety rules.
 - Staged prompts: `docs/cockpit/prompts/d0_harden.md`, `d1_eventstore.md`, `d2_sse_control.md`, `d3_eval_adopt.md` (promote to `prompts/cockpit/` post-submission).

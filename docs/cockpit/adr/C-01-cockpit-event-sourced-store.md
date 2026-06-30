@@ -1,4 +1,4 @@
-# ADR-019: Event-sourced, persisted cockpit telemetry store
+# C-01: Event-sourced, persisted cockpit telemetry store
 
 *Status: Proposed (design ratified in principle, build deferred post-submission) · Date: 2026-06-14 · Decider: Erhan (+ AI-assisted design, red-teamed)*
 
@@ -11,7 +11,7 @@ The build-machine dashboard (`tools/shipboard/shipboard.py`) reconstructs pipeli
 The project already committed to evidence-over-assertion, and to OpenTelemetry for the product (ADR-011, not yet implemented, its build trigger being "the capstone runtime-evidence capture"). The build-machine should meet the same bar.
 
 ## Decision
-We make structured, persisted events the source of truth for the cockpit. Emitters (hooks, `emit.sh`, `loop.sh`, ship phases, gates) append typed events to run-scoped append-only logs; a single-writer collector ingests them into an append-only SQLite `events` table (stdlib `sqlite3`, zero new dependency) and maintains derived read-model projection tables (`runs`, `spans`, `agents`, `gates`, `approvals`) that are fully rebuildable by replaying the log in `seq` order. Transcript scraping is demoted to an enrichment fallback. Each event carries a stable ULID `event_id` (idempotent `INSERT OR IGNORE`), a `run_id`, and OpenTelemetry-shaped span identifiers, so the same store maps directly to OTLP spans for optional export (ADR-022). Cost is never stored as truth: token counts are stored, the dollar value is derived at projection time from a pluggable `prices.json`.
+We make structured, persisted events the source of truth for the cockpit. Emitters (hooks, `emit.sh`, `loop.sh`, ship phases, gates) append typed events to run-scoped append-only logs; a single-writer collector ingests them into an append-only SQLite `events` table (stdlib `sqlite3`, zero new dependency) and maintains derived read-model projection tables (`runs`, `spans`, `agents`, `gates`, `approvals`) that are fully rebuildable by replaying the log in `seq` order. Transcript scraping is demoted to an enrichment fallback. Each event carries a stable ULID `event_id` (idempotent `INSERT OR IGNORE`), a `run_id`, and OpenTelemetry-shaped span identifiers, so the same store maps directly to OTLP spans for optional export (C-04). Cost is never stored as truth: token counts are stored, the dollar value is derived at projection time from a pluggable `prices.json`.
 
 The full event schema and DDL live in `docs/cockpit/01-contracts.md`.
 
@@ -23,7 +23,7 @@ The full event schema and DDL live in `docs/cockpit/01-contracts.md`.
 ## Consequences
 - (+) Run history, multi-run comparison, restart-survival and trace replay become queries, not heroics; the "server restarted?" amnesia is gone.
 - (+) Cost stops drifting: reprice is an edit to `prices.json`, no code change, tokens untouched.
-- (+) The build-machine inherits the product's evidence-first posture and is OTLP-exportable for free (ADR-022).
+- (+) The build-machine inherits the product's evidence-first posture and is OTLP-exportable for free (C-04).
 - (–) An ingestion and projection layer is new surface to test; mitigated by the rebuild-equals-live invariant (a projection is a pure function of the log) being a first-class test (`test_event_store.py`).
 - (–) The migration must not break the live loop's ability to emit. It is sequenced and contracted in `docs/cockpit/00-build-spec.md`: run-scoped logs replace per-prompt truncation, and the collector trusts emitted `event_id`s rather than byte offsets, so a truncate or rotate cannot cause silent history loss. Revisit trigger: a second consumer needing the data over a network would reopen the Postgres question.
 
@@ -35,4 +35,4 @@ The full event schema and DDL live in `docs/cockpit/01-contracts.md`.
 - Retention is bounded and rebuildable: a sweep keeps the last N runs (config, default 50) and ages out older ones, deleting whole runs (their `events` rows and their `.shipboard/runs/<run_id>/` log dir) as a pure function over run boundaries, so neither `events` nor the run-scoped logs grow without bound and rebuild-equals-live holds over the retained window.
 - One fact, one source of truth: tokens are stored only on `agent.finished`; `runs.total_tokens` and `total_cost_usd` are derived at projection. When a summary disagrees with the detail sum, the detail sum wins and the discrepancy is logged.
 
-*Lineage: new; reuses the ADR-011 OpenTelemetry standard for a different subject, the build-machine rather than the product. Cross-reference ADR-020 (push transport), ADR-021 (control-plane security), ADR-022 (export and repository boundary).*
+*Lineage: new; reuses the ADR-011 OpenTelemetry standard for a different subject, the build-machine rather than the product. Cross-reference C-02 (push transport), C-03 (control-plane security), C-04 (export and repository boundary).*

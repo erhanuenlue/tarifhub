@@ -224,7 +224,7 @@ From `.github/workflows/ci.yml`, on every push to `main` and every pull request:
 
 | Job | What it does |
 |---|---|
-| `python` | Per service: `uv sync --frozen` → `uvx ruff check .` → `uv run pytest -q` (offline). Then a dedicated step re-runs the ingestion + serving boundary tests with `-v` so the determinism gate is visible in the log. |
+| `python` | Per service: `uv sync --frozen` → `uvx ruff check .` → `uv run pytest -q` (offline). A dedicated step re-runs the ingestion + serving boundary tests with `-v` so the determinism gate is visible in the log, and a coverage step gates each service at `--cov-fail-under=80`. |
 | `python-parity` | Spins a `pgvector/pgvector:pg16` service container and runs the ingestion + serving read-parity suites against real Postgres 16 + pgvector (`TARIFHUB_PG_TEST_URL` set). |
 | `console` | When `apps/tarifguard/package.json` exists: `npm ci` → `npm run lint` → `npm run build` → `npm run test --if-present`. |
 | `security` | `gitleaks` (secrets) → `Trivy` (fs scan, fail on HIGH/CRITICAL) → `Syft` SBOM (`spdx-json`, uploaded as an artifact). |
@@ -237,8 +237,8 @@ Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision)
 
 Target: **core modules (model, freeze, pipeline, mapper) > 80 % line coverage**
 ([§10](10-quality-requirements.md)). Measured on the offline suite (`pytest-cov`, line
-coverage) and re-measured on every CI run in the `python` job's coverage step. Measured
-2026-06-20. The per-module figures and the residual misses are quoted and interpreted in
+coverage) and re-measured and **gated** on every CI run in the `python` job's coverage step
+(`--cov-fail-under=80`). Measured 2026-06-30. The per-module figures and the residual misses are quoted and interpreted in
 [§10 Test and pipeline results](10-quality-requirements.md#coverage-pytest-cov-line-coverage):
 
 | Service | Core modules in scope | Measured |
@@ -247,10 +247,10 @@ coverage) and re-measured on every CI run in the `python` job's coverage step. M
 | `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 %, `errors` 99 % | **91 % total** |
 | `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **92 % total** |
 
-Every core module is above the 80 % target. The figures are evidence, not a gate: CI
-prints them on every run (report-only by owner decision at gate 01). A hard
-`--cov-fail-under` floor is deliberately deferred until the figures have a few weeks of
-history.
+Every core module is above the 80 % target, and the floor is now **enforced in CI**: the
+`python` job runs each service's coverage with `--cov-fail-under=80`, so a regression that
+drops a service's total line coverage below 80 % fails the build. The per-service totals
+(ingestion 91 %, serving 93 %, mcp 92 %) sit comfortably above the gate.
 
 ## Console component tests
 

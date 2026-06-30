@@ -8,7 +8,7 @@ site_author: Erhan Ünlü
 docs_dir: .
 site_dir: ../site
 # cas/ is the course-internal rubric working copy (gitignored); cockpit/ is the
-# post-submission design package (ADR-022). Neither is rendered into the site.
+# post-submission design package (C-04). Neither is rendered into the site.
 exclude_docs: |
   cas/
   cockpit/

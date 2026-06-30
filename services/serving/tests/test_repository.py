@@ -100,6 +100,8 @@ def test_search_by_embedding_refuses_without_postgres():
     """On SQLite there is no pgvector; the repository raises rather than fake a ranking."""
 
     db = Database.from_url("sqlite:///:memory:")
-    repo = ServingRepository(db.connect(), db)
+    conn = db.connect()
+    repo = ServingRepository(conn, db)
     with pytest.raises(RuntimeError, match="requires Postgres"):
         repo.search_by_embedding([0.1, 0.2, 0.3, 0.4], limit=5)
+    conn.close()
