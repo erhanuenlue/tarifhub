@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- *  DE-IDENTIFICATION BOUNDARY  —  the ONLY code in MeldePilot allowed to build
- *  an LLM-bound payload.  (tarifhub determinism / data-sovereignty rule.)
+ *  DE-IDENTIFICATION SCRUBBER: MeldePilot's de-identification seam for the planned
+ *  LLM-assisted mapping and narrative drafting (tarifhub determinism / data-sovereignty rule).
  * ============================================================================
  *
  * MeldePilot prepares mandatory reports and quality datasets (BFS/MARS, ANQ,
@@ -11,9 +11,9 @@
  * the request is routed via an EU-resident managed model (AWS Bedrock EU / Vertex AI EU)
  * by the backend. The authoritative report payload itself is assembled deterministically.
  *
- * Nothing in this app may construct a prompt or any other LLM-bound object except through
- * {@link buildReportPayload} below. If you find yourself building an LLM payload anywhere
- * else, stop — it belongs here.
+ * MeldePilot is a scope stub: no screen is wired yet, so nothing imports this module today.
+ * When the reporting screens are built, every LLM-bound payload is intended to be assembled
+ * here through {@link buildReportPayload}, keeping de-identification a single seam.
  *
  * This is a deterministic, regex-based scrubber: it removes direct identifiers and keeps
  * the reporting structure. It is intentionally conservative (over-redact rather than leak)
@@ -80,7 +80,7 @@ export function deidentify(input: string): DeidentResult {
 }
 
 /**
- * THE ONLY sanctioned constructor of an LLM-bound payload in MeldePilot.
+ * The intended constructor of any LLM-bound payload for MeldePilot's planned reporting.
  *
  * @param registry   the target register/report (e.g. "BFS-MARS", "ANQ", "interRAI") — non-identifying
  * @param indicators structured indicator/field codes (non-identifying) — passed through

@@ -1,9 +1,10 @@
 import { createHash } from "node:crypto";
 
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 import type { ReviewDecision, ReviewResult } from "@/lib/api";
-import { problem, upstreamProblem } from "@/lib/problem";
+import { problem, problemFromZod, upstreamProblem } from "@/lib/problem";
 import { findReviewItem, REVIEW_QUEUE } from "@/lib/review-fixtures";
 
 const QUEUE_INSTANCE = "/api/review/queue";
@@ -30,6 +31,25 @@ const REVIEW_INSTANCE = "/api/review";
 // Billing values are frozen at ingest and are never AI-filled or human-corrected here.
 // Enforced server-side as defence in depth (the UI also hides them from the editor).
 const BILLING_FIELDS = new Set(["tax_points", "price_chf"]);
+
+// The canonical TariffSystem set (mirrors @/lib/api). A review decision always names a real
+// frozen system, so the body is validated against this closed set.
+const TARIFF_SYSTEMS = ["TARDOC", "EAL", "SL", "MiGeL", "SwissDRG", "TARPSY", "ST_REHA"] as const;
+
+/**
+ * Runtime schema for an approve/correct decision, the console's one write path. This replaces
+ * the hand-rolled presence and action checks; the billing-field rejection below stays an
+ * explicit guard because it is the inviolable-boundary defence, not a shape check.
+ */
+const ReviewDecisionBody = z.object({
+  tariff_system: z.enum(TARIFF_SYSTEMS),
+  tariff_code: z.string().min(1),
+  record_hash: z.string().nullable(),
+  action: z.enum(["approve", "correct"]),
+  corrections: z.record(z.string(), z.string()).optional(),
+  reviewer: z.string().optional(),
+  note: z.string().optional(),
+});
 
 function ingestBase(): string | null {
   const url = process.env.INGEST_BASE_URL?.trim();
@@ -64,26 +84,18 @@ export async function GET() {
 }
 
 export async function POST(req: NextRequest) {
-  let decision: ReviewDecision;
+  let raw: unknown;
   try {
-    decision = (await req.json()) as ReviewDecision;
+    raw = await req.json();
   } catch {
     return problem({ status: 400, detail: "invalid JSON body", instance: REVIEW_INSTANCE });
   }
-  if (!decision?.tariff_code || !decision?.tariff_system || !decision?.action) {
-    return problem({
-      status: 400,
-      detail: "decision requires tariff_system, tariff_code and action",
-      instance: REVIEW_INSTANCE,
-    });
+  const parsed = ReviewDecisionBody.safeParse(raw);
+  if (!parsed.success) {
+    return problemFromZod(parsed.error, REVIEW_INSTANCE);
   }
-  if (decision.action !== "approve" && decision.action !== "correct") {
-    return problem({
-      status: 400,
-      detail: `unknown action '${decision.action}'`,
-      instance: REVIEW_INSTANCE,
-    });
-  }
+  const decision: ReviewDecision = parsed.data;
+
   // The inviolable boundary, enforced server-side: a billing value is never corrected here.
   if (decision.action === "correct" && decision.corrections) {
     const offending = Object.keys(decision.corrections).filter((k) => BILLING_FIELDS.has(k));

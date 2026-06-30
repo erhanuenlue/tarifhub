@@ -1,8 +1,21 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 import { getExplain, ServingError } from "@/lib/api";
 import { buildExplainPayload } from "@/lib/deident";
-import { problem } from "@/lib/problem";
+import { problem, problemFromZod } from "@/lib/problem";
+
+/**
+ * Runtime schema for the explain request body. A tariff code is required (trimmed,
+ * non-empty); the optional free-text context is de-identified for the audit and never
+ * forwarded.
+ */
+const ExplainBody = z.object({
+  // A missing key and a blank string both read as "missing tariff code", matching the
+  // original guard (which rejected any falsy trimmed code with that one message).
+  code: z.string({ error: "missing tariff code" }).trim().min(1, "missing tariff code"),
+  context: z.string().optional(),
+});
 
 /**
  * Server-side proxy for the explain panel.
@@ -18,21 +31,21 @@ import { problem } from "@/lib/problem";
  */
 export async function POST(req: NextRequest) {
   const instance = req.nextUrl.pathname;
-  let input: { code?: string; context?: string };
+  let raw: unknown;
   try {
-    input = await req.json();
+    raw = await req.json();
   } catch {
     return problem({ status: 400, detail: "invalid JSON body", instance });
   }
-
-  const code = input.code?.trim();
-  if (!code) {
-    return problem({ status: 400, detail: "missing tariff code", instance });
+  const parsed = ExplainBody.safeParse(raw);
+  if (!parsed.success) {
+    return problemFromZod(parsed.error, instance);
   }
+  const code = parsed.data.code;
 
   // The de-identification checkpoint: the optional context is scrubbed for the audit and
   // never leaves the server. Only the bare code reaches the backend explain seam.
-  const { payload, redactions } = buildExplainPayload({ context: input.context });
+  const { payload, redactions } = buildExplainPayload({ context: parsed.data.context });
   const deident = { scrubbed: payload.context ?? null, redactions };
 
   try {

@@ -1,7 +1,7 @@
 /**
  * ============================================================================
- *  DE-IDENTIFICATION BOUNDARY  —  the ONLY code in KassenFlow allowed to build
- *  an LLM-bound payload.  (tarifhub determinism / data-sovereignty rule.)
+ *  DE-IDENTIFICATION SCRUBBER: KassenFlow's de-identification seam for the planned
+ *  LLM-assisted drafting (tarifhub determinism / data-sovereignty rule).
  * ============================================================================
  *
  * KassenFlow drafts payer correspondence (Kostengutsprache requests, MiGeL/medication
@@ -10,9 +10,9 @@
  * to an LLM, and the request is routed via an EU-resident managed model (AWS Bedrock EU /
  * Google Vertex AI EU) by the backend.
  *
- * Nothing in this app may construct a prompt or any other LLM-bound object except through
- * {@link buildCorrespondencePayload} below. If you find yourself building an LLM payload
- * anywhere else, stop — it belongs here.
+ * KassenFlow is a scope stub: no screen is wired yet, so nothing imports this module today.
+ * When the drafting screens are built, every LLM-bound payload is intended to be assembled
+ * here through {@link buildCorrespondencePayload}, keeping de-identification a single seam.
  *
  * This is a deterministic, regex-based scrubber: it removes direct identifiers and keeps
  * the coding/case structure a draft needs. It is intentionally conservative (over-redact
@@ -81,7 +81,7 @@ export function deidentify(input: string): DeidentResult {
 }
 
 /**
- * THE ONLY sanctioned constructor of an LLM-bound payload in KassenFlow.
+ * The intended constructor of any LLM-bound payload for KassenFlow's planned drafting.
  *
  * @param payerId    an insurer/payer reference (non-identifying for the patient)
  * @param codes      tariff/diagnosis codes (non-identifying by nature) — passed through
