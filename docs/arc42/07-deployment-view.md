@@ -178,43 +178,61 @@ $ helm template tarifhub deploy/helm/tarifhub | grep '^kind:' | sort | uniq -c
 **Interpretation.** The six Deployments are the long-running services (`serving` and
 `intelligence` and `tarifguard` at two replicas, `mcp` and `postgres` and the ingestion
 **review API** at one). The single Job is the run-to-completion ingestion **batch**. The six
-Services front the long-running workloads only (the batch Job has none). This is the fix for
-the earlier k3d capture below, where ingestion was a single Deployment and so showed `0/1`.
+Services front the long-running workloads only (the batch Job has none). This is confirmed by
+the live capture below, where the review API runs `1/1` and the batch reports `Completed`, with
+none of the earlier single-Deployment `0/1`.
 
-### The earlier 0/1 artifact, and the fix
+### Live k3d deployment (recaptured 2026-06-30, current chart)
 
-A throwaway k3d cluster (2026-06-13) with the locally built images imported and `helm install`
-run brought the platform up on real Kubernetes, but the then-single ingestion Deployment showed
-`0/1`:
-
-![kubectl get pods on k3d (2026-06-13, before crit-17): ingestion 0/1 because a run-to-completion batch was modelled as a Deployment](../img/k3d-pods.png)
+A throwaway k3d cluster, the locally built images imported (`k3d image import`), then
+`helm install` with value overrides for the local offline run: the chart image repositories
+pointed at those images, `ingestion.env.TARIFHUB_DB_URL` set to a pod-local SQLite mirror with
+the stub embedder, and the batch pointed at the bundled SL sample (`ingestion.batch.system=SL`),
+the same offline path the Compose batch below uses, since the in-cluster Postgres + pgvector
+path needs the 1024-dim e5 embedder. The chart's Postgres still starts schema-empty here, so
+this is a topology and lifecycle proof, the data-serving proof being Evidence 2 under Compose.
+The live state:
 
 ```text
-# 2026-06-13 capture, BEFORE the crit-17 split, kept to show what the change fixes
-NAME                                     READY   STATUS    RESTARTS   AGE
-tarifhub-postgres-749d46bdb5-7r6rl       1/1     Running   0          41s
-tarifhub-serving-595b7f5f8f-krdvk        1/1     Running   0          41s
-tarifhub-serving-595b7f5f8f-lzgjg        1/1     Running   0          41s
-tarifhub-mcp-86869967b7-lxrr7            1/1     Running   0          41s
-tarifhub-intelligence-67db88f8cb-j67wr   1/1     Running   0          41s
-tarifhub-intelligence-67db88f8cb-mt2hp   1/1     Running   0          41s
-tarifhub-tarifguard-58d7bbb868-lrsjg     1/1     Running   0          41s
-tarifhub-tarifguard-58d7bbb868-ncxbq     1/1     Running   0          41s
-tarifhub-ingestion-5d5dddc876-njbvx      0/1     Running   3          41s
+$ kubectl get pods
+NAME                                     READY   STATUS      RESTARTS   AGE
+tarifhub-ingestion-54d4d4fb9d-mhcbr      1/1     Running     0          44s
+tarifhub-ingestion-batch-wrkwg           0/1     Completed   0          44s
+tarifhub-intelligence-67db88f8cb-84xsf   1/1     Running     0          44s
+tarifhub-intelligence-67db88f8cb-s876s   1/1     Running     0          44s
+tarifhub-mcp-86869967b7-4k4nq            1/1     Running     0          44s
+tarifhub-postgres-749d46bdb5-4hgmm       1/1     Running     0          44s
+tarifhub-serving-595b7f5f8f-hw4pq        1/1     Running     0          44s
+tarifhub-serving-595b7f5f8f-jjh2k        1/1     Running     0          44s
+tarifhub-tarifguard-6ccc45788f-55gp6     1/1     Running     0          44s
+tarifhub-tarifguard-6ccc45788f-w588z     1/1     Running     0          44s
+
+$ kubectl get jobs
+NAME                       STATUS     COMPLETIONS   DURATION   AGE
+tarifhub-ingestion-batch   Complete   1/1           3s         44s
+
+$ kubectl get deploy
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+tarifhub-ingestion      1/1     1            1           44s
+tarifhub-intelligence   2/2     2            2           44s
+tarifhub-mcp            1/1     1            1           44s
+tarifhub-postgres       1/1     1            1           44s
+tarifhub-serving        2/2     2            2           44s
+tarifhub-tarifguard     2/2     2            2           44s
+
+$ kubectl logs job/tarifhub-ingestion-batch
+{"system": "SL", "path": "/app/sample-data/input/bag_epl_sample.ndjson", "refill": false, "processed": 3, "frozen": 3, "skipped_existing": 0, "flagged_for_review": 0, "parse_failures": 0}
 ```
 
-**Interpretation.** The `0/1` was honest but wrong-by-design: a run-to-completion batch
-pipeline modelled as a long-lived `Deployment` runs to completion, the readiness probe then
-fails, and the ReplicaSet restarts it forever. The crit-17 change (above, [ADR-009 addendum](../adr/009-docker-kubernetes-helm.md))
-splits ingestion into the review-API Deployment (which stays a healthy 1/1 long-running
-service) and the batch Job (which reports Completed). A re-deployed k3d cluster on the current
-chart therefore shows no `0/1`: the review API at `1/1 Running` and `tarifhub-ingestion-batch`
-at `Completed`. **TODO (owner):** re-capture the live `kubectl get pods` / `kubectl get
-jobs` and refresh `docs/img/k3d-pods.png` against the current chart. The kinds above are the
-authoritative manifest proof, and the dual workload is shown running under Compose below. The
-in-cluster batch writes to Postgres, whose `vector(1024)` column needs the e5 (1024-dim)
-embedder. The offline-stub run is demonstrated under Compose against the SQLite mirror (the
-same offline/online split as Evidence 2 above).
+**Interpretation.** The post-split topology is live on real Kubernetes, with no long-running
+ingestion Deployment stuck at `0/1 Running`. The ingestion **review API** is a long-running
+Deployment at `1/1` (its `/health` readiness probe passing), and the ingestion **batch** is a
+`Job` that ran to completion (`Complete 1/1`, the pod `Completed`, its log showing 3 of 3
+bundled SL records frozen and exit 0). The read/serve sub-systems (serving and intelligence and
+tarifguard at two replicas, `mcp` at one) and Postgres are all `Running`. Modelling the
+run-to-completion batch as a Job rather than a Deployment is the crit-17 fix the
+[ADR-009 addendum](../adr/009-docker-kubernetes-helm.md) records, and the chart deploys every
+enabled workload as an independent, individually-scaled workload on real Kubernetes.
 
 ### The dual ingestion model runs under Compose (2026-06-19)
 

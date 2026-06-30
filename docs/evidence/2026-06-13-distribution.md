@@ -1,9 +1,9 @@
-# Distribution evidence: Compose + CI images + k3d/Helm (2026-06-13)
+# Distribution evidence: Compose + CI images + k3d/Helm
 
 Verbatim capture behind the [§7 Deployment view](../arc42/07-deployment-view.md)
-(criterion 17). All commands were run on 2026-06-13. The screenshots in `docs/img/`
-(`compose-ps.png`, `k3d-pods.png`) only illustrate. The quoted text below and in §7 is the
-evidence.
+(criterion 17). The CI-image and Compose captures (sections 1 and 2) were run on 2026-06-13.
+The k3d/Helm capture (section 3) was recaptured on 2026-06-30 against the current chart. The
+`compose-ps.png` screenshot only illustrates. The quoted text below and in §7 is the evidence.
 
 ## 1 · Every sub-system image builds in CI
 
@@ -68,72 +68,68 @@ $ helm lint deploy/helm/tarifhub
 $ helm template tarifhub deploy/helm/tarifhub | grep '^kind:' | sort | uniq -c
    6 kind: Deployment
    1 kind: Ingress
-   1 kind: PersistentVolumeClaim
-   1 kind: Secret
-   6 kind: Service
-```
-
-A throwaway k3d cluster, local images imported (`k3d image import`), `helm install`:
-
-```text
-$ kubectl get pods
-NAME                                     READY   STATUS    RESTARTS   AGE
-tarifhub-postgres-749d46bdb5-7r6rl       1/1     Running   0          41s
-tarifhub-serving-595b7f5f8f-krdvk        1/1     Running   0          41s
-tarifhub-serving-595b7f5f8f-lzgjg        1/1     Running   0          41s
-tarifhub-mcp-86869967b7-lxrr7            1/1     Running   0          41s
-tarifhub-intelligence-67db88f8cb-j67wr   1/1     Running   0          41s
-tarifhub-intelligence-67db88f8cb-mt2hp   1/1     Running   0          41s
-tarifhub-tarifguard-58d7bbb868-lrsjg     1/1     Running   0          41s
-tarifhub-tarifguard-58d7bbb868-ncxbq     1/1     Running   0          41s
-tarifhub-ingestion-5d5dddc876-njbvx      0/1     Running   3          41s
-
-$ kubectl get deploy
-NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
-tarifhub-serving        2/2     2            2           42s
-tarifhub-intelligence   2/2     2            2           42s
-tarifhub-tarifguard     2/2     2            2           42s
-tarifhub-mcp            1/1     1            1           42s
-tarifhub-postgres       1/1     1            1           42s
-tarifhub-ingestion      0/1     1            0           42s
-```
-
-The read/serve sub-systems (serving ×2, mcp, intelligence ×2, tarifguard ×2) and Postgres
-are `Running`. `tarifhub-ingestion` is `0/1` by design: ingestion is a one-shot batch
-pipeline, so running it as a long-lived `Deployment` means it runs to completion and the
-ReplicaSet restarts it (in production it belongs in a `Job`/`CronJob`. This is done in the
-2026-06-19 update below, which splits ingestion into a review-API Deployment and a batch Job).
-Functional data serving is demonstrated under Compose above (the chart's
-Postgres starts schema-empty). The k3d run proves the chart deploys every sub-system as an
-independent, individually-scaled workload on real Kubernetes.
-
-## Update 2026-06-19: ingestion modelled as two workloads (crit-17)
-
-Codex docked criterion 17 because the k3d capture in section 3 above shows `tarifhub-ingestion 0/1`:
-a run-to-completion batch was modelled as a `Deployment`. The chart now splits ingestion into the
-**review API** (a Deployment plus Service) and the **batch** pipeline (a run-to-completion Job, or a
-CronJob when `ingestion.batch.schedule` is set). See the [ADR-009 addendum](../adr/009-docker-kubernetes-helm.md)
-and [arc42 section 7, Evidence 3](../arc42/07-deployment-view.md). All commands below were run on 2026-06-19.
-
-### Helm renders the intended kinds (a Job for the batch, a Deployment plus Service for the review API)
-
-```text
-$ helm lint deploy/helm/tarifhub
-1 chart(s) linted, 0 chart(s) failed
-
-$ helm template tarifhub deploy/helm/tarifhub | grep '^kind:' | sort | uniq -c
-   6 kind: Deployment
-   1 kind: Ingress
    1 kind: Job
    1 kind: PersistentVolumeClaim
    1 kind: Secret
    6 kind: Service
 ```
 
-The six Deployments are the long-running services (serving x2, intelligence x2, tarifguard x2, mcp,
-postgres and the ingestion review API at one each). The one Job is the run-to-completion ingestion
-batch. The six Services front the long-running workloads only (the batch Job has none). With
-`--set ingestion.batch.schedule="0 3 * * 1"` the same template renders a `CronJob` instead of a `Job`.
+A throwaway k3d cluster (recaptured 2026-06-30 against the current chart), the locally built
+images imported (`k3d image import`), then `helm install` with value overrides for the local
+offline run: the chart image repositories pointed at those images,
+`ingestion.env.TARIFHUB_DB_URL` set to a pod-local SQLite mirror with the stub embedder, and the
+batch pointed at the bundled SL sample (`ingestion.batch.system=SL`), the same offline path the
+Compose batch below uses, since the in-cluster Postgres + pgvector path needs the 1024-dim e5
+embedder. The chart's Postgres still starts schema-empty here, so this is a topology and
+lifecycle proof, the data-serving proof being section 2 under Compose:
+
+```text
+$ kubectl get pods
+NAME                                     READY   STATUS      RESTARTS   AGE
+tarifhub-ingestion-54d4d4fb9d-mhcbr      1/1     Running     0          44s
+tarifhub-ingestion-batch-wrkwg           0/1     Completed   0          44s
+tarifhub-intelligence-67db88f8cb-84xsf   1/1     Running     0          44s
+tarifhub-intelligence-67db88f8cb-s876s   1/1     Running     0          44s
+tarifhub-mcp-86869967b7-4k4nq            1/1     Running     0          44s
+tarifhub-postgres-749d46bdb5-4hgmm       1/1     Running     0          44s
+tarifhub-serving-595b7f5f8f-hw4pq        1/1     Running     0          44s
+tarifhub-serving-595b7f5f8f-jjh2k        1/1     Running     0          44s
+tarifhub-tarifguard-6ccc45788f-55gp6     1/1     Running     0          44s
+tarifhub-tarifguard-6ccc45788f-w588z     1/1     Running     0          44s
+
+$ kubectl get jobs
+NAME                       STATUS     COMPLETIONS   DURATION   AGE
+tarifhub-ingestion-batch   Complete   1/1           3s         44s
+
+$ kubectl get deploy
+NAME                    READY   UP-TO-DATE   AVAILABLE   AGE
+tarifhub-ingestion      1/1     1            1           44s
+tarifhub-intelligence   2/2     2            2           44s
+tarifhub-mcp            1/1     1            1           44s
+tarifhub-postgres       1/1     1            1           44s
+tarifhub-serving        2/2     2            2           44s
+tarifhub-tarifguard     2/2     2            2           44s
+
+$ kubectl logs job/tarifhub-ingestion-batch
+{"system": "SL", "path": "/app/sample-data/input/bag_epl_sample.ndjson", "refill": false, "processed": 3, "frozen": 3, "skipped_existing": 0, "flagged_for_review": 0, "parse_failures": 0}
+```
+
+The post-split topology is live on real Kubernetes, with no long-running ingestion Deployment
+stuck at `0/1 Running`. The ingestion **review API** is a long-running Deployment at `1/1` (its
+`/health` readiness probe passing) and the ingestion **batch** is a `Job` that ran to completion
+(`Complete 1/1`, the pod `Completed`, its log showing 3 of 3 bundled SL records frozen and exit
+0). The read/serve sub-systems (serving x2, intelligence x2, tarifguard x2, mcp) and Postgres
+are all `Running`. Modelling the run-to-completion batch as a Job rather than a Deployment is the
+crit-17 fix, and the chart deploys every enabled workload as an independent, individually-scaled
+workload.
+
+## The dual ingestion workload (crit-17) also runs under Compose
+
+The chart models ingestion as two distinct workloads (the [ADR-009 addendum](../adr/009-docker-kubernetes-helm.md)):
+the long-running **review API** (a Deployment plus Service) and the run-to-completion **batch**
+pipeline (a Job, or a CronJob when `ingestion.batch.schedule` is set). Section 3 above captures
+both live on k3d (the review API `1/1`, the batch Job `Complete`) and quotes the `helm template`
+kinds. The same dual workload runs from the current image under Compose, run 2026-06-19.
 
 ### Compose runs the dual workload from current source
 
@@ -158,14 +154,5 @@ $ echo $?
 The same image is the long-running review API under its default CMD and a one-shot batch under the CLI
 command. The batch writes the offline SQLite mirror with the bundled stub embedder. The shared-Postgres
 path needs the e5 (1024-dim) embedder (the `vector(1024)` column rejects the 16-dim stub, the same
-dimension limitation section 2 notes for search).
-
-### TODO (owner): re-capture the live k3d pod list
-
-The section 3 `kubectl get pods` capture and `docs/img/k3d-pods.png` predate this split and still show
-`0/1`. They should be re-captured against the current chart, where the review API is `1/1 Running` and
-`tarifhub-ingestion-batch` is `Completed`. A full k3d bring-up of all five service images was not re-run
-in this session (the local Docker BuildKit cache had a corrupted frontend lease, cleared with
-`docker builder prune`). The `helm template` kinds above are the authoritative manifest proof, and the
-dual workload is shown running under Compose above. The in-cluster batch Job writes Postgres and so needs
-the e5 image. The offline-stub batch is proven under Compose against the SQLite mirror.
+dimension limitation section 2 notes for search), so it is the production target rather than the
+offline-stub demonstration that runs on k3d and under Compose here.
