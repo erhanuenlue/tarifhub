@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { z } from "zod";
 
 import { getTariff, ServingError, type CodingFlag, type CodingPosition } from "@/lib/api";
-import { problem } from "@/lib/problem";
+import { problem, problemFromZod } from "@/lib/problem";
 
 /**
  * Server-side proxy for the coding-check screen.
@@ -11,32 +12,32 @@ import { problem } from "@/lib/problem";
  * frozen-record facts — found / requires-review / outside-validity — plus the certified
  * value relayed verbatim. No combinability verdict and no billing value are computed here.
  */
+/**
+ * Runtime schema for the coding-check request body. Each position is one upstream lookup, so
+ * the fan-out is bounded to 50, and every element must carry a string system and code.
+ */
+const CodingCheckBody = z.object({
+  positions: z
+    .array(z.object({ system: z.string(), code: z.string() }))
+    .min(1, "no positions supplied")
+    .max(50, "too many positions (max 50)"),
+});
+
 export async function POST(req: NextRequest) {
   const instance = req.nextUrl.pathname;
-  let positions: CodingPosition[];
+  let raw: unknown;
   try {
-    const body = await req.json();
-    positions = Array.isArray(body?.positions) ? body.positions : [];
+    raw = await req.json();
   } catch {
     return problem({ status: 400, detail: "invalid JSON body", instance });
   }
-  if (positions.length === 0) {
-    return problem({ status: 400, detail: "no positions supplied", instance });
+  // Validate the untrusted body against the runtime schema rather than hand-rolled typeof
+  // checks; a failure returns the shared RFC 7807 problem+json 400.
+  const parsed = CodingCheckBody.safeParse(raw);
+  if (!parsed.success) {
+    return problemFromZod(parsed.error, instance);
   }
-  // Bound the fan-out (each position is one upstream lookup) and validate element shape.
-  if (positions.length > 50) {
-    return problem({ status: 400, detail: "too many positions (max 50)", instance });
-  }
-  const wellFormed = positions.every(
-    (p) => p && typeof p.system === "string" && typeof p.code === "string"
-  );
-  if (!wellFormed) {
-    return problem({
-      status: 400,
-      detail: "each position needs a string system and code",
-      instance,
-    });
-  }
+  const positions: CodingPosition[] = parsed.data.positions;
 
   const today = new Date().toISOString().slice(0, 10);
   const flags: CodingFlag[] = [];

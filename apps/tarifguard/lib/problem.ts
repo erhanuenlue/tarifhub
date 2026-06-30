@@ -1,5 +1,7 @@
 import { NextResponse } from "next/server";
 
+import type { ZodError } from "zod";
+
 /**
  * Consistent RFC 7807 error envelope for the BFF, matching the Python services.
  *
@@ -61,6 +63,25 @@ export function problem({ status, detail, instance, title, type, extra }: Proble
     status,
     headers: { "content-type": PROBLEM_CONTENT_TYPE },
   });
+}
+
+/**
+ * Map a zod validation failure to the BFF's own RFC 7807 problem+json 400. Every route that
+ * parses an untrusted body validates it with a zod schema and funnels a `safeParse` failure
+ * through here, so a malformed request always yields the same envelope as the hand-written
+ * 400s above. The detail lists each failing field as "path: message" (the field path is
+ * omitted for a root-level issue) so the caller learns what to fix without us leaking the
+ * raw body back.
+ */
+export function problemFromZod(error: ZodError, instance: string): NextResponse {
+  const detail =
+    error.issues
+      .map((issue) => {
+        const path = issue.path.join(".");
+        return path ? `${path}: ${issue.message}` : issue.message;
+      })
+      .join(", ") || "request body failed validation";
+  return problem({ status: 400, detail, instance });
 }
 
 /**
