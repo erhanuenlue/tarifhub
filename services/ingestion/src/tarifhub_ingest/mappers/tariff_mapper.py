@@ -210,7 +210,7 @@ def _claude_assisted_map(
     )
 
     try:
-        client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
+        client = anthropic.Anthropic(api_key=settings.anthropic_api_key.get_secret_value())
         # No temperature/top_p/top_k/thinking: removed on this model (HTTP 400 if sent).
         resp = client.messages.parse(
             model=settings.ai_model,
