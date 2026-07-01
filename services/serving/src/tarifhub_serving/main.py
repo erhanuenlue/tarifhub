@@ -14,14 +14,16 @@ This is enforced by ``tests/test_serving_boundary.py``.
 
 from __future__ import annotations
 
+import contextlib
 import threading
+import time
 from contextlib import asynccontextmanager
 from datetime import date
 from typing import Annotated, Any
 
-from fastapi import Depends, FastAPI, Path, Query, Request
+from fastapi import APIRouter, Depends, FastAPI, Path, Query, Request
 from tarifhub_ingest.embeddings.embedder import E5_DIMENSION, get_embedder
-from tarifhub_ingest.models.tariff_model import TariffRecord
+from tarifhub_ingest.models.tariff_model import TariffRecord, TariffSystem
 
 from tarifhub_serving.config import (
     DEFAULT_LIST_LIMIT,
@@ -49,6 +51,7 @@ from tarifhub_serving.models import (
     SearchHit,
 )
 from tarifhub_serving.repository import ServingRepository
+from tarifhub_serving.telemetry import setup_telemetry
 
 # Process-wide Postgres connection pools, keyed by db_url. A pool is expensive to build
 # and is meant to be shared across requests, so we create at most one per URL and reuse
@@ -104,19 +107,20 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         _close_pools()
+        # Flush and stop the telemetry exporters so background exporter threads do not leak
+        # and any queued spans or final metrics are flushed at shutdown. A no-op when no
+        # endpoint is configured (no span processor or metric reader was installed).
+        telemetry = getattr(app.state, "telemetry", None)
+        if telemetry is not None:
+            telemetry.tracer_provider.shutdown()
+            telemetry.meter_provider.shutdown()
 
 
-app = FastAPI(
-    title="tarifhub Serving (L1 TarifCore)",
-    description="Deterministic read API over frozen Swiss ambulatory tariff records.",
-    version="0.1.0",
-    lifespan=lifespan,
-)
-
-# Centralised RFC 7807 problem+json error handling (domain errors, validation, any
-# HTTPException, and a catch-all that turns an unexpected error into a structured 500
-# with a correlation id instead of a bare 500). See tarifhub_serving.errors.
-register_exception_handlers(app)
+# Routes are attached to a module-level router and mounted onto the app inside
+# create_app(). This keeps the route definitions module-level (imported by tests) while
+# letting the factory build the FastAPI instance, wire error handlers and instrument
+# observe-only telemetry in one place.
+router = APIRouter()
 
 
 def get_repository(request: Request):
@@ -147,8 +151,23 @@ def get_repository(request: Request):
 RepoDep = Annotated[ServingRepository, Depends(get_repository)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
 
+# Bound the search-latency metric's cardinality. An unauthenticated caller can pass any
+# ?system= value, so only the known tariff systems (plus "all" when unfiltered) are used
+# verbatim as the metric attribute and every other value buckets to "other". This keeps
+# the histogram's label set to a small fixed size instead of one time series per arbitrary
+# input. Observe-only: the served result is unaffected either way.
+_KNOWN_TARIFF_SYSTEMS = frozenset(s.value for s in TariffSystem)
 
-@app.get("/health", response_model=HealthResponse, summary="Liveness probe")
+
+def _system_metric_label(system: str | None) -> str:
+    """Map a request's ``system`` filter to a bounded metric attribute value."""
+
+    if system is None:
+        return "all"
+    return system if system in _KNOWN_TARIFF_SYSTEMS else "other"
+
+
+@router.get("/health", response_model=HealthResponse, summary="Liveness probe")
 def health() -> HealthResponse:
     """Return ``{"status": "ok"}`` when the service is up."""
 
@@ -163,7 +182,7 @@ _AS_OF_DESCRIPTION = (
 )
 
 
-@app.get(
+@router.get(
     "/api/v1/tariffs",
     response_model=list[TariffRecord],
     summary="List the latest (or as-of) version of each frozen tariff record",
@@ -185,7 +204,7 @@ def list_tariffs(
     return repo.list_latest(system=system, as_of=as_of, limit=limit, offset=offset)
 
 
-@app.get(
+@router.get(
     "/api/v1/tariffs/{system}/{code}",
     response_model=TariffRecord,
     summary="Get the latest (or as-of) frozen record for a (system, code) key",
@@ -209,7 +228,7 @@ def get_tariff(
     return record
 
 
-@app.get(
+@router.get(
     "/api/v1/tariffs/{system}/{code}/diff",
     response_model=DiffResponse,
     summary="Field-level diff between two versions of a frozen record",
@@ -239,7 +258,7 @@ def diff_tariff(
     return build_diff(system, code, from_record, to_record)
 
 
-@app.get(
+@router.get(
     "/api/v1/explain",
     response_model=ExplainResponse,
     summary="Deterministic, record-grounded explanation of a tariff code",
@@ -280,7 +299,7 @@ _FHIR_ID_RULE = (
 )
 
 
-@app.get(
+@router.get(
     "/api/v1/fhir/ChargeItemDefinition/{system}/{code}",
     response_model=ChargeItemDefinition,
     response_model_exclude_none=True,
@@ -326,7 +345,7 @@ def fhir_charge_item_definition(
     return to_charge_item_definition(system, code, record, is_latest=is_latest)
 
 
-@app.get(
+@router.get(
     "/api/v1/fhir/CodeSystem/{system}",
     response_model=CodeSystem,
     response_model_exclude_none=True,
@@ -359,7 +378,7 @@ def fhir_code_system(
     return to_code_system(system, records, count=total)
 
 
-@app.get(
+@router.get(
     "/api/v1/search",
     response_model=list[SearchHit],
     summary="Semantic search over frozen records (pgvector, or offline ranking on SQLite)",
@@ -378,6 +397,7 @@ def fhir_code_system(
 def search(
     repo: RepoDep,
     settings: SettingsDep,
+    request: Request,
     q: Annotated[str, Query(min_length=1, description="Free-text query")],
     system: Annotated[
         str | None,
@@ -387,25 +407,81 @@ def search(
 ) -> list[SearchHit]:
     """Rank frozen records by cosine similarity to the embedded query (see description)."""
 
+    telemetry = getattr(request.app.state, "telemetry", None)
     db = Database.from_url(settings.db_url)
 
-    # Embed the user query through the QUERY path (e5 "query: " prefix), not the
-    # passage path used to index records — the asymmetry is what e5 is trained for.
-    vector = get_embedder().embed_query(q)
+    # Observe-only: time and trace the embed+rank work. This records latency and a span
+    # for observability alone and never affects the served value. nullcontext is a
+    # defensive fallback for the (unexpected) case where telemetry was not wired.
+    span = (
+        telemetry.tracer.start_as_current_span("serving.search")
+        if telemetry is not None
+        else contextlib.nullcontext()
+    )
+    start = time.perf_counter()
+    with span:
+        # Embed the user query through the QUERY path (e5 "query: " prefix), not the
+        # passage path used to index records — the asymmetry is what e5 is trained for.
+        vector = get_embedder().embed_query(q)
 
-    if db.dialect == "postgresql":
-        # The pgvector column is vector(1024). A non-1024-dim embedder (e.g. the offline
-        # stub) would trigger a dimension-mismatch error inside pgvector mid-request; fail
-        # closed with the same explicit 501 instead of issuing the doomed query.
-        if len(vector) != E5_DIMENSION:
-            raise SearchBackendUnavailable(
-                f"search requires a {E5_DIMENSION}-dim embedder (multilingual-e5); "
-                f"current backend produces {len(vector)} dims"
-            )
-        records = repo.search_by_embedding(vector, limit, system=system)
-    else:
-        # SQLite has no pgvector; rank stored embeddings in-process (deterministic). Only
-        # rows whose stored dimension matches the query vector's are candidates.
-        records = repo.search_offline(vector, limit, system=system)
+        if db.dialect == "postgresql":
+            # The pgvector column is vector(1024). A non-1024-dim embedder (e.g. the
+            # offline stub) would trigger a dimension-mismatch error inside pgvector
+            # mid-request; fail closed with the same explicit 501 instead of issuing the
+            # doomed query.
+            if len(vector) != E5_DIMENSION:
+                raise SearchBackendUnavailable(
+                    f"search requires a {E5_DIMENSION}-dim embedder (multilingual-e5); "
+                    f"current backend produces {len(vector)} dims"
+                )
+            records = repo.search_by_embedding(vector, limit, system=system)
+        else:
+            # SQLite has no pgvector; rank stored embeddings in-process (deterministic).
+            # Only rows whose stored dimension matches the query vector's are candidates.
+            records = repo.search_offline(vector, limit, system=system)
+
+    # Observe-only: record the wall-clock latency once ranking succeeded (a 501 above
+    # skips this). Never read back into the served value.
+    if telemetry is not None:
+        elapsed_ms = (time.perf_counter() - start) * 1000.0
+        telemetry.search_latency.record(elapsed_ms, {"system": _system_metric_label(system)})
 
     return [SearchHit(rank=i, record=r) for i, r in enumerate(records, start=1)]
+
+
+def create_app(
+    *,
+    telemetry_span_exporter=None,
+    telemetry_metric_reader=None,
+) -> FastAPI:
+    """Build the serving app: routes, RFC 7807 handlers and observe-only telemetry.
+
+    The telemetry exporter/reader default to ``None`` (no collector), so the offline
+    suite and CI run with a true no-op; the tests inject in-memory ones to assert the
+    span and metric are produced. The optional overrides are the only reason this is a
+    factory rather than a module-level app.
+    """
+
+    app = FastAPI(
+        title="tarifhub Serving (L1 TarifCore)",
+        description="Deterministic read API over frozen Swiss ambulatory tariff records.",
+        version="0.1.0",
+        lifespan=lifespan,
+    )
+    # Centralised RFC 7807 problem+json error handling (domain errors, validation, any
+    # HTTPException, and a catch-all that turns an unexpected error into a structured 500
+    # with a correlation id instead of a bare 500). See tarifhub_serving.errors.
+    register_exception_handlers(app)
+    # Observe-only tracing + metrics. Never on the billing value path (see telemetry).
+    setup_telemetry(
+        app,
+        span_exporter=telemetry_span_exporter,
+        metric_reader=telemetry_metric_reader,
+    )
+    app.include_router(router)
+    return app
+
+
+# Module-level app so existing ``from tarifhub_serving.main import app`` imports keep
+# working (conftest fixtures, test_app_lifespan, the ASGI entrypoint).
+app = create_app()

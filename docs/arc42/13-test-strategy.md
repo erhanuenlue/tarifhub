@@ -243,14 +243,14 @@ coverage) and re-measured and **gated** on every CI run in the `python` job's co
 
 | Service | Core modules in scope | Measured |
 |---|---|---|
-| `services/serving` | `main` 90 %, `db` 76 %, `repository` 91 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %) | **93 % total** |
+| `services/serving` | `main` 92 %, `db` 76 %, `repository` 91 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %, `telemetry` 100 %) | **94 % total** |
 | `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 %, `errors` 99 % | **91 % total** |
 | `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **92 % total** |
 
 Every core module is above the 80 % target, and the floor is now **enforced in CI**: the
 `python` job runs each service's coverage with `--cov-fail-under=80`, so a regression that
 drops a service's total line coverage below 80 % fails the build. The per-service totals
-(ingestion 91 %, serving 93 %, mcp 92 %) sit comfortably above the gate.
+(ingestion 91 %, serving 94 %, mcp 92 %) sit comfortably above the gate.
 
 ## Console component tests
 
