@@ -25,6 +25,14 @@ dependencies = [
     # create_pool). SQLite needs no pool, so that import stays lazy on the Postgres leg.
     "psycopg[binary,pool]>=3.1",
     "tarifhub-ingest",
+    # OpenTelemetry: observe-only request tracing + metrics on the read API. These
+    # packages instrument and export spans/metrics; none is an LLM client and none is
+    # on the billing value path (see tarifhub_serving.telemetry, boundary-tested by
+    # tests/test_serving_boundary.py). The OTLP exporter is inert unless
+    # OTEL_EXPORTER_OTLP_ENDPOINT is set, so the offline suite needs no collector.
+    "opentelemetry-sdk>=1.25",
+    "opentelemetry-instrumentation-fastapi>=0.46b0",
+    "opentelemetry-exporter-otlp-proto-http>=1.25",
 ]
 
 [project.optional-dependencies]
