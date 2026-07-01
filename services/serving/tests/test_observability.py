@@ -14,6 +14,7 @@ from fastapi.testclient import TestClient
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
+from tarifhub_ingest.models.tariff_model import TariffSystem
 from tarifhub_serving import telemetry
 from tarifhub_serving.main import create_app
 
@@ -79,7 +80,9 @@ def test_request_emits_span_and_metric_offline(seeded_db_url, monkeypatch):
     client.get("/api/v1/search?q=Grundkonsultation&limit=5&system=DOESNOTEXIST")
     labels = _system_labels(metric_reader.get_metrics_data(), "serving.search.duration_ms")
     assert "other" in labels, f"unknown system must bucket to 'other', got {labels}"
-    assert labels <= {"all", "other", "TARDOC", "EAL", "SL"}, (
+    # The label ceiling is the full known-systems set (every TariffSystem value) plus the
+    # "all" (unfiltered) and "other" (unknown) buckets, never one series per arbitrary input.
+    assert labels <= {s.value for s in TariffSystem} | {"all", "other"}, (
         f"metric system labels must stay bounded, got {labels}"
     )
 
