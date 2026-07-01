@@ -1,20 +1,25 @@
 /**
  * ============================================================================
- *  DE-IDENTIFICATION BOUNDARY  —  the ONLY code in TarifGuard allowed to build
- *  an LLM-bound payload.  (AGENTS.md rule 7.)
+ *  DE-IDENTIFICATION CHECKPOINT: the ONLY code in TarifGuard that scrubs
+ *  optional free-text clinical context.  (AGENTS.md rule 7.)
  * ============================================================================
  *
- * Patient identifiers never leave Swiss infrastructure. Only de-identified coding
- * context (tariff/diagnosis codes, encounter structure) may be sent to an LLM, and
- * the request is routed via AWS Bedrock EU or Google Vertex AI EU by the backend.
+ * This module scrubs optional free-text clinical context so it can be shown to
+ * the reviewer as a de-identification audit. The scrubbed context is NEVER
+ * forwarded anywhere. The explain seam sends the tariff code only to the
+ * deterministic, record-grounded serving endpoint GET /api/v1/explain
+ * (ADR-017), which is not an LLM call.
  *
- * Nothing in this app may construct a prompt, an `explain` request, or any other
- * LLM-bound object except through {@link buildExplainPayload} below. The /explain
- * route handler calls this module first and forwards ONLY its output. If you find
- * yourself building an LLM payload anywhere else, stop — it belongs here.
+ * AWS Bedrock EU / Google Vertex AI EU is a data-residency design boundary for a
+ * future L3 patient-facing app (ADR-012), not the current explain feature.
+ *
+ * Nothing in this app may construct the de-identification audit object except
+ * through {@link buildExplainPayload} below. The explain route handler calls this
+ * module first and forwards ONLY the tariff code to serving. If you find yourself
+ * scrubbing clinical context anywhere else, stop, it belongs here.
  *
  * This is a deterministic, regex-based scrubber: it removes direct identifiers and
- * keeps the coding structure an explanation needs. It is intentionally conservative
+ * keeps the coding structure the audit needs. It is intentionally conservative
  * (over-redact rather than leak) and does not, and must not, call any model itself.
  *
  * Tariff/diagnosis codes (e.g. 00.0010, AA.00.0010, M54.5) are single-separator or
@@ -52,7 +57,7 @@ const RULES: Rule[] = [
 ];
 
 export interface DeidentResult {
-  /** The scrubbed text, safe to include in an LLM-bound payload. */
+  /** The scrubbed text, shown in the de-identification audit and never forwarded to a model. */
   text: string;
   /** Which identifier classes were found and redacted (for the audit trail / UI). */
   redactions: { rule: string; count: number }[];
@@ -79,11 +84,13 @@ export function deidentify(input: string): DeidentResult {
 }
 
 /**
- * THE ONLY sanctioned constructor of an LLM-bound payload in TarifGuard.
+ * THE ONLY sanctioned builder of the console's de-identification audit in TarifGuard.
+ * The scrubbed question/context populate the audit only and are never forwarded to a
+ * model. Only `code` reaches the deterministic serving explain endpoint (ADR-017).
  *
- * @param code      a tariff/diagnosis code (non-identifying by nature) — passed through
- * @param question  the user's natural-language question — de-identified
- * @param context   optional free-text encounter context — de-identified
+ * @param code      a tariff/diagnosis code (non-identifying by nature), passed through to serving
+ * @param question  the user's natural-language question, de-identified for the audit
+ * @param context   optional free-text encounter context, de-identified for the audit
  */
 export function buildExplainPayload(args: {
   code?: string;

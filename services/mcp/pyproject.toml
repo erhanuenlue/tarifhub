@@ -12,9 +12,12 @@ license = { text = "Proprietary" }
 authors = [{ name = "tarifhub" }]
 
 # Thin proxy: the MCP SDK + an HTTP client. No DB, no model, no math libraries.
+# pydantic-settings backs the env-driven Settings (BaseSettings); it arrives transitively
+# via mcp/pydantic but is declared explicitly because config.py imports it directly.
 dependencies = [
     "mcp>=1.2",
     "httpx>=0.27",
+    "pydantic-settings>=2.0",
 ]
 
 [project.optional-dependencies]

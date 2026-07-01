@@ -15,8 +15,9 @@ imported here. The single AI seam (``crosswalk.tarmed_tardoc.ai_rule_suggest``) 
 from __future__ import annotations
 
 from contextlib import asynccontextmanager
+from typing import Annotated
 
-from fastapi import FastAPI, Request
+from fastapi import Depends, FastAPI, Request
 
 from tarifiq import __version__
 from tarifiq.config import Settings, get_settings
@@ -30,8 +31,22 @@ from tarifiq.models.rule_model import (
     RuleValidationResult,
 )
 from tarifiq.rules.combinability import evaluate_combinability
-from tarifiq.store.frozen_client import get_frozen_store
+from tarifiq.store.frozen_client import FrozenStore, get_frozen_store
 from tarifiq.validators.rule_validator import validate_rule
+
+
+def provide_frozen_store(request: Request) -> FrozenStore:
+    """FastAPI dependency: the read-only frozen store wired onto ``app.state`` at startup.
+
+    Reading from ``request.app.state`` (rather than a module global) keeps the store bound
+    to the app the request hit, so ``create_app(settings=...)`` still selects its own store.
+    Named distinctly from ``store.frozen_client.get_frozen_store`` to avoid shadowing it.
+    """
+
+    return request.app.state.frozen_store
+
+
+StoreDep = Annotated[FrozenStore, Depends(provide_frozen_store)]
 
 
 def create_app(settings: Settings | None = None) -> FastAPI:
@@ -64,9 +79,9 @@ def create_app(settings: Settings | None = None) -> FastAPI:
 
     @app.post("/v1/combinability-check")
     def combinability_check(
-        payload: CombinabilityCheckRequest, request: Request
+        payload: CombinabilityCheckRequest, store: StoreDep
     ) -> CombinabilityCheckResult:
-        return evaluate_combinability(payload, store=request.app.state.frozen_store)
+        return evaluate_combinability(payload, store=store)
 
     @app.get("/v1/crosswalk/{tarmed_code}")
     def crosswalk(tarmed_code: str) -> CrosswalkResult:
@@ -78,8 +93,8 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return result
 
     @app.post("/v1/validate")
-    def validate(rule: CombinabilityRule, request: Request) -> RuleValidationResult:
-        return validate_rule(rule, store=request.app.state.frozen_store)
+    def validate(rule: CombinabilityRule, store: StoreDep) -> RuleValidationResult:
+        return validate_rule(rule, store=store)
 
     return app
 

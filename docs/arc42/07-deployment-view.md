@@ -120,8 +120,11 @@ described in [the AI-SE framework chapter](../method/ai-se-framework.md).
 ## Evidence 2: the full stack runs under Compose
 
 `docker compose -f docker-compose.yml --profile services --profile apps up -d` brings up eight
-independent containers. `db` and `minio` report `healthy`, and the L1 serving container answers over
-HTTP against the 11 653 frozen rows in the compose Postgres.
+independent containers. This root compose is the lighter local-development profile: it carries no
+ingestion or batch service, and its Postgres starts schema-empty (`db/schema.sql` plus
+`db/migrations/001_init.sql`, DDL only, zero seeded rows), so it proves the deployment topology,
+not data serving. `db` and `minio` report `healthy`, and the L1 serving container answers `/health`
+over HTTP.
 
 ![docker compose ps: eight independent tarifhub containers running, with a live serving smoke and point-read latency](../img/compose-ps.png)
 
@@ -137,14 +140,18 @@ meldepilot     tarifhub-meldepilot      Up              0.0.0.0:3002->3002/tcp
 minio          minio/minio:latest       Up (healthy)    0.0.0.0:9000-9001->9000-9001/tcp
 ```
 
-**Interpretation.** This is the "runnable via Compose" proof: the module
+**Interpretation.** This is the "runnable via Compose" topology proof: the module
 boundaries from the building-block view are visible as eight running containers with
-distinct ports, and `serving` returns a real frozen record verbatim (`EAL/1000`,
-`tax_points "76.5"`, trilingual designation) at p95 = 15.8 ms over 200 warm point reads,
-inside the NFR-4 target of 200 ms. Semantic search on this leg returns HTTP 501 because the
-container's embedder dimension does not match the `vector(1024)` column: honest
-unavailability, never a faked ranking (NFR-1). Latency is a host-loopback measurement on a
-single replica, not a load test. It bounds the single-record path, not concurrency.
+distinct ports. Data serving is proved separately, against a serving instance backed by a
+Postgres populated with the 11 653 full-corpus frozen rows: a DB seeded through the
+`deploy/docker-compose.yml` batch write-back loop (`--profile batch`, with `INGEST_BATCH_DB_URL`
+pointed at Postgres and the e5 1024-dim embedder) run over the full corpus, or a host-run full
+ingestion. There `serving` returns a real frozen record verbatim (`EAL/1000`, `tax_points "76.5"`,
+trilingual designation) at p95 = 15.8 ms over 200 warm point reads, inside the NFR-4 target of
+200 ms. Semantic search returns HTTP 501 whenever the serving container's embedder dimension does
+not match the `vector(1024)` column: honest unavailability, never a faked ranking (NFR-1). Latency
+is a host-loopback measurement on a single replica, not a load test. It bounds the single-record
+path, not concurrency.
 
 ## Evidence 3: the chart deploys on Kubernetes (k3d)
 
@@ -190,8 +197,9 @@ pointed at those images, `ingestion.env.TARIFHUB_DB_URL` set to a pod-local SQLi
 the stub embedder, and the batch pointed at the bundled SL sample (`ingestion.batch.system=SL`),
 the same offline path the Compose batch below uses, since the in-cluster Postgres + pgvector
 path needs the 1024-dim e5 embedder. The chart's Postgres still starts schema-empty here, so
-this is a topology and lifecycle proof, the data-serving proof being Evidence 2 under Compose.
-The live state:
+this is a topology and lifecycle proof, the data-serving proof being the populated-DB serving run
+in Evidence 2 (a Postgres seeded through the `deploy/docker-compose.yml` batch write-back loop or a
+full ingestion run, not a schema-empty bring-up). The live state:
 
 ```text
 $ kubectl get pods

@@ -48,7 +48,7 @@ Each handler emits one structured log line (level, method, path, status, correla
 
 ### Configuration injection
 
-Env-only, twelve-factor: a frozen `Settings` dataclass built fresh by `get_settings()` on every call (`services/ingestion/src/tarifhub_ingest/config.py`, mirrored in `tarifhub_serving/config.py`), so tests reconfigure via `monkeypatch.setenv` with no import-time caching. The configuration settings are `TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY` (presence alone enables the pre-freeze AI seam) and `TARIFHUB_EMBEDDINGS`.
+Env-only, twelve-factor: a pydantic-settings `BaseSettings` model per service (`services/ingestion/src/tarifhub_ingest/config.py`), each field bound to its explicit environment variable through a per-field `validation_alias` (the variable names share no common prefix), with `validate_by_name` keeping direct field-name construction working alongside the env-alias contract. This `BaseSettings` shape is uniform across all four services (ingestion, intelligence, mcp, serving). The three FastAPI services (ingestion, intelligence, serving) resolve it fresh through `get_settings()` on every call (no `lru_cache`), so tests reconfigure via `monkeypatch.setenv` with no import-time caching. The read-only MCP proxy instead resolves a process-level singleton at import (`Settings()`, read by `build_client()`), since it has no per-request settings dependency. The ingestion settings, for example, are `TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY` (presence alone enables the pre-freeze AI seam), `TARIFHUB_EMBEDDINGS`, `TARIFHUB_SAMPLE_DIR` and `TARIFHUB_AI_MODEL`.
 
 ### Health/readiness probes
 
