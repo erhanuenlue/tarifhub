@@ -287,6 +287,13 @@ def test_structured_output_call_and_fill_only_merge(monkeypatch):
     for forbidden in ("temperature", "top_p", "top_k", "thinking"):
         assert forbidden not in kwargs
 
+    # The SDK client is constructed with the RAW unwrapped key (a plain str), never the
+    # SecretStr wrapper: this pins the .get_secret_value() unwrap at the client boundary
+    # (a SecretStr is not a str subclass, so isinstance(..., str) fails on a regression).
+    api_key_arg = fake._last.init_kwargs["api_key"]
+    assert isinstance(api_key_arg, str)
+    assert api_key_arg == "sk-test"
+
     # A single user turn whose JSON payload omits every billing field by construction.
     messages = kwargs["messages"]
     assert len(messages) == 1
