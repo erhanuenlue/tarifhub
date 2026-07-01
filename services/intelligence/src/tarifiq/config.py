@@ -13,7 +13,7 @@ from __future__ import annotations
 import os
 from typing import ClassVar
 
-from pydantic import AliasChoices, Field, field_validator, model_validator
+from pydantic import AliasChoices, Field, SecretStr, field_validator, model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Base URL of the L1 TarifCore serving API (system of record for frozen tariff values).
@@ -65,7 +65,7 @@ class Settings(BaseSettings):
     # Presence of this key is the ONLY switch that could enable a live rule-suggestion
     # model (PRE-FREEZE, human-reviewed). Absent (the test/CI default) => deterministic
     # tables only, and ai_rule_suggest returns a clearly marked placeholder.
-    anthropic_api_key: str | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
+    anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     # A fixed constant, not a settings field: no env binding (avoids an accidental APP_NAME knob).
     app_name: ClassVar[str] = "tarifiq"
 

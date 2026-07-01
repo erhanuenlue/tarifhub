@@ -12,6 +12,7 @@ and no API key.
 from __future__ import annotations
 
 import pytest
+from pydantic import SecretStr
 
 from tarifhub_ingest.config import (
     DEFAULT_DB_URL,
@@ -80,3 +81,31 @@ def test_cli_embeddings_rewrap_takes_effect(clean_env):
     rewrapped = type(settings)(**{**settings.__dict__, "embeddings_backend": "e5"})
 
     assert rewrapped.embeddings_backend == "e5"
+
+
+def test_anthropic_api_key_is_masked_secret(clean_env):
+    """The provider key is a ``SecretStr``: its raw value never leaks via repr()/str().
+
+    Storing the key as a plain ``str`` risked surfacing it in a log line, a repr or a
+    traceback. ``SecretStr`` masks it everywhere except an explicit ``get_secret_value()``.
+    """
+
+    raw = "sk-ant-secret-value-should-never-print-0123456789"
+    clean_env.setenv("ANTHROPIC_API_KEY", raw)
+
+    settings = get_settings()
+
+    assert isinstance(settings.anthropic_api_key, SecretStr)
+    # Round-trips to the exact value only through the explicit accessor.
+    assert settings.anthropic_api_key.get_secret_value() == raw
+    # Masked in both representations the key could otherwise leak through.
+    assert raw not in repr(settings)
+    assert raw not in str(settings)
+
+
+def test_empty_anthropic_api_key_still_coerces_to_none(clean_env):
+    """An empty ``ANTHROPIC_API_KEY`` stays ``None`` (not ``SecretStr('')``) after the switch."""
+
+    clean_env.setenv("ANTHROPIC_API_KEY", "")
+
+    assert get_settings().anthropic_api_key is None

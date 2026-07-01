@@ -12,7 +12,7 @@ from __future__ import annotations
 
 from typing import ClassVar
 
-from pydantic import Field, field_validator
+from pydantic import Field, SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # SQLite by default => offline, zero-dependency dev & test store.
@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     )
     # Presence of this key is the ONLY switch that enables the live Claude harmonizer.
     # Absent (the test/CI default) => deterministic rules only.
-    anthropic_api_key: str | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
+    anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
     sample_dir: str | None = Field(default=None, validation_alias="TARIFHUB_SAMPLE_DIR")
     embeddings_backend: str = Field(
         default=DEFAULT_EMBEDDINGS_BACKEND, validation_alias="TARIFHUB_EMBEDDINGS"
