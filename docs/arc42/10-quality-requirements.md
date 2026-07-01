@@ -77,7 +77,7 @@ src/tarifhub_ingest/errors.py                           81      1    99%
 TOTAL                                                 1601    138    91%
 
 # services/serving: uv run --extra dev pytest --cov=tarifhub_serving
-src/tarifhub_serving/main.py           130     11    92%
+src/tarifhub_serving/main.py           139     11    92%
 src/tarifhub_serving/db.py              37      9    76%
 src/tarifhub_serving/errors.py          69      1    99%
 src/tarifhub_serving/repository.py     149     14    91%
@@ -85,7 +85,7 @@ src/tarifhub_serving/explain.py         35      0   100%
 src/tarifhub_serving/fhir.py           104      1    99%
 src/tarifhub_serving/models.py          25      0   100%
 src/tarifhub_serving/telemetry.py       49      0   100%
-TOTAL                                  614     36    94%
+TOTAL                                  623     36    94%
 
 # services/mcp: uv run --extra dev pytest --cov=server --cov=config
 config.py      23      0   100%

@@ -23,7 +23,7 @@ from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, FastAPI, Path, Query, Request
 from tarifhub_ingest.embeddings.embedder import E5_DIMENSION, get_embedder
-from tarifhub_ingest.models.tariff_model import TariffRecord
+from tarifhub_ingest.models.tariff_model import TariffRecord, TariffSystem
 
 from tarifhub_serving.config import (
     DEFAULT_LIST_LIMIT,
@@ -107,6 +107,13 @@ async def lifespan(app: FastAPI):
         yield
     finally:
         _close_pools()
+        # Flush and stop the telemetry exporters so background exporter threads do not leak
+        # and any queued spans or final metrics are flushed at shutdown. A no-op when no
+        # endpoint is configured (no span processor or metric reader was installed).
+        telemetry = getattr(app.state, "telemetry", None)
+        if telemetry is not None:
+            telemetry.tracer_provider.shutdown()
+            telemetry.meter_provider.shutdown()
 
 
 # Routes are attached to a module-level router and mounted onto the app inside
@@ -143,6 +150,21 @@ def get_repository(request: Request):
 
 RepoDep = Annotated[ServingRepository, Depends(get_repository)]
 SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+# Bound the search-latency metric's cardinality. An unauthenticated caller can pass any
+# ?system= value, so only the known tariff systems (plus "all" when unfiltered) are used
+# verbatim as the metric attribute and every other value buckets to "other". This keeps
+# the histogram's label set to a small fixed size instead of one time series per arbitrary
+# input. Observe-only: the served result is unaffected either way.
+_KNOWN_TARIFF_SYSTEMS = frozenset(s.value for s in TariffSystem)
+
+
+def _system_metric_label(system: str | None) -> str:
+    """Map a request's ``system`` filter to a bounded metric attribute value."""
+
+    if system is None:
+        return "all"
+    return system if system in _KNOWN_TARIFF_SYSTEMS else "other"
 
 
 @router.get("/health", response_model=HealthResponse, summary="Liveness probe")
@@ -422,7 +444,7 @@ def search(
     # skips this). Never read back into the served value.
     if telemetry is not None:
         elapsed_ms = (time.perf_counter() - start) * 1000.0
-        telemetry.search_latency.record(elapsed_ms, {"system": system or "all"})
+        telemetry.search_latency.record(elapsed_ms, {"system": _system_metric_label(system)})
 
     return [SearchHit(rank=i, record=r) for i, r in enumerate(records, start=1)]
 

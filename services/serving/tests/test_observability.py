@@ -36,6 +36,20 @@ def _histogram_count(metrics_data, name: str) -> int:
     return total
 
 
+def _system_labels(metrics_data, name: str) -> set:
+    """Collect the distinct ``system`` attribute values across the metric's data points."""
+
+    labels = set()
+    for resource_metric in metrics_data.resource_metrics:
+        for scope_metric in resource_metric.scope_metrics:
+            for metric in scope_metric.metrics:
+                if metric.name != name:
+                    continue
+                for point in metric.data.data_points:
+                    labels.add(point.attributes.get("system"))
+    return labels
+
+
 def test_request_emits_span_and_metric_offline(seeded_db_url, monkeypatch):
     monkeypatch.setenv("TARIFHUB_DB_URL", seeded_db_url)
     monkeypatch.delenv("OTEL_EXPORTER_OTLP_ENDPOINT", raising=False)
@@ -58,6 +72,16 @@ def test_request_emits_span_and_metric_offline(seeded_db_url, monkeypatch):
 
     count = _histogram_count(metric_reader.get_metrics_data(), "serving.search.duration_ms")
     assert count >= 1, "expected at least one serving.search.duration_ms data point"
+
+    # Cardinality guard: an unknown ?system= value must bucket to "other" rather than mint a
+    # fresh time series per arbitrary input (an unauthenticated-API memory-growth vector
+    # otherwise). The first search above used no filter, so it is labelled "all".
+    client.get("/api/v1/search?q=Grundkonsultation&limit=5&system=DOESNOTEXIST")
+    labels = _system_labels(metric_reader.get_metrics_data(), "serving.search.duration_ms")
+    assert "other" in labels, f"unknown system must bucket to 'other', got {labels}"
+    assert labels <= {"all", "other", "TARDOC", "EAL", "SL"}, (
+        f"metric system labels must stay bounded, got {labels}"
+    )
 
 
 def test_exporter_is_noop_when_endpoint_unset(monkeypatch):
