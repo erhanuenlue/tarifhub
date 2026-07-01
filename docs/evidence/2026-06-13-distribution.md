@@ -42,8 +42,10 @@ meldepilot     tarifhub-meldepilot      Up                        0.0.0.0:3002->
 minio          minio/minio:latest       Up (healthy)              0.0.0.0:9000-9001->9000-9001/tcp
 ```
 
-Functional smoke against the live serving container (`:8000`), reading the 11 653 frozen
-rows in the compose Postgres:
+Functional smoke against a serving container (`:8000`) backed by a populated Postgres, a DB
+carrying the 11 653 full-corpus frozen rows seeded through the `deploy/docker-compose.yml` batch
+write-back loop (`--profile batch`) over the full corpus or a host-run full ingestion, not the
+schema-empty root `--profile services --profile apps` bring-up shown above:
 
 ```text
 $ curl -s localhost:8000/health

@@ -1908,6 +1908,7 @@ dependencies = [
     { name = "pgvector", marker = "python_full_version >= '3.12'" },
     { name = "psycopg", extra = ["binary"], marker = "python_full_version >= '3.12'" },
     { name = "pydantic", marker = "python_full_version >= '3.12'" },
+    { name = "pydantic-settings", marker = "python_full_version >= '3.12'" },
     { name = "pytest", marker = "python_full_version >= '3.12'" },
     { name = "uvicorn", extra = ["standard"], marker = "python_full_version >= '3.12'" },
 ]
@@ -1925,6 +1926,7 @@ requires-dist = [
     { name = "pgvector", specifier = ">=0.2.5" },
     { name = "psycopg", extras = ["binary"], specifier = ">=3.1" },
     { name = "pydantic", specifier = ">=2.6" },
+    { name = "pydantic-settings", specifier = ">=2.2" },
     { name = "pytest", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
@@ -1940,6 +1942,7 @@ source = { editable = "." }
 dependencies = [
     { name = "httpx", marker = "python_full_version >= '3.12'" },
     { name = "mcp", marker = "python_full_version >= '3.12'" },
+    { name = "pydantic-settings", marker = "python_full_version >= '3.12'" },
 ]
 
 [package.optional-dependencies]
@@ -1956,6 +1959,7 @@ requires-dist = [
     { name = "fastapi", marker = "extra == 'dev'", specifier = ">=0.110" },
     { name = "httpx", specifier = ">=0.27" },
     { name = "mcp", specifier = ">=1.2" },
+    { name = "pydantic-settings", specifier = ">=2.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "tarifhub-ingest", marker = "extra == 'dev'", editable = "../ingestion" },
@@ -1974,6 +1978,7 @@ dependencies = [
     { name = "opentelemetry-sdk", marker = "python_full_version >= '3.12'" },
     { name = "psycopg", extra = ["binary", "pool"], marker = "python_full_version >= '3.12'" },
     { name = "pydantic", marker = "python_full_version >= '3.12'" },
+    { name = "pydantic-settings", marker = "python_full_version >= '3.12'" },
     { name = "tarifhub-ingest", marker = "python_full_version >= '3.12'" },
     { name = "uvicorn", extra = ["standard"], marker = "python_full_version >= '3.12'" },
 ]
@@ -1987,6 +1992,7 @@ requires-dist = [
     { name = "opentelemetry-sdk", specifier = ">=1.25" },
     { name = "psycopg", extras = ["binary", "pool"], specifier = ">=3.1" },
     { name = "pydantic", specifier = ">=2.6" },
+    { name = "pydantic-settings", specifier = ">=2.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },

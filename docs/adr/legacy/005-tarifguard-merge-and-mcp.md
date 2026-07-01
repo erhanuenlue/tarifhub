@@ -4,6 +4,8 @@
 - Date: 2026-06
 
 > **Superseded numbering.** This is repo-era ADR-005 (pre-register). The consolidated 2026-06 register renumbered all decisions — see [the mapping](README.md).
+>
+> **Superseded (explain design) by ADR-017.** The shipped explain seam is deterministic and record-grounded (serving `GET /api/v1/explain`), not an LLM call via AWS Bedrock EU or Google Vertex AI EU. The de-identified free-text is retained for audit only and is never forwarded, and the de-identification residency boundary is restated in ADR-012. The Bedrock/Vertex explain design below is kept as historical record.
 
 ## Context
 

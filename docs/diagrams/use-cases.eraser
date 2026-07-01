@@ -1,11 +1,11 @@
 // diagramType: flowchart-diagram
 // Eraser /render/elements (scale 3, theme light, colorMode pastel). The embedded .svg wraps
 // this PNG render (the Eraser API/MCP export PNG only); regenerate by re-feeding this DSL.
-// Status honesty: amber (orange) = not yet fully live. UC-09 partial.
-// UC-05 (point-in-time / diff) is live this release: kept green, no amber marker.
-// The amber key lives in the title (Eraser drops disconnected legend nodes from the render;
-// the full status catalogue is the arc42 section 1 use-case table).
-title tarifhub use cases (arc42 section 1). Amber = not yet fully live: UC-09 partial.
+// Status honesty: all use cases are live this release; no amber (not-yet-live) markers.
+// UC-05 (point-in-time / diff) and UC-09 (labelled AI explain) are both live: kept green.
+// Eraser drops disconnected legend nodes from the render; the full status catalogue is the
+// arc42 section 1 use-case table.
+title tarifhub use cases (arc42 section 1). All use cases live this release.
 direction right
 colorMode pastel
 typeface clean
@@ -25,7 +25,7 @@ tarifhub [color: green, label: "tarifhub"] {
   UC06 [shape: oval, color: green, label: "UC-06 Semantic search"]
   UC07 [shape: oval, color: green, label: "UC-07 MCP get/search"]
   UC08 [shape: oval, color: green, label: "UC-08 Console master-detail lookup"]
-  UC09 [shape: oval, color: orange, label: "UC-09 Explain (labelled AI) (partial)"]
+  UC09 [shape: oval, color: green, label: "UC-09 Explain (labelled AI)"]
 }
 
 Operator > UC01

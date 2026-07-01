@@ -7,9 +7,10 @@ only configuration is where that API lives and how the MCP transport is exposed.
 from __future__ import annotations
 
 import os
-from dataclasses import dataclass
 
 import httpx
+from pydantic import Field, field_validator, model_validator
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Sane per-phase defaults: a short connect budget fails fast when serving is unreachable,
 # a longer read budget tolerates a slower search query. A single legacy MCP_HTTP_TIMEOUT,
@@ -18,37 +19,74 @@ DEFAULT_CONNECT_TIMEOUT = 5.0
 DEFAULT_READ_TIMEOUT = 30.0
 
 
-@dataclass(frozen=True)
-class Settings:
-    """Resolved settings (immutable)."""
+class Settings(BaseSettings):
+    """Resolved settings (immutable), read from the environment.
 
-    serving_base_url: str
-    connect_timeout: float
-    read_timeout: float
-    transport: str
-    host: str
-    port: int
+    Each field binds to its historical environment variable via ``validation_alias``, so
+    the env contract is byte-for-byte identical to the previous ``from_env`` dataclass.
+    """
+
+    # ``validate_by_name`` keeps direct field-name construction working alongside the
+    # env-alias contract (``validate_by_alias`` stays at its default True), matching the
+    # other services so all four construct uniformly.
+    model_config = SettingsConfigDict(extra="ignore", frozen=True, validate_by_name=True)
+
+    # Base URL of the FastAPI serving service (system of record for frozen values).
+    serving_base_url: str = Field(
+        default="http://localhost:8000", validation_alias="SERVING_BASE_URL"
+    )
+    connect_timeout: float = Field(
+        default=DEFAULT_CONNECT_TIMEOUT, validation_alias="MCP_HTTP_CONNECT_TIMEOUT"
+    )
+    read_timeout: float = Field(
+        default=DEFAULT_READ_TIMEOUT, validation_alias="MCP_HTTP_READ_TIMEOUT"
+    )
+    # "streamable-http" for the container/Service; "stdio" for a local agent.
+    transport: str = Field(default="streamable-http", validation_alias="MCP_TRANSPORT")
+    host: str = Field(default="0.0.0.0", validation_alias="MCP_HOST")
+    port: int = Field(default=8090, validation_alias="MCP_PORT")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _seed_blanket_timeout(cls, data: object) -> object:
+        """Seed both timeout phases from the legacy blanket MCP_HTTP_TIMEOUT.
+
+        A single MCP_HTTP_TIMEOUT (legacy, blanket) seeds both phases when present, but an
+        explicit per-phase value always wins for its own phase. A phase is "explicit" when
+        the incoming init ``data`` provides it (by field name OR by alias) or its own env
+        variable is set, so the blanket only fills a phase that is otherwise unspecified.
+        The alias-keyed inputs are written so the field validation that follows picks them
+        up exactly as if they had been set in the env.
+        """
+
+        blanket = os.environ.get("MCP_HTTP_TIMEOUT")
+        if blanket is not None and isinstance(data, dict):
+            for field_name, alias in (
+                ("connect_timeout", "MCP_HTTP_CONNECT_TIMEOUT"),
+                ("read_timeout", "MCP_HTTP_READ_TIMEOUT"),
+            ):
+                provided = (
+                    field_name in data or alias in data or os.environ.get(alias) is not None
+                )
+                if not provided:
+                    data[alias] = blanket
+        return data
+
+    @field_validator("serving_base_url", mode="after")
+    @classmethod
+    def _strip_trailing_slash(cls, value: str) -> str:
+        """Normalise the base URL so a configured trailing slash never doubles a path."""
+
+        return value.rstrip("/")
 
     @classmethod
     def from_env(cls) -> "Settings":
-        # A single MCP_HTTP_TIMEOUT (legacy, blanket) seeds both phases when present, and
-        # the connect and read budgets can each be overridden independently for tuning.
-        blanket = os.environ.get("MCP_HTTP_TIMEOUT")
-        connect_default = blanket if blanket is not None else str(DEFAULT_CONNECT_TIMEOUT)
-        read_default = blanket if blanket is not None else str(DEFAULT_READ_TIMEOUT)
-        return cls(
-            # Base URL of the FastAPI serving service (system of record for frozen values).
-            serving_base_url=os.environ.get("SERVING_BASE_URL", "http://localhost:8000").rstrip("/"),
-            connect_timeout=float(os.environ.get("MCP_HTTP_CONNECT_TIMEOUT", connect_default)),
-            read_timeout=float(os.environ.get("MCP_HTTP_READ_TIMEOUT", read_default)),
-            # "streamable-http" for the container/Service; "stdio" for a local agent.
-            transport=os.environ.get("MCP_TRANSPORT", "streamable-http"),
-            host=os.environ.get("MCP_HOST", "0.0.0.0"),
-            port=int(os.environ.get("MCP_PORT", "8090")),
-        )
+        """Thin alias for ``Settings()`` kept for callers/tests using the old constructor."""
+
+        return cls()
 
 
-settings = Settings.from_env()
+settings = Settings()
 
 
 def build_client(transport: httpx.BaseTransport | None = None) -> httpx.AsyncClient:

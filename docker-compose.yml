@@ -28,7 +28,7 @@ services:
       - "5432:5432"
     volumes:
       - tarifhub-db-data:/var/lib/postgresql/data
-      # Schema + seed migrations are applied on first start (alphabetical order).
+      # Schema migrations (DDL only, no seed data) applied on first start (alphabetical order).
       - ./db/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
       - ./db/migrations/001_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
     healthcheck:

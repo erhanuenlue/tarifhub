@@ -19,6 +19,9 @@ dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
     "pydantic>=2.6",
+    # Env-sourced Settings (config.py). Same family/version floor as ingestion; imports
+    # no LLM client, so it stays clear of the billing value path (boundary-tested).
+    "pydantic-settings>=2.2",
     # db.py imports psycopg directly for the Postgres read path; declare it explicitly
     # rather than relying on it transitively via tarifhub-ingest. Same family as ingestion.
     # The `pool` extra pulls in psycopg_pool for the per-request connection pool (db.py

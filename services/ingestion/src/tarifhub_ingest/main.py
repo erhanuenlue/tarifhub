@@ -21,7 +21,7 @@ from __future__ import annotations
 from contextlib import asynccontextmanager
 from typing import Annotated
 
-from fastapi import FastAPI, Query, Request
+from fastapi import Depends, FastAPI, Query, Request
 from pydantic import BaseModel
 
 from tarifhub_ingest import __version__
@@ -63,6 +63,34 @@ class IngestSampleResponse(BaseModel):
     tariff_codes: list[str]
 
 
+# Request-scoped providers. The lifespan (below) populates ``app.state`` once at
+# startup; these expose those singletons to the routes via ``Depends`` instead of the
+# routes reaching into ``request.app.state`` directly (mirrors the serving layer). The
+# settings provider deliberately reads ``app.state.settings`` rather than calling
+# ``config.get_settings()`` so the ``create_app(settings=...)`` override keeps working.
+def get_repository(request: Request) -> TariffRepository:
+    """Return the read/write repository bound to the app's startup connection."""
+
+    return request.app.state.repo
+
+
+def get_audit_logger(request: Request) -> AuditLogger:
+    """Return the append-only audit logger bound to the app's startup connection."""
+
+    return request.app.state.audit
+
+
+def get_active_settings(request: Request) -> Settings:
+    """Return the settings resolved at startup (honours the create_app override)."""
+
+    return request.app.state.settings
+
+
+RepoDep = Annotated[TariffRepository, Depends(get_repository)]
+AuditDep = Annotated[AuditLogger, Depends(get_audit_logger)]
+SettingsDep = Annotated[Settings, Depends(get_active_settings)]
+
+
 def create_app(settings: Settings | None = None) -> FastAPI:
     """Application factory. Settings resolve at startup so tests can set env first."""
 
@@ -100,13 +128,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         return {"status": "ok", "service": "tarifhub-ingest", "version": __version__}
 
     @app.get("/tariffs")
-    def list_tariffs(request: Request) -> list[dict]:
-        repo: TariffRepository = request.app.state.repo
+    def list_tariffs(repo: RepoDep) -> list[dict]:
         return [record.model_dump(mode="json") for record in repo.list_all()]
 
     @app.get("/tariffs/{tariff_code}")
-    def get_tariff(tariff_code: str, request: Request) -> dict:
-        repo: TariffRepository = request.app.state.repo
+    def get_tariff(tariff_code: str, repo: RepoDep) -> dict:
         record = repo.get(tariff_code)
         if record is None:
             raise TariffCodeNotFound(f"tariff_code {tariff_code!r} not found")
@@ -118,21 +144,20 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         summary="Run the offline sample pipeline (set refill=true to re-fill AI gaps)",
     )
     def ingest_sample(
-        request: Request,
+        repo: RepoDep,
+        audit: AuditDep,
+        settings: SettingsDep,
         refill: Annotated[
             bool,
             Query(description="Bypass AI fill-reuse and re-run ai_map for changed/unchanged rows"),
         ] = False,
     ) -> IngestSampleResponse:
-        active: Settings = request.app.state.settings
-        repo: TariffRepository = request.app.state.repo
-        audit: AuditLogger = request.app.state.audit
-        sample_dir = active.sample_dir or default_sample_dir()
+        sample_dir = settings.sample_dir or default_sample_dir()
         specs = discover_samples(sample_dir)
         if not specs:
             raise SampleSourcesNotFound(f"no sample sources under {sample_dir}")
         report = run_pipeline(
-            specs, repo, audit, settings=active, embedder=get_embedder(active), refill=refill
+            specs, repo, audit, settings=settings, embedder=get_embedder(settings), refill=refill
         )
         return IngestSampleResponse(
             processed=report.processed,
@@ -148,7 +173,7 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response_model=list[ReviewItem],
         summary="List flagged records awaiting human review (the review queue)",
     )
-    def review_queue(request: Request) -> list[ReviewItem]:
+    def review_queue(repo: RepoDep, settings: SettingsDep) -> list[ReviewItem]:
         """Return the latest flagged version of each key, shaped to the console contract.
 
         Read-only: it never mutates a record. Each item carries the per-field
@@ -156,8 +181,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         proposing model, exactly as the review form consumes it.
         """
 
-        repo: TariffRepository = request.app.state.repo
-        settings: Settings = request.app.state.settings
         return [
             to_review_item(record, threshold=settings.review_threshold)
             for record in repo.list_flagged()
@@ -168,7 +191,12 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         response_model=ReviewResult,
         summary="Apply a human approve/correct decision and freeze a new version",
     )
-    def submit_review(decision: ReviewDecision, request: Request) -> ReviewResult:
+    def submit_review(
+        decision: ReviewDecision,
+        repo: RepoDep,
+        audit: AuditDep,
+        settings: SettingsDep,
+    ) -> ReviewResult:
         """Close the human-in-the-loop: a reviewed decision becomes a new frozen version.
 
         Loads the current flagged version, rejects any billing-field correction (400),
@@ -177,10 +205,6 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         persists an immutable new version (``version + 1``, new ``record_hash``) with an
         appended audit event. The prior version and the audit log are never rewritten.
         """
-
-        repo: TariffRepository = request.app.state.repo
-        audit: AuditLogger = request.app.state.audit
-        settings: Settings = request.app.state.settings
 
         record = repo.get(decision.tariff_code, decision.tariff_system)
         if record is None:
