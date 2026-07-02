@@ -13,13 +13,14 @@ authors = [{ name = "tarifhub" }]
 
 # Runtime dependencies. Rule EVALUATION must run fully OFFLINE for tests:
 # no live LLM, no network. The frozen tariff store has a bundled offline stub.
+# httpx is runtime here (frozen_client's live serving reads), unlike ingestion
+# where it is test-only; pytest lives in the dev extra like the other services.
 dependencies = [
     "fastapi>=0.110",
     "uvicorn[standard]>=0.29",
     "pydantic>=2.6",
     "pydantic-settings>=2.2",
     "httpx>=0.27",
-    "pytest>=8.0",
 ]
 
 [project.optional-dependencies]
@@ -31,6 +32,7 @@ ai = [
     # "anthropic>=0.39",
 ]
 dev = [
+    "pytest>=8.0",
     "ruff>=0.4",
 ]
 
@@ -49,3 +51,19 @@ addopts = "-q"
 line-length = 100
 src = ["src", "tests"]
 target-version = "py312"
+
+[tool.ruff.lint]
+# Cover every rule family the source suppresses inline (# noqa: PLC0415, BLE001,
+# N815, D102, PLR0913) so "all checks passed" means checked under the ruleset those
+# suppressions reference, not the lighter E/F default. RUF100 keeps the suppressions
+# honest: an unused noqa fails the lint.
+select = ["E4", "E7", "E9", "F", "N", "BLE", "PLC", "PLR0913", "D102", "RUF100"]
+# Domain exception names (CrosswalkNotFound, ...) are the documented problem+json
+# contract; renaming them for the Error suffix would break the API docs, so the
+# convention is waived explicitly rather than left unlinted.
+ignore = ["N818"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests import inside functions deliberately (env/monkeypatch first, import second)
+# and fixture builders take many keyword parameters; docstring rules stay on for src.
+"tests/**" = ["PLC0415", "D102", "PLR0913"]
