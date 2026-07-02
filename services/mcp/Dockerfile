@@ -26,7 +26,7 @@ ENV PATH="/opt/venv/bin:$PATH" \
     MCP_TRANSPORT="streamable-http" \
     MCP_HOST="0.0.0.0" \
     MCP_PORT="8090" \
-    SERVING_BASE_URL="http://tarifhub-serving:8080"
+    SERVING_BASE_URL="http://tarifhub-serving:8000"
 
 RUN useradd --create-home --uid 10001 tarifmcp
 

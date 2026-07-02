@@ -17,7 +17,8 @@ from pydantic import AliasChoices, Field, SecretStr, field_validator, model_vali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Base URL of the L1 TarifCore serving API (system of record for frozen tariff values).
-DEFAULT_SERVING_BASE_URL = "http://localhost:8080"
+# 8000 is the port serving actually binds (Dockerfile CMD and compose alike).
+DEFAULT_SERVING_BASE_URL = "http://localhost:8000"
 DEFAULT_REQUEST_TIMEOUT = 10.0
 # Offline-first, like the ingestion service: the bundled frozen store is used unless an
 # operator explicitly opts into reading live frozen records (TARIFIQ_OFFLINE=0 + a

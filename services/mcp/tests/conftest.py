@@ -9,7 +9,8 @@ Seeding mirrors ``services/serving/tests/conftest.py`` exactly (freeze each reco
 store it with a stub-embedder passage embedding built from the same
 ``"{system} {code} {designation.de}"`` recipe the ingestion pipeline uses) so the offline
 SQLite search fallback can rank the seeded rows. These imports are TEST-ONLY: the MCP
-runtime code (``server.py``, ``config.py``) imports neither serving nor ingestion.
+runtime code (``tarifhub_mcp.server``, ``tarifhub_mcp.config``) imports neither serving
+nor ingestion.
 """
 
 from __future__ import annotations
