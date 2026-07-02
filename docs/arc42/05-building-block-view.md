@@ -87,6 +87,6 @@ The approve action, where a proposal becomes a frozen record with a new version 
 
 ![TarifGuard review freeze](../img/console/review-frozen.png)
 
-Explain panel: a record-grounded explanation on the labelled AI surface. The input is a tariff code only.
+Explain panel (UC-09, live): a record-grounded explanation on the labelled AI surface, assembled verbatim from the frozen record versions and prefixed `[deterministic]`. The input is a tariff code only; any optional clinical context is de-identified server-side and never sent to a model.
 
 ![TarifGuard explain panel](../img/console/explain-panel.png)
