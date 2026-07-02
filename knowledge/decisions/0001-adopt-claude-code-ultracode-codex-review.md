@@ -8,6 +8,11 @@ tags: [adr, dev-setup, claude-code, codex, determinism]
 
 # 0001 — Claude Code (/ultracode) + Codex review + autonomous git
 
+> **Superseded 2026-06-11 by AGENTS.md (Python-first core, see ADR-001).** The
+> "Python + Quarkus + Next.js" stack description below is historical; the platform
+> is Python + TypeScript with no JVM components. The workflow decision this note
+> records (Claude Code + Codex review + autonomous git) remains in force.
+
 > ADR-style note for the **dev setup**. (Product/architecture ADRs live in `docs/adr/`; this
 > vault note records the *workflow* decision.)
 

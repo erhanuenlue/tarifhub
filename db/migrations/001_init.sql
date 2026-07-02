@@ -1,6 +1,7 @@
 -- Migration 001 — initial schema.
--- Ordered, forward-only migration. Applied by scripts/init_db.sh (psql) or as a
--- docker-entrypoint init script. Mirrors db/schema.sql for a fresh database.
+-- Ordered, forward-only migration; the authoritative baseline DDL. Applied by
+-- scripts/init_db.sh (psql) or as a docker-entrypoint init script. db/schema.sql is
+-- the consolidated current-state snapshot of this chain (db/migrations/README.md).
 
 BEGIN;
 

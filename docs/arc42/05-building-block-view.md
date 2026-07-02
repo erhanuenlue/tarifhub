@@ -57,7 +57,7 @@ The ingestion service is the only place where AI runs, and only at the `map` ste
 
 Two tables. `tariff` holds immutable versioned rows: `UNIQUE(tariff_system, tariff_code, version)` makes versions explicit, `record_hash UNIQUE` (SHA-256 over sorted canonical content) is the integrity anchor and idempotency key, and `embedding vector(1024)` carries the pgvector HNSW cosine index for semantic search. `audit_log` is append-only lineage, keyed by `record_hash`: every freeze and skipped re-ingest leaves an event.
 
-Canonical source of truth: `db/schema.sql` in the repository, mirrored in SQLite for offline tests. The field set is locked additive-only per [ADR-003](../adr/003-canonical-record-model.md). The Pydantic model (`models/tariff_model.py`, `TariffRecord`) is the same shape end-to-end.
+Canonical DDL: the forward-only migrations in `db/migrations/` (`001_init.sql` is the greenfield baseline), with `db/schema.sql` as the consolidated current-state snapshot that CI and the offline parity harnesses apply, mirrored in SQLite for offline tests. The field set is locked additive-only per [ADR-003](../adr/003-canonical-record-model.md). The Pydantic model (`models/tariff_model.py`, `TariffRecord`) is the same shape end-to-end.
 
 ## Level 3: TarifGuard console components
 

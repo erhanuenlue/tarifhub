@@ -1,7 +1,12 @@
 -- tarifhub canonical schema (PostgreSQL 16 + pgvector).
--- Consolidated current-state view of the schema. Ordered changes live in
--- db/migrations/. The Python canonical model and the FastAPI serving layer map onto
--- these columns; they are a FROZEN contract — extend additively, never break.
+-- Current-state snapshot of the ordered, forward-only migrations in db/migrations/
+-- (001_init.sql is the authoritative baseline DDL; this file restates the chain so
+-- CI, the offline parity harnesses and reviewers can apply or read it as one file).
+-- A schema change lands as a new migration first, then this snapshot is updated to
+-- match in the same PR (see db/migrations/README.md). The compose entrypoints mount
+-- it as 00_schema.sql ahead of the idempotent migrations. The Python canonical model
+-- and the FastAPI serving layer map onto these columns; they are a FROZEN contract:
+-- extend additively, never break.
 
 CREATE EXTENSION IF NOT EXISTS vector;
 
