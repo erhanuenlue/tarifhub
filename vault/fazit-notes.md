@@ -8,14 +8,14 @@
 
 ## 2026-06-13
 - Veto moment: I rejected parallel implementation worktrees for Block-05 and kept the tightly-coupled console contract and brand truth-up in the orchestrator.
-- Correction: codex gpt-5.5 found the client-only billing-field guard that earlier AI reviews missed, and I accepted the finding by adding server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 0524f9a).
+- Correction: codex gpt-5.5 found the client-only billing-field guard that earlier AI reviews missed, and I accepted the finding by adding server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 265b2e3).
 
 ## 2026-06-13
 - Veto: I did not delegate the tightly-coupled console implementation to parallel worktrees, and kept the contract and brand layer in-orchestrator on Opus 4.8.
-- Correction: codex gpt-5.5 found that earlier AI review under-weighted the client-only billing guard, and I accepted the finding by adding server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 0524f9a).
+- Correction: codex gpt-5.5 found that earlier AI review under-weighted the client-only billing guard, and I accepted the finding by adding server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 265b2e3).
 
 ## 2026-06-13
-- I did not delegate the billing-value guard to AI: codex gpt-5.5 found the client-only guard, I accepted the finding and added server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 0524f9a).
+- I did not delegate the billing-value guard to AI: codex gpt-5.5 found the client-only guard, I accepted the finding and added server-side `BILLING_FIELDS` rejection in `app/api/review/route.ts` (commit 265b2e3).
 - I corrected an AI-backed documentation overclaim before submission evidence: the L2 intelligence service is containerised and runs, but remains post-CAS and outside the graded MVP value path (commit 080c9e0).
 
 ## 2026-06-13
@@ -23,7 +23,7 @@
 - I corrected my own crit-17 overclaim: L2 intelligence is containerised and runs, but the rules feature stays post-CAS and outside the graded MVP value path.
 
 ## 2026-06-13
-- I did not delegate the freeze line, value-path safety or final acceptance to AI; the billing guard correction in 0524f9a shows why server-side gates stayed human-owned.
+- I did not delegate the freeze line, value-path safety or final acceptance to AI; the billing guard correction in 265b2e3 shows why server-side gates stayed human-owned.
 - The biggest correction was evidence honesty: I accepted review findings where the draft overclaimed deployment scope or SQLite search behaviour, then reconciled the docs in 080c9e0 instead of defending the first draft.
 
 ## 2026-06-13
