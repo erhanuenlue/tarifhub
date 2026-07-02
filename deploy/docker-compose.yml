@@ -1,4 +1,5 @@
 # Local development stack. Default: just the database.
+# Deliberate two-file split (docs/arc42/07-deployment-view.md): this file is the wired review-loop (app) + batch deployment; the lighter read-side development stack is the root docker-compose.yml.
 #   docker compose -f deploy/docker-compose.yml up -d db
 # Profiles:
 #   --profile app      the wired ingestion review API + serving + console stack (the review loop)

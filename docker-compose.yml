@@ -1,4 +1,5 @@
 # Local development stack for tarifhub.
+# Deliberate two-file split (docs/arc42/07-deployment-view.md): this root file is the light read-side development stack (no ingestion); the wired review-loop + batch deployment is deploy/docker-compose.yml.
 #   db        -> PostgreSQL 16 with pgvector (system of record + vector search)
 #   minio     -> S3-compatible object store for raw source artifacts
 #   intelligence       -> L2 TarifIQ service, in the "services" profile (opt-in)

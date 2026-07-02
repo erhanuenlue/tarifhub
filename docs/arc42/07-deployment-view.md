@@ -110,7 +110,12 @@ naming to docker.io/library/tarifhub-tarifguard:ci    done
 four services and three apps each produce an independent image, so the "independently deployable
 containers" property is proven by the pipeline, not asserted. The serving image is built
 from the repo root because it vendors the sibling `ingestion` package (the canonical
-`TariffRecord` + embedder), keeping one model end-to-end.
+`TariffRecord` + embedder), keeping one model end-to-end. These CI images are built and
+tagged in the runner only: `ghcr.io/tarifhub/*` is the intended registry, and the
+automated GHCR push is decided but not yet wired
+([ADR-010](../adr/010-github-actions-devsecops.md)), which is why the Kubernetes
+evidence below imports locally built images (`k3d image import`) instead of pulling
+from a registry.
 
 This image build is one stage of the wider CI/CD and quality-gate machinery that governs the
 AI-assisted build: lint and tests, the determinism boundary tests, secrets and vulnerability
