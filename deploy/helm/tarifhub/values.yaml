@@ -2,8 +2,9 @@
 #
 # The image repositories below name the intended registry (ghcr.io/tarifhub/*,
 # ADR-010). CI builds every sub-system image locally (the `images` job) but the
-# automated GHCR push is not yet wired, so an install runs on locally built
-# images, which every pullPolicy: IfNotPresent supports.
+# automated GHCR push is not yet wired: an install therefore imports locally
+# built images (k3d image import) and points the chart at them with value
+# overrides for repository and tag, as the k3d evidence run did.
 
 nameOverride: ""
 fullnameOverride: ""
