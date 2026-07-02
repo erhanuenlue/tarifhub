@@ -79,8 +79,9 @@ src/tarifhub_ingest/validators/tariff_validator.py      28      0   100%
 src/tarifhub_ingest/storage/db.py                       35      4    89%
 src/tarifhub_ingest/storage/tariff_repository.py        73      3    96%
 src/tarifhub_ingest/review.py                          153     11    93%
+src/tarifhub_ingest/review_service.py                   35      1    97%
 src/tarifhub_ingest/errors.py                           81      1    99%
-TOTAL                                                 1607    138    91%
+TOTAL                                                 1626    139    91%
 
 # services/serving: uv run --extra dev pytest --cov=tarifhub_serving
 src/tarifhub_serving/main.py           139     11    92%
@@ -93,16 +94,17 @@ src/tarifhub_serving/models.py          25      0   100%
 src/tarifhub_serving/telemetry.py       49      0   100%
 TOTAL                                  624     36    94%
 
-# services/mcp: uv run --extra dev pytest --cov=server --cov=config
-config.py      35      0   100%
-server.py      28      4    86%
-TOTAL          63      4    94%
+# services/mcp: uv run --extra dev pytest --cov=tarifhub_mcp
+src/tarifhub_mcp/config.py        35      0   100%
+src/tarifhub_mcp/server.py        28      4    86%
+TOTAL                             64      4    94%
 ```
 
 **Interpretation.** Every named core logic module is well above the NFR-6 target of 80 %: the
 model, freeze, pipeline and validator are at 100 %, the mapper at 98 %, the serving read
 repository at 91 %, the serving routes (`main`) at 92 % and the new observability module (`telemetry.py`) at 100 %. The human-review write-back
-(`review.py`) at 93 % and the centralised error layer (`errors.py`) at 99 % clear the floor
+(`review.py` at 93 %, its `review_service.py` orchestration at 97 %) and the centralised
+error layer (`errors.py`) at 99 % clear the floor
 comfortably. The one module below the line is the serving connection-pool facade (`db.py`),
 added in this measurement, at 76 %. The residual misses are bounded and named, not blind spots, and on the serving side
 they are all the Postgres-only legs that need a live driver and server and run in the
