@@ -19,9 +19,11 @@ console addresses fields with dotted keys (``designation.de``) while the canonic
 ``ai_map`` provenance in ``metadata["ai_fields"]`` uses underscore tokens
 (``designation_fr``). The maps below are the single source of truth for that mapping.
 
-The actual freeze/validate/persist/audit orchestration lives in ``main.py`` (the HTTP
-surface) so that the value-path side effects stay where the determinism-boundary test
-already scans them; this module stays a pure, importable unit.
+The actual freeze/validate/persist/audit orchestration lives in ``review_service.py``
+(called by the ``main.py`` route) so this module stays a pure, importable unit. The
+value-path side effects remain boundary-covered: ``tests/test_value_path_boundary.py``
+AST-scans every module in the package — the service module included — while the frozen
+``tests/test_review_boundary.py`` keeps pinning this module and ``main.py``.
 """
 
 from __future__ import annotations
