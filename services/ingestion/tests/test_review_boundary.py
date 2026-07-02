@@ -1,8 +1,10 @@
 """Architectural guard: the human-in-the-loop review write-back imports no LLM client.
 
 The intelligence on the review write-back path is the HUMAN, never an LLM. This AST-scans
-the new ``review`` module (and re-affirms ``main.py``, which hosts the endpoints) and
-asserts none of them import anthropic / openai / cohere / langchain / llama_index.
+the ``review`` module, the ``review_service`` orchestration it feeds (the extracted
+load -> validate -> freeze -> store -> audit path) and ``main.py``, which hosts the
+endpoints, and asserts none of them import anthropic / openai / cohere / langchain /
+llama_index.
 
 It extends the determinism boundary to the review surface. The original
 ``test_determinism_boundary.py`` is frozen by the ``guard_frozen`` hook and cannot be
@@ -22,6 +24,7 @@ _FORBIDDEN = {"anthropic", "openai", "cohere", "langchain", "llama_index"}
 _PKG_ROOT = Path(tarifhub_ingest.__file__).resolve().parent
 _REVIEW_PATH_FILES = (
     _PKG_ROOT / "review.py",
+    _PKG_ROOT / "review_service.py",
     _PKG_ROOT / "main.py",
 )
 
