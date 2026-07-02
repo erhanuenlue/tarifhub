@@ -6,7 +6,7 @@
 The codebase is solo-owned and largely AI-produced, so quality and supply-chain assurance cannot rest on human discipline: every gate must be automated and visible in logs a grader can read. Above all, the inviolable rule ("No AI computes or mutates a billing value at serve time.") needs machine enforcement on every push, not a code-review convention.
 
 ## Decision
-We use GitHub Actions as the single CI/CD pipeline: per-service ruff + pytest (offline suite) with the determinism-boundary tests (`test_determinism_boundary.py`, `test_serving_boundary.py`) as a named, visible step, then the DevSecOps gates (gitleaks for secrets, Trivy filesystem scan failing on HIGH/CRITICAL, Syft SBOM uploaded per run), then, on `main`, sub-system image builds pushed to GHCR followed by a gated Helm deploy.
+We use GitHub Actions as the single CI/CD pipeline: per-service ruff + pytest (offline suite) with the determinism-boundary tests (`test_determinism_boundary.py`, `test_serving_boundary.py`) as a named, visible step, then the DevSecOps gates (gitleaks for secrets, Trivy filesystem scan failing on HIGH/CRITICAL, Syft SBOM uploaded per run), then, on `main`, sub-system image builds (the GHCR push and the gated Helm deploy are decided but not yet wired, see Consequences).
 
 ## Alternatives weighed
 - **Manual gates (review-only)**: does not scale to AI-volume diffs and leaves no supply-chain evidence. A human forgetting a scan is exactly the failure mode to design out.

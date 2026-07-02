@@ -21,7 +21,7 @@ vault/                   CAS evidence: daily/ journal, decision-matrix.md, fazit
 
 ## Stack
 
-Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft → GHCR) · OpenTelemetry → Prometheus/Grafana + Sentry (decided, not yet instrumented; ADR-011). ADR register: `docs/adr/` (19 decisions; ADR-01 Python-first, ADR-13 demo scope).
+Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010) · OpenTelemetry → Prometheus/Grafana + Sentry (decided, not yet instrumented; ADR-011). ADR register: `docs/adr/` (19 decisions; ADR-01 Python-first, ADR-13 demo scope).
 
 ## Commands
 

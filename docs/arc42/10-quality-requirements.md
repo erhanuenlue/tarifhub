@@ -11,7 +11,7 @@ Targets from Architecture v2.1 §12, carried as stable ids NFR-1…NFR-6. Each r
 | NFR-3 | Harmonisation review rate | <15% flagged on the two BAG sources | `PipelineReport` flagged/frozen ratio on full live ingests, cross-checked against `audit_log` | EAL 0.0 % (1 279), SL 1.08 % (111/10 299), runs 2026-06-11 | [ADR-005](../adr/005-single-ai-seam.md) (confidence scoring), [ADR-013](../adr/013-demo-scope.md) (review loop scope) |
 | NFR-4 | API read latency | p95 < 200 ms single-record (cached, measured), < 500 ms search (design budget, not yet measured) | p95 over repeated requests against the live compose serving container | **single-record measured 2026-06-13**: p95 **15.8 ms** (p50 10.1 ms) over n=200 warm reads against the running container, well inside the 200 ms target. This is a host-loopback, single-replica measurement over warm reads, not a load test: it bounds the single-record path, not concurrency (see the [§7](07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose) caveat). The search-latency p95 is a stated design budget, not yet measured (method defined, see [§7](07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose)) | [ADR-002](../adr/002-freeze-line-decomposition.md) (read side isolated), [ADR-006](../adr/006-postgres-pgvector.md) (point-read store) |
 | NFR-5 | Freshness | New source version frozen + served within 24 h of publication (operational goal) | Full-ingest pipeline wall clock as a **bounding proxy**. It measures end-to-end **processing time** (load to frozen-and-served), not the publish-to-serve latency from BAG's release, which also depends on when a run is triggered. A processing time orders of magnitude below 24 h is the evidence the goal is comfortably reachable once a run starts | EAL 70.6 s, SL 574 s end-to-end incl. embeddings, both orders of magnitude inside 24 h | [ADR-015](../adr/015-epl-sl-fhir-ingestion.md) (streaming bulk-export ingestion bounds the wall clock), [ADR-002](../adr/002-freeze-line-decomposition.md) (freeze-to-serve: a frozen record is already the serving contract) |
-| NFR-6 | Test coverage | Core logic modules > 80% line coverage | `pytest-cov` line coverage, printed and **gated** by the CI `python` job on every run (`--cov-fail-under=80`, see [§13](13-test-strategy.md)) | **measured 2026-07-01**: serving 94 %, mcp 94 %, ingestion 91 % totals, with every core logic module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 92 %, review write-back 93 %, error layer 99 %) and the Postgres-only connection facade (`db.py`) at 76 %, exercised in the `python-parity` job, quoted in [Test and pipeline results](#test-and-pipeline-results) | [ADR-010](../adr/010-github-actions-devsecops.md) (the CI `python` job runs the offline suite and gates each service's total line coverage with `--cov-fail-under=80`), so a regression below the 80 % floor fails CI (see [§13](13-test-strategy.md)) |
+| NFR-6 | Test coverage | Core logic modules > 80% line coverage | `pytest-cov` line coverage, printed and **gated** by the CI `python` job on every run (`--cov-fail-under=80`, see [§13](13-test-strategy.md)) | **measured 2026-07-02**: serving 94 %, mcp 94 %, ingestion 91 % totals, with every core logic module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 92 %, review write-back 93 %, error layer 99 %) and the Postgres-only connection facade (`db.py`) at 76 %, exercised in the `python-parity` job, quoted in [Test and pipeline results](#test-and-pipeline-results) | [ADR-010](../adr/010-github-actions-devsecops.md) (the CI `python` job runs the offline suite and gates the ingestion, serving and mcp totals with `--cov-fail-under=80`), so a regression below the 80 % floor fails CI (see [§13](13-test-strategy.md)) |
 
 The section below documents measured harmonisation evidence for the determinism, reproducibility and review-rate rows (EAL run 2026-06-11: 1 279/1 279 frozen, review rate 0.0 %. SL run 2026-06-11: 10 299 frozen, review rate 1.08 %, with a measured reproducibility caveat on the 47 AI-gap records, see below).
 
@@ -19,16 +19,17 @@ The section below documents measured harmonisation evidence for the determinism,
 
 This section documents the test and pipeline output that the NFR table above is built
 on. The unit-test counts and coverage tables below are measured locally by the offline
-suite and reproduced in CI's gated `python` job, where `--cov-fail-under=80` gates each
-service's total line coverage at >=80% rather than recording the exact per-module figures.
+suite and reproduced in CI's gated `python` job, where `--cov-fail-under=80` gates the ingestion,
+serving and mcp total line coverage at >=80% rather than recording the exact per-module figures.
 Only the genuinely CI-side artefacts are quoted verbatim from CI: the named
 determinism-boundary step quoted from `ci.yml` and the image builds. Stating the provenance
 this way is deliberate: a screenshot or an unbacked "all tests green" claim says little, so
 each figure below is reported with where it comes from and then interpreted. The numbers
 below are the interpretation. The CI link and the screenshots in [§7](07-deployment-view.md)
 only illustrate. The pipeline figures were produced on 2026-06-13. The offline test counts and
-coverage tables below were re-run on 2026-07-01, after the review write-back, the uniform
-error-handling, the serving connection-pool work and the search-system filter landed. The
+coverage tables below were re-run on 2026-07-02, after the review write-back, the uniform
+error-handling, the serving connection-pool work, the search-system filter and the uniform
+DI and settings refactor landed. The
 connection-pool change adds a serving `db.py` pool module and pool wiring in `main.py`, and the
 search-system filter a Postgres-only branch on the pgvector `search_by_embedding` path, whose
 legs run in the `python-parity` job rather than offline, so serving's offline total moves to 94 % while ingestion holds at 91 %.
@@ -38,13 +39,13 @@ figures are reproducible with `uv run pytest` in each service (no network, no co
 ### Unit and contract tests (offline suite)
 
 ```text
-ingestion:    198 passed, 3 skipped in 2.97s
-serving:      114 passed, 1 skipped in 0.89s
-mcp:          17 passed in 0.15s
-intelligence: 32 passed in 0.22s
+ingestion:    200 passed, 3 skipped in 2.98s
+serving:      114 passed, 1 skipped in 0.94s
+mcp:          17 passed in 0.30s
+intelligence: 34 passed in 0.26s
 ```
 
-**Interpretation.** 361 tests pass and 4 are skipped (the skips are the Postgres-only
+**Interpretation.** 365 tests pass and 4 are skipped (the skips are the Postgres-only
 parity legs that have no `TARIFHUB_PG_TEST_URL` offline, so they run in the `python-parity`
 CI job against a real pgvector container). What this proves: the core logic, **including
 its error cases**, runs green in the build. The error-case coverage is
@@ -63,10 +64,10 @@ or the real Postgres engine (the `python-parity` job).
 
 ### Coverage (pytest-cov, line coverage)
 
-Measured locally on 2026-07-01 (ingestion 91 %, serving 94 %, mcp 94 %). Line coverage is
+Measured locally on 2026-07-02 (ingestion 91 %, serving 94 %, mcp 94 %). Line coverage is
 platform-independent, so re-running the same offline test set on the CI Linux `python` job
 would produce the same per-module figures; CI itself does not record that per-module table,
-it gates only each service's total line coverage against the 80 % floor (`--cov-fail-under=80`).
+it gates only the ingestion, serving and mcp total line coverage against the 80 % floor (`--cov-fail-under=80`).
 
 ```text
 # services/ingestion: uv run --extra dev pytest --cov=tarifhub_ingest
@@ -79,7 +80,7 @@ src/tarifhub_ingest/storage/db.py                       35      4    89%
 src/tarifhub_ingest/storage/tariff_repository.py        73      3    96%
 src/tarifhub_ingest/review.py                          153     11    93%
 src/tarifhub_ingest/errors.py                           81      1    99%
-TOTAL                                                 1601    138    91%
+TOTAL                                                 1607    138    91%
 
 # services/serving: uv run --extra dev pytest --cov=tarifhub_serving
 src/tarifhub_serving/main.py           139     11    92%
@@ -90,7 +91,7 @@ src/tarifhub_serving/explain.py         35      0   100%
 src/tarifhub_serving/fhir.py           104      1    99%
 src/tarifhub_serving/models.py          25      0   100%
 src/tarifhub_serving/telemetry.py       49      0   100%
-TOTAL                                  623     36    94%
+TOTAL                                  624     36    94%
 
 # services/mcp: uv run --extra dev pytest --cov=server --cov=config
 config.py      35      0   100%
@@ -116,8 +117,8 @@ lines. The two mapper lines are the `import anthropic` guard that the AI seam fa
 when the optional extra is absent, the eleven `review.py` lines are individual non-billing
 correction branches and defensive fallbacks, and the single uncovered line in each `errors.py`
 is the optional `record_hash` log-enrichment field. Coverage is now CI-gated: the `python` job
-runs each service with `--cov-fail-under=80`, so a regression that drops a service's total
-below the 80 % floor fails the build, while the current totals (ingestion 91 %, serving 94 %,
+runs ingestion, serving and mcp with `--cov-fail-under=80`, so a regression that drops one of
+those totals below the 80 % floor fails the build, while the current totals (ingestion 91 %, serving 94 %,
 mcp 94 %) sit well above it. The gate is on the per-service aggregate, the target of every
 core module staying above 80 % is the stronger goal the totals already meet.
 

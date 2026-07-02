@@ -13,7 +13,7 @@ This is the consolidated ADR register, adopted from Architecture v2.1 (2026-06):
 | 007 | Store immutable raw source artifacts in S3-compatible object storage, referenced from the audit log | Accepted | [007](../adr/007-object-store-raw-artifacts.md) |
 | 008 | Serve REST + FHIR R4 + MCP over one shared service layer (built), with GraphQL + XML designed, not built | Accepted | [008](../adr/008-api-styles.md) |
 | 009 | Ship each sub-system as a Docker image, deployed via Helm to Kubernetes, with docker-compose for local development | Accepted | [009](../adr/009-docker-kubernetes-helm.md) |
-| 010 | Run GitHub Actions CI/CD with DevSecOps gates: gitleaks, Trivy, Syft SBOM, images to GHCR | Accepted | [010](../adr/010-github-actions-devsecops.md) |
+| 010 | Run GitHub Actions CI/CD with DevSecOps gates: gitleaks, Trivy, Syft SBOM, image builds (GHCR push decided, not yet wired) | Accepted | [010](../adr/010-github-actions-devsecops.md) |
 | 011 | Standardise observability on OpenTelemetry → Prometheus/Grafana, with Sentry for errors | Accepted | [011](../adr/011-opentelemetry-observability.md) |
 | 012 | Host persistent data in Switzerland. L3 de-identifies server-side and routes LLM calls via an EU/CH model region | Accepted | [012](../adr/012-data-residency-llm-region.md) |
 | 013 | TarifGuard console demo limited to master-detail + review form + labelled explain panel, with no auth and no patient data | Accepted | [013](../adr/013-demo-scope.md) |
