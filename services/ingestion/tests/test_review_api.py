@@ -61,9 +61,13 @@ def _make_client(engine, monkeypatch) -> TestClient:
     monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
     # The 16-dim offline stub embedder does not fit Postgres' vector(1024) column, so the
     # PG leg skips embedding exactly as the read-parity suite does; SQLite stores the stub
-    # as JSON text and exercises the real re-embedding write on the review path.
+    # as JSON text and exercises the real re-embedding write on the review path. Both
+    # write seams resolve get_embedder in their OWN module namespace: the sample pipeline
+    # in main.py and the review write-back in review_service.py (codex catch: patching
+    # only main became a no-op for /review after the orchestration extraction).
     if engine.label == "postgres":
         monkeypatch.setattr("tarifhub_ingest.main.get_embedder", lambda *a, **k: None)
+        monkeypatch.setattr("tarifhub_ingest.review_service.get_embedder", lambda *a, **k: None)
     return TestClient(create_app())
 
 

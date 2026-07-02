@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import pytest
 
-import config
+from tarifhub_mcp import config
 
 # Every env var ``Settings`` binds to; cleared before each case so defaults are genuine and
 # the blanket-seed precedence is observed against a known-empty baseline.

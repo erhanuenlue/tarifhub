@@ -123,19 +123,35 @@ async def lifespan(app: FastAPI):
 router = APIRouter()
 
 
-def get_repository(request: Request):
+SettingsDep = Annotated[Settings, Depends(get_settings)]
+
+
+def get_database(settings: SettingsDep) -> Database:
+    """Return the per-request :class:`Database` facade for the configured URL.
+
+    Settings resolve per request (sub-dependency of ``get_settings``) so a test that
+    repoints ``TARIFHUB_DB_URL`` still takes effect. FastAPI caches a dependency's value
+    within one request, so ``get_repository`` and any route that needs the dialect (e.g.
+    ``/search``) share the same instance instead of rebuilding it inline.
+    """
+
+    return Database.from_url(settings.db_url)
+
+
+DatabaseDep = Annotated[Database, Depends(get_database)]
+
+
+def get_repository(db: DatabaseDep, settings: SettingsDep):
     """Yield a read-only repository bound to a pooled (Postgres) or fresh (SQLite) conn.
 
     On Postgres a connection is borrowed from the shared process pool for the duration of
     the request and returned to the pool on completion (``with pool.connection()``). On
     SQLite there is no pool, so a fresh connection is opened and closed per request, the
     prior behaviour byte-for-byte. The repository API and the served rows are identical on
-    both paths. Settings are read per request so a test that repoints ``TARIFHUB_DB_URL``
-    still takes effect.
+    both paths. The database facade and settings arrive via the request-scoped providers
+    above, so a test that repoints ``TARIFHUB_DB_URL`` still takes effect.
     """
 
-    settings = get_settings()
-    db = Database.from_url(settings.db_url)
     pool = _get_pool(db, settings)
     if pool is None:
         conn = db.connect()
@@ -149,7 +165,6 @@ def get_repository(request: Request):
 
 
 RepoDep = Annotated[ServingRepository, Depends(get_repository)]
-SettingsDep = Annotated[Settings, Depends(get_settings)]
 
 # Bound the search-latency metric's cardinality. An unauthenticated caller can pass any
 # ?system= value, so only the known tariff systems (plus "all" when unfiltered) are used
@@ -394,9 +409,9 @@ def fhir_code_system(
         "never computes a value."
     ),
 )
-def search(
+def search(  # noqa: PLR0913 — the HTTP query contract (q/system/limit) plus DI
     repo: RepoDep,
-    settings: SettingsDep,
+    db: DatabaseDep,
     request: Request,
     q: Annotated[str, Query(min_length=1, description="Free-text query")],
     system: Annotated[
@@ -408,7 +423,6 @@ def search(
     """Rank frozen records by cosine similarity to the embedded query (see description)."""
 
     telemetry = getattr(request.app.state, "telemetry", None)
-    db = Database.from_url(settings.db_url)
 
     # Observe-only: time and trace the embed+rank work. This records latency and a span
     # for observability alone and never affects the served value. nullcontext is a

@@ -71,4 +71,6 @@ class TariffRecord(BaseModel):
 
     @property
     def is_frozen(self) -> bool:
+        """True once ``freeze`` has stamped a content hash (immutable from then on)."""
+
         return self.record_hash is not None

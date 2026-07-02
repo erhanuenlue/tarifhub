@@ -9,7 +9,7 @@ import pytest
 
 from tarifhub_ingest.models.tariff_model import Designation, TariffRecord, TariffSystem
 from tarifhub_ingest.versioning.freeze_record import (
-    _canonical,  # noqa: PLC2701 — exercising the canonicaliser's edge branches directly
+    _canonical,
     compute_record_hash,
     freeze,
     verify,

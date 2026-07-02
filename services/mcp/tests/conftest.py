@@ -9,7 +9,8 @@ Seeding mirrors ``services/serving/tests/conftest.py`` exactly (freeze each reco
 store it with a stub-embedder passage embedding built from the same
 ``"{system} {code} {designation.de}"`` recipe the ingestion pipeline uses) so the offline
 SQLite search fallback can rank the seeded rows. These imports are TEST-ONLY: the MCP
-runtime code (``server.py``, ``config.py``) imports neither serving nor ingestion.
+runtime code (``tarifhub_mcp.server``, ``tarifhub_mcp.config``) imports neither serving
+nor ingestion.
 """
 
 from __future__ import annotations
@@ -21,13 +22,12 @@ from decimal import Decimal
 import httpx
 import pytest
 
-import config
-import server
 from tarifhub_ingest.embeddings.embedder import get_embedder
 from tarifhub_ingest.models.tariff_model import Designation, TariffRecord, TariffSystem
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
 from tarifhub_ingest.versioning.freeze_record import freeze
+from tarifhub_mcp import config, server
 
 # A seeded key whose designation a query can match for the search test.
 SEARCH_KEY = ("EAL", "1234.00")

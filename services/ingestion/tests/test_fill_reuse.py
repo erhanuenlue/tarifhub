@@ -37,7 +37,7 @@ from tarifhub_ingest.versioning.freeze_record import compute_record_hash, freeze
 class _ExplodingAnthropic:
     """Stand-in for ``anthropic.Anthropic`` that raises if EVER constructed."""
 
-    def __init__(self, *args, **kwargs):  # noqa: D401
+    def __init__(self, *args, **kwargs):
         raise AssertionError("anthropic client must NOT be constructed on the reuse path")
 
 

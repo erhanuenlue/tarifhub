@@ -16,7 +16,7 @@ import asyncio
 import httpx
 import pytest
 
-import server
+from tarifhub_mcp import server
 from conftest import (
     MULTI_VERSION_KEY,
     SEARCH_KEY,

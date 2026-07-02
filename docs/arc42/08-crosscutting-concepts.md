@@ -74,7 +74,7 @@ Development runs uvicorn with live reload via `scripts/run_serving.sh` (`uvicorn
 
 ### Async
 
-The MCP server (`services/mcp/server.py`) is fully async: each tool (`search_tariffs`, `get_tariff`, `explain_crosswalk`) awaits an `httpx` async client proxying to the serving API. The serving handlers themselves are plain `def`: FastAPI executes them in its worker threadpool, which is the appropriate execution model for their short, blocking DB reads.
+The MCP server (`services/mcp/src/tarifhub_mcp/server.py`) is fully async: each tool (`search_tariffs`, `get_tariff`, `explain_crosswalk`) awaits an `httpx` async client proxying to the serving API. The serving handlers themselves are plain `def`: FastAPI executes them in its worker threadpool, which is the appropriate execution model for their short, blocking DB reads.
 
 ## Why Python-first
 

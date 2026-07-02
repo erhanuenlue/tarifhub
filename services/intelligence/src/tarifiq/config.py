@@ -17,12 +17,17 @@ from pydantic import AliasChoices, Field, SecretStr, field_validator, model_vali
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 # Base URL of the L1 TarifCore serving API (system of record for frozen tariff values).
-DEFAULT_SERVING_BASE_URL = "http://localhost:8080"
+# 8000 is the port serving actually binds (Dockerfile CMD and compose alike).
+DEFAULT_SERVING_BASE_URL = "http://localhost:8000"
 DEFAULT_REQUEST_TIMEOUT = 10.0
 # Offline-first, like the ingestion service: the bundled frozen store is used unless an
 # operator explicitly opts into reading live frozen records (TARIFIQ_OFFLINE=0 + a
 # reachable SERVING_BASE_URL). This keeps the test suite hermetic with zero config.
 DEFAULT_OFFLINE = True
+# Bind address for the console-script entry point (main.run). The Docker CMD passes
+# uvicorn flags directly and does not read these; the defaults match it byte-for-byte.
+DEFAULT_API_HOST = "0.0.0.0"
+DEFAULT_API_PORT = 8070
 
 # The exact set of strings that count as "true" for a boolean env var. One definition,
 # shared by _env_bool and the Settings.offline validator, so the tolerant parse (a bad
@@ -66,6 +71,8 @@ class Settings(BaseSettings):
     # model (PRE-FREEZE, human-reviewed). Absent (the test/CI default) => deterministic
     # tables only, and ai_rule_suggest returns a clearly marked placeholder.
     anthropic_api_key: SecretStr | None = Field(default=None, validation_alias="ANTHROPIC_API_KEY")
+    api_host: str = Field(default=DEFAULT_API_HOST, validation_alias="TARIFIQ_API_HOST")
+    api_port: int = Field(default=DEFAULT_API_PORT, validation_alias="TARIFIQ_API_PORT")
     # A fixed constant, not a settings field: no env binding (avoids an accidental APP_NAME knob).
     app_name: ClassVar[str] = "tarifiq"
 

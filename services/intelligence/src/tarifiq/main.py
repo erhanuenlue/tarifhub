@@ -103,8 +103,18 @@ app = create_app()
 
 
 def run() -> None:
-    """Console-script entry point: serve the app with uvicorn."""
+    """Console-script entry point: serve the app with uvicorn.
 
-    import uvicorn  # local import keeps module import light for tests
+    Host and port come from the env-driven :class:`Settings` (TARIFIQ_API_HOST /
+    TARIFIQ_API_PORT), defaulting to the same 0.0.0.0:8070 the Docker CMD passes.
+    """
 
-    uvicorn.run("tarifiq.main:app", host="0.0.0.0", port=8070, reload=False)
+    import uvicorn  # noqa: PLC0415  (lazy: keep module import light for tests)
+
+    settings = get_settings()
+    uvicorn.run(
+        "tarifiq.main:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        reload=False,
+    )

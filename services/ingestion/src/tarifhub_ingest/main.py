@@ -11,9 +11,11 @@ Endpoints:
 This module is deliberately on the deterministic side of the freeze line: the GET
 endpoints only read frozen records, and NO LLM client is imported here. The single
 AI seam lives behind ``ingestion.pipeline`` (pre-freeze) and is import-guarded. The
-review write-back is human-driven and likewise AI-free: it runs the SAME deterministic
+review write-back is human-driven and likewise AI-free: the route delegates to
+``review_service.apply_review_decision``, which runs the SAME deterministic
 ``validate`` -> ``freeze`` -> audit pipeline as ingest, persisting an immutable new
-version (``tests/test_review_boundary.py`` proves no LLM client is importable here).
+version (``tests/test_review_boundary.py`` pins this module and ``review.py``;
+``tests/test_value_path_boundary.py`` scans the whole package, the service included).
 """
 
 from __future__ import annotations
@@ -29,9 +31,6 @@ from tarifhub_ingest.audit.audit_logger import AuditLogger
 from tarifhub_ingest.config import Settings, get_settings
 from tarifhub_ingest.embeddings.embedder import get_embedder
 from tarifhub_ingest.errors import (
-    ReviewConflict,
-    ReviewRecordNotFound,
-    ReviewValidationError,
     SampleSourcesNotFound,
     TariffCodeNotFound,
     register_exception_handlers,
@@ -42,14 +41,11 @@ from tarifhub_ingest.review import (
     ReviewDecision,
     ReviewItem,
     ReviewResult,
-    prepare_reviewed_record,
-    review_message,
     to_review_item,
 )
+from tarifhub_ingest.review_service import apply_review_decision
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
-from tarifhub_ingest.validators.tariff_validator import validate
-from tarifhub_ingest.versioning.freeze_record import freeze
 
 
 class IngestSampleResponse(BaseModel):
@@ -199,87 +195,15 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     ) -> ReviewResult:
         """Close the human-in-the-loop: a reviewed decision becomes a new frozen version.
 
-        Loads the current flagged version, rejects any billing-field correction (400),
-        applies the decision, then runs the SAME deterministic pipeline as ingest —
-        ``validate`` (422 if the reviewed record is still invalid) then ``freeze`` — and
-        persists an immutable new version (``version + 1``, new ``record_hash``) with an
-        appended audit event. The prior version and the audit log are never rewritten.
+        Thin adapter: FastAPI validates the ``ReviewDecision`` body, the route binds it
+        to the app's repository/audit/settings, and
+        :func:`tarifhub_ingest.review_service.apply_review_decision` owns the
+        load -> guard -> ``validate`` -> ``freeze`` -> embed -> store -> audit
+        orchestration. Failures surface as domain exceptions rendered by the registered
+        problem+json handlers (404/409/400/422 as documented on the service function).
         """
 
-        record = repo.get(decision.tariff_code, decision.tariff_system)
-        if record is None:
-            raise ReviewRecordNotFound(
-                f"no record for system={decision.tariff_system.value} "
-                f"code={decision.tariff_code}"
-            )
-        if not record.requires_review:
-            raise ReviewConflict(
-                f"record {decision.tariff_system.value}/{decision.tariff_code} "
-                "is not flagged for review"
-            )
-        # Optimistic concurrency: if the client names a version, it must be the live one.
-        if decision.record_hash and record.record_hash != decision.record_hash:
-            raise ReviewConflict(
-                "record_hash does not match the current flagged version (stale read)"
-            )
-
-        # A refused decision (billing/unknown-field correction) raises ReviewError, a domain
-        # exception the registered handler renders as the same problem+json envelope (400).
-        prepared = prepare_reviewed_record(record, decision)
-
-        result = validate(prepared)
-        if not result.ok:
-            raise ReviewValidationError(
-                "reviewed record fails validation", extra={"errors": result.errors}
-            )
-
-        frozen = freeze(prepared)
-        # Re-embed exactly as the pipeline does so the corrected designation stays
-        # searchable. The embedder is optional (None when skipped on the Postgres leg,
-        # whose vector(1024) column rejects the 16-dim offline stub) — mirror the
-        # pipeline's guard rather than assuming a vector.
-        embedder = get_embedder(settings)
-        embedding = None
-        if embedder is not None:
-            text = f"{frozen.tariff_system.value} {frozen.tariff_code} {frozen.designation.de}"
-            embedding = embedder.embed(text)
-        stored = repo.add(frozen, embedding=embedding)
-        if not stored:
-            raise ReviewConflict("this exact reviewed version already exists")
-
-        # Re-read for the authoritative version the repository assigned (hash is stable).
-        current = repo.get(decision.tariff_code, decision.tariff_system)
-        assert current is not None  # just persisted
-
-        corrected_fields = (
-            sorted(decision.corrections or {}) if decision.action == "correct" else []
-        )
-        audit.log(
-            event_type=f"review_{decision.action}",
-            record=current,
-            source_file="console-review",
-            confidence=current.harmonization_confidence,
-            validation_ok=result.ok,
-            detail={
-                "action": decision.action,
-                "reviewer": decision.reviewer,
-                "note": decision.note,
-                "corrected_fields": corrected_fields,
-                "prev_version": record.version,
-                "prev_record_hash": record.record_hash,
-            },
-        )
-
-        return ReviewResult(
-            ok=True,
-            tariff_system=current.tariff_system.value,
-            tariff_code=current.tariff_code,
-            action=decision.action,
-            frozen=True,
-            version=current.version,
-            record_hash=current.record_hash,
-            message=review_message(decision.action, current.version, corrected_fields),
-        )
+        return apply_review_decision(decision, repo=repo, audit=audit, settings=settings)
 
     return app
 
@@ -288,8 +212,18 @@ app = create_app()
 
 
 def run() -> None:
-    """Console-script entry point: serve the app with uvicorn."""
+    """Console-script entry point: serve the app with uvicorn.
 
-    import uvicorn  # local import keeps module import light for tests
+    Host and port come from the env-driven :class:`Settings` (TARIFHUB_API_HOST /
+    TARIFHUB_API_PORT), defaulting to the same 0.0.0.0:8000 the Docker CMD passes.
+    """
 
-    uvicorn.run("tarifhub_ingest.main:app", host="0.0.0.0", port=8000, reload=False)
+    import uvicorn  # noqa: PLC0415  (lazy: keep module import light for tests)
+
+    settings = get_settings()
+    uvicorn.run(
+        "tarifhub_ingest.main:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        reload=False,
+    )

@@ -28,10 +28,10 @@ pip install -e .
 
 # Point at a running serving API and start the MCP server.
 export SERVING_BASE_URL=http://localhost:8000
-python server.py                 # streamable-HTTP on :8090 (MCP_PORT)
+tarifhub-mcp                     # streamable-HTTP on :8090 (MCP_PORT)
 
 # Or run as a local stdio server for a single agent:
-MCP_TRANSPORT=stdio python server.py
+MCP_TRANSPORT=stdio tarifhub-mcp
 ```
 
 ## Test

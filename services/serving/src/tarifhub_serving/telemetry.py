@@ -66,7 +66,7 @@ def resolve_exporters(
     elif endpoint is not None:
         # Lazy import: the OTLP exporter is only needed when an endpoint is configured.
         # Importing it does no network I/O; a connection is opened on the first export.
-        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter
+        from opentelemetry.exporter.otlp.proto.http.trace_exporter import OTLPSpanExporter  # noqa: PLC0415
 
         span_processor = BatchSpanProcessor(OTLPSpanExporter())
     else:
@@ -75,7 +75,7 @@ def resolve_exporters(
     if metric_reader is not None:
         reader: MetricReader | None = metric_reader
     elif endpoint is not None:
-        from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter
+        from opentelemetry.exporter.otlp.proto.http.metric_exporter import OTLPMetricExporter  # noqa: PLC0415
 
         reader = PeriodicExportingMetricReader(OTLPMetricExporter())
     else:

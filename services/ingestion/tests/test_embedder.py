@@ -43,7 +43,7 @@ def test_e5_embedder_query_and_passage_use_distinct_prefixes():
     seen: list[str] = []
 
     class _FakeModel:
-        def __init__(self, name: str) -> None:  # noqa: D401 - matches ST signature
+        def __init__(self, name: str) -> None:
             self._name = name
 
         def encode(self, text, normalize_embeddings=True):

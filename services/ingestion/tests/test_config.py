@@ -15,6 +15,8 @@ import pytest
 from pydantic import SecretStr
 
 from tarifhub_ingest.config import (
+    DEFAULT_API_HOST,
+    DEFAULT_API_PORT,
     DEFAULT_DB_URL,
     DEFAULT_EMBEDDINGS_BACKEND,
     Settings,
@@ -30,6 +32,8 @@ _INGEST_ENV_VARS = (
     "TARIFHUB_SAMPLE_DIR",
     "TARIFHUB_EMBEDDINGS",
     "TARIFHUB_AI_MODEL",
+    "TARIFHUB_API_HOST",
+    "TARIFHUB_API_PORT",
 )
 
 
@@ -66,6 +70,19 @@ def test_defaults_with_no_env(clean_env):
 
     assert settings.db_url == DEFAULT_DB_URL
     assert settings.embeddings_backend == DEFAULT_EMBEDDINGS_BACKEND
+
+
+def test_api_bind_address_defaults_and_env(clean_env):
+    """``run()`` reads its bind address from Settings: Docker-CMD defaults, env overrides."""
+
+    settings = get_settings()
+    assert (settings.api_host, settings.api_port) == (DEFAULT_API_HOST, DEFAULT_API_PORT)
+
+    clean_env.setenv("TARIFHUB_API_HOST", "127.0.0.1")
+    clean_env.setenv("TARIFHUB_API_PORT", "9000")
+
+    settings = get_settings()
+    assert (settings.api_host, settings.api_port) == ("127.0.0.1", 9000)
 
 
 def test_cli_embeddings_rewrap_takes_effect(clean_env):

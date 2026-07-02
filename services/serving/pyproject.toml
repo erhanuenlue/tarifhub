@@ -63,3 +63,22 @@ addopts = "-q"
 line-length = 100
 src = ["src", "tests"]
 target-version = "py312"
+
+[tool.ruff.lint]
+# Cover every rule family the source suppresses inline (# noqa: PLC0415, BLE001,
+# N815, D102, PLR0913) so "all checks passed" means checked under the ruleset those
+# suppressions reference, not the lighter E/F default. RUF100 keeps the suppressions
+# honest: an unused noqa fails the lint.
+select = ["E4", "E7", "E9", "F", "N", "BLE", "PLC", "PLR0913", "D102", "RUF100"]
+# Domain exception names (TariffNotFound, SearchBackendUnavailable, ...) are the
+# documented problem+json contract; renaming them for the Error suffix would break
+# the API docs, so the convention is waived explicitly rather than left unlinted.
+ignore = ["N818"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests import inside functions deliberately (env/monkeypatch first, import second)
+# and fixture builders take many keyword parameters; docstring rules stay on for src.
+"tests/**" = ["PLC0415", "D102", "PLR0913"]
+# FHIR R4 wire fields (resourceType, priceComponent, ...) are camelCase by the FHIR
+# specification; the Pydantic models mirror the wire names verbatim.
+"src/tarifhub_serving/fhir.py" = ["N815"]

@@ -56,7 +56,7 @@ def _admin_url_and_dbname(base_url: str, dbname: str) -> tuple[str, str]:
 def _create_pg_scratch(base_url: str) -> tuple[str, str]:
     """CREATE a uniquely-named scratch database; apply db/schema.sql. Returns its URL."""
 
-    import psycopg  # noqa: PLC0415 - guarded; only reached when PG opt-in is on
+    import psycopg
 
     scratch = f"tarifhub_parity_{uuid.uuid4().hex[:12]}"
     # Connect to the base (dev) db only to issue CREATE DATABASE — autocommit required.
@@ -77,7 +77,7 @@ def _create_pg_scratch(base_url: str) -> tuple[str, str]:
 
 
 def _drop_pg_scratch(base_url: str, scratch: str) -> None:
-    import psycopg  # noqa: PLC0415
+    import psycopg
 
     admin = psycopg.connect(base_url, autocommit=True)
     try:
