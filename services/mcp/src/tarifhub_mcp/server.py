@@ -19,7 +19,7 @@ from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
-from config import build_client, settings
+from tarifhub_mcp.config import build_client, settings
 
 mcp = FastMCP("tarifhub-mcp")
 

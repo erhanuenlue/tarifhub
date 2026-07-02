@@ -13,7 +13,7 @@ RUN python -m venv /opt/venv
 ENV PATH="/opt/venv/bin:$PATH"
 
 COPY pyproject.toml README.md ./
-COPY server.py config.py ./
+COPY src ./src
 RUN pip install --upgrade pip && pip install .
 
 # --- runtime: minimal image, non-root ---
@@ -30,8 +30,9 @@ ENV PATH="/opt/venv/bin:$PATH" \
 
 RUN useradd --create-home --uid 10001 tarifmcp
 
+# The package is installed into the venv (src/ layout), so the runtime stage carries
+# no loose source files; the console script is the single entry point.
 COPY --from=builder /opt/venv /opt/venv
-COPY server.py config.py /app/
 
 USER tarifmcp
 WORKDIR /app
@@ -39,4 +40,4 @@ EXPOSE 8090
 
 # Exposes the read-only tools over MCP streamable-HTTP. Set MCP_TRANSPORT=stdio to run
 # as a local stdio server for a single agent instead.
-CMD ["python", "server.py"]
+CMD ["tarifhub-mcp"]

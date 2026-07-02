@@ -12,7 +12,7 @@ import asyncio
 import httpx
 import pytest
 
-import server
+from tarifhub_mcp import server
 
 # A canonical frozen record as the serving service would return it (camelCase JSON).
 FROZEN_RECORD = {

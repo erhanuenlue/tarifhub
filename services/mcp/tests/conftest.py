@@ -21,13 +21,12 @@ from decimal import Decimal
 import httpx
 import pytest
 
-import config
-import server
 from tarifhub_ingest.embeddings.embedder import get_embedder
 from tarifhub_ingest.models.tariff_model import Designation, TariffRecord, TariffSystem
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
 from tarifhub_ingest.versioning.freeze_record import freeze
+from tarifhub_mcp import config, server
 
 # A seeded key whose designation a query can match for the search test.
 SEARCH_KEY = ("EAL", "1234.00")

@@ -35,6 +35,9 @@ dev = [
     "tarifhub-ingest",
 ]
 
+[project.scripts]
+tarifhub-mcp = "tarifhub_mcp.server:main"
+
 [tool.uv]
 # The published proxy supports Python >=3.10 (see requires-python). The dev harness,
 # however, pulls in tarifhub-ingest which requires >=3.12, so resolve the dev/test env
@@ -49,14 +52,29 @@ environments = ["python_full_version >= '3.12'"]
 tarifhub-serving = { path = "../serving", editable = true }
 tarifhub-ingest = { path = "../ingestion", editable = true }
 
-[tool.setuptools]
-py-modules = ["server", "config"]
+[tool.setuptools.packages.find]
+where = ["src"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
-pythonpath = ["."]
+pythonpath = ["src"]
 addopts = "-q"
 
 [tool.ruff]
 line-length = 100
+src = ["src", "tests"]
 target-version = "py310"
+
+[tool.ruff.lint]
+# Same explicit ruleset as the other three services (the inline suppressions the
+# comment refers to live in their sources; the proxy itself carries none). RUF100
+# keeps any future suppression honest: an unused noqa fails the lint.
+select = ["E4", "E7", "E9", "F", "N", "BLE", "PLC", "PLR0913", "D102", "RUF100"]
+# Domain exception names elsewhere in the repo are the documented problem+json
+# contract; the waiver is kept uniform across all four services.
+ignore = ["N818"]
+
+[tool.ruff.lint.per-file-ignores]
+# Tests import inside functions deliberately (env/monkeypatch first, import second)
+# and fixture builders take many keyword parameters; docstring rules stay on for src.
+"tests/**" = ["PLC0415", "D102", "PLR0913"]

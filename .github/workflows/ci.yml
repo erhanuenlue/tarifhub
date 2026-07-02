@@ -44,7 +44,7 @@ jobs:
           set -eo pipefail
           (cd services/ingestion && uv run --extra dev pytest -q --cov=tarifhub_ingest --cov-report=term --cov-fail-under=80 | tail -40)
           (cd services/serving && uv run --extra dev pytest -q --cov=tarifhub_serving --cov-report=term --cov-fail-under=80 | tail -15)
-          (cd services/mcp && uv run --extra dev pytest -q --cov=server --cov=config --cov-report=term --cov-fail-under=80 | tail -10)
+          (cd services/mcp && uv run --extra dev pytest -q --cov=tarifhub_mcp --cov-report=term --cov-fail-under=80 | tail -10)
 
   # Cross-engine read parity: the SAME read tests run against a real Postgres 16 +
   # pgvector so SQLite-vs-Postgres drift (Block-0: json.loads on a JSONB dict; int for a
