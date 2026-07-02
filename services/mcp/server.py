@@ -71,13 +71,15 @@ async def get_tariff(system: str, code: str) -> dict:
 
 @mcp.tool()
 async def explain_crosswalk(code: str) -> dict:
-    """Explain a position and its TARMED<->TARDOC cross-walk.
+    """Explain a tariff code from its frozen records (all versions + deterministic text).
 
     Args:
         code: a tariff code (inherently non-identifying — no patient data is involved).
 
-    Proxies to the deterministic explanation endpoint, which grounds its natural-language
-    text only in frozen records, with no model on the serve path. The tool returns whatever
+    Proxies to the deterministic explanation endpoint, which returns EVERY frozen version
+    of the code (verbatim records) plus a rule-generated explanation grounded only in
+    record fields, with no model on the serve path. It does NOT compute a TARMED<->TARDOC
+    cross-walk (that lookup lives in the TarifIQ service). The tool returns whatever
     serving returns and adds nothing.
     """
 

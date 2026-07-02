@@ -25,6 +25,10 @@ DEFAULT_EMBEDDINGS_BACKEND = "stub"
 # Claude model for the pre-freeze harmonizer. Exact string, no date suffix; this
 # model has no temperature/top_p/top_k knobs. Override with TARIFHUB_AI_MODEL.
 DEFAULT_AI_MODEL = "claude-opus-4-8"
+# Bind address for the console-script entry point (main.run). The Docker CMD passes
+# uvicorn flags directly and does not read these; the defaults match it byte-for-byte.
+DEFAULT_API_HOST = "0.0.0.0"
+DEFAULT_API_PORT = 8000
 
 
 class Settings(BaseSettings):
@@ -54,6 +58,8 @@ class Settings(BaseSettings):
         default=DEFAULT_EMBEDDINGS_BACKEND, validation_alias="TARIFHUB_EMBEDDINGS"
     )
     ai_model: str = Field(default=DEFAULT_AI_MODEL, validation_alias="TARIFHUB_AI_MODEL")
+    api_host: str = Field(default=DEFAULT_API_HOST, validation_alias="TARIFHUB_API_HOST")
+    api_port: int = Field(default=DEFAULT_API_PORT, validation_alias="TARIFHUB_API_PORT")
     # A fixed constant, not a settings field: no env binding (avoids an accidental APP_NAME knob).
     app_name: ClassVar[str] = "tarifhub-ingest"
 

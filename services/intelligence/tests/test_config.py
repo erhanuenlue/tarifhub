@@ -14,7 +14,12 @@ from __future__ import annotations
 import pytest
 from pydantic import SecretStr
 
-from tarifiq.config import DEFAULT_SERVING_BASE_URL, Settings
+from tarifiq.config import (
+    DEFAULT_API_HOST,
+    DEFAULT_API_PORT,
+    DEFAULT_SERVING_BASE_URL,
+    Settings,
+)
 
 # Every env var the resolution reads; cleared per-test so the fall-through is observed
 # against a known-empty baseline rather than an ambient shared alias.
@@ -24,6 +29,8 @@ _INTEL_ENV_VARS = (
     "TARIFIQ_HTTP_TIMEOUT",
     "TARIFIQ_OFFLINE",
     "ANTHROPIC_API_KEY",
+    "TARIFIQ_API_HOST",
+    "TARIFIQ_API_PORT",
 )
 
 
@@ -60,6 +67,19 @@ def test_present_primary_wins(clean_env):
     clean_env.setenv("SERVING_BASE_URL", "http://shared.example")
 
     assert Settings().serving_base_url == "http://primary.example"
+
+
+def test_api_bind_address_defaults_and_env(clean_env):
+    """``run()`` reads its bind address from Settings: Docker-CMD defaults, env overrides."""
+
+    settings = Settings()
+    assert (settings.api_host, settings.api_port) == (DEFAULT_API_HOST, DEFAULT_API_PORT)
+
+    clean_env.setenv("TARIFIQ_API_HOST", "127.0.0.1")
+    clean_env.setenv("TARIFIQ_API_PORT", "9070")
+
+    settings = Settings()
+    assert (settings.api_host, settings.api_port) == ("127.0.0.1", 9070)
 
 
 def test_field_name_construction_overrides_default(clean_env):

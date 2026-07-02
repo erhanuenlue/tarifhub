@@ -212,8 +212,18 @@ app = create_app()
 
 
 def run() -> None:
-    """Console-script entry point: serve the app with uvicorn."""
+    """Console-script entry point: serve the app with uvicorn.
+
+    Host and port come from the env-driven :class:`Settings` (TARIFHUB_API_HOST /
+    TARIFHUB_API_PORT), defaulting to the same 0.0.0.0:8000 the Docker CMD passes.
+    """
 
     import uvicorn  # local import keeps module import light for tests
 
-    uvicorn.run("tarifhub_ingest.main:app", host="0.0.0.0", port=8000, reload=False)
+    settings = get_settings()
+    uvicorn.run(
+        "tarifhub_ingest.main:app",
+        host=settings.api_host,
+        port=settings.api_port,
+        reload=False,
+    )
