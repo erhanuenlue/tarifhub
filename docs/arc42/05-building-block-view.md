@@ -53,6 +53,8 @@ The ingestion service is the only place where AI runs, and only at the `map` ste
 
 ![ER model: tariff and audit_log](../diagrams/er-data-model.svg)
 
+> **Figure: logical data model.** The crow's-foot notation is logical, not physical: `db/schema.sql` declares no FOREIGN KEY constraints. Rows are immutable and `audit_log` is append-only, anchored to `tariff` by `record_hash` value, so lineage is preserved by the append-only write path rather than by referential actions in the engine.
+
 Two tables. `tariff` holds immutable versioned rows: `UNIQUE(tariff_system, tariff_code, version)` makes versions explicit, `record_hash UNIQUE` (SHA-256 over sorted canonical content) is the integrity anchor and idempotency key, and `embedding vector(1024)` carries the pgvector HNSW cosine index for semantic search. `audit_log` is append-only lineage, keyed by `record_hash`: every freeze and skipped re-ingest leaves an event.
 
 Canonical source of truth: `db/schema.sql` in the repository, mirrored in SQLite for offline tests. The field set is locked additive-only per [ADR-003](../adr/003-canonical-record-model.md). The Pydantic model (`models/tariff_model.py`, `TariffRecord`) is the same shape end-to-end.

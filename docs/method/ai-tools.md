@@ -99,7 +99,7 @@ transient API outage, which produced a different `record_hash` than the no-key f
 silently broke re-ingest idempotency. The second was a `json.loads()` call on a Postgres JSONB
 column that is already a dict, which would have returned HTTP 500 on every Postgres read. The
 SQLite-only tests were blind to it because the SQLite driver returns text. Both were corrected
-before merge (PR #2, `057a6c1`).
+before merge (PR #1, `79169f0`).
 
 The freeze-line hook produced the cleanest example of governance by tooling. The first real
 Postgres run exposed `int(validation_ok)` in `audit/audit_logger.py`, below the freeze line:
@@ -138,7 +138,7 @@ Engine parity drove two refactors. The `json.loads`-on-JSONB defect and an `int`
 parity bug both passed the SQLite suite and were only rejected by a real Postgres engine: a
 smallint in a boolean column where 51 green SQLite tests had not objected. The fix was not a
 patch but a cross-engine read-parity suite with full-body snapshots, so the class of bug is
-now tested rather than hoped against (PR #2, `057a6c1`, and PR #6, `56b88cb`).
+now tested rather than hoped against (PR #1, `79169f0`, PR #2, `057a6c1`, and PR #6, `56b88cb`).
 
 The e5 embedding refactor carries an honest pairing of a fix and a rejected suggestion. The
 e5 model is asymmetric: queries need a `query:` prefix and passages a `passage:` prefix.

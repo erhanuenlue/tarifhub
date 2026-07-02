@@ -17,7 +17,7 @@ isolated commit `fix(audit): ...`, frozen-file diff shown pre-commit, guard re-a
 probe-verified (a follow-up Edit attempt was BLOCKED), and a Postgres round-trip regression test
 added outside the floor (True/False/None, opt-in via `TARIFHUB_PG_TEST_URL`, 3 passed live).
 
-## Codex catches a hash-breaking error path (2026-06-11, PR #2, 057a6c1)
+## Codex catches a hash-breaking error path (2026-06-11, PR #1, 79169f0)
 
 What AI got wrong, and what caught it: my `ai_map` error path wrote `ai_status` into metadata,
 producing a different `record_hash` than the no-key fallback and breaking re-ingest idempotency
@@ -63,8 +63,10 @@ flagged the client-only billing guard, then the diff added server-side `BILLING_
 Graders never deploy, so I captured real runtime evidence into the repo: `docker compose ps` with 8
 independent containers, a live `EAL/1000` read at p95 15.8 ms, and a k3d `helm install` with 8 of 9
 pods Running, all quoted in arc42 §7 and `docs/evidence/2026-06-13-distribution.md` and illustrated
-by two PNGs. Evidence that exists only at runtime had to be quoted and interpreted in the report,
-not left as a screenshot.
+by two PNGs at the time. The stale k3d screenshot was later replaced by a fresh pasted kubectl
+transcript when the topology was recaptured against the current chart (PR #36), so the tree now
+holds the compose PNG plus that transcript. Evidence that exists only at runtime had to be quoted
+and interpreted in the report, not left as a screenshot.
 
 ## What these events taught me
 
@@ -83,7 +85,7 @@ rule I carry forward, stated in the [Conclusion](fazit.md).
    a dict) that would have returned 500 on every Postgres read, invisible to the SQLite-only suite
    because SQLite returns text, and an `ai_map` error path that wrote `ai_status` into metadata and so
    produced a different `record_hash` than the no-key fallback, silently breaking re-ingest
-   idempotency under a transient API outage (PR #2, `057a6c1`). I now treat a second engine and a
+   idempotency under a transient API outage (PR #1, `79169f0`). I now treat a second engine and a
    second model family as coverage for different blind spots, not as belt-and-braces on the same one.
 
 3. **Ungrounded generation is most dangerous exactly where it meets a real contract.** The
