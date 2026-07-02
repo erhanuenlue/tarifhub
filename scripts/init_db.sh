@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 #
-# Apply the tarifhub schema + migrations to a running PostgreSQL (pgvector).
+# Apply the tarifhub migrations (db/migrations/*.sql, in filename order) to a
+# running PostgreSQL (pgvector). db/schema.sql is the consolidated snapshot of
+# the same chain and is NOT applied by this script.
 # Start the DB first:  docker-compose up -d db
 #
 set -euo pipefail
