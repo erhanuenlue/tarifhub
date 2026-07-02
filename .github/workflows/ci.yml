@@ -35,8 +35,10 @@ jobs:
           done
       - name: Determinism boundary tests (must be visible in this log)
         run: |
-          (cd services/ingestion && uv run pytest -q tests/test_determinism_boundary.py -v)
-          (cd services/serving && uv run pytest -q tests/test_serving_boundary.py -v)
+          # --no-sync: the venvs were synced with --extra dev in the step above; an
+          # implicit re-sync must not drop the dev-extra pytest mid-job.
+          (cd services/ingestion && uv run --no-sync pytest -q tests/test_determinism_boundary.py -v)
+          (cd services/serving && uv run --no-sync pytest -q tests/test_serving_boundary.py -v)
       - name: Coverage gate — core modules must stay >= 80% (arc42 §10 NFR-6)
         # set -eo pipefail so a --cov-fail-under failure is NOT masked by the `| tail` pipe
         # (a pipeline's exit status is tail's without it, so the gate would never fail CI).
@@ -79,7 +81,10 @@ jobs:
         run: |
           for svc in services/ingestion services/serving; do
             echo "=== $svc (parity) ==="
-            (cd "$svc" && uv sync --quiet --frozen && uv run pytest -q tests/test_read_parity.py)
+            # --extra dev: pytest (the runner) and httpx (fastapi.testclient's transport)
+            # are dev extras, not runtime deps. They used to arrive transitively via
+            # ingestion's runtime pytest/httpx; the dependency prune made that explicit.
+            (cd "$svc" && uv sync --quiet --frozen --extra dev && uv run --no-sync pytest -q tests/test_read_parity.py)
           done
 
   console:
