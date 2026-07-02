@@ -1,5 +1,12 @@
 # The AI-SE Framework
 
+**The goal came first, and everything below serves it.** The goal was a trustworthy, deterministic
+tariff platform: one where a served billing value is provably the value that was reviewed and frozen,
+and where no AI ever computes or mutates a billing value at serve time. That one constraint is what
+let me use AI heavily without it being reckless. The apparatus described in this chapter exists for a
+single purpose: to apply AI hard to everything around the billing values while keeping it provably off
+the values themselves. Every mechanism below should be read as a means to that end.
+
 This chapter is the system view of how tarifhub was engineered with AI. AI here was not an autocomplete. I built a software-engineering system around the model: an orchestrator model
 plans and reviews, worker models implement and verify, an independent second model family audits,
 a dedicated diagram tool generates diagrams as code, deterministic gates define and protect

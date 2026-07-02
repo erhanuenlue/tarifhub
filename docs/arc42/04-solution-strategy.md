@@ -2,6 +2,18 @@
 
 The load-bearing decision is the **freeze line**. AI-assisted harmonisation runs strictly *before* it (the `ai_map` seam: structured output, fill-only on non-billing fields, deterministic gap-gate and fallback). Everything *below* it (freezing, versioning, serving) is deterministic and read-only. The line is structural, not merely a convention: it is a process boundary between two services, and it enforces the value-path invariant that no AI computes or mutates a billing value at serve time.
 
+## The problem, and the strategic response
+
+The problem this solution exists to solve is set out in full in [§1](01-introduction-goals.md): Switzerland's ambulatory tariff data is fragmented across 20+ sources with no authoritative machine interface, so every vendor re-implements the same brittle parsing, tariff values reach billing systems without verifiable provenance, and an uncaught mapping error propagates silently into a wrong invoice. The strategy answers that problem with three load-bearing choices. Each is chosen for the value it delivers to a specific stakeholder (the stakeholders and their concerns are listed in [§1](01-introduction-goals.md)), not for its elegance.
+
+**1. The freeze-line determinism model.** This removes the core problem that there is no way to prove a served value is the one that was reviewed. Below the line every record is immutable, content-hashed and served verbatim, so a served value is provably the value that was reviewed and frozen and the same query returns the same answer forever. For medical practices and PIS/HIS vendors, whose whole concern is that a correct, provenance-backed value reaches billing and is never silently changed, this is the value the product exists to deliver. The line is enforced rather than promised: a process boundary between two services, held by a guard hook and an AST boundary test in CI ([ADR-002](../adr/002-freeze-line-decomposition.md), [ADR-004](../adr/004-freeze-content-hash-lineage.md)).
+
+**2. Exactly one AI seam, pre-freeze, with a human in the loop.** All AI is confined to the `ai_map` seam above the line, filling only non-billing fields, with low-confidence proposals routed to a tariff expert before freeze. This is what lets AI do the genuinely hard part, harmonising heterogeneous DE/FR/IT sources, without ever endangering a value. For the tariff expert the value is that uncertain mappings are caught and corrected before they are frozen. For everyone downstream, AI accelerates the harmonisation without touching the correctness guarantee ([ADR-005](../adr/005-single-ai-seam.md)).
+
+**3. A layered product, cut so each layer consumes only the one below.** L0 ingestion feeds L1 serving and MCP, with L2 rules and L3 apps above it, and the CAS scope stops at L1 plus a thin console. This replaces per-vendor parsing and hand-reconciled version transitions with a single versioned, auditable source reachable over REST/OpenAPI, FHIR R4 read and MCP. For PIS/HIS vendors and AI agents the value is one stable, deterministic interface instead of 20+ brittle ones. For the solo maintainer, few well-understood components on one toolchain ([ADR-013](../adr/013-demo-scope.md), [ADR-001](../adr/001-python-first-core.md)).
+
+The full set of decisions behind these three pillars, with their engineering rationale, is the register below.
+
 | Decision | Rationale | ADR |
 |----------|-----------|-----|
 | Four-layer product cut: L0 ingestion → L1 serving + MCP → L2 intelligence (post-CAS) → L3 apps | Each layer consumes only the one below. CAS scope stops at L1 plus a thin L3 console | [ADR-013](../adr/013-demo-scope.md) |

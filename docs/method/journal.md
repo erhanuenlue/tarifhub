@@ -3,7 +3,9 @@
 These are selected excerpts from the contemporaneous `vault/daily/` journal. They are a selection
 only, never backfilled. The full journal lives in the repository (`vault/daily/2026-06-11.md`,
 `2026-06-12.md`, `2026-06-13.md`). Each excerpt keeps its original commit or PR reference. Typography
-is normalised to the house style.
+is normalised to the house style. The synthesis these events add up to, the concrete lessons I take
+forward, is collected in [What these events taught me](#what-these-events-taught-me) at the foot of
+this page, and generalises into the single rule stated in the [Conclusion](fazit.md).
 
 ## Freeze-line guard event (2026-06-11, PR #2, 057a6c1)
 
@@ -63,3 +65,33 @@ independent containers, a live `EAL/1000` read at p95 15.8 ms, and a k3d `helm i
 pods Running, all quoted in arc42 §7 and `docs/evidence/2026-06-13-distribution.md` and illustrated
 by two PNGs. Evidence that exists only at runtime had to be quoted and interpreted in the report,
 not left as a screenshot.
+
+## What these events taught me
+
+The excerpts above are the raw record. These are the lessons I actually drew from them. Each is tied
+to the event that taught it, and none is a general theory: together they generalise into the single
+rule I carry forward, stated in the [Conclusion](fazit.md).
+
+1. **A wrong premise in the plan scales as fast as the agents consume it.** My own brief asserted
+   `explain_crosswalk` returned 501 when the code 404s, and that single error had already propagated
+   into three files before a fresh-context verifier caught it against the real httpx path (PR #4,
+   `07cdfc5`). The orchestrator's mistakes do not stay local, so the plan is the highest-leverage
+   place for a human to read.
+
+2. **Green tests prove only the paths and the engine you ran them on.** A `json.loads()` on a
+   Postgres JSONB value and an `int` written into a boolean column both passed the SQLite suite and
+   surfaced only against a real Postgres engine and the independent reviewer (PR #2, `057a6c1`). I
+   now treat a second engine and a second model family as coverage for different blind spots, not as
+   belt-and-braces on the same one.
+
+3. **Ungrounded generation is most dangerous exactly where it meets a real contract.** The
+   `lib/api.ts` scaffold rendered every served value as a dash placeholder because it was written
+   against an invented camelCase shape, and no test caught it: reading both sides of the wire did
+   (PR #16). At a contract surface I now ground the generation in the real artifact before trusting
+   it.
+
+4. **Enforce the boundary in code, not by trust.** When a worker wrote an `int` into a boolean audit
+   column below the freeze line, the `guard_frozen` hook blocked the edit and halted the run for my
+   one-line authorisation (PR #2, `057a6c1`). A rule the tooling enforces, a hook or the drift guard
+   that later became `test_model_contract.py`, holds under autonomy in a way a documented convention
+   does not, and that is what lets the loop run unattended.

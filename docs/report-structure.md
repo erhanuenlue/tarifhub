@@ -15,6 +15,15 @@
 | **Conclusion** | What this CAS produced and what is carried into future practice | [Conclusion](method/fazit.md) |
 | **Solution: the code** | The running solution itself, which is part of the project work | [`github.com/erhanuenlue/tarifhub`](https://github.com/erhanuenlue/tarifhub): `services/`, `apps/`, `db/`, `deploy/` |
 
+## What the assessment weights most
+
+Four things carry the most weight in the assessment. This is where each is answered, most directly.
+
+1. **How AI was used to reach the goal** (criteria 15 and 16). The goal, a trustworthy deterministic tariff platform where no AI computes or mutates a billing value, and the AI apparatus built to serve it, are in [The AI‑SE Framework](method/ai-se-framework.md), with the worked, phase‑by‑phase evidence in [AI Tools & Workflow](method/ai-tools.md) and the mode analysis in the [Decision Matrix](method/decision-matrix.md).
+2. **What I learned, the experience report** (criterion 9). The contemporaneous events are in the [Journal](method/journal.md), and the synthesised lessons drawn from them are in [What these events taught me](method/journal.md#what-these-events-taught-me).
+3. **The conclusion** (criterion 18). The reflective close, the three non‑delegated vetoes, the honest limits and the single transfer rule, is the [Conclusion](method/fazit.md).
+4. **The solution, not only the code** (criteria 3 and 4). The problem, the strategic response and the value each choice delivers to a stakeholder are in [4 · Solution Strategy](arc42/04-solution-strategy.md), with the problem and stakeholders set out in [1 · Introduction & Goals](arc42/01-introduction-goals.md). The running solution itself is in the repository (`services/`, `apps/`, `db/`, `deploy/`).
+
 The [Evidence Index](criterion-map.md) cross‑references the same material to the 18 assessment
 anchors, and the authorship confirmation is on the [Selbständigkeitserklärung](method/eigenstaendigkeit.md)
 page.
