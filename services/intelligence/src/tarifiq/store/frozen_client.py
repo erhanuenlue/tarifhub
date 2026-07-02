@@ -39,9 +39,13 @@ class FrozenTariff:
 class FrozenStore(Protocol):
     """The minimal read surface TarifIQ depends on."""
 
-    def get(self, system: str, code: str) -> Optional[FrozenTariff]: ...
+    def get(self, system: str, code: str) -> Optional[FrozenTariff]:
+        """Return the frozen record for ``(system, code)``, or ``None``."""
+        ...
 
-    def exists(self, system: str, code: str) -> bool: ...
+    def exists(self, system: str, code: str) -> bool:
+        """True iff a frozen record exists for ``(system, code)``."""
+        ...
 
 
 class OfflineFrozenStore:
@@ -53,9 +57,13 @@ class OfflineFrozenStore:
         }
 
     def get(self, system: str, code: str) -> Optional[FrozenTariff]:
+        """Return the bundled snapshot's record for ``(system, code)``, or ``None``."""
+
         return self._by_key.get((system, code))
 
     def exists(self, system: str, code: str) -> bool:
+        """True iff the bundled snapshot carries a record for ``(system, code)``."""
+
         return (system, code) in self._by_key
 
 
@@ -100,6 +108,8 @@ class ServingFrozenClient:
         )
 
     def get(self, system: str, code: str) -> Optional[FrozenTariff]:
+        """Read one frozen record from the serving API; a 404 maps to ``None``."""
+
         with self._client() as client:
             resp = client.get(f"/api/v1/tariffs/{system}/{code}")
             if resp.status_code == 404:
@@ -108,6 +118,8 @@ class ServingFrozenClient:
             return _from_serving_json(resp.json())
 
     def exists(self, system: str, code: str) -> bool:
+        """True iff the serving API has a frozen record for ``(system, code)``."""
+
         return self.get(system, code) is not None
 
 

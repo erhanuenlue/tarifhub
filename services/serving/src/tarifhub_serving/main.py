@@ -409,7 +409,7 @@ def fhir_code_system(
         "never computes a value."
     ),
 )
-def search(
+def search(  # noqa: PLR0913 — the HTTP query contract (q/system/limit) plus DI
     repo: RepoDep,
     db: DatabaseDep,
     request: Request,

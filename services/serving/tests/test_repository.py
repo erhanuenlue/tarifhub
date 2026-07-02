@@ -8,7 +8,7 @@ from decimal import Decimal
 import pytest
 
 from tarifhub_serving.db import Database
-from tarifhub_serving.repository import (  # noqa: PLC2701
+from tarifhub_serving.repository import (
     ServingRepository,
     _cosine_similarity,
     _parse_embedding,

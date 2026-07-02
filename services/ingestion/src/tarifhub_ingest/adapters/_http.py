@@ -21,9 +21,11 @@ class _RefuseRedirects(urllib.request.HTTPRedirectHandler):
     guarantees the pinned-host check can never be bypassed by a 30x to another host.
     """
 
-    def redirect_request(
+    def redirect_request(  # noqa: PLR0913 — urllib's fixed redirect-hook signature
         self, req: Any, fp: Any, code: int, msg: str, headers: Any, newurl: str
-    ) -> None:  # noqa: D102, PLR0913
+    ) -> None:
+        """Refuse the redirect with a host-naming error (urllib override hook)."""
+
         raise ValueError(
             f"fetch refused a {code} redirect to {newurl!r}; the scheme/host pin only "
             "covers the initial URL, so redirects are not followed (fail closed)"

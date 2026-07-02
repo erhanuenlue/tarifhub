@@ -26,6 +26,8 @@ class Database:
 
     @classmethod
     def from_url(cls, db_url: str) -> "Database":
+        """Parse ``db_url`` into a :class:`Database` facade (sqlite or postgresql)."""
+
         scheme = urlparse(db_url).scheme.lower()
         if scheme.startswith("sqlite"):
             return cls(db_url=db_url, dialect="sqlite")

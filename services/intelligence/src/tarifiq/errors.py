@@ -84,7 +84,7 @@ def _correlation_id(request: Request) -> str:
     return request.headers.get("x-request-id") or uuid.uuid4().hex
 
 
-def _problem(
+def _problem(  # noqa: PLR0913 — one keyword per RFC 7807 field (ADR-019 replica)
     request: Request,
     *,
     status: int,

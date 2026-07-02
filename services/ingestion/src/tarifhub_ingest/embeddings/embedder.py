@@ -52,11 +52,17 @@ class Embedder(Protocol):
     """
 
     @property
-    def dimension(self) -> int: ...
+    def dimension(self) -> int:
+        """Vector dimensionality this embedder produces."""
+        ...
 
-    def embed(self, text: str) -> list[float]: ...
+    def embed(self, text: str) -> list[float]:
+        """Embed ``text`` as a passage/document vector (the indexing side)."""
+        ...
 
-    def embed_query(self, text: str) -> list[float]: ...
+    def embed_query(self, text: str) -> list[float]:
+        """Embed ``text`` as a query vector (e5's asymmetric search side)."""
+        ...
 
 
 class HashingEmbedder:
@@ -71,9 +77,13 @@ class HashingEmbedder:
 
     @property
     def dimension(self) -> int:
+        """The configured stub dimensionality (16 by default; see STUB_DIMENSION)."""
+
         return self._dimension
 
     def embed(self, text: str) -> list[float]:
+        """Hash ``text`` into a stable unit vector (deterministic, not semantic)."""
+
         normalized = " ".join((text or "").split()).lower()
         raw: list[float] = []
         for i in range(self._dimension):
@@ -85,6 +95,8 @@ class HashingEmbedder:
         return [v / norm for v in raw]
 
     def embed_query(self, text: str) -> list[float]:
+        """Embed a query identically to a passage (the stub has no asymmetry)."""
+
         # The stub is not semantic, so it does NOT differentiate query from passage:
         # a query embeds identically to the same text as a passage. This keeps offline
         # tests free of any order/flake sensitivity that a fabricated prefix would add.

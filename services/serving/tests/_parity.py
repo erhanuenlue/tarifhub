@@ -46,7 +46,7 @@ def _scratch_url(base_url: str, dbname: str) -> str:
 
 
 def _create_pg_scratch(base_url: str) -> tuple[str, str]:
-    import psycopg  # noqa: PLC0415
+    import psycopg
 
     scratch = f"tarifhub_parity_{uuid.uuid4().hex[:12]}"
     admin = psycopg.connect(base_url, autocommit=True)
@@ -65,7 +65,7 @@ def _create_pg_scratch(base_url: str) -> tuple[str, str]:
 
 
 def _drop_pg_scratch(base_url: str, scratch: str) -> None:
-    import psycopg  # noqa: PLC0415
+    import psycopg
 
     admin = psycopg.connect(base_url, autocommit=True)
     try:

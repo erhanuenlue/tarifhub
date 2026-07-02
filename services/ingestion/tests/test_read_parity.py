@@ -327,7 +327,7 @@ class _FrozenClock(datetime):
     """
 
     @classmethod
-    def now(cls, tz=None):  # noqa: D102 - matches datetime.now signature
+    def now(cls, tz=None):
         return FIXED_NOW if tz is None else FIXED_NOW.astimezone(tz)
 
 

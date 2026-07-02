@@ -45,7 +45,7 @@ class PipelineReport:
     records: list[TariffRecord] = field(default_factory=list)
 
 
-def run_pipeline(
+def run_pipeline(  # noqa: PLR0913 — sources + ports + keyword-only pipeline knobs
     specs: list[SourceSpec],
     repo: TariffRepository,
     audit: AuditLogger,

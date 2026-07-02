@@ -98,19 +98,19 @@ def test_real_e5_ranking_through_production_search_offline(tmp_path) -> None:
     test-only import, exactly as the serving conftest does); the read goes through the real
     `ServingRepository`.
     """
-    from datetime import date, datetime, timezone  # noqa: PLC0415
-    from decimal import Decimal  # noqa: PLC0415
+    from datetime import date, datetime, timezone
+    from decimal import Decimal
 
-    from tarifhub_ingest.models.tariff_model import (  # noqa: PLC0415
+    from tarifhub_ingest.models.tariff_model import (
         Designation,
         TariffRecord,
         TariffSystem,
     )
-    from tarifhub_ingest.storage.db import Database as IngestDatabase  # noqa: PLC0415
-    from tarifhub_ingest.storage.tariff_repository import TariffRepository  # noqa: PLC0415
-    from tarifhub_ingest.versioning.freeze_record import freeze  # noqa: PLC0415
-    from tarifhub_serving.db import Database as ServingDatabase  # noqa: PLC0415
-    from tarifhub_serving.repository import ServingRepository  # noqa: PLC0415
+    from tarifhub_ingest.storage.db import Database as IngestDatabase
+    from tarifhub_ingest.storage.tariff_repository import TariffRepository
+    from tarifhub_ingest.versioning.freeze_record import freeze
+    from tarifhub_serving.db import Database as ServingDatabase
+    from tarifhub_serving.repository import ServingRepository
 
     fx = _load()
     db_path = tmp_path / "e5_ranking.db"

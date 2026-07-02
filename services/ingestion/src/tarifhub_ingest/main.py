@@ -218,7 +218,7 @@ def run() -> None:
     TARIFHUB_API_PORT), defaulting to the same 0.0.0.0:8000 the Docker CMD passes.
     """
 
-    import uvicorn  # local import keeps module import light for tests
+    import uvicorn  # noqa: PLC0415  (lazy: keep module import light for tests)
 
     settings = get_settings()
     uvicorn.run(

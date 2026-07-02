@@ -90,6 +90,8 @@ class TariffRepository:
         return 1 if current_max is None else int(current_max) + 1
 
     def exists(self, record_hash: str) -> bool:
+        """True iff a row with this exact ``record_hash`` is already stored."""
+
         cur = self._conn.execute(
             f"SELECT 1 FROM tariff WHERE record_hash = {self._ph} LIMIT 1", (record_hash,)
         )

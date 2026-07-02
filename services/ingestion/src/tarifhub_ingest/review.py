@@ -239,7 +239,7 @@ def _flagged_reason(record: TariffRecord, threshold: float) -> str:
     Imported lazily to keep the determinism-boundary import graph of this module minimal.
     """
 
-    from tarifhub_ingest.validators.tariff_validator import validate
+    from tarifhub_ingest.validators.tariff_validator import validate  # noqa: PLC0415
 
     reasons: list[str] = []
     if record.harmonization_confidence < threshold:
