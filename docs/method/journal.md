@@ -78,11 +78,13 @@ rule I carry forward, stated in the [Conclusion](fazit.md).
    `07cdfc5`). The orchestrator's mistakes do not stay local, so the plan is the highest-leverage
    place for a human to read.
 
-2. **Green tests prove only the paths and the engine you ran them on.** A `json.loads()` on a
-   Postgres JSONB value and an `int` written into a boolean column both passed the SQLite suite and
-   surfaced only against a real Postgres engine and the independent reviewer (PR #2, `057a6c1`). I
-   now treat a second engine and a second model family as coverage for different blind spots, not as
-   belt-and-braces on the same one.
+2. **Green tests prove only the paths and the engine you ran them on.** The independent reviewer
+   caught two defects that 28 green tests missed: a `json.loads()` on a Postgres JSONB value (already
+   a dict) that would have returned 500 on every Postgres read, invisible to the SQLite-only suite
+   because SQLite returns text, and an `ai_map` error path that wrote `ai_status` into metadata and so
+   produced a different `record_hash` than the no-key fallback, silently breaking re-ingest
+   idempotency under a transient API outage (PR #2, `057a6c1`). I now treat a second engine and a
+   second model family as coverage for different blind spots, not as belt-and-braces on the same one.
 
 3. **Ungrounded generation is most dangerous exactly where it meets a real contract.** The
    `lib/api.ts` scaffold rendered every served value as a dash placeholder because it was written
