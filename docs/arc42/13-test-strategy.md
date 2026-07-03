@@ -212,6 +212,12 @@ demonstrate the intelligent behaviour itself in CI, still with no live key and n
   `services/serving/tests/fixtures/record_e5_fr_ranking.py` and committed, so the real semantic search is
   demonstrated deterministically with no 2 GB download in CI. The full FR-ranking eval is recorded at
   [evidence/2026-06-11-fr-ranking-eval.md](../evidence/2026-06-11-fr-ranking-eval.md).
+  Alongside that curated seven-record top-1 demonstration, `services/serving/tests/test_search_eval_metrics.py`
+  recomputes the full headline metrics, recall@5 and MRR@5 for both prefix runs (passage 0.833 / 0.681,
+  query 0.917 / 0.597), from a committed full-corpus real-e5 fixture
+  (`services/serving/tests/fixtures/e5_eval_corpus.json`, all 1 279 EAL passages plus the 12 queries in
+  both prefixes, recorded by `fixtures/record_e5_eval_corpus.py` whose self-check refuses to write on any
+  mismatch), so a regression in the recorded vectors or the documented figures fails the offline suite and CI.
 
 All six families run in the **offline default suite** (no key, no network) and again in CI on every
 push. Families 1 to 5 test the guardrails without ever needing the AI. Family 6 demonstrates the real
