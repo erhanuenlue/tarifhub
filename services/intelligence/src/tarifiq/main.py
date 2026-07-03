@@ -18,6 +18,7 @@ from contextlib import asynccontextmanager
 from typing import Annotated
 
 from fastapi import Depends, FastAPI, Request
+from pydantic import BaseModel
 
 from tarifiq import __version__
 from tarifiq.config import Settings, get_settings
@@ -33,6 +34,18 @@ from tarifiq.models.rule_model import (
 from tarifiq.rules.combinability import evaluate_combinability
 from tarifiq.store.frozen_client import FrozenStore, get_frozen_store
 from tarifiq.validators.rule_validator import validate_rule
+
+
+class HealthResponse(BaseModel):
+    """Liveness payload for ``GET /health``: service identity and package version.
+
+    An HTTP-surface DTO, deliberately kept out of ``models.rule_model`` (which holds
+    the domain rule contracts) since it carries no billing or rule semantics.
+    """
+
+    status: str
+    service: str
+    version: str
 
 
 def provide_frozen_store(request: Request) -> FrozenStore:
@@ -73,18 +86,43 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # id and no leaked internals. See tarifiq.errors.
     register_exception_handlers(app)
 
-    @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok", "service": "tarifiq", "version": __version__}
+    @app.get(
+        "/health",
+        response_model=HealthResponse,
+        summary="Service liveness and version",
+    )
+    def health() -> HealthResponse:
+        """Report the service identity and running package version."""
 
-    @app.post("/v1/combinability-check")
+        return HealthResponse(status="ok", service="tarifiq", version=__version__)
+
+    @app.post(
+        "/v1/combinability-check",
+        response_model=CombinabilityCheckResult,
+        summary="Deterministic combinability verdict for a set of billed positions",
+    )
     def combinability_check(
         payload: CombinabilityCheckRequest, store: StoreDep
     ) -> CombinabilityCheckResult:
+        """Evaluate the billed positions against the frozen rule tables.
+
+        A pure function of the request and the frozen rule/cumulation tables: same input,
+        same verdict, no LLM involvement.
+        """
+
         return evaluate_combinability(payload, store=store)
 
-    @app.get("/v1/crosswalk/{tarmed_code}")
+    @app.get(
+        "/v1/crosswalk/{tarmed_code}",
+        response_model=CrosswalkResult,
+        summary="Deterministic TARMED to TARDOC cross-walk lookup",
+    )
     def crosswalk(tarmed_code: str) -> CrosswalkResult:
+        """Look up the frozen TARMED to TARDOC mapping for ``tarmed_code``.
+
+        Returns 404 when the code is not present in the frozen cross-walk table.
+        """
+
         result = lookup_crosswalk(tarmed_code)
         if not result.found:
             raise CrosswalkNotFound(
@@ -92,8 +130,14 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             )
         return result
 
-    @app.post("/v1/validate")
+    @app.post(
+        "/v1/validate",
+        response_model=RuleValidationResult,
+        summary="Validate a combinability rule against the frozen store",
+    )
     def validate(rule: CombinabilityRule, store: StoreDep) -> RuleValidationResult:
+        """Check a candidate combinability rule for consistency with the frozen store."""
+
         return validate_rule(rule, store=store)
 
     return app

@@ -37,6 +37,7 @@ from tarifhub_ingest.errors import (
 )
 from tarifhub_ingest.ingestion.pipeline import run_pipeline
 from tarifhub_ingest.ingestion.source_loader import default_sample_dir, discover_samples
+from tarifhub_ingest.models.tariff_model import TariffRecord
 from tarifhub_ingest.review import (
     ReviewDecision,
     ReviewItem,
@@ -46,6 +47,17 @@ from tarifhub_ingest.review import (
 from tarifhub_ingest.review_service import apply_review_decision
 from tarifhub_ingest.storage.db import Database
 from tarifhub_ingest.storage.tariff_repository import TariffRepository
+
+
+class HealthResponse(BaseModel):
+    """Liveness payload for GET /health (status, service name and version).
+
+    Field order is the wire order: status, service, version.
+    """
+
+    status: str
+    service: str
+    version: str
 
 
 class IngestSampleResponse(BaseModel):
@@ -119,20 +131,42 @@ def create_app(settings: Settings | None = None) -> FastAPI:
     # write path raises domain exceptions (no bare HTTPException). See tarifhub_ingest.errors.
     register_exception_handlers(app)
 
-    @app.get("/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok", "service": "tarifhub-ingest", "version": __version__}
+    @app.get(
+        "/health",
+        response_model=HealthResponse,
+        summary="Liveness probe with service name and version",
+    )
+    def health() -> HealthResponse:
+        """Return ``{"status": "ok", ...}`` with the service name and version when up."""
 
-    @app.get("/tariffs")
-    def list_tariffs(repo: RepoDep) -> list[dict]:
-        return [record.model_dump(mode="json") for record in repo.list_all()]
+        return HealthResponse(status="ok", service="tarifhub-ingest", version=__version__)
 
-    @app.get("/tariffs/{tariff_code}")
-    def get_tariff(tariff_code: str, repo: RepoDep) -> dict:
+    @app.get(
+        "/tariffs",
+        response_model=list[TariffRecord],
+        summary="List every frozen tariff record (all versions)",
+    )
+    def list_tariffs(repo: RepoDep) -> list[TariffRecord]:
+        """Return all frozen records (every version of every key), ordered by system, code, version.
+
+        FastAPI serializes each canonical :class:`TariffRecord` through its response
+        model, which equals the model's JSON-mode dump.
+        """
+
+        return repo.list_all()
+
+    @app.get(
+        "/tariffs/{tariff_code}",
+        response_model=TariffRecord,
+        summary="Get the latest frozen record for a tariff code",
+    )
+    def get_tariff(tariff_code: str, repo: RepoDep) -> TariffRecord:
+        """Return the highest-version frozen record for the code, or 404 if none exists."""
+
         record = repo.get(tariff_code)
         if record is None:
             raise TariffCodeNotFound(f"tariff_code {tariff_code!r} not found")
-        return record.model_dump(mode="json")
+        return record
 
     @app.post(
         "/ingest/sample",
@@ -148,6 +182,13 @@ def create_app(settings: Settings | None = None) -> FastAPI:
             Query(description="Bypass AI fill-reuse and re-run ai_map for changed/unchanged rows"),
         ] = False,
     ) -> IngestSampleResponse:
+        """Run the offline sample pipeline and freeze any new records.
+
+        Reads the bundled sample sources, runs the deterministic
+        map -> ai_map -> validate -> score -> freeze pipeline, and persists new frozen
+        versions. Hash-idempotent: re-running identical content freezes nothing new.
+        """
+
         sample_dir = settings.sample_dir or default_sample_dir()
         specs = discover_samples(sample_dir)
         if not specs:
