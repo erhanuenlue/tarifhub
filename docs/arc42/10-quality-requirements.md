@@ -40,12 +40,12 @@ figures are reproducible with `uv run pytest` in each service (no network, no co
 
 ```text
 ingestion:    201 passed, 3 skipped in 3.71s
-serving:      120 passed, 1 skipped in 3.38s
+serving:      120 passed, 2 skipped in 3.40s
 mcp:          17 passed in 0.21s
 intelligence: 60 passed in 0.56s
 ```
 
-**Interpretation.** 398 tests pass and 4 are skipped (the skips are the Postgres-only
+**Interpretation.** 398 tests pass and 5 are skipped (the skips are the Postgres-only
 parity legs that have no `TARIFHUB_PG_TEST_URL` offline, so they run in the `python-parity`
 CI job against a real pgvector container). What this proves: the core logic, **including
 its error cases**, runs green in the build. The error-case coverage is
