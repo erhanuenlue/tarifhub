@@ -20,6 +20,14 @@ COPY services/serving /app/services/serving
 RUN pip install --no-cache-dir /app/services/ingestion \
     && pip install --no-cache-dir /app/services/serving
 
+# Opt-in real multilingual-e5 embedder (1024-dim), build-arg gated. With WITH_E5 unset
+# or 0 this layer is a no-op and the image is functionally identical to the default; the
+# search path keeps falling back to the offline stub. Installs sentence-transformers ONLY
+# (matching the `ai` extra's version bound) into the same environment the app runs from —
+# NEVER the LLM client; the serving value path must stay LLM-client-free (AST boundary test).
+ARG WITH_E5=0
+RUN if [ "$WITH_E5" = "1" ]; then pip install --no-cache-dir "sentence-transformers>=2.7"; fi
+
 # Non-root runtime.
 RUN useradd --create-home --uid 1001 appuser
 USER 1001

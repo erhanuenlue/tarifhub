@@ -154,7 +154,10 @@ pointed at Postgres and the e5 1024-dim embedder) run over the full corpus, or a
 ingestion. There `serving` returns a real frozen record verbatim (`EAL/1000`, `tax_points "76.5"`,
 trilingual designation) at p95 = 15.8 ms over 200 warm point reads, inside the NFR-4 target of
 200 ms. Semantic search returns HTTP 501 whenever the serving container's embedder dimension does
-not match the `vector(1024)` column: honest unavailability, never a faked ranking (NFR-1). Latency
+not match the `vector(1024)` column: honest unavailability, never a faked ranking (NFR-1). The
+opt-in e5 overlay capture of 2026-07-03 now demonstrates the live HTTP 200 search path under
+Compose (`hématocrite` ranking `1372.01` then `1375`, [live compose smoke](../evidence/2026-07-03-live-compose-smoke.md#4-live-semantic-ranking-first-http-200-search-under-compose)); the default stack keeps
+failing closed with 501 by design. Latency
 is a host-loopback measurement on a single replica, not a load test. It bounds the single-record
 path, not concurrency.
 
@@ -277,6 +280,40 @@ plus a Job: a Deployment keeps the process alive and restarts it (right for the 
 a batch), a Job runs once to completion (right for the batch). The batch here writes the
 offline SQLite mirror with the bundled stub embedder. The shared-Postgres path needs the e5
 (1024-dim) embedder, matching the search note in Evidence 2.
+
+### The full loop runs live under Compose with the e5 overlay (2026-07-03)
+
+Under the opt-in e5 overlay the whole read-and-write loop ran live end to end on the real
+Postgres + pgvector engine, captured verbatim in
+[../evidence/2026-07-03-live-compose-smoke.md](../evidence/2026-07-03-live-compose-smoke.md). A
+healthy four-container stack (`db`, `ingestion`, `serving`, `tarifguard`, all `healthy`) served a
+full in-container EAL ingest (the full 1 279-record source frozen and served in about 273 s, the
+first record on the API after 60 s while the batch still ran, NFR-5), the first HTTP 200 semantic
+search under Compose (the FR query `hématocrite` ranked `1372.01` then `1375`, matching the
+recorded-fixture ranks), and the human-review write-back loop (a flagged SL record approved through
+the ingestion review API, the queue shrinking 19 to 18, the serving read moving from immutable v1
+to a new immutable v2 with a new `record_hash`, v1 never mutated). Read latency on this stack was
+p95 170.6 ms for the search leg (each request embedding its query with e5 on CPU in the container)
+and p95 6.5 ms for the point read (NFR-4), both host-loopback single-replica warm-request
+measurements, not load tests.
+
+```text
+$ docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e5.yml --profile app ps
+db          pgvector/pgvector:pg16   Up (healthy)
+ingestion   tarifhub-ingestion       Up (healthy)
+serving     deploy-serving           Up (healthy)
+tarifguard  deploy-tarifguard        Up (healthy)
+
+$ curl -s 'http://localhost:8001/api/v1/search?q=h%C3%A9matocrite&limit=5'
+{"rank":1,"tariff_code":"1372.01", ...}
+{"rank":2,"tariff_code":"1375", ...}
+```
+
+One honest limitation from this capture, the mixed-corpus HNSW small-limit ranking behaviour, is
+recorded in the risk register ([§11](11-risks-technical-debt.md)): the EAL-only eval figures are
+unaffected. A scope note on CI: the CI images job builds the default images only (`WITH_E5=0`),
+so the `WITH_E5=1` build path and the overlay are verified by this recorded manual capture, not
+by a CI job.
 
 ## Production target
 

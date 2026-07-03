@@ -486,3 +486,109 @@ def test_pgvector_search_sql_deterministic(engine, monkeypatch):
         assert {h["record"]["tariff_system"] for h in eal_hits} == {"EAL"}
         assert [h["rank"] for h in eal_hits] == list(range(1, len(eal_hits) + 1))
         assert len(eal_hits) < len(unfiltered)
+
+
+def _one_hot(index: int, dim: int) -> list[float]:
+    """A unit vector with a single 1.0 at ``index`` (crafted so cosine distances are exact)."""
+
+    vec = [0.0] * dim
+    vec[index] = 1.0
+    return vec
+
+
+def test_search_by_embedding_latest_version_and_tie_break(engine):
+    """pgvector search ranks LATEST versions only, ties broken by (system, code) ascending.
+
+    Postgres-only (pgvector). Regression guard for the codex gpt-5.5 P1: the pgvector SQL
+    ranked EVERY versioned row with no secondary ORDER BY, so a review-frozen v2 could not
+    displace a closer-matching stale v1, and equal-distance ties ordered nondeterministically.
+
+    Seed (embeddings are 1024-dim one-hot vectors so the cosine distances are exact):
+      * TARDOC/AA.00.0010 v1 -> axis 0, IDENTICAL to the query (distance 0, the closest row)
+      * TARDOC/AA.00.0010 v2 -> axis 1, orthogonal to the query (distance 1), the latest
+      * TARDOC/BB.00.0020 v1 -> axis 1, IDENTICAL to AA v2 (distance 1), an exact tie
+    BB is inserted before AA's latest so a naive scan would order the distance-1 tie
+    BB-before-AA. The buggy SQL surfaces AA v1 (distance 0) and lists AA twice; the fixed
+    SQL restricts to the latest per key, so AA v2 and BB v1 tie at distance 1 and the
+    secondary ORDER BY puts AA before BB.
+    """
+
+    if engine.label != "postgres":
+        pytest.skip("pgvector search requires Postgres")
+
+    from tarifhub_ingest.embeddings.embedder import E5_DIMENSION
+    from tarifhub_serving.db import Database as ServingDatabase
+    from tarifhub_serving.repository import ServingRepository
+
+    dim = E5_DIMENSION  # 1024, matches the vector(1024) column
+    query = _one_hot(0, dim)
+    common = dict(
+        category="consultation",
+        valid_from=date(2024, 1, 1),
+        source_url="https://example.test/src",
+        source_version="2024.1",
+        harmonization_confidence=0.95,
+        requires_review=False,
+        created_at=FIXED_NOW,
+    )
+    aa_v1 = TariffRecord(
+        tariff_code="AA.00.0010",
+        tariff_system=TariffSystem.TARDOC,
+        designation=Designation(de="Grundkonsultation"),
+        tax_points=Decimal("9.57"),
+        version=1,
+        **common,
+    )
+    aa_v2 = TariffRecord(
+        tariff_code="AA.00.0010",
+        tariff_system=TariffSystem.TARDOC,
+        designation=Designation(de="Grundkonsultation (rev)"),
+        tax_points=Decimal("10.10"),
+        version=2,
+        **common,
+    )
+    bb_v1 = TariffRecord(
+        tariff_code="BB.00.0020",
+        tariff_system=TariffSystem.TARDOC,
+        designation=Designation(de="Zuschlag Komplexitaet"),
+        tax_points=Decimal("4.25"),
+        version=1,
+        **common,
+    )
+
+    conn = engine.db.connect()
+    try:
+        engine.db.init_schema(conn)
+        repo = TariffRepository(conn, engine.db)
+        # Insert BB before AA's latest so the distance-1 tie would fall BB-before-AA under a
+        # naive seq scan; the fixed secondary ORDER BY must still order AA first.
+        repo.add(freeze(bb_v1), embedding=_one_hot(1, dim))
+        repo.add(freeze(aa_v1), embedding=_one_hot(0, dim))  # closest match, but stale v1
+        repo.add(freeze(aa_v2), embedding=_one_hot(1, dim))  # latest, orthogonal to query
+    finally:
+        conn.close()
+
+    conn = engine.db.connect()
+    try:
+        serving_repo = ServingRepository(conn, ServingDatabase.from_url(engine.db_url))
+        hits = serving_repo.search_by_embedding(query, limit=10)
+        keys = [(h.tariff_system.value, h.tariff_code) for h in hits]
+        versions = {(h.tariff_system.value, h.tariff_code): h.version for h in hits}
+
+        # (a) latest version only: the closest row (AA v1, distance 0) must NOT surface.
+        assert ("TARDOC", "AA.00.0010") in versions
+        assert versions[("TARDOC", "AA.00.0010")] == 2
+        assert all(not (h.tariff_code == "AA.00.0010" and h.version == 1) for h in hits)
+
+        # (b) each key appears at most once (no v1+v2 duplication of the same code).
+        assert len(keys) == len(set(keys))
+
+        # (c) the equal-distance tie orders (tariff_system, tariff_code) ascending: AA, BB.
+        assert keys == [("TARDOC", "AA.00.0010"), ("TARDOC", "BB.00.0020")]
+
+        # Parity: the offline Python ranker on the SAME data and query agrees exactly, so
+        # the pgvector SQL path and the SQLite fallback share one latest-version contract.
+        offline = serving_repo.search_offline(query, limit=10)
+        assert [(h.tariff_system.value, h.tariff_code) for h in offline] == keys
+    finally:
+        conn.close()

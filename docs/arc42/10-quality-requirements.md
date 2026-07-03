@@ -9,9 +9,9 @@ Targets from Architecture v2.1 §12, carried as stable ids NFR-1…NFR-6. Each r
 | NFR-1 | Determinism | 100% of value-serving responses are frozen records, on an LLM-free value path | AST boundary tests (`test_serving_boundary.py`, `test_determinism_boundary.py` ×2) run per service in the offline suite and in CI's per-service test loop on every push. The ingestion + serving value-path suites re-run as a named, `-v`-visible CI step | Green on every CI run (per-service loop + named step in `.github/workflows/ci.yml` `python` job) | [ADR-002](../adr/002-freeze-line-decomposition.md), [ADR-005](../adr/005-single-ai-seam.md) |
 | NFR-2 | Reproducibility | Identical sources → identical `record_hash` set, unconditionally (live key or not), with `--refill` the deliberate exception and stored bytes == hashed bytes | Full re-ingest of the identical export + the live fill-reuse leg with a deliberately invalid API key | 0/10 299 frozen on the reuse leg (zero-API proof, [`docs/evidence/2026-06-12-sl-live-ingest.md`](../evidence/2026-06-12-sl-live-ingest.md)), and zero duplicate hashes | [ADR-005 addendum](../adr/005-single-ai-seam.md), [ADR-016](../adr/016-decimal-scale-contract.md) |
 | NFR-3 | Harmonisation review rate | <15% flagged on the two BAG sources | `PipelineReport` flagged/frozen ratio on full live ingests, cross-checked against `audit_log` | EAL 0.0 % (1 279), SL 1.08 % (111/10 299), runs 2026-06-11 | [ADR-005](../adr/005-single-ai-seam.md) (confidence scoring), [ADR-013](../adr/013-demo-scope.md) (review loop scope) |
-| NFR-4 | API read latency | p95 < 200 ms single-record (cached, measured), < 500 ms search (design budget, not yet measured) | p95 over repeated requests against the live compose serving container | **single-record measured 2026-06-13**: p95 **15.8 ms** (p50 10.1 ms) over n=200 warm reads against the running container, well inside the 200 ms target. This is a host-loopback, single-replica measurement over warm reads, not a load test: it bounds the single-record path, not concurrency (see the [§7](07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose) caveat). The search-latency p95 is a stated design budget, not yet measured (method defined, see [§7](07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose)) | [ADR-002](../adr/002-freeze-line-decomposition.md) (read side isolated), [ADR-006](../adr/006-postgres-pgvector.md) (point-read store) |
-| NFR-5 | Freshness | New source version frozen + served within 24 h of publication (operational goal) | Full-ingest pipeline wall clock as a **bounding proxy**. It measures end-to-end **processing time** (load to frozen-and-served), not the publish-to-serve latency from BAG's release, which also depends on when a run is triggered. A processing time orders of magnitude below 24 h is the evidence the goal is comfortably reachable once a run starts | EAL 70.6 s, SL 574 s end-to-end incl. embeddings, both orders of magnitude inside 24 h | [ADR-015](../adr/015-epl-sl-fhir-ingestion.md) (streaming bulk-export ingestion bounds the wall clock), [ADR-002](../adr/002-freeze-line-decomposition.md) (freeze-to-serve: a frozen record is already the serving contract) |
-| NFR-6 | Test coverage | Core logic modules > 80% line coverage | `pytest-cov` line coverage, printed and **gated** by the CI `python` job on every run (`--cov-fail-under=80`, see [§13](13-test-strategy.md)) | **measured 2026-07-02**: serving 94 %, mcp 94 %, ingestion 91 % totals, with every core logic module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 92 %, review write-back 93 %, error layer 99 %) and the Postgres-only connection facade (`db.py`) at 76 %, exercised in the `python-parity` job, quoted in [Test and pipeline results](#test-and-pipeline-results) | [ADR-010](../adr/010-github-actions-devsecops.md) (the CI `python` job runs the offline suite and gates the ingestion, serving and mcp totals with `--cov-fail-under=80`), so a regression below the 80 % floor fails CI (see [§13](13-test-strategy.md)) |
+| NFR-4 | API read latency | p95 < 200 ms single-record (cached, measured), < 500 ms search (measured) | p95 over repeated requests against the live compose serving container | **single-record measured 2026-06-13**: p95 **15.8 ms** (p50 10.1 ms) over n=200 warm reads against the running container, well inside the 200 ms target. **search measured 2026-07-03**: p95 **170.6 ms** (p50 141.5 ms) over n=200 warm requests, round-robin over the 12 labelled eval queries, against the live compose serving container under the opt-in e5 overlay (each request includes the in-container CPU query embedding), corpus 4 309 frozen records, inside the 500 ms budget. The point-read leg re-measured the same day held at p95 **6.5 ms** (continuity with the 15.8 ms above). Both figures are host-loopback, single-replica measurements over warm requests, not load tests: they bound the single-request path, not concurrency (see the [§7](07-deployment-view.md#evidence-2-the-full-stack-runs-under-compose) caveat and the [2026-07-03 live compose smoke](../evidence/2026-07-03-live-compose-smoke.md#6-nfr-4-read-latency-measured)) | [ADR-002](../adr/002-freeze-line-decomposition.md) (read side isolated), [ADR-006](../adr/006-postgres-pgvector.md) (point-read store) |
+| NFR-5 | Freshness | New source version frozen + served within 24 h of publication (operational goal) | Full-ingest pipeline wall clock, now **measured on the compose engine**. It measures end-to-end **processing time** (load to frozen-and-served), not the publish-to-serve latency from BAG's release, which also depends on when a run is triggered. A processing time orders of magnitude below 24 h is the evidence the goal is comfortably reachable once a run starts; the one remaining unmeasured leg is publish-to-trigger (when a run is started after BAG publishes), operational scheduling outside the repo | **measured 2026-07-03** under the `deploy/docker-compose.yml` stack (e5 overlay): the full EAL source version (1 279 records) was processed, frozen and served in about **273 s** end-to-end including the in-container e5 embeddings, and streaming freeze-to-serve put the first record on the serving API after **60 s** while the batch was still running ([ADR-002](../adr/002-freeze-line-decomposition.md), [live compose smoke](../evidence/2026-07-03-live-compose-smoke.md#2-nfr-5-trigger-to-served-full-eal-source-version)). 273 s against the 24 h goal leaves orders of magnitude of headroom. (History: the 2026-06-11 host runs measured EAL 70.6 s and SL 574 s end-to-end incl. embeddings, both also orders of magnitude inside 24 h.) | [ADR-015](../adr/015-epl-sl-fhir-ingestion.md) (streaming bulk-export ingestion bounds the wall clock), [ADR-002](../adr/002-freeze-line-decomposition.md) (freeze-to-serve: a frozen record is already the serving contract) |
+| NFR-6 | Test coverage | Core logic modules > 80% line coverage | `pytest-cov` line coverage, printed and **gated** by the CI `python` job on every run (`--cov-fail-under=80`, see [§13](13-test-strategy.md)) | **measured 2026-07-02**: serving 94 %, mcp 94 %, ingestion 91 % totals, plus **intelligence 99 % (measured 2026-07-03)**, with every core logic module above the 80 % target (model / freeze / pipeline / validator 100 %, mapper 98 %, serving routes 92 %, review write-back 93 %, error layer 99 %, all TarifIQ rule / crosswalk / validator modules 100 %) and the Postgres-only connection facade (`db.py`) at 76 %, exercised in the `python-parity` job, quoted in [Test and pipeline results](#test-and-pipeline-results) | [ADR-010](../adr/010-github-actions-devsecops.md) (the CI `python` job runs the offline suite and gates the ingestion, serving, mcp and intelligence totals with `--cov-fail-under=80`), so a regression below the 80 % floor fails CI (see [§13](13-test-strategy.md)) |
 
 The section below documents measured harmonisation evidence for the determinism, reproducibility and review-rate rows (EAL run 2026-06-11: 1 279/1 279 frozen, review rate 0.0 %. SL run 2026-06-11: 10 299 frozen, review rate 1.08 %, with a measured reproducibility caveat on the 47 AI-gap records, see below).
 
@@ -20,7 +20,7 @@ The section below documents measured harmonisation evidence for the determinism,
 This section documents the test and pipeline output that the NFR table above is built
 on. The unit-test counts and coverage tables below are measured locally by the offline
 suite and reproduced in CI's gated `python` job, where `--cov-fail-under=80` gates the ingestion,
-serving and mcp total line coverage at >=80% rather than recording the exact per-module figures.
+serving, mcp and intelligence total line coverage at >=80% rather than recording the exact per-module figures.
 Only the genuinely CI-side artefacts are quoted verbatim from CI: the named
 determinism-boundary step quoted from `ci.yml` and the image builds. Stating the provenance
 this way is deliberate: a screenshot or an unbacked "all tests green" claim says little, so
@@ -39,13 +39,13 @@ figures are reproducible with `uv run pytest` in each service (no network, no co
 ### Unit and contract tests (offline suite)
 
 ```text
-ingestion:    201 passed, 3 skipped in 2.67s
-serving:      114 passed, 1 skipped in 0.87s
+ingestion:    201 passed, 3 skipped in 3.71s
+serving:      120 passed, 2 skipped in 3.40s
 mcp:          17 passed in 0.21s
-intelligence: 35 passed in 0.23s
+intelligence: 60 passed in 0.56s
 ```
 
-**Interpretation.** 367 tests pass and 4 are skipped (the skips are the Postgres-only
+**Interpretation.** 398 tests pass and 5 are skipped (the skips are the Postgres-only
 parity legs that have no `TARIFHUB_PG_TEST_URL` offline, so they run in the `python-parity`
 CI job against a real pgvector container). What this proves: the core logic, **including
 its error cases**, runs green in the build. The error-case coverage is
@@ -67,7 +67,7 @@ or the real Postgres engine (the `python-parity` job).
 Measured locally on 2026-07-02 (ingestion 91 %, serving 94 %, mcp 94 %). Line coverage is
 platform-independent, so re-running the same offline test set on the CI Linux `python` job
 would produce the same per-module figures; CI itself does not record that per-module table,
-it gates only the ingestion, serving and mcp total line coverage against the 80 % floor (`--cov-fail-under=80`).
+it gates only the ingestion, serving, mcp and intelligence total line coverage against the 80 % floor (`--cov-fail-under=80`).
 
 ```text
 # services/ingestion: uv run --extra dev pytest --cov=tarifhub_ingest
@@ -119,9 +119,9 @@ lines. The two mapper lines are the `import anthropic` guard that the AI seam fa
 when the optional extra is absent, the eleven `review.py` lines are individual non-billing
 correction branches and defensive fallbacks, and the single uncovered line in each `errors.py`
 is the optional `record_hash` log-enrichment field. Coverage is now CI-gated: the `python` job
-runs ingestion, serving and mcp with `--cov-fail-under=80`, so a regression that drops one of
+runs ingestion, serving, mcp and intelligence with `--cov-fail-under=80`, so a regression that drops one of
 those totals below the 80 % floor fails the build, while the current totals (ingestion 91 %, serving 94 %,
-mcp 94 %) sit well above it. The gate is on the per-service aggregate, the target of every
+mcp 94 %, intelligence 99 %) sit well above it. The gate is on the per-service aggregate, the target of every
 core module staying above 80 % is the stronger goal the totals already meet.
 
 ### Determinism boundary (the apex test, a visible CI step)
@@ -429,6 +429,21 @@ panel, 1372.01, outranks the exact record).
 passage path (`"passage: "`, the faithful Block-0 production baseline) and the query path
 (`"query: "`, the fix), ranked with the same pgvector cosine SQL the serving API uses,
 against the frozen EAL set. (MRR is computed over the top-5 retrieved, hence MRR@5.)
+
+**Reproduced in CI, no longer a one-time eval.** These figures are now recomputed on every
+offline run and in CI: `services/serving/tests/test_search_eval_metrics.py` recalculates
+recall@5 and MRR@5 for both prefix runs (passage baseline 0.833 / 0.681, query prefix
+0.917 / 0.597) from committed real-e5 vectors over the full 1 279-record EAL corpus
+(`services/serving/tests/fixtures/e5_eval_corpus.json`, recorded 2026-07-03 by
+`fixtures/record_e5_eval_corpus.py`, whose self-check refuses to write on any mismatch),
+using a stdlib reimplementation of the `search_offline` ranking recipe (cosine descending,
+then `(tariff_system, tariff_code)` ascending). The test pins the recorded vectors and the
+metric math; it does not execute `ServingRepository` or the pgvector SQL path, which are
+exercised separately by the Postgres parity suite and the
+[2026-07-03 live capture](../evidence/2026-07-03-live-compose-smoke.md). A regression in either
+the recorded vectors or the documented figures fails the offline suite and CI. The
+2026-06-11 live run against Postgres + pgvector remains the provenance for the numbers, which
+are EAL-corpus-scoped.
 
 ## Acceptance criteria
 

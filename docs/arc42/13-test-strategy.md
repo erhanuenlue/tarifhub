@@ -212,6 +212,12 @@ demonstrate the intelligent behaviour itself in CI, still with no live key and n
   `services/serving/tests/fixtures/record_e5_fr_ranking.py` and committed, so the real semantic search is
   demonstrated deterministically with no 2 GB download in CI. The full FR-ranking eval is recorded at
   [evidence/2026-06-11-fr-ranking-eval.md](../evidence/2026-06-11-fr-ranking-eval.md).
+  Alongside that curated seven-record top-1 demonstration, `services/serving/tests/test_search_eval_metrics.py`
+  recomputes the full headline metrics, recall@5 and MRR@5 for both prefix runs (passage 0.833 / 0.681,
+  query 0.917 / 0.597), from a committed full-corpus real-e5 fixture
+  (`services/serving/tests/fixtures/e5_eval_corpus.json`, all 1 279 EAL passages plus the 12 queries in
+  both prefixes, recorded by `fixtures/record_e5_eval_corpus.py` whose self-check refuses to write on any
+  mismatch), so a regression in the recorded vectors or the documented figures fails the offline suite and CI.
 
 All six families run in the **offline default suite** (no key, no network) and again in CI on every
 push. Families 1 to 5 test the guardrails without ever needing the AI. Family 6 demonstrates the real
@@ -224,7 +230,7 @@ From `.github/workflows/ci.yml`, on every push to `main` and every pull request:
 
 | Job | What it does |
 |---|---|
-| `python` | Per service: `uv sync --frozen` → `uvx ruff check .` → `uv run pytest -q` (offline). A dedicated step re-runs the ingestion + serving boundary tests with `-v` so the determinism gate is visible in the log, and a coverage step gates ingestion, serving and mcp at `--cov-fail-under=80`. |
+| `python` | Per service: `uv sync --frozen` → `uvx ruff check .` → `uv run pytest -q` (offline). A dedicated step re-runs the ingestion + serving boundary tests with `-v` so the determinism gate is visible in the log, and a coverage step gates ingestion, serving, mcp and intelligence at `--cov-fail-under=80`. |
 | `python-parity` | Spins a `pgvector/pgvector:pg16` service container and runs the ingestion + serving read-parity suites against real Postgres 16 + pgvector (`TARIFHUB_PG_TEST_URL` set). |
 | `console` | When `apps/tarifguard/package.json` exists: `npm ci` → `npm run lint` → `npm run build` → `npm run test --if-present`. |
 | `security` | `gitleaks` (secrets) → `Trivy` (fs scan, fail on HIGH/CRITICAL) → `Syft` SBOM (`spdx-json`, uploaded as an artifact). |
@@ -238,7 +244,7 @@ Lockfiles are committed and CI never re-resolves (`UV_FROZEN=1`, owner decision)
 Target: **core modules (model, freeze, pipeline, mapper) > 80 % line coverage**
 ([§10](10-quality-requirements.md)). Measured on the offline suite (`pytest-cov`, line
 coverage) and re-measured and **gated** on every CI run in the `python` job's coverage step
-(`--cov-fail-under=80`). Measured 2026-07-02. The per-module figures and the residual misses are quoted and interpreted in
+(`--cov-fail-under=80`). Measured 2026-07-02 (intelligence added, measured 2026-07-03). The per-module figures and the residual misses are quoted and interpreted in
 [§10 Test and pipeline results](10-quality-requirements.md#coverage-pytest-cov-line-coverage):
 
 | Service | Core modules in scope | Measured |
@@ -246,11 +252,12 @@ coverage) and re-measured and **gated** on every CI run in the `python` job's co
 | `services/serving` | `main` 92 %, `db` 76 %, `repository` 91 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %, `telemetry` 100 %) | **94 % total** |
 | `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 %, `errors` 99 % | **91 % total** |
 | `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **94 % total** |
+| `services/intelligence` | rule/crosswalk/validator logic (`combinability` 100 %, `tarmed_tardoc` 100 %, `rule_validator` 100 %), `config` 100 %, `main` 100 %, `errors` 98 % | **99 % total** |
 
 Every core module is above the 80 % target, and the floor is now **enforced in CI**: the
-`python` job runs the ingestion, serving and mcp coverage with `--cov-fail-under=80`, so a
+`python` job runs the ingestion, serving, mcp and intelligence coverage with `--cov-fail-under=80`, so a
 regression that drops one of those totals below 80 % fails the build. The per-service totals
-(ingestion 91 %, serving 94 %, mcp 94 %) sit comfortably above the gate.
+(ingestion 91 %, serving 94 %, mcp 94 %, intelligence 99 %) sit comfortably above the gate.
 
 ## Console component tests
 

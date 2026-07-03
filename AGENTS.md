@@ -1,10 +1,10 @@
 # tarifhub — Project Facts (read first)
 
-Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (post-CAS) → L3 apps (demo now). **CAS capstone due Mon 6 July 2026, 00:00.** Deliverable: the public repository + the GitHub Pages documentation site. Grading strategy lives in Erhan's corpus (CAS Dossier v3.1). The full rubric and its operative summary are kept in the git-ignored, course-internal reference under `docs/cas/` (not published); consult them locally when a criterion's exact conditions matter.
+Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assisted, pre-freeze) → L1 deterministic serving API + MCP → L2 rules (TarifIQ skeleton in-repo, graded scope stays L0/L1 + console) → L3 apps (demo now). **CAS capstone due Mon 6 July 2026, 00:00.** Deliverable: the public repository + the GitHub Pages documentation site. Grading strategy lives in Erhan's corpus (CAS Dossier v3.1). The full rubric and its operative summary are kept in the git-ignored, course-internal reference under `docs/cas/` (not published); consult them locally when a criterion's exact conditions matter.
 
 ## The one inviolable rule
 
-**No AI computes or mutates a billing value at serve time.** AI may run only (a) pre-freeze in `ai_map` (non-billing fields, schema-constrained structured output) and (b) in explain/search seams that never alter values. Frozen records are immutable: SHA-256 `record_hash` over sorted canonical content; updates are new versions; `audit_log` is append-only. `test_determinism_boundary.py` (AST check: no LLM client importable on the value path) must stay green — CI fails otherwise.
+**No AI computes or mutates a billing value at serve time.** AI may run only (a) pre-freeze in `ai_map` (non-billing fields, schema-constrained structured output) and (b) in explain/search seams that never alter values. Frozen records are immutable: SHA-256 `record_hash` over sorted canonical content; updates are new versions; `audit_log` is append-only. `test_determinism_boundary.py` and its serving twin `test_serving_boundary.py` (AST checks: no LLM client importable on the value path; ADR-010 names both) must stay green, or CI fails.
 
 ## Layout
 
@@ -12,16 +12,19 @@ Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assiste
 services/ingestion/      L0: adapters → parsers → map_raw → ai_map → validate → score → review → freeze
 services/serving/        L1 TarifCore: REST + FHIR R4, point-in-time + diff, pgvector search (read-only)
 services/mcp/            L1 TarifMCP: search_tariffs, get_tariff, explain_crosswalk (read-only proxies)
-apps/tarifguard/         L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel
+services/intelligence/   L2 TarifIQ: combinability rules + TARMED-TARDOC crosswalk + rule validation (deterministic, offline; AI suggestion seam stubbed)
+apps/tarifguard/         L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel + coding-check page, over server-side BFF routes (app/api/*)
+apps/kassenflow/         L3 Next.js app stub (out of scope, ADR-13): future-work scaffolding, not wired
+apps/meldepilot/         L3 Next.js app stub (out of scope, ADR-13): future-work scaffolding, not wired
 db/                      schema.sql + migrations (Postgres 16 + pgvector; SQLite mirror for offline tests)
-deploy/                  docker-compose.yml + helm/ (k3d for the CAS K8s proof)
-docs/                    arc42/ (12 chapters, MkDocs Material → the deliverable site) + adr/
+deploy/                  docker-compose.yml (wired review-loop + batch stack) + helm/ (k3d for the CAS K8s proof); the root docker-compose.yml is the light read-side dev stack
+docs/                    arc42/ (13 chapters, MkDocs Material → the deliverable site) + adr/
 vault/                   CAS evidence: daily/ journal, decision-matrix.md, fazit-notes.md
 ```
 
 ## Stack
 
-Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010) · OpenTelemetry → Prometheus/Grafana + Sentry (decided, not yet instrumented; ADR-011). ADR register: `docs/adr/` (19 decisions; ADR-01 Python-first, ADR-13 demo scope).
+Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010) · OpenTelemetry instrumented in serving (FastAPI request traces + a custom search span and duration histogram; OTLP export opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`, a true no-op when unset; ADR-011), with Prometheus/Grafana + Sentry as intended backends, not yet wired. ADR register: `docs/adr/` (19 decisions; ADR-01 Python-first, ADR-13 demo scope).
 
 ## Commands
 
@@ -51,11 +54,11 @@ python3 tools/shipboard/shipboard.py     # live /ship pipeline board on :8787 (-
   argument.**
 
 - Conventional Commits; branch `feat/…|fix/…`; squash-merge green PRs only.
-- Env-only config (`TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY`). Without an API key, `ai_map` falls back to deterministic `map_raw` — tests rely on this.
+- Env-only config (`TARIFHUB_DB_URL`, `TARIFHUB_REVIEW_THRESHOLD`, `ANTHROPIC_API_KEY`; `OTEL_EXPORTER_OTLP_ENDPOINT` for opt-in serving telemetry; `TARIFIQ_OFFLINE` / `TARIFIQ_SERVING_BASE_URL` for TarifIQ). Without an API key, `ai_map` falls back to deterministic `map_raw`, which the tests rely on.
 - The canonical model's field set is **locked, additive-only** (ADR-03). A breaking change needs a new ADR before code.
 - German is the canonical designation language; FR/IT optional.
 - **Documentation style (owner law, 13 Jun): no em-dashes (—) in any documentation or report text.** Use commas, colons, periods or parentheses; rewrite the sentence rather than substituting a hyphen.
-- Console scope guards (ADR-13): master-detail + review form + explain panel, ~4 components, no auth, no patient data, no benchmarking. Reject scope creep in review.
+- Console scope guards (ADR-13): the ADR-013 surfaces (master-detail + review form + explain panel) plus a coding-check page, over server-side BFF routes, no auth, no patient data, no benchmarking. Reject scope creep in review.
 - **Graders review code and documentation only — nothing gets deployed or executed by them.** Evidence that exists only at runtime must be captured into `docs/` (screenshots, CI links, coverage figures, report tables). Distribution (criterion 17) is proven by Dockerfiles/compose/Helm + CI builds + captured screenshots, not by a live cluster.
 - **No Java, no JVM, anywhere — owner's decision, final.** The stack is Python + TypeScript (console) only; the rubric is being refreshed to stack-neutral wording. The docs keep a "Modern application concepts" page (arc42 §8: DI, validation, persistence abstraction, observability, container-first — as implemented in Python, citing Modulplan Lehrmittel [5]). Never propose Quarkus/Java components for any reason, including rubric optics.
 - A merged change that decides something architectural → 5-line ADR in `docs/adr/`. A working session → journal entry in `vault/daily/` (the hook drafts it; `tools/curate.sh` rewrites it via Codex gpt-5.5 and appends fazit-note candidates, fully automated, owner decision 13 Jun; the pipeline is disclosed in the AI-tools chapter; the owner edits at his discretion before submission — this is graded CAS evidence).
