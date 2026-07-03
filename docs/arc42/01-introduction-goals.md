@@ -55,7 +55,7 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 | UC-03 | Freeze record | Pipeline (automatic post-validation, expert approval loop via the ingestion review endpoint) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
 | UC-04 | Read tariff by code | API consumer (PIS/HIS) | GET /api/v1/tariffs/{system}/{code} | frozen record, served verbatim | FR-5 | live |
 | UC-06 | Semantic search | API consumer | free-text query (DE/FR/IT) against the search endpoint | ranked frozen records via pgvector cosine similarity | FR-7 | live |
-| UC-09 | Explain (crosswalk) | Practice user | user requests an explanation of a record (serving endpoint, console explain panel) | serving returns a deterministic, record-grounded explanation. The L3 console additionally shows a labelled, de-identified AI explanation. Served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded, console AI panel + de-id live) |
+| UC-09 | Explain record | Practice user | user requests an explanation of a record (serving endpoint, console explain panel) | serving returns a deterministic, record-grounded explanation. The L3 console additionally shows a labelled, de-identified AI explanation. Served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded, console AI panel + de-id live) |
 
 ### Supporting use cases
 

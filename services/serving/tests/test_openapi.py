@@ -10,9 +10,11 @@ export cannot drift from the code.
 """
 
 import json
+import typing
 from pathlib import Path
 
 from fastapi.routing import APIRoute
+from pydantic import BaseModel
 
 from tarifhub_serving.main import app
 
@@ -48,8 +50,25 @@ def test_every_route_has_summary_and_description():
 
 
 def test_every_route_has_response_model():
-    missing = [route.path for route in _api_routes() if route.response_model is None]
-    assert not missing, f"routes missing response_model: {missing}"
+    """Every route must declare a Pydantic-based response model (fails on ``-> dict``).
+
+    Same strength as the ingestion/intelligence ``test_openapi_discipline`` twins:
+    ``list[Model]`` is unwrapped and the result must be a ``BaseModel`` subclass.
+    """
+
+    def _model_type(route: APIRoute) -> object:
+        model = route.response_model
+        if typing.get_origin(model) is list:
+            args = typing.get_args(model)
+            model = args[0] if args else model
+        return model
+
+    missing = [
+        f"{route.path} -> {route.response_model!r}"
+        for route in _api_routes()
+        if not (isinstance(_model_type(route), type) and issubclass(_model_type(route), BaseModel))
+    ]
+    assert not missing, f"routes missing a Pydantic response_model: {missing}"
 
 
 def test_committed_openapi_matches_generated():
