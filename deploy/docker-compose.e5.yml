@@ -1,0 +1,70 @@
+# tarifhub e5 runtime profile (OPT-IN overlay for deploy/docker-compose.yml).
+#
+# Purpose: build the ingestion + serving images WITH the real multilingual-e5-large
+# embedder (1024-dim) so a live compose smoke can capture a REAL semantic ranking and a
+# REAL Postgres review write-back round-trip, fully in-container. The default compose
+# stack is unchanged: without this overlay every image ships the offline 16-dim stub and
+# search over Postgres fails closed with HTTP 501 (stub dim != pgvector vector(1024)).
+#
+# The WITH_E5=1 build installs sentence-transformers ONLY, never the LLM client. No LLM
+# client ever enters these images; the serving value path stays deterministic (AST test).
+#
+# The model is read from the HOST Hugging Face cache; HF_HUB_OFFLINE=1 forbids any network
+# fetch at run time. Populate the host cache once (needs the download; do this before the
+# offline run):
+#   python -c "from sentence_transformers import SentenceTransformer as S; S('intfloat/multilingual-e5-large')"
+#
+# App stack (real ranking + review write-back) — rebuild with the e5 build-arg:
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e5.yml --profile app up -d --build
+#
+# Batch-ingest a full LOCAL corpus into Postgres in-container (data/ is git-ignored but
+# present locally; mounted read-only at /data-host). EAL uses the xlsx with --system EAL,
+# SL uses the ndjson with --system SL. Bring the db up first, then run the one-shot with a
+# command override (the trailing argv replaces the image CMD). Point the batch at Postgres
+# by setting the HOST env var INGEST_BATCH_DB_URL (it is interpolated into TARIFHUB_DB_URL):
+#   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e5.yml up -d --build db
+#   INGEST_BATCH_DB_URL=postgresql://tarifhub:tarifhub@db:5432/tarifhub \
+#     docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e5.yml \
+#       --profile batch run --rm ingestion-batch \
+#       python -m tarifhub_ingest.cli --path /data-host/raw/eal/analysenliste_2026-01-01.xlsx --system EAL
+#   INGEST_BATCH_DB_URL=postgresql://tarifhub:tarifhub@db:5432/tarifhub \
+#     docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e5.yml \
+#       --profile batch run --rm ingestion-batch \
+#       python -m tarifhub_ingest.cli --path /data-host/raw/epl/foph-sl-export-20260601.ndjson --system SL
+#
+# HF cache mount targets differ by service: ingestion runs as user `tarifhub`
+# (/home/tarifhub) and serving as `appuser`/uid 1001 (/home/appuser); both resolve the
+# default cache to ~/.cache/huggingface via /etc/passwd.
+services:
+  ingestion:
+    build:
+      args:
+        WITH_E5: "1"
+    environment:
+      TARIFHUB_EMBEDDINGS: e5
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ${HOME}/.cache/huggingface:/home/tarifhub/.cache/huggingface:ro
+
+  serving:
+    build:
+      args:
+        WITH_E5: "1"
+    environment:
+      TARIFHUB_EMBEDDINGS: e5
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ${HOME}/.cache/huggingface:/home/appuser/.cache/huggingface:ro
+
+  ingestion-batch:
+    build:
+      args:
+        WITH_E5: "1"
+    environment:
+      TARIFHUB_EMBEDDINGS: e5
+      HF_HUB_OFFLINE: "1"
+    volumes:
+      - ${HOME}/.cache/huggingface:/home/tarifhub/.cache/huggingface:ro
+      # Full local corpora (data/raw/eal/*.xlsx, data/raw/epl/*.ndjson) for in-container
+      # batch ingestion via a run-time command override; read-only.
+      - ../data:/data-host:ro
