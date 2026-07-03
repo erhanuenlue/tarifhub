@@ -436,7 +436,11 @@ recall@5 and MRR@5 for both prefix runs (passage baseline 0.833 / 0.681, query p
 0.917 / 0.597) from committed real-e5 vectors over the full 1 279-record EAL corpus
 (`services/serving/tests/fixtures/e5_eval_corpus.json`, recorded 2026-07-03 by
 `fixtures/record_e5_eval_corpus.py`, whose self-check refuses to write on any mismatch),
-using the same cosine-descending ranking recipe the serving API uses. A regression in either
+using a stdlib reimplementation of the `search_offline` ranking recipe (cosine descending,
+then `(tariff_system, tariff_code)` ascending). The test pins the recorded vectors and the
+metric math; it does not execute `ServingRepository` or the pgvector SQL path, which are
+exercised separately by the Postgres parity suite and the
+[2026-07-03 live capture](../evidence/2026-07-03-live-compose-smoke.md). A regression in either
 the recorded vectors or the documented figures fails the offline suite and CI. The
 2026-06-11 live run against Postgres + pgvector remains the provenance for the numbers, which
 are EAL-corpus-scoped.

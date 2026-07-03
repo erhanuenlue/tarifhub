@@ -311,7 +311,9 @@ $ curl -s 'http://localhost:8001/api/v1/search?q=h%C3%A9matocrite&limit=5'
 
 One honest limitation from this capture, the mixed-corpus HNSW small-limit ranking behaviour, is
 recorded in the risk register ([§11](11-risks-technical-debt.md)): the EAL-only eval figures are
-unaffected.
+unaffected. A scope note on CI: the CI images job builds the default images only (`WITH_E5=0`),
+so the `WITH_E5=1` build path and the overlay are verified by this recorded manual capture, not
+by a CI job.
 
 ## Production target
 

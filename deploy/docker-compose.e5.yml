@@ -14,6 +14,10 @@
 # offline run):
 #   python -c "from sentence_transformers import SentenceTransformer as S; S('intfloat/multilingual-e5-large')"
 #
+# CI note: the CI images job builds the DEFAULT images only (WITH_E5=0). The WITH_E5=1 build
+# path and this overlay are verified manually; the recorded proof is
+# docs/evidence/2026-07-03-live-compose-smoke.md, not a CI job.
+#
 # App stack (real ranking + review write-back) — rebuild with the e5 build-arg:
 #   docker compose -f deploy/docker-compose.yml -f deploy/docker-compose.e5.yml --profile app up -d --build
 #

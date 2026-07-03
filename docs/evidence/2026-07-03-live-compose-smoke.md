@@ -170,16 +170,45 @@ embedding on CPU in the container): p95 = 170.574 ms, inside the 500 ms search d
 $ python3 tools/bench/search_latency.py --base-url http://localhost:8001 --n 200 --warmup 10
 {
   "mode": "search",
+  "base_url": "http://localhost:8001",
   "endpoint": "/api/v1/search",
   "limit": 5,
   "warmup": 10,
+  "queries": [
+    "h\u00e9matocrite",
+    "H\u00e4matokrit",
+    "ematocrito",
+    "hematocrit blood test",
+    "Glukose im Blut",
+    "glucose sanguin",
+    "glicemia",
+    "vitamin D blood test",
+    "vitamine D",
+    "Langzeitzucker HbA1c",
+    "HDL cholesterol",
+    "cortisol"
+  ],
   "n": 200,
   "percentile_method": "nearest-rank on sorted sample (ceil(p/100*n))",
   "p50_ms": 141.531,
   "p95_ms": 170.574,
   "min_ms": 119.8,
   "max_ms": 216.587,
-  "mean_ms": 144.6
+  "mean_ms": 144.6,
+  "per_target_mean_ms": {
+    "Glukose im Blut": 148.558,
+    "HDL cholesterol": 140.637,
+    "H\u00e4matokrit": 137.349,
+    "Langzeitzucker HbA1c": 157.281,
+    "cortisol": 138.562,
+    "ematocrito": 142.418,
+    "glicemia": 144.016,
+    "glucose sanguin": 147.747,
+    "hematocrit blood test": 142.788,
+    "h\u00e9matocrite": 142.348,
+    "vitamin D blood test": 150.612,
+    "vitamine D": 142.939
+  }
 }
 ```
 
@@ -190,6 +219,7 @@ Point-read leg (single frozen record, same timing machinery): p95 = 6.464 ms, we
 $ python3 tools/bench/search_latency.py --point-read --path /api/v1/tariffs/EAL/1375 --n 200 --warmup 10
 {
   "mode": "point-read",
+  "base_url": "http://localhost:8001",
   "endpoint": "/api/v1/tariffs/EAL/1375",
   "warmup": 10,
   "n": 200,
@@ -198,7 +228,10 @@ $ python3 tools/bench/search_latency.py --point-read --path /api/v1/tariffs/EAL/
   "p95_ms": 6.464,
   "min_ms": 2.295,
   "max_ms": 9.974,
-  "mean_ms": 3.519
+  "mean_ms": 3.519,
+  "per_target_mean_ms": {
+    "/api/v1/tariffs/EAL/1375": 3.519
+  }
 }
 ```
 
