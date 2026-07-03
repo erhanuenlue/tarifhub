@@ -57,7 +57,7 @@ class ExplainResponse(BaseModel):
 
     ``explanation`` is assembled by a rule from record fields only — no LLM, no
     randomness, no wall-clock — and is labelled ``[deterministic]`` to mark its
-    provenance. This is the payload ``services/mcp`` ``explain_crosswalk`` proxies.
+    provenance. This is the payload ``services/mcp`` ``explain_record`` proxies.
     """
 
     code: str

@@ -20,7 +20,7 @@ inputs are public federal tariff lists, outputs are frozen tariff records.
 | Tariff expert | TarifGuard console | review queue, corrections | UC-02 |
 | Practice user | TarifGuard console | lookup, labelled explanations | UC-08, UC-09 |
 | PIS/HIS systems | REST/OpenAPI + FHIR R4 read | frozen tariff records, versions, diffs, search | UC-04, UC-05, UC-06 |
-| AI agents | MCP (`search_tariffs`, `get_tariff`, `explain_crosswalk`, read-only) | frozen records verbatim | UC-07 |
+| AI agents | MCP (`search_tariffs`, `get_tariff`, `explain_record`, read-only) | frozen records verbatim | UC-07 |
 
 ## External data sources (L0 ingestion)
 

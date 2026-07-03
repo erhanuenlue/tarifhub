@@ -32,7 +32,7 @@ Repository pattern over parameterised SQL, deliberately no ORM. Ingestion writes
 
 ### REST + OpenAPI
 
-FastAPI generates the OpenAPI document from the code: resource routes (`GET /api/v1/tariffs`, `GET /api/v1/tariffs/{system}/{code}`, `GET /api/v1/search`) each declare a `response_model` (`TariffRecord`, `SearchHit`) and a summary line, so Swagger UI at `/docs` is always in sync with the implementation. The same generated document is exported to a committed `services/serving/openapi.json` and pinned by a test (`test_committed_openapi_matches_generated` in `services/serving/tests/test_openapi.py`) that fails if it ever drifts from `app.openapi()`, so the static schema a grader reads stays identical to the running one.
+FastAPI generates the OpenAPI document from the code: resource routes (`GET /api/v1/tariffs`, `GET /api/v1/tariffs/{system}/{code}`, `GET /api/v1/search`) each declare a `response_model` (`TariffRecord`, `SearchHit`) and a summary line, so Swagger UI at `/docs` is always in sync with the implementation. The same generated document is exported to a committed `services/serving/openapi.json` and pinned by a test (`test_committed_openapi_matches_generated` in `services/serving/tests/test_openapi.py`) that fails if it ever drifts from `app.openapi()`, so the static schema a grader reads stays identical to the running one. This discipline now holds uniformly: every route in the serving, ingestion and intelligence services declares a Pydantic `response_model` plus an OpenAPI summary and description, enforced per service by meta-tests (`services/serving/tests/test_openapi.py`, `services/ingestion/tests/test_openapi_discipline.py`, `services/intelligence/tests/test_openapi_discipline.py`).
 
 ### Error handling
 
@@ -74,7 +74,7 @@ Development runs uvicorn with live reload via `scripts/run_serving.sh` (`uvicorn
 
 ### Async
 
-The MCP server (`services/mcp/src/tarifhub_mcp/server.py`) is fully async: each tool (`search_tariffs`, `get_tariff`, `explain_crosswalk`) awaits an `httpx` async client proxying to the serving API. The serving handlers themselves are plain `def`: FastAPI executes them in its worker threadpool, which is the appropriate execution model for their short, blocking DB reads.
+The MCP server (`services/mcp/src/tarifhub_mcp/server.py`) is fully async: each tool (`search_tariffs`, `get_tariff`, `explain_record`) awaits an `httpx` async client proxying to the serving API. The serving handlers themselves are plain `def`: FastAPI executes them in its worker threadpool, which is the appropriate execution model for their short, blocking DB reads.
 
 ## Why Python-first
 

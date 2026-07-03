@@ -916,7 +916,7 @@
           "explanation"
         ],
         "title": "ExplainResponse",
-        "description": "All versions of a code plus a deterministic, record-grounded explanation.\n\n``explanation`` is assembled by a rule from record fields only — no LLM, no\nrandomness, no wall-clock — and is labelled ``[deterministic]`` to mark its\nprovenance. This is the payload ``services/mcp`` ``explain_crosswalk`` proxies."
+        "description": "All versions of a code plus a deterministic, record-grounded explanation.\n\n``explanation`` is assembled by a rule from record fields only — no LLM, no\nrandomness, no wall-clock — and is labelled ``[deterministic]`` to mark its\nprovenance. This is the payload ``services/mcp`` ``explain_record`` proxies."
       },
       "FhirCodeableConcept": {
         "properties": {

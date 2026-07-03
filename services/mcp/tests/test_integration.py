@@ -97,12 +97,12 @@ def test_integration_search_tariffs_system_filter_changes_results():
 
 
 @pytest.mark.usefixtures("wire_mcp_to_serving")
-def test_integration_explain_crosswalk_returns_deterministic_explanation(serving_client):
-    """explain_crosswalk returns {code, records, explanation}; records are all versions."""
+def test_integration_explain_record_returns_deterministic_explanation(serving_client):
+    """explain_record returns {code, records, explanation}; records are all versions."""
 
     system, code = MULTI_VERSION_KEY
 
-    result = asyncio.run(server.explain_crosswalk(code))
+    result = asyncio.run(server.explain_record(code))
 
     assert set(result.keys()) == {"code", "records", "explanation"}
     assert result["code"] == code
@@ -133,7 +133,7 @@ def test_integration_unknown_code_surfaces_404():
     """An unknown code raises HTTPStatusError — the tool never fabricates a result."""
 
     with pytest.raises(httpx.HTTPStatusError) as exc_info:
-        asyncio.run(server.explain_crosswalk(UNKNOWN_CODE))
+        asyncio.run(server.explain_record(UNKNOWN_CODE))
     assert exc_info.value.response.status_code == 404
 
     # get_tariff for an unknown key fails closed the same way.

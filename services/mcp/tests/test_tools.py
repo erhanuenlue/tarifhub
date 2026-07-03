@@ -75,7 +75,7 @@ def test_search_tariffs_passes_query_and_returns_hits_verbatim(monkeypatch):
     assert captured["params"]["limit"] == "5"
 
 
-def test_explain_crosswalk_proxies_code(monkeypatch):
+def test_explain_record_proxies_code(monkeypatch):
     payload = {"code": "00.0010", "records": [FROZEN_RECORD], "explanation": None}
     captured = {}
 
@@ -85,7 +85,7 @@ def test_explain_crosswalk_proxies_code(monkeypatch):
         return httpx.Response(200, json=payload)
 
     _patch_client(monkeypatch, handler)
-    result = asyncio.run(server.explain_crosswalk("00.0010"))
+    result = asyncio.run(server.explain_record("00.0010"))
 
     assert result == payload
     assert captured["path"] == "/api/v1/explain"

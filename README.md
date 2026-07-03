@@ -33,7 +33,7 @@ Four layers, decoupled by the freeze line:
 |---|---|---|
 | **L0 · Ingestion** | AI‑assisted harmonisation: load, parse, map, validate, score, flag, **freeze** | `services/ingestion/` |
 | **L1 · Serving** (TarifCore) | Deterministic read API: REST + FHIR R4, point‑in‑time + diff, semantic search | `services/serving/` |
-| **L1 · MCP** (TarifMCP) | Read‑only tools (`search_tariffs`, `get_tariff`, `explain_crosswalk`) for AI agents | `services/mcp/` |
+| **L1 · MCP** (TarifMCP) | Read‑only tools (`search_tariffs`, `get_tariff`, `explain_record`) for AI agents | `services/mcp/` |
 | **L3 · Console** (TarifGuard) | Master‑detail search, frozen‑record detail, human review form, labelled AI explain panel | `apps/tarifguard/` |
 
 The database (`db/`, PostgreSQL 16 + pgvector, mirrored in SQLite for offline tests) is the **only** contract between L0 and L1. Deployment manifests (Docker Compose, Helm) live in `deploy/`.

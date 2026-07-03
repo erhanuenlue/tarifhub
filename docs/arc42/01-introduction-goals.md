@@ -40,7 +40,7 @@ Across all of this, no AI computes or mutates a billing value at serve time. Thi
 | FR-5 | Serve frozen records deterministically by system+code (REST, OpenAPI) | UC-04 |
 | FR-6 | Point-in-time and diff queries over record versions | UC-05 |
 | FR-7 | Multilingual semantic search (pgvector HNSW cosine, multilingual-e5 embeddings) | UC-06 |
-| FR-8 | Read-only MCP tools: search_tariffs, get_tariff, explain_crosswalk | UC-07, UC-09 |
+| FR-8 | Read-only MCP tools: search_tariffs, get_tariff, explain_record | UC-07, UC-09 |
 | FR-9 | TarifGuard console: master-detail lookup, review form (implemented, store-backed freeze via the ingestion review endpoint), labelled AI explain panel | UC-02, UC-08, UC-09 |
 
 ## Use-case catalogue
@@ -55,7 +55,7 @@ These five form the platform's value chain: harmonise → freeze → serve deter
 | UC-03 | Freeze record | Pipeline (automatic post-validation, expert approval loop via the ingestion review endpoint) | record passes deterministic validation and scoring | immutable version with SHA-256 record_hash + append-only audit entry | FR-4 | live |
 | UC-04 | Read tariff by code | API consumer (PIS/HIS) | GET /api/v1/tariffs/{system}/{code} | frozen record, served verbatim | FR-5 | live |
 | UC-06 | Semantic search | API consumer | free-text query (DE/FR/IT) against the search endpoint | ranked frozen records via pgvector cosine similarity | FR-7 | live |
-| UC-09 | Explain (crosswalk) | Practice user | user requests an explanation of a record (serving endpoint, console explain panel) | serving returns a deterministic, record-grounded explanation. The L3 console additionally shows a labelled, de-identified AI explanation. Served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded, console AI panel + de-id live) |
+| UC-09 | Explain record | Practice user | user requests an explanation of a record (serving endpoint, console explain panel) | serving returns a deterministic, record-grounded explanation. The L3 console additionally shows a labelled, de-identified AI explanation. Served values never altered | FR-8, FR-9 | live (serving endpoint deterministic and record-grounded, console AI panel + de-id live) |
 
 ### Supporting use cases
 
@@ -70,7 +70,7 @@ These parameterise or proxy the core functions: the review threshold loop, versi
 
 The actors and their nine use cases, with system boundary:
 
-![UML use-case diagram: actors and the nine use cases](../diagrams/use-cases.svg)
+![Use-case overview: actors and the nine use cases](../diagrams/use-cases.svg)
 
 ## Quality goals
 
