@@ -11,7 +11,7 @@ Swiss ambulatory tariff data platform. Four layers: L0 harmonisation (AI-assiste
 ```
 services/ingestion/      L0: adapters → parsers → map_raw → ai_map → validate → score → review → freeze
 services/serving/        L1 TarifCore: REST + FHIR R4, point-in-time + diff, pgvector search (read-only)
-services/mcp/            L1 TarifMCP: search_tariffs, get_tariff, explain_crosswalk (read-only proxies)
+services/mcp/            L1 TarifMCP: search_tariffs, get_tariff, explain_record (read-only proxies)
 services/intelligence/   L2 TarifIQ: combinability rules + TARMED-TARDOC crosswalk + rule validation (deterministic, offline; AI suggestion seam stubbed)
 apps/tarifguard/         L3 TarifGuard Console: master-detail (search→frozen record detail) + review form + labelled AI explain panel + coding-check page, over server-side BFF routes (app/api/*)
 apps/kassenflow/         L3 Next.js app stub (out of scope, ADR-13): future-work scaffolding, not wired

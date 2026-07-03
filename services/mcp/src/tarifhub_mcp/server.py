@@ -9,7 +9,7 @@ rather than fabricating a result.
 Tools:
     search_tariffs(query, system?, limit?)  -> GET  /api/v1/search
     get_tariff(system, code)                 -> GET  /api/v1/tariffs/{system}/{code}
-    explain_crosswalk(code)                  -> GET  /api/v1/explain   (frozen records +
+    explain_record(code)                     -> GET  /api/v1/explain   (frozen records +
                                                 deterministic, record-grounded explanation)
 """
 
@@ -70,7 +70,7 @@ async def get_tariff(system: str, code: str) -> dict:
 
 
 @mcp.tool()
-async def explain_crosswalk(code: str) -> dict:
+async def explain_record(code: str) -> dict:
     """Explain a tariff code from its frozen records (all versions + deterministic text).
 
     Args:
@@ -78,9 +78,9 @@ async def explain_crosswalk(code: str) -> dict:
 
     Proxies to the deterministic explanation endpoint, which returns EVERY frozen version
     of the code (verbatim records) plus a rule-generated explanation grounded only in
-    record fields, with no model on the serve path. It does NOT compute a TARMED<->TARDOC
-    cross-walk (that lookup lives in the TarifIQ service). The tool returns whatever
-    serving returns and adds nothing.
+    record fields, with no model on the serve path. It explains a record, not a crosswalk:
+    the TARMED<->TARDOC cross-walk lookup lives in the TarifIQ service. The tool returns
+    whatever serving returns and adds nothing.
     """
 
     return await _get("/api/v1/explain", {"code": code})
