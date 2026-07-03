@@ -40,7 +40,7 @@ Across all of this, no AI computes or mutates a billing value at serve time. Thi
 | FR-5 | Serve frozen records deterministically by system+code (REST, OpenAPI) | UC-04 |
 | FR-6 | Point-in-time and diff queries over record versions | UC-05 |
 | FR-7 | Multilingual semantic search (pgvector HNSW cosine, multilingual-e5 embeddings) | UC-06 |
-| FR-8 | Read-only MCP tools: search_tariffs, get_tariff, explain_crosswalk | UC-07, UC-09 |
+| FR-8 | Read-only MCP tools: search_tariffs, get_tariff, explain_record | UC-07, UC-09 |
 | FR-9 | TarifGuard console: master-detail lookup, review form (implemented, store-backed freeze via the ingestion review endpoint), labelled AI explain panel | UC-02, UC-08, UC-09 |
 
 ## Use-case catalogue
@@ -70,7 +70,7 @@ These parameterise or proxy the core functions: the review threshold loop, versi
 
 The actors and their nine use cases, with system boundary:
 
-![UML use-case diagram: actors and the nine use cases](../diagrams/use-cases.svg)
+![Use-case overview: actors and the nine use cases](../diagrams/use-cases.svg)
 
 ## Quality goals
 

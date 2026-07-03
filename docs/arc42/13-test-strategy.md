@@ -39,7 +39,7 @@ From the broad, fast base to the narrow, high-leverage apex:
    trailing-zero Decimals at the exact `NUMERIC` scale, dates, multi-version keys and
    pagination windows.
 4. **MCP proxy contract.** The MCP tools (`get_tariff`, `search_tariffs`,
-   `explain_crosswalk`) are tested with the serving backend mocked via
+   `explain_record`) are tested with the serving backend mocked via
    `httpx.MockTransport` (`services/mcp/tests/test_tools.py`): each tool returns the
    backend JSON **verbatim**, forwards the right path and query params, and a backend 404
    raises `httpx.HTTPStatusError` rather than fabricating a record. **MCP↔serving
@@ -249,12 +249,15 @@ coverage) and re-measured and **gated** on every CI run in the `python` job's co
 
 | Service | Core modules in scope | Measured |
 |---|---|---|
-| `services/serving` | `main` 92 %, `db` 76 %, `repository` 91 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %, `telemetry` 100 %) | **94 % total** |
+| `services/serving` | `main` 92 %, `repository` 91 %, `errors` 99 %, `models` 100 % (also `fhir` 99 %, `explain` 100 %, `telemetry` 100 %; infrastructure: `db` 76 %) | **94 % total** |
 | `services/ingestion` | `tariff_model` 100 %, `freeze_record` 100 %, `pipeline` 100 %, `tariff_mapper` 98 %, `tariff_validator` 100 %, `review` 93 %, `errors` 99 % | **91 % total** |
 | `services/mcp` | proxy tools (`server` 86 %, `config` 100 %) | **94 % total** |
 | `services/intelligence` | rule/crosswalk/validator logic (`combinability` 100 %, `tarmed_tardoc` 100 %, `rule_validator` 100 %), `config` 100 %, `main` 100 %, `errors` 98 % | **99 % total** |
 
-Every core module is above the 80 % target, and the floor is now **enforced in CI**: the
+Every core logic module is above the 80 % target; the one module below the line, serving's
+connection-pool facade `db.py` at 76 %, is infrastructure whose uncovered lines are the
+Postgres-only legs exercised by the `python-parity` CI job rather than the offline suite. The
+floor is now **enforced in CI**: the
 `python` job runs the ingestion, serving, mcp and intelligence coverage with `--cov-fail-under=80`, so a
 regression that drops one of those totals below 80 % fails the build. The per-service totals
 (ingestion 91 %, serving 94 %, mcp 94 %, intelligence 99 %) sit comfortably above the gate.
