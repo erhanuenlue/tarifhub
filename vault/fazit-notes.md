@@ -109,3 +109,7 @@
 ## 2026-06-14
 - I did not delegate the freeze-line widening to AI or touch `tests/test_determinism_boundary.py`; I skipped optional PR #27 task 7 because the guard would fire and a freeze-line change needs separate authorization.
 - Cross-family review corrected failures my same-family checks missed: umlaut-free German nouns, C5 determinism overclaims, and SVG em dashes outside the markdown normalizer.
+
+## 2026-07-03
+- Surprise: Codex gpt-5.5 found the P1 stale-version ranking bug that the Claude-side pipeline missed.
+- Correction: I kept both NFR-5 numbers after the streaming-vs-full-version ambiguity surfaced, 60 s streaming and 273 s full EAL source trigger-to-served.
