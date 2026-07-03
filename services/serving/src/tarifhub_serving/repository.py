@@ -199,10 +199,14 @@ class ServingRepository:
         """Nearest frozen rows by pgvector cosine distance (Postgres only).
 
         The serving service ranks; it never fabricates or mutates a value. Every field
-        in every hit is an unaltered frozen row. SQLite has no pgvector, so semantic
-        search is unavailable there (the API surfaces an honest 501 instead). An optional
-        ``system`` restricts the ranked candidates to one ``tariff_system`` (parameterised);
-        ``None`` ranks across every system, the prior behaviour.
+        in every hit is an unaltered frozen row. Only the latest version of each
+        ``(tariff_system, tariff_code)`` is a candidate (a MAX(version) join mirroring
+        :meth:`list_latest` and :meth:`search_offline`), so a review-frozen v2 supersedes
+        v1 and a stale version never surfaces. Equal-distance ties order by
+        ``(tariff_system, tariff_code)`` ascending so the ranking is deterministic. SQLite
+        has no pgvector, so semantic search is unavailable there (the API surfaces an honest
+        501 instead). An optional ``system`` restricts the ranked candidates to one
+        ``tariff_system`` (parameterised); ``None`` ranks across every system.
         """
 
         if self._db.dialect != "postgresql":
@@ -215,10 +219,18 @@ class ServingRepository:
         if system is not None:
             where += f" AND t.tariff_system = {ph}"
             params.append(system)
+        # Restrict candidates to the latest version per key (MAX(version) subquery, the same
+        # shape ``list_latest``/``search_offline`` use) before ranking, then order by cosine
+        # distance and break equal-distance ties on (tariff_system, tariff_code) ascending.
         query = (
             "SELECT t.* FROM tariff t "
+            "JOIN (SELECT tariff_system, tariff_code, MAX(version) AS max_version "
+            "      FROM tariff GROUP BY tariff_system, tariff_code) latest "
+            "  ON t.tariff_system = latest.tariff_system "
+            " AND t.tariff_code = latest.tariff_code "
+            " AND t.version = latest.max_version "
             f"WHERE {where} "
-            f"ORDER BY t.embedding <=> CAST({ph} AS vector) "
+            f"ORDER BY t.embedding <=> CAST({ph} AS vector), t.tariff_system, t.tariff_code "
             f"LIMIT {ph}"
         )
         params.extend([vector_literal, limit])
