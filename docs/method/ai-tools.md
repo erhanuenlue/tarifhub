@@ -23,8 +23,14 @@ The full system view of that apparatus, the `/ship` pipeline and its green-contr
 model-pinned seats, the autonomous loop, the quality gates and the freeze-line guard, the
 CI/CD pipeline, the independent second model, the dashboard, and the human floor, is
 documented in the companion chapter
-[AI-Assisted Software Engineering: the framework](ai-se-framework.md), which also names the
-complete external tool set: Claude Code, the OpenAI Codex CLI, and the Eraser MCP. This
+[AI-Assisted Software Engineering: the framework](ai-se-framework.md). The complete external
+tool set, which that chapter details and the Hilfsmittelverzeichnis of the semester thesis
+declares, is: Claude Code with Claude Opus 4.8 and Claude Fable 5 (Anthropic) as orchestrator
+and engine; the OpenAI Codex CLI (gpt-5.5) as the independent second model for every PR
+review, the final document review and the journal curation; the Eraser MCP for the
+architecture diagrams; Context7 for current library and API documentation; and the
+development toolchain itself (Python 3.12, FastAPI, Pydantic v2, PostgreSQL 16 with pgvector,
+Next.js, uv, Docker, Helm, GitHub Actions, MkDocs Material). This
 chapter is the worked, phase-structured evidence behind that framework: the prompts, diffs
 and commits, organised by Generation, Review, Refactoring and Research. The one mechanism
 worth restating here, because its catches recur below, is governance by tooling: a pre-tool
