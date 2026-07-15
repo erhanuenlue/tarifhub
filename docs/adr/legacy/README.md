@@ -1,9 +1,9 @@
 # Legacy ADRs (repo-era numbering)
 
-The ADRs in `docs/adr/` — **001 through 014** — follow the **Architecture v2.1
-consolidated register** (see `AGENTS.md`: "13 decisions; ADR-01 Python-first, ADR-13
-demo scope", plus ADR-14). That register was assembled in June 2026 by renumbering and
-consolidating all decisions made up to that point into one coherent sequence.
+The ADRs in `docs/adr/` — **001 through 020** — follow the **Architecture v2.1
+consolidated register** (see `AGENTS.md`: ADR-001 Python-first, ADR-013 demo scope).
+That register was assembled in June 2026 by renumbering and consolidating all decisions
+made up to that point into one coherent sequence; later decisions append to it.
 
 The eight files in this directory are the **honest, contemporaneous originals**: the
 decisions exactly as they were written while the work happened, under the repo's
