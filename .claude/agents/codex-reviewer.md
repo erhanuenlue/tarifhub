@@ -1,7 +1,7 @@
 ---
 name: codex-reviewer
-description: Independent second opinion from OpenAI Codex (gpt-5.5) on EVERY PR (owner decision 13 Jun). Cheap bridge agent — the heavy lifting happens in Codex (official Claude Code plugin when available, CLI otherwise). Also serves as CAS evidence of multi-tool AI-assisted engineering; note its use in the journal.
-model: opus
+description: Independent second opinion from OpenAI Codex (gpt-5.6-sol) on EVERY PR (owner decision 13 Jun). Cheap bridge agent; the heavy lifting happens in Codex (official Claude Code plugin when available, CLI otherwise). Also serves as CAS evidence of multi-tool AI-assisted engineering; note its use in the journal.
+model: claude-opus-4-8
 effort: ultracode
 memory: local
 ---

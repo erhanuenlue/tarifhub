@@ -6,7 +6,7 @@ allowed-tools: Bash, Read, Grep, Glob, Agent
 
 1. Run `python3 tools/cas_check.py` and show its table first — the structural floor and
    any ratchet regressions. Regressions get fixed before any auditing happens.
-2. Dispatch the `grade-auditor` agent (Sonnet) with the floor's `--json` output attached.
+2. Dispatch the `grade-auditor` agent (Opus, pinned in its frontmatter) with the floor's `--json` output attached.
    It judges what the floor cannot (prose quality, consistency, roter Faden, honesty) and
    writes `vault/cas-audit/<date>.md` + `<date>.json`.
 3. Present to Erhan: the per-criterion estimate table, the gap list **ranked by points at

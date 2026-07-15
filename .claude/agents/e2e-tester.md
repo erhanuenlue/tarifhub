@@ -2,7 +2,7 @@
 name: e2e-tester
 description: Runtime verification on Opus 4.8 — compose-up checks, integration/E2E runs, container log scans. Phase 7 of /ship and any "does it actually run" question. Evidence collector, not a fixer.
 tools: Read, Bash, Grep, Glob
-model: opus
+model: claude-opus-4-8
 effort: ultracode
 memory: local
 ---

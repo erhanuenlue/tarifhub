@@ -2,7 +2,7 @@
 name: security-reviewer
 description: Security review for diffs touching secrets handling, input parsing, the de-identification seam, or anything internet-facing. Runs on Opus (documented fallback for work the orchestrator's safety classifiers may decline).
 tools: Read, Grep, Glob, Bash
-model: opus
+model: claude-opus-4-8
 effort: ultracode
 memory: project
 ---
