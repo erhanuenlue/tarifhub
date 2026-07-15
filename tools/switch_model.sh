@@ -6,7 +6,8 @@
 #
 # Single source of truth: the "model" key in .claude/settings.json.
 # Interactive sessions in this repo and tools/loop.sh both read it.
-# Worker/review agent seats are pinned separately (all Opus 4.8) and never change.
+# Worker/review agent seats are pinned separately in .claude/agents/*.md frontmatter
+# (exact ids, claude-opus-4-8; verifier deliberately inherits the orchestrator).
 
 set -u
 cd "$(git rev-parse --show-toplevel 2>/dev/null || dirname "$0")/." || exit 1

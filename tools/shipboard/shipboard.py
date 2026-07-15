@@ -49,7 +49,7 @@ PHASES = [
     ("09", "Merge", "auto on green · fallback gate: Erhan"),
 ]
 PINS = {"implementer": "Opus 4.8", "e2e-tester": "Opus 4.8", "determinism-auditor": "Opus 4.8",
-        "security-reviewer": "Opus 4.8", "codex-reviewer": "gpt-5.6-sol", "verifier": "Opus 4.8"}
+        "security-reviewer": "Opus 4.8", "codex-reviewer": "gpt-5.6-sol", "verifier": "inherits orchestrator"}
 REVIEWER_AGENTS = ("verifier", "determinism-auditor", "security-reviewer", "codex-reviewer")
 AGENT_TOOLS = ("Task", "Agent")          # subagent tool name differs across Claude Code versions
 AGENT_PHASE = {"implementer": "02", "e2e-tester": "07"}
