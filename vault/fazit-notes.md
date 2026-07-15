@@ -113,3 +113,7 @@
 ## 2026-07-03
 - Surprise: Codex gpt-5.5 found the P1 stale-version ranking bug that the Claude-side pipeline missed.
 - Correction: I kept both NFR-5 numbers after the streaming-vs-full-version ambiguity surfaced, 60 s streaming and 273 s full EAL source trigger-to-served.
+
+## 2026-07-15
+- I corrected the AI claim that low-confidence records skip freezing after the fresh-context verifier traced `pipeline.py` from flag to freeze.
+- Codex found three reproducible `.claude/hooks/guard_frozen.sh` bypass paths in PR #49; I accepted the findings, fixed them and re-verified the hook with 12 cases.
