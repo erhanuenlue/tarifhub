@@ -2,7 +2,7 @@
 name: determinism-auditor
 description: Audits the freeze line before any services/ PR merges. The one reviewer that is never optional for pipeline or serving changes.
 tools: Read, Grep, Glob, Bash
-model: opus
+model: claude-opus-4-8
 effort: ultracode
 memory: project
 ---

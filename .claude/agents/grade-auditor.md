@@ -1,7 +1,7 @@
 ---
 name: grade-auditor
 description: Estimates the CAS grade per criterion against the official anchors, with quoted evidence. Dispatched by /cas-audit — at each block end and at pre-flight.
-model: opus
+model: claude-opus-4-8
 effort: ultracode
 ---
 

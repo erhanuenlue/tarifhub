@@ -44,7 +44,7 @@ PHASES = [
     ("04", "Reviews", "verifier / determinism / security / codex"),
     ("05", "Fix cycle", "orchestrated · Opus 4.8 · ultracode"),
     ("06", "PR + CI", "gh + Actions · inline"),
-    ("07", "Runtime", "E2E + logs · e2e-tester · Sonnet"),
+    ("07", "Runtime", "E2E + logs · e2e-tester · Opus 4.8"),
     ("08", "Report", "consolidated · Opus 4.8 · ultracode"),
     ("09", "Merge", "auto on green · fallback gate: Erhan"),
 ]
@@ -1878,7 +1878,7 @@ background:rgba(125,211,252,.1);border:1px solid var(--edge);color:var(--dim);ma
         <div class="s" style="line-height:1.6;margin-top:6px">
           <b style="color:var(--paper)">Floor</b> — tools/cas_check.py: ~60 deterministic anchor elements, block-aware, re-checked every minute. It proves structure, never quality.<br>
           <b style="color:var(--paper)">Ratchet</b> — tools/cas_baseline.json: an element that ever passed must keep passing; a regression turns red here, blocks the /ship green-contract and fails CI.<br>
-          <b style="color:var(--paper)">Judgment</b> — /cas-audit dispatches the grade-auditor (Sonnet) against the official anchor text; its per-criterion estimate appears here, labeled what it is: an estimate, not the grader.<br>
+          <b style="color:var(--paper)">Judgment</b> — /cas-audit dispatches the grade-auditor (Opus 4.8) against the official anchor text; its per-criterion estimate appears here, labeled what it is: an estimate, not the grader.<br>
           Anchor source: docs/cas/bewertungskriterien-anker.md (local, git-ignored).
         </div>
       </div>
@@ -2669,7 +2669,7 @@ def demo():
         {"kind":"phase","phase":"03","status":"pass","detail":"ruff clean · 87 passed","ts":now},
         {"kind":"phase","phase":"04","status":"running","detail":"verifier + determinism-auditor in flight","ts":now},
         {"kind":"agent","phase":None,"status":"active","detail":"diff-vs-plan check","agent":"verifier","model":"Opus 4.8","ts":now},
-        {"kind":"agent","phase":None,"status":"active","detail":"freeze-line audit","agent":"determinism-auditor","model":"Sonnet 4.6","ts":now},
+        {"kind":"agent","phase":None,"status":"active","detail":"freeze-line audit","agent":"determinism-auditor","model":"Opus 4.8","ts":now},
     ]
     LOG.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
     print(f"demo run seeded → {LOG}")

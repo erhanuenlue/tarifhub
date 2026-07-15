@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# curate.sh · journal + fazit-notes curation via Codex (gpt-5.5).
+# curate.sh · journal + fazit-notes curation via Codex (gpt-5.6-sol).
 # Owner decision 13 Jun: journal and fazit-note drafting is fully delegated to AI;
 # the owner edits whatever he wants before submission, at his discretion.
 #
@@ -70,7 +70,7 @@ fi
 # so the next loop iteration's clean-tree contract and phase-09 auto-merge are unaffected.
 if [ -n "$(git --no-optional-locks status --porcelain -- "$J" "$N" 2>/dev/null)" ]; then
     git add -- "$J" "$N" 2>/dev/null
-    if git commit -q -m "vault: curate journal $D via gpt-5.5 [skip ci]" -- "$J" "$N" 2>/dev/null; then
+    if git commit -q -m "vault: curate journal $D via gpt-5.6-sol [skip ci]" -- "$J" "$N" 2>/dev/null; then
         git push -q 2>/dev/null || echo "curate: committed; push failed, the next session's autocommit will push"
     else
         echo "curate: nothing committed, check git identity/state"
