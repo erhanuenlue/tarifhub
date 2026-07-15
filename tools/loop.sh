@@ -113,7 +113,7 @@ if [ -n "${LOOP_CMD:-}" ]; then
 else
     claude -p "$AUDIT_PROMPT" --model "$LOOP_MODEL" --permission-mode bypassPermissions --max-turns 120 2>&1 | tee -a "$LOG" || say "note: audit session failed, run /cas-audit in any session instead"
 fi
-# Independent second opinion on the grade estimate (owner decision 13 Jun): gpt-5.5
+# Independent second opinion on the grade estimate (owner decision 13 Jun): gpt-5.6-sol
 # reads the Opus auditor's report + the criterion map and flags disagreements/missed gaps.
 if command -v codex >/dev/null 2>&1; then
     AUD=$(ls vault/cas-audit/2*.md 2>/dev/null | sort | tail -1)

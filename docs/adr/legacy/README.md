@@ -1,6 +1,6 @@
 # Legacy ADRs (repo-era numbering)
 
-The ADRs in `docs/adr/` — **001 through 020** — follow the **Architecture v2.1
+The ADRs in `docs/adr/` (**001 through 020**) follow the **Architecture v2.1
 consolidated register** (see `AGENTS.md`: ADR-001 Python-first, ADR-013 demo scope).
 That register was assembled in June 2026 by renumbering and consolidating all decisions
 made up to that point into one coherent sequence; later decisions append to it.

@@ -15,11 +15,11 @@ Boundary tests (all run in CI's per-service suites; red = CI fails, ADR-010. Ing
 
 The freeze line (paths NO agent may edit, in any harness) is this list; the machine copy is the regex in `.claude/hooks/guard_frozen.sh` (a Claude PreToolUse Edit|Write hook wired in `.claude/settings.json`; one enforcement implementation, not the rule itself):
 - `services/ingestion/**/versioning/` and `services/ingestion/**/audit/`
-- applied (existing) `db/migrations/*.sql`: the hook blocks Edit/Write on any existing migration file; creating a NEW forward-only `NNN_*.sql` is allowed
+- applied (existing) `db/migrations/*.sql`: the hook blocks Edit/Write on any existing migration file; new migrations must be forward-only `NNN_<description>.sql` (the hook enforces the name)
 - the basenames `tests/test_determinism_boundary.py` and `tests/test_serving_boundary.py` in ANY directory
 
 Consequences:
-- The hook fires only on Claude Edit/Write tool calls. Bash writes (sed, tee, redirect, heredoc) and non-Claude harnesses bypass it; the ban binds regardless. Before editing and again before completion, check `git diff --name-only` against the list above.
+- The hook fires only on Claude Edit/Write tool calls. Bash writes (sed, tee, redirect, heredoc) and non-Claude harnesses bypass it; the ban binds regardless. Before editing and again before completion, check the FULL change set against the list above: `git diff --name-only main...HEAD` plus `git status --porcelain` (a bare `git diff` misses committed and staged changes).
 - New boundary tests must NOT reuse the frozen basenames; name them `test_<service>_boundary.py` (e.g. `test_value_path_boundary.py`).
 - Never work around the guard; flag any needed frozen-path change to Erhan.
 
@@ -54,14 +54,14 @@ vault/                   CAS evidence: daily/ journal, decision-matrix.md, fazit
 
 ## Stack
 
-Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010; docs.yml auto-publishes the GitHub Pages site on any docs/** push to main, no manual deploy) · OpenTelemetry instrumented in serving (FastAPI request traces + a custom search span and duration histogram; OTLP export opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`, a true no-op when unset; ADR-011), with Prometheus/Grafana + Sentry as intended backends, not yet wired.
+Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010; docs.yml builds the Pages site on any docs/** push to main and publishes when the DEPLOY_PAGES=true repo variable is set; it also offers workflow_dispatch) · OpenTelemetry instrumented in serving (FastAPI request traces + a custom search span and duration histogram; OTLP export opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`, a true no-op when unset; ADR-011), with Prometheus/Grafana + Sentry as intended backends, not yet wired.
 
 ADR register: `docs/adr/` 001..020, three-digit numbering (ADR-001 Python-first, ADR-013 demo scope, ADR-020 Codex seat). `docs/adr/legacy/` preserves the pre-2026-06-11 register under DIFFERENT, colliding numbers: never cite a legacy number in new text; resolve old citations via `docs/adr/legacy/README.md`.
 
 ## Commands
 
 ```bash
-uv sync --extra dev                      # per service (no root workspace); the dev extra holds pytest+ruff,
+cd services/<svc> && uv sync --extra dev # per service (no root pyproject); the dev extra holds pytest+ruff,
                                          # plain 'uv sync' drops them (CI: uv sync --frozen --extra dev)
 cd services/<svc> && uv run --no-sync pytest -q
                                          # offline: SQLite mirror + stub embedder, no containers; --no-sync or
@@ -92,7 +92,7 @@ bash tools/hooks/install.sh              # fresh clone only: git hooks are not v
 Command gotchas (each one has burned a session):
 - After any `uv run --extra ai` step (e5 recording), re-sync with `uv sync --frozen --extra dev` before running the offline suite: a polluted venv masks the e5-to-stub fallback. CI never installs the ai extra.
 - Compose interpolates `TARIFHUB_DB_URL` from `.env` into containers (docker-compose.yml): a `.env` carrying the host form `@localhost` breaks the serving container, which needs `@db:5432`. Recreate with `TARIFHUB_DB_URL='postgresql://tarifhub:tarifhub@db:5432/tarifhub' docker compose up -d --force-recreate serving`.
-- When capturing test counts or coverage for docs, re-derive from a fresh run with `pytest -q --junitxml=out.xml` and read the testsuite attributes: the piped `-q` summary line is swallowed in this repo's services. Never trust committed doc numbers.
+- When capturing test counts or coverage for docs, re-derive from a fresh run with `uv run --no-sync pytest -q --junitxml=out.xml` and read the testsuite attributes: the piped `-q` summary line is swallowed in this repo's services. Never trust committed doc numbers.
 
 ## Environment
 
@@ -108,13 +108,13 @@ Env-only config. Core set below; the full per-service inventory with defaults is
 - `INGEST_BASE_URL`: console review proxy target (ingestion review API); unset = the console serves a bundled demo queue and review decisions are NOT persisted.
 - `TARIFIQ_OFFLINE`: default true (bundled frozen tables, hermetic tests); truthy values are 1/true/yes/on. Set `0` plus a reachable `SERVING_BASE_URL` to read live frozen records.
 
-All `.env*` files are read-denied to AI everywhere, and root-level `.env*` writes are denied (`.claude/settings.json`; includes `.env.example`): treat every `.env*` as untouchable regardless of path, tool, or harness. For live runs load secrets with `uv run --env-file ../../.env ...` from the service dir; assert presence only, never print key material.
+All `.env*` files are read-denied to AI everywhere, and root-level `.env*` writes are denied (`.claude/settings.json`; includes `.env.example`): no AI, in any harness, reads or writes a `.env*` file. When a `.env*` change is needed, hand Erhan the exact command to run himself; AI may then stage and commit the result on his behalf. For live runs load secrets with `uv run --env-file ../../.env ...` from the service dir; assert presence only, never print key material.
 
 ## Conventions
 
 - **Grounding: never speculate about code you have not opened. If a file is referenced, read it before answering or editing. A claim must trace to a tool result from this session.**
 - **Long runs: context auto-compacts as it fills, so do not stop early for token-budget reasons. As you approach the limit, save progress and state to a scratchpad (`.shipboard/loop-checkpoint.md` in loop runs) before the window refreshes, then continue.**
-- **Quality before cost (owner law, 13 Jun): the orchestrator seat is pinned once in `.claude/settings.json` "model" and switched only with `tools/switch_model.sh` (ADR-018; check the file, do not assume which model). Every seat that exercises judgment or writes anything runs Opus-class or better; Sonnet and Haiku are banned from every seat. Worker pins live in `.claude/agents/*.md` frontmatter (exact model ids, not floating aliases, + `effort: ultracode`); treat frontmatter as the pin, never override it, never switch models mid-task (caches are model-scoped). The independent second model family is OpenAI Codex (gpt-5.6-sol via the owner's Codex Pro login, ADR-020): every PR review, the final document review, journal curation, and a second opinion on each grade estimate. Never downgrade a model seat, an effort level or a review step to save tokens. Cost is reported on the board; it is never an argument. Non-Claude agents: never modify `.claude/settings.json` or `.claude/agents/*`; run your own harness at its strongest available model/reasoning and state which Claude worker steps you could not perform.**
+- **Quality before cost (owner law, 13 Jun): the orchestrator seat is pinned once in `.claude/settings.json` "model" and switched only with `tools/switch_model.sh` (ADR-018; check the file, do not assume which model). Every seat that exercises judgment or writes anything runs Opus-class or better; Sonnet and Haiku are banned from every seat. Worker pins live in `.claude/agents/*.md` frontmatter (exact model ids, not floating aliases, + `effort: ultracode`; the one deliberate exception is verifier's `model: inherit`); treat frontmatter as the pin, never override it, never switch models mid-task (caches are model-scoped). The independent second model family is OpenAI Codex (gpt-5.6-sol via the owner's Codex Pro login, ADR-020): every PR review, the final document review, journal curation, and a second opinion on each grade estimate. Never downgrade a model seat, an effort level or a review step to save tokens. Cost is reported on the board; it is never an argument. Non-Claude agents: never modify `.claude/settings.json` or `.claude/agents/*`; run your own harness at its strongest available model/reasoning and state which Claude worker steps you could not perform.**
 - Conventional Commits; branch `feat/…|fix/…`; squash-merge green PRs only. Commit SHAs cited in graded evidence (docs/, vault/, LEARNINGS.md) must be squash-merge SHAs: verify with `git merge-base --is-ancestor <sha> main` before citing; pre-squash branch commits are unreachable from main.
 - GitHub skips Actions when `[skip ci]`/`[ci skip]` appears ANYWHERE in the head commit message (title or body): never quote the bracketed token in a CI re-trigger commit. `ci.yml` has no `workflow_dispatch`. The SessionEnd hook auto-pushes a `[skip ci]` vault commit, so a trailing vault tip after session end is expected; the rule binds pushes YOU make: land content via squash-merged PRs, never end an in-session push sequence on a `[skip ci]` commit, and when a green public HEAD matters (release, grading link) tell Erhan rather than force-pushing (denied).
 - The canonical model's field set is **locked, additive-only** (ADR-003). A breaking change needs a new ADR before code. Any NEW content field must also enter `HASHED_FIELDS` in `versioning/freeze_record.py`, which is below the freeze line: a canonical-field addition is therefore ALWAYS a frozen-path change. Flag it to Erhan at plan time; never ship a content field absent from the hash tuple (records differing only in that field would collide as unchanged content).
@@ -133,8 +133,8 @@ Run these before calling any work finished; report each result honestly (failing
 1. Per touched service: `cd services/<svc> && uv run --no-sync pytest -q` green (offline).
 2. `uvx ruff check .` inside each touched service dir, clean (never `ruff format .`, see Commands).
 3. If `docs/` changed: `mkdocs build -f docs/mkdocs.yml --strict` green AND `python3 tools/cas_check.py --ci` green (ratchet). If `apps/tarifguard/` changed: `npm run lint && npm run build && npm test` (all three are CI gates).
-4. `git diff --name-only` contains no freeze-line path (see The one inviolable rule).
+4. `git diff --name-only main...HEAD` and `git status --porcelain` contain no freeze-line path (see The one inviolable rule).
 5. Reviews per the routing matrix: determinism-auditor for any `services/` diff, security-reviewer when the diff touches secrets, input parsing, the de-identification seam, or anything internet-facing, codex-reviewer for every PR. The Claude harness dispatches the agents in `.claude/agents/`; other harnesses perform the equivalent reviews themselves and state which seats were unavailable.
 6. PR squash-merged green only. Architectural decision made → 5-line ADR in `docs/adr/` (register numbering, never legacy).
 7. Journal entry in `vault/daily/` curated (see Conventions, last bullet).
-8. A task ending with "then /ship" means the 9-phase pipeline in `.claude/skills/ship/SKILL.md` (follow the file manually if your harness lacks Claude skills). Gate 01, Erhan's plan approval, is a hard human stop. Phase 09 auto-merges ONLY under its green-contract (ALL FOUR: CI fully green incl. the security job, every finding dispositioned, no unauthorized frozen-path change, tree clean); anything less stops for Erhan.
+8. A task ending with "then /ship" means the 9-phase pipeline in `.claude/skills/ship/SKILL.md` (follow the file manually if your harness lacks Claude skills). Gate 01, Erhan's plan approval, is a hard human stop. Phase 09 auto-merges ONLY under its green-contract (ALL FOUR: CI fully green incl. the security job, every finding dispositioned, no unauthorized frozen-path change, working tree clean AND branch current with `main`); anything less stops for Erhan.
