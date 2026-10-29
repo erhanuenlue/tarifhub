@@ -1497,10 +1497,11 @@ requires-dist = [
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
-    { name = "sentence-transformers", marker = "extra == 'ai'", specifier = ">=2.7" },
+    { name = "sentence-transformers", marker = "extra == 'e5'", specifier = ">=2.7" },
+    { name = "tarifhub-ingest", extras = ["e5"], marker = "extra == 'ai'" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
 ]
-provides-extras = ["ai", "dev"]
+provides-extras = ["ai", "e5", "dev"]
 
 [[package]]
 name = "tarifhub-mcp"
@@ -1566,9 +1567,10 @@ requires-dist = [
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "tarifhub-ingest", editable = "../ingestion" },
+    { name = "tarifhub-ingest", extras = ["e5"], marker = "extra == 'e5'", editable = "../ingestion" },
     { name = "uvicorn", extras = ["standard"], specifier = ">=0.29" },
 ]
-provides-extras = ["dev"]
+provides-extras = ["e5", "dev"]
 
 [[package]]
 name = "typing-extensions"
