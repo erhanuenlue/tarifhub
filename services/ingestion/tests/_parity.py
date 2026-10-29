@@ -10,8 +10,8 @@ Offline default is preserved: with ``TARIFHUB_PG_TEST_URL`` unset only the ``sql
 parameter exists and the suite stays fully offline (the established opt-in pattern from
 ``test_audit_pg_roundtrip.py``). When the env var IS set, a ``postgres`` parameter is
 added; its setup creates a DEDICATED, uniquely-named scratch database, applies
-``db/schema.sql`` into it, and teardown drops it — the shared dev ``tarifhub`` database
-is never written to.
+``db/schema.sql`` into it, and teardown drops it — the base database the URL names is
+never written to.
 """
 
 from __future__ import annotations
@@ -59,7 +59,7 @@ def _create_pg_scratch(base_url: str) -> tuple[str, str]:
     import psycopg
 
     scratch = f"tarifhub_parity_{uuid.uuid4().hex[:12]}"
-    # Connect to the base (dev) db only to issue CREATE DATABASE — autocommit required.
+    # Connect to the base (disposable) db only to issue CREATE DATABASE — autocommit required.
     admin = psycopg.connect(base_url, autocommit=True)
     try:
         admin.execute(f'CREATE DATABASE "{scratch}"')

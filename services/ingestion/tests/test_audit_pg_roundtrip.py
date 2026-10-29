@@ -3,8 +3,10 @@
 Owner-required regression for the 2026-06-11 freeze-line fix: psycopg must
 receive a native bool (an int arrives as smallint and Postgres rejects it for
 the boolean column). Opt-in integration test — the offline suite never touches
-a network DB: set TARIFHUB_PG_TEST_URL (e.g. the compose db,
-postgresql://tarifhub:tarifhub@localhost:5432/tarifhub) to enable.
+a network DB: set TARIFHUB_PG_TEST_URL to a disposable database to enable (CI's
+service container, or locally the tmpfs stack in deploy/docker-compose.verify.yml).
+It writes audit rows into the database the URL names, so never point it at a
+development database.
 """
 
 from __future__ import annotations
