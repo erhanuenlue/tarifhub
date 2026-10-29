@@ -1,0 +1,9 @@
+# Host artifacts stay out of the image build. The build stage copies the Alpine
+# node_modules from the deps stage and then runs `COPY . .`, which would lay the host's
+# node_modules over them; `next build` would also pick up a host .next cache, TypeScript
+# build info or a local .env file.
+node_modules
+.next
+*.tsbuildinfo
+.env
+.env*.local
