@@ -52,7 +52,8 @@ jobs:
   # Cross-engine read parity: the SAME read tests run against a real Postgres 16 +
   # pgvector so SQLite-vs-Postgres drift (Block-0: json.loads on a JSONB dict; int for a
   # BOOLEAN column) cannot pass silently. Separate, parallel job so the offline `python`
-  # job above stays fast and container-free.
+  # job above stays fast and container-free. It also runs the Postgres legs of the BAG AL
+  # manifest import and of the editions it serves.
   python-parity:
     runs-on: ubuntu-latest
     env:
@@ -87,6 +88,26 @@ jobs:
             # ingestion's runtime pytest/httpx; the dependency prune made that explicit.
             (cd "$svc" && uv sync --quiet --frozen --extra dev && uv run --no-sync pytest -q tests/test_read_parity.py)
           done
+      - name: Manifest import and served editions against Postgres 16 + pgvector
+        # Only the Postgres legs (-k postgres; the python job runs the SQLite legs), in the
+        # environments the step above synced. pytest exits 5 when it selects nothing, and the
+        # junit check fails the step if a Postgres case was skipped, so a missing
+        # TARIFHUB_PG_TEST_URL cannot pass silently.
+        run: |
+          (cd services/ingestion && uv run --no-sync pytest -q tests/test_manifest_import.py -k postgres --junitxml="$RUNNER_TEMP/manifest-pg.xml")
+          (cd services/serving && uv run --no-sync pytest -q tests/test_manifest_editions.py -k postgres --junitxml="$RUNNER_TEMP/editions-pg.xml")
+          python3 - "$RUNNER_TEMP/manifest-pg.xml" "$RUNNER_TEMP/editions-pg.xml" <<'PY'
+          import sys
+          import xml.etree.ElementTree as ET
+          for path in sys.argv[1:]:
+              suite = ET.parse(path).getroot()
+              suite = suite if suite.tag == "testsuite" else suite.find("testsuite")
+              skipped = int(suite.get("skipped"))
+              ran = int(suite.get("tests")) - skipped
+              print(f"{path}: {ran} Postgres tests ran, {skipped} skipped")
+              if ran == 0 or skipped:
+                  sys.exit("the Postgres manifest tests did not all run")
+          PY
 
   console:
     runs-on: ubuntu-latest
