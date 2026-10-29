@@ -1,5 +1,5 @@
 # Reference CI for the Python-first monorepo (Option A: replace the existing repo's ci.yml with this).
-# Lean by design: lint+test per service, security gates, docs build. Images on main only.
+# Lean by design: lint+test per service, security gates, docs build, image builds (never pushed).
 name: ci
 on:
   push: { branches: [main] }
@@ -196,12 +196,21 @@ jobs:
           name: cas-status
           path: cas-status.json
 
+  # Runs on pull requests too, so a broken image or stale lockfile is caught before merge.
   images:
-    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     needs: [python, security]
     steps:
       - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.2.0 # exact tag: astral-sh has no floating v8 alias yet
+      - name: Lockfiles match their pyproject.toml (the Python images install from them)
+        # The images install with `uv sync --locked` (`--frozen` for MCP, whose build context
+        # lacks the sibling projects its dev extra points at); this check covers all four here.
+        run: |
+          for svc in services/*/; do
+            echo "=== $svc"
+            (cd "$svc" && uv lock --check)
+          done
       - name: Build every sub-system image (criterion 17 evidence)
         run: |
           for df in services/*/Dockerfile apps/*/Dockerfile; do
