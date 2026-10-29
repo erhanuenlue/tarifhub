@@ -18,4 +18,6 @@ We use GitHub Actions as the single CI/CD pipeline: per-service ruff + pytest (o
 - (-) Trivy failing on HIGH/CRITICAL can block unrelated PRs when new CVEs publish. Accepted, since the right response is to triage the finding rather than lower the bar.
 - (-) The pipeline tail is decided but not fully wired: today `ci.yml` builds all sub-system images on `main` but does not yet push to GHCR, and the gated Helm deploy job does not exist yet. Wire both before the first tagged release.
 
+*Update 2026-10-29: since [ADR-022](022-locked-image-builds.md), the `images` job also runs on pull requests, after a lockfile check, and the Python images install from their `uv.lock`. The GHCR push and the Helm deploy are still not wired.*
+
 *Lineage: new, no legacy counterpart (formalises the existing `ci.yml`).*

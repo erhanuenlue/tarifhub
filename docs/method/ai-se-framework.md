@@ -190,6 +190,8 @@ before it proceeds, so a red pipeline halts the automation. The pipeline rationa
 
 > **Figure: The CI/CD pipeline.** Six jobs run in parallel on every push and pull request (lint and tests with the boundary tests, read-parity against Postgres, the console build, security with secrets, vulnerabilities and SBOM, the docs strict build, and the completeness ratchet). On main, an images job builds every container, and a separate workflow builds the docs and deploys to Pages behind an explicit gate.
 
+*Update 2026-10-29: the figure and the text above show the `images` job as it ran when this chapter was written, on `main` only. Since [ADR-022](../adr/022-locked-image-builds.md) it also runs on pull requests: it checks each service's `uv.lock` first and still pushes nothing.*
+
 ## 7. Independent second-model review
 
 A Claude-reviewed Claude diff can share blind spots. To break that, an independent model family
