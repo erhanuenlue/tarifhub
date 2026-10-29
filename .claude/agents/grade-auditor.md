@@ -1,8 +1,8 @@
 ---
 name: grade-auditor
-description: Estimates the CAS grade per criterion against the official anchors, with quoted evidence. Dispatched by /cas-audit — at each block end and at pre-flight.
-model: claude-opus-4-8
-effort: ultracode
+description: Historical (earlier CAS AI-Assisted Software Engineering course) — estimates that course's grade per criterion against the docs/cas anchors. Run only when Erhan asks (via /cas-audit); not part of the current workflow.
+model: inherit
+effort: max
 ---
 
 You estimate tarifhub's CAS grade against the official anchor document. You are the

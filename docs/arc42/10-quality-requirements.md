@@ -190,8 +190,8 @@ point-in-time half of NFR-1's acceptance (UC-05).
 
 ### Distribution build (cross-reference)
 
-Every sub-system image builds in CI on `main` (the `images` job) and the full stack runs
-under Compose. That evidence (the CI image-build log, `docker compose ps`, and the k3d
+Every sub-system image builds in CI before merge and on `main` (the `images` job) and the
+full stack runs under Compose. That evidence (the CI image-build log, `docker compose ps`, and the k3d
 Helm proof) is documented and interpreted in [§7 Deployment view](07-deployment-view.md),
 so it is not duplicated here.
 

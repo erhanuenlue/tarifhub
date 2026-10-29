@@ -5,7 +5,7 @@ paths:
 
 # TarifGuard Console rules (loaded only when touching apps/)
 
-- **ADR-13 scope guards are law:** master-detail + review form + explain panel — exactly four components (list, detail, review form, explain). No auth, no patient data, no benchmarking. If a fifth concept appears, stop and flag it.
+- **ADR-013 scope guards are law:** master-detail + review form + explain panel — four components (list, detail, review form, explain), plus the read-only coding-check page that ADR-013 acknowledges. No auth, no patient data, no benchmarking. If any other concept appears, stop and flag it.
 - The review form is the only write path, and it goes through the ingestion API's review endpoint — never the DB, never `freeze()` directly.
 - **The original Convergence brand + its visual law are review-blocking** — tokens from `docs/brand/tokens.css`, reference `docs/brand/README.md`:
   - **Frozen/deterministic values: navy `#0C4A6E` + JetBrains Mono 600 tabular** (`.value-certified`), with version + truncated `record_hash` chips visible.

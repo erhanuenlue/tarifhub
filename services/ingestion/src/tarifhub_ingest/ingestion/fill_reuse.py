@@ -93,6 +93,17 @@ def _adopt_content(candidate: TariffRecord, stored: TariffRecord) -> TariffRecor
     )
 
 
+def matches_prefill(candidate: TariffRecord, stored: TariffRecord) -> bool:
+    """True iff ``stored`` was frozen from the same source content as ``candidate``.
+
+    ``candidate`` is a fresh, pre-fill ``map_raw`` output; ``stored`` is compared after
+    stripping its AI fills and scores, so a stored record that differs only by fills
+    still counts as the same content.
+    """
+
+    return compute_record_hash(strip_to_prefill(stored)) == compute_record_hash(candidate)
+
+
 @dataclass(frozen=True)
 class ReuseOutcome:
     """The result of a reuse check at the pipeline ai_map call site."""
@@ -119,7 +130,7 @@ def reuse_or_none(
     stored = repo.get(candidate.tariff_code, system)
     if stored is None:
         return None
-    if compute_record_hash(strip_to_prefill(stored)) != compute_record_hash(candidate):
+    if not matches_prefill(candidate, stored):
         return None
     return ReuseOutcome(
         record=_adopt_content(candidate, stored),

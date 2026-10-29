@@ -30,6 +30,11 @@ dependencies = [
 # Enable only when you wire the live Claude harmonizer / real e5 embeddings.
 ai = [
     "anthropic>=0.39",
+    "tarifhub-ingest[e5]",
+]
+# The real multilingual-e5 embedder alone, without the LLM client: the WITH_E5=1 images
+# install exactly this extra from uv.lock.
+e5 = [
     "sentence-transformers>=2.7",
 ]
 # httpx is test-only here: fastapi.testclient (starlette) drives the app through it.

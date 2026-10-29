@@ -1,0 +1,13 @@
+# The build context is the repository root (serving vendors ../ingestion), and this file
+# applies to this Dockerfile only. Just the two projects' build inputs enter the context,
+# never a host virtualenv, bytecode cache or stale egg-info.
+*
+!services/ingestion/pyproject.toml
+!services/ingestion/README.md
+!services/ingestion/src
+!services/serving/pyproject.toml
+!services/serving/uv.lock
+!services/serving/README.md
+!services/serving/src
+**/__pycache__
+**/*.egg-info

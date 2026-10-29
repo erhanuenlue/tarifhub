@@ -1,52 +1,43 @@
-# CLAUDE.md: tarifhub orchestrator workflow
+# CLAUDE.md: tarifhub development workflow
 
 @AGENTS.md
 
-Project facts, layout, commands, environment, the determinism rule, and the definition of done are in AGENTS.md above. This file is the Claude-Code workflow, deliberately short. When Erhan corrects you, add one short rule here (or in auto memory), don't grow paragraphs.
-
-## Session setup (verify, don't assume)
-
-- Orchestrator model: whatever `.claude/settings.json` "model" pins (ADR-018; switched only via `tools/switch_model.sh opus|fable`). Never switch mid-session.
-- Effort: maximum reasoning throughout build/ship sessions, no down-shift to save tokens (owner law). The Fable-era `/effort ultracode` session command is retired (ADR-018); if your harness offers an effort setting, set it to maximum, otherwise just work at full depth. Workers already carry `effort: ultracode` in their frontmatter.
-- Fresh clone? `bash tools/hooks/install.sh` and verify `.git/hooks/post-commit` exists (AGENTS.md Commands; graphify code-node sync depends on it).
-- Every PR blocks on the codex-reviewer bridge: verify early that `command -v codex` succeeds and the CLI is signed in (fallback order in `.claude/agents/codex-reviewer.md`). If unavailable, tell Erhan BEFORE opening any PR: the definition of done cannot complete without it.
-- Two invariants no orchestration mode may touch: **gate 01 (plan approval) is a hard human stop**, and **worker model pins (agent frontmatter) are never overridden**.
+Project facts, safety boundaries, commands and the definition of done live in AGENTS.md (imported above). This file is the short Claude Code workflow. When Erhan corrects you, add one short rule here (or in auto memory), don't grow paragraphs.
 
 ## How to work
 
-- Take tasks whole (spec → implement → verify); don't pre-chop. State the why when delegating. Do the simplest thing that works: no speculative abstractions, no future-proofing, validate at system boundaries only.
-- Before claiming progress, check each claim against a tool result from this session. Failing test: say so with output. Skipped step: say so.
-- Plan mode for anything multi-file; skip it when the diff fits one sentence. For long unattended runs use `tools/loop.sh` (reads the model pin, auto-runs curate.sh); `/goal "<verifiable condition>"` is a harness command not defined in this repo, so if it is unavailable, state the verifiable end condition in the prompt instead.
-- **Maintain your todo list during multi-step work** (statuses current): Shipboard parses TodoWrite calls out of the live transcript (`tools/shipboard/shipboard.py`); an untracked plan is invisible on Erhan's board.
-- When Erhan is thinking out loud, deliver an assessment, not a patch. Pause only for: destructive/irreversible actions, real scope changes, or input only he has.
+- Take small tasks one at a time: confirm the scope, make the change, run the relevant checks from the AGENTS.md definition of done, review your own diff (`git status --porcelain`, `git diff`), then explain the result: what changed, which checks ran with their output, what was skipped and why.
+- Do the simplest thing that works: no new harness, no speculative abstractions, no broad formatting. Use plan mode when a multi-file change has no settled approach yet.
+- Do checks and reviews inline. Delegate to a subagent (any Agent-tool call, the agents in `.claude/agents/` included) only when Erhan has explicitly authorized delegation for the current task; within that task's scope the authorization holds without asking again. When you delegate, block on the result in-turn (background agents surface only idle pings) and have the agent write its findings to a named file. Never work around a permission denial: report what it blocked.
+- You do the git work (Erhan doesn't run git by hand), but commit, push, open PRs and merge only when he explicitly asks in this session.
+- Pause only for destructive or irreversible actions, real scope changes, or input only Erhan has. When he is thinking out loud, give an assessment, not a patch.
 
-## The pipeline: you orchestrate, workers produce
+## Model and effort
 
-You, the orchestrator, keep the jobs where quality compounds: **the plan, the orchestration, the merge-gate review, complex senior-level decisions**. The volume is delegated to the model-pinned workers defined in `.claude/agents/` (each frontmatter carries the pin; verifier inherits the orchestrator):
+- One pin: `"model"` in `.claude/settings.json` (`claude-opus-5-5`). Change it only with `bash tools/switch_model.sh opus|fable`, which writes that key; never switch mid-task.
+- Every agent in `.claude/agents/` declares `model: inherit` and `effort: max`: subagents run on the main model at max effort (a `CLAUDE_CODE_EFFORT_LEVEL` environment variable would override the effort).
+- Settings files cannot store `max` effort; for the main session use `/effort max` or `claude --effort max`.
+- `"ultracode": false` keeps automatic dynamic workflows off. Start a multi-agent workflow only when Erhan asks for one.
 
-- `implementer`: TDD implementation of approved-plan tasks; parallel dispatch when tasks are independent. You write code yourself only for glue too small to dispatch, and in quick interactive sessions where pipeline overhead isn't worth it.
-- `e2e-tester`: runtime verification (compose-up, integration runs, API/console smoke, log scans). Evidence collector, not a fixer.
-- Reviewers: `verifier` (fresh-context diff-vs-spec; self-critique is not verification) · `determinism-auditor` (mandatory for any `services/` diff) · `security-reviewer` (dispatch when the diff touches secrets, input parsing, the de-identification seam, or anything internet-facing; also covers what the orchestrator's safety classifiers decline) · `codex-reviewer` (bridge agent relaying OpenAI gpt-5.6-sol via the Codex CLI/plugin, ADR-020, **every PR**; journal its use, it is CAS evidence of multi-tool work).
-- `grade-auditor`: per-criterion CAS grade estimate against the official anchors; dispatched by `/cas-audit` at block ends and pre-flight, writes to `vault/cas-audit/`.
-- Built-in Explore handles codebase search. Launch independent agents in one parallel batch and keep working.
+## Agents, Codex, skills
 
-Merge-gate delivery (hard-won): background review agents surface only idle pings, never their report text. Block on the Agent tool result in-turn AND instruct each reviewer to Write findings to a named file. Before re-dispatching codex, check `pgrep -fl "codex exec"` and resume the same bridge agent via SendMessage rather than spawning a second.
+- Reviewers: `verifier` (fresh-context diff vs. spec), `determinism-auditor` (services/ value-path changes), `security-reviewer` (secrets, input parsing, de-identification seam, internet-facing code). Workers: `implementer` (one scoped TDD task), `e2e-tester` (runtime evidence, only when a change needs it).
+- Codex is the independent second model family: use the read-only commands in `.claude/agents/codex-reviewer.md`, one run at a time. Running them yourself is not delegation and needs no authorization; going through that agent is delegation. Either way every restriction in that file holds, and a denied run is a skipped review. Its model comes from `~/.codex/config.toml`; cite the model a run reports, never one from a description.
+- Matt Pocock skills (`.claude/skills/`, locked in `skills-lock.json`): use `tdd`, `codebase-design`, `domain-modeling` and `grilling` only when the task calls for them; `grill-with-docs`, `to-tickets` and `setup-matt-pocock-skills` are user-invoked.
+- `tdd` points its review stage (where refactoring belongs) to a `code-review` skill that this repo does not install: it is in neither `.claude/skills/` nor `skills-lock.json`, and a same-named skill from outside the repo, such as Claude Code's bundled one, is not it. The local fallback is the repo review procedure, inline: AGENTS.md definition of done step 5 with the applicable checklists in `.claude/agents/`. Report it as the local fallback; never claim that Matt's `code-review` ran.
+- `/ship` means this repo's `.claude/skills/ship/SKILL.md`. A user-global gstack skill has the same name: if the Skill tool resolves that one, read the repo file and follow it.
 
-**`/ship` means THIS repo's 9-phase pipeline at `.claude/skills/ship/SKILL.md`** (plan-approval → implement → gates → reviews → fix → PR/CI → runtime verification → report → auto-merge on green). A user-global gstack skill is also named "ship": if the Skill tool resolves the wrong one, read the SKILL.md file directly and follow it. Gate 01 (Erhan approves the plan) is never skipped. Phase 09 auto-merges only under the green-contract (SKILL.md phase 09; ALL FOUR must hold: CI fully green incl. the security job, every finding dispositioned, no unauthorized frozen-path change, working tree clean AND branch current with `main`) and stops for Erhan otherwise. Live board: `python3 tools/shipboard/shipboard.py` → http://127.0.0.1:8787.
+## Agent skills
 
-## Git & GitHub: you do all of it
+### Issue tracker
 
-Erhan never runs git by hand. The repo is live and PUBLIC: https://github.com/erhanuenlue/tarifhub (the graded deliverable; never flip visibility, never re-create it). Branch → small Conventional Commits → `gh pr create` → reviews per the matrix above → address → squash-merge green. CI/evidence gotchas (skip-ci token, vault-tip rule, squash-SHA citations) are in AGENTS.md Conventions; they are binding.
+GitHub Issues in `erhanuenlue/tarifhub` via `gh`. No triage labels are configured (the `triage` skill is not installed), so `/to-tickets` must not apply `ready-for-agent`. See `docs/agents/issue-tracker.md`.
 
-## Memory & CAS evidence (two different things)
+### Domain docs
 
-- **Auto memory is yours**: record corrections, gotchas, confirmed approaches there; keep it current; delete what proves wrong.
-- **`vault/` is Erhan's graded evidence, not your memory.** The SessionEnd hook drafts `vault/daily/` entries; end each session by curating the draft into 3-6 honest lines: what was delegated, what AI got wrong and what caught it (hook? review? test?), one concrete prompt→diff example. Run `bash tools/curate.sh` for the Codex rewrite (automatic only inside `tools/loop.sh` runs). Never backfill journal entries: contemporaneity is the point (AGENTS.md Status).
+Single-context. Vocabulary: `docs/arc42/12-glossary.md`, read wherever a skill says `GLOSSARY.md` (no root `GLOSSARY.md` yet; before creating one, propose how to keep one authoritative definition per term). ADRs: `docs/adr/`, numbered `NNN-slug.md`, not the skills' `0001-` default. See `docs/agents/domain.md`.
 
-## Definition of done
+## History, not workflow
 
-The binding checklist is **AGENTS.md "Definition of done (all agents)"**: run it in full. Claude-harness additions:
-
-- Dispatch the reviewer agents rather than reviewing solo, and block on their results in-turn (merge-gate delivery above).
-- If `docs/` changed materially: `/graphify --update`, BUT check the incremental backlog first. The detect_incremental step and its exact command live in `~/.claude/skills/graphify/SKILL.md` (Erhan's user-global skill, not in this repo); read `new_total` from its output, and a backlog far beyond this session's edits is a scope decision for Erhan, not an autonomous dispatch. Skill absent in your environment? Skip and flag.
-- Journal curation per Memory & CAS evidence above.
+- Kept as earlier-CAS evidence, not part of the workflow: `tools/loop.sh`, `tools/curate.sh`, `tools/shipboard/`, `tools/hooks/` (legacy git hooks), the `.claude/hooks/` scripts no longer wired in settings, the `grade-auditor` agent with `/cas-audit` and `/cas-status`, and the `vault/` journals. Don't run, install or rewire them unless Erhan asks.
+- Auto memory is yours: corrections, gotchas, confirmed approaches; delete what proves wrong. `vault/` is not your memory.

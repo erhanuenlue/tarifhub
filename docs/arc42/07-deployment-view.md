@@ -92,9 +92,9 @@ the console reaches its backends container-to-container (`http://serving:8000`,
 
 ## Evidence 1: every sub-system image builds in CI
 
-The `images` job (`.github/workflows/ci.yml`, on `main` after `python` + `security`) builds
-every `services/*/Dockerfile` and `apps/*/Dockerfile`. The BuildKit "naming to" lines from
-the CI log, one per image, show all seven building:
+The `images` job (`.github/workflows/ci.yml`, on pull requests and on `main`, after `python` +
+`security`) builds every `services/*/Dockerfile` and `apps/*/Dockerfile`. The BuildKit
+"naming to" lines from the CI log, one per image, show all seven building:
 
 ```text
 naming to docker.io/library/tarifhub-ingestion:ci     done

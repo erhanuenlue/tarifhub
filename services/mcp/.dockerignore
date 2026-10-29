@@ -1,0 +1,9 @@
+# Host artifacts stay out of the image build: the locked install builds the package from
+# src/, so a local virtualenv, bytecode cache or stale egg-info must not reach it.
+.venv/
+**/__pycache__/
+**/*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.coverage
+*.db

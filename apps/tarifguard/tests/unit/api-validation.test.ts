@@ -158,7 +158,9 @@ describe("review BFF route validation", () => {
 
 describe("validation hardening (post-review)", () => {
   it("caps the error detail for a large malformed positions array (no amplification)", async () => {
-    const positions = Array.from({ length: 60 }, () => ({}));
+    // 50 is the schema maximum, so zod still validates every element (two issues per empty
+    // object); past the maximum it stops at the size check (next test).
+    const positions = Array.from({ length: 50 }, () => ({}));
     const res = await codingCheckPOST(post("/api/coding-check", { positions }));
     const body = await expectProblem400(res);
     // The detail is bounded with a "(+N more)" suffix rather than one issue per bad element:
@@ -166,6 +168,17 @@ describe("validation hardening (post-review)", () => {
     expect(String(body.detail)).toContain("(+");
     const pathCount = (String(body.detail).match(/positions\./g) || []).length;
     expect(pathCount).toBeLessThanOrEqual(10);
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("rejects too many malformed positions on the size check alone (no per-element issues)", async () => {
+    // zod >= 4.6.6 (GHSA-mrhx-c7xc-m3w5) no longer collects an issue for every element of an
+    // oversized array, so a huge malformed body cannot amplify the validation work either.
+    const positions = Array.from({ length: 60 }, () => ({}));
+    const res = await codingCheckPOST(post("/api/coding-check", { positions }));
+    const body = await expectProblem400(res);
+    expect(String(body.detail)).toContain("too many positions (max 50)");
+    expect(String(body.detail)).not.toContain("positions.");
     expect(fetchMock).not.toHaveBeenCalled();
   });
 

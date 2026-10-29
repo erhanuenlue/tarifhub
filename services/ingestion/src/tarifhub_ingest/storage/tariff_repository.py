@@ -126,6 +126,16 @@ class TariffRepository:
         ).fetchall()
         return [self._row_to_record(row) for row in rows]
 
+    def list_by_system(self, system: TariffSystem) -> list[TariffRecord]:
+        """Return every frozen version of one tariff system, ordered by code then version."""
+
+        rows = self._conn.execute(
+            f"SELECT * FROM tariff WHERE tariff_system = {self._ph} "
+            "ORDER BY tariff_code, version",
+            (system.value,),
+        ).fetchall()
+        return [self._row_to_record(row) for row in rows]
+
     def list_flagged(self) -> list[TariffRecord]:
         """Return the review queue: latest-version records still flagged for review.
 

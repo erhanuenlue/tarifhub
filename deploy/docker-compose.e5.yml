@@ -9,9 +9,10 @@
 # The WITH_E5=1 build installs sentence-transformers ONLY, never the LLM client. No LLM
 # client ever enters these images; the serving value path stays deterministic (AST test).
 #
-# The model is read from the HOST Hugging Face cache; HF_HUB_OFFLINE=1 forbids any network
-# fetch at run time. Populate the host cache once (needs the download; do this before the
-# offline run):
+# The model is read from the HOST Hugging Face model store (~/.cache/huggingface/hub, read-only;
+# the cache root is not mounted, since it can also hold a login token that no container needs);
+# HF_HUB_OFFLINE=1 forbids any network fetch at run time. Populate the host cache once (needs
+# the download; do this before the offline run):
 #   python -c "from sentence_transformers import SentenceTransformer as S; S('intfloat/multilingual-e5-large')"
 #
 # CI note: the CI images job builds the DEFAULT images only (WITH_E5=0). The WITH_E5=1 build
@@ -38,7 +39,7 @@
 #
 # HF cache mount targets differ by service: ingestion runs as user `tarifhub`
 # (/home/tarifhub) and serving as `appuser`/uid 1001 (/home/appuser); both resolve the
-# default cache to ~/.cache/huggingface via /etc/passwd.
+# default cache to ~/.cache/huggingface via /etc/passwd, and only its hub/ store is mounted.
 services:
   ingestion:
     build:
@@ -48,7 +49,7 @@ services:
       TARIFHUB_EMBEDDINGS: e5
       HF_HUB_OFFLINE: "1"
     volumes:
-      - ${HOME}/.cache/huggingface:/home/tarifhub/.cache/huggingface:ro
+      - ${HOME}/.cache/huggingface/hub:/home/tarifhub/.cache/huggingface/hub:ro
 
   serving:
     build:
@@ -58,7 +59,7 @@ services:
       TARIFHUB_EMBEDDINGS: e5
       HF_HUB_OFFLINE: "1"
     volumes:
-      - ${HOME}/.cache/huggingface:/home/appuser/.cache/huggingface:ro
+      - ${HOME}/.cache/huggingface/hub:/home/appuser/.cache/huggingface/hub:ro
 
   ingestion-batch:
     build:
@@ -68,7 +69,7 @@ services:
       TARIFHUB_EMBEDDINGS: e5
       HF_HUB_OFFLINE: "1"
     volumes:
-      - ${HOME}/.cache/huggingface:/home/tarifhub/.cache/huggingface:ro
+      - ${HOME}/.cache/huggingface/hub:/home/tarifhub/.cache/huggingface/hub:ro
       # Full local corpora (data/raw/eal/*.xlsx, data/raw/epl/*.ndjson) for in-container
       # batch ingestion via a run-time command override; read-only.
       - ../data:/data-host:ro
