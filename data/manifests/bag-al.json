@@ -1,0 +1,66 @@
+{
+  "manifest_version": 1,
+  "tariff_system": "EAL",
+  "editions": [
+    {
+      "effective_date": "2026-01-01",
+      "documents": [
+        {
+          "kind": "full_list_xlsx",
+          "path": "data/raw/bag/al/2026-01-01/Analysenliste per 1. Januar 2026_Excel-Format.xlsx",
+          "sha256": "f0e748748f3b11d3a11529397d6a1bbd896691d93c95df533a77e95d8b94a551",
+          "source_url": "https://www.bag.admin.ch/dam/de/sd-web/7vzBmkMNe4TR/Analysenliste%20per%201.%20Januar%202026_Excel-Format.xlsx"
+        },
+        {
+          "kind": "full_list_pdf",
+          "path": "data/raw/bag/al/2026-01-01/Analysenliste per 1. Januar 2026.pdf",
+          "sha256": "d23c7fa737c34a37e84a6e722e99fc9f4aaf3d64f34caf407c03d92576007895",
+          "source_url": "https://www.bag.admin.ch/dam/de/sd-web/Tt1ZCXfTmDbd/Analysenliste%20per%201.%20Januar%202026.pdf"
+        },
+        {
+          "kind": "commentary_pdf",
+          "path": "data/raw/bag/al/2026-01-01/Kommentar zu den Änderungen des Anh. 3 KLV per 01.01.26.pdf",
+          "sha256": "0d335bd46adec0254a91e260cebe976f86fd0cfb54bb97ea8ecf98cadfd7e4fc",
+          "source_url": "https://www.bag.admin.ch/dam/de/sd-web/0qHwQnPwQLSf/Kommentar%20zu%20den%20%C3%84nderungen%20des%20Anh.%203%20KLV%20per%2001.01.26.pdf"
+        }
+      ]
+    },
+    {
+      "effective_date": "2026-07-01",
+      "documents": [
+        {
+          "kind": "full_list_xlsx",
+          "path": "data/raw/bag/al/2026-07-01/Analysenliste per 1. Juli 2026_Excel-Format.xlsx",
+          "sha256": "0b0730ee89f6758236dd11e7bf92598cb4d5055b1034cbca9511e080f9591454",
+          "source_url": "https://www.bag.admin.ch/dam/de/sd-web/a-xPwK6T1P0m/Analysenliste%20per%201.%20Juli%202026_Excel-Format.xlsx"
+        },
+        {
+          "kind": "full_list_pdf",
+          "path": "data/raw/bag/al/2026-07-01/Analysenliste per 1. Juli 2026.pdf",
+          "sha256": "5edc25bde7cf9aaf19d7384da79aae708cafbb1a0d176a276285203fdbfbe826",
+          "source_url": "https://www.bag.admin.ch/dam/de/sd-web/LYXFfIIii4hE/Analysenliste%20per%201.%20Juli%202026.pdf"
+        },
+        {
+          "kind": "amendment_pdf",
+          "path": "data/raw/bag/al/2026-07-01/Anhang 3 KLV AL Änderungen_01.07.2026.pdf",
+          "sha256": "ea19b151280ec1e64c167491b6f331d3c05258729ac320bd4f768062113f8441",
+          "source_url": "https://www.bag.admin.ch/dam/de/sd-web/FZbkfHKvmCuc/Anhang%203%20KLV%20AL%20%C3%84nderungen_01.07.2026.pdf"
+        },
+        {
+          "kind": "commentary_pdf",
+          "path": "data/raw/bag/al/2026-07-01/Kommentar zu den Änderungen des Anh. 3 KLV per 01.07.26_final.pdf",
+          "sha256": "fe1856df9f7d0023aac52e13dc61a0055a7105b4810f18cc8822366625af5105",
+          "source_url": "https://www.bag.admin.ch/dam/de/sd-web/4UyRNXXha5kI/Kommentar%20zu%20den%20%C3%84nderungen%20des%20Anh.%203%20KLV%20per%2001.07.26_final.pdf"
+        }
+      ]
+    }
+  ],
+  "supporting_documents": [
+    {
+      "kind": "handbook_pdf",
+      "path": "data/raw/bag/al/Anh. 3_Handbuch_LA_V2.0_2026.pdf",
+      "sha256": "ba54b924969107d2c49adc50ce6ee3e7b3f25795eb2189607398821f55b467bf",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/OawJfMSeS6na/Anh.%203_Handbuch_LA_V2.0_2026.pdf"
+    }
+  ]
+}

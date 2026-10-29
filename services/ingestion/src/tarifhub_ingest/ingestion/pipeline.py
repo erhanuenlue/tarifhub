@@ -10,7 +10,9 @@ only at the ``map`` step (via :func:`ai_map`) and never touches a billing value.
 
 from __future__ import annotations
 
+from collections.abc import Iterator
 from dataclasses import dataclass, field
+from typing import Any
 
 from tarifhub_ingest.audit.audit_logger import AuditLogger
 from tarifhub_ingest.config import Settings, get_settings
@@ -65,8 +67,8 @@ def run_pipeline(  # noqa: PLR0913 — sources + ports + keyword-only pipeline k
     report = PipelineReport()
 
     for spec in sorted(specs, key=lambda s: (s.system.value, str(s.path))):
-        parse_fn, parser_version = _PARSERS[spec.kind]
-        for raw in parse_fn(spec.path):
+        _, parser_version = _PARSERS[spec.kind]
+        for raw in source_rows(spec):
             # Fail-closed marker: the adapter could not key this row (e.g. a
             # reimbursed package with no GTIN). Count it and never map/freeze it —
             # a parsing failure must never produce a frozen record.
@@ -141,3 +143,42 @@ def run_pipeline(  # noqa: PLR0913 — sources + ports + keyword-only pipeline k
             )
 
     return report
+
+
+def source_rows(spec: SourceSpec) -> Iterator[dict[str, Any]]:
+    """Yield ``spec``'s parsed rows with its explicit edition stamped onto keyed rows.
+
+    The single row source for :func:`run_pipeline` and the manifest import's pre-write
+    checks, so both see exactly the same rows. Pre-parsed ``spec.rows`` are used as
+    given; otherwise ``spec.path`` is parsed. Fail-closed ``_parse_failure`` markers pass
+    through unstamped.
+    """
+
+    rows = spec.rows if spec.rows is not None else _PARSERS[spec.kind][0](spec.path)
+    for raw in rows:
+        yield raw if raw.get("_parse_failure") else stamp_edition(raw, spec)
+
+
+def stamp_edition(raw: dict[str, Any], spec: SourceSpec) -> dict[str, Any]:
+    """Stamp ``spec``'s explicit edition onto a parsed row, refusing a conflicting one.
+
+    A manifest import names its edition explicitly, so ``valid_from`` and
+    ``source_version`` come from the manifest, not from where the file lives. A row whose
+    adapter already derived a different value (the ``analysenliste_YYYY-MM-DD`` filename
+    convention) raises instead of silently choosing one. Specs without an explicit
+    edition pass rows through unchanged.
+    """
+
+    explicit = {
+        key: value
+        for key, value in (("valid_from", spec.valid_from), ("source_version", spec.source_version))
+        if value is not None
+    }
+    for key, value in explicit.items():
+        parsed = raw.get(key)
+        if parsed is not None and parsed != value:
+            raise ValueError(
+                f"{spec.path.name}: parsed {key} {parsed} conflicts with the "
+                f"explicit edition {value}"
+            )
+    return {**raw, **explicit}

@@ -20,6 +20,7 @@ import hashlib
 import re
 import urllib.request
 from datetime import date
+from io import BytesIO
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlsplit
@@ -76,21 +77,29 @@ _DISCIPLINE_FLAG = "Ja"
 _FILENAME_DATE_RE = re.compile(r"analysenliste_(\d{4})-(\d{2})-(\d{2})", re.IGNORECASE)
 
 
-def parse(path: str | Path) -> list[dict[str, Any]]:
+def parse(path: str | Path, *, content: bytes | None = None) -> list[dict[str, Any]]:
     """Parse a BAG EAL workbook into canonical-keyed row dicts.
 
     Emits one dict per German data row (the canonical language). French/Italian
     designations are joined by position number; a missing FR/IT sheet or a missing
     counterpart row degrades gracefully to a German-only row. Rows without a
     position number are skipped (they cannot be a tariff position).
+
+    ``content`` is the workbook's bytes when the caller has already read (and verified)
+    them; ``path`` then only names the source, for the filename-date convention.
     """
 
     path = Path(path)
-    _guard_file_size(path)
+    if content is None:
+        _guard_file_size(path)
+        source: Any = str(path)
+    else:
+        _guard_size(len(content))
+        source = BytesIO(content)
 
     from openpyxl import load_workbook  # noqa: PLC0415  (lazy: keep CSV-only runs light)
 
-    workbook = load_workbook(filename=str(path), read_only=True, data_only=True)
+    workbook = load_workbook(filename=source, read_only=True, data_only=True)
     try:
         sheets = {s.title: s for s in workbook.worksheets}
         de_sheet = _pick_sheet(sheets, ("Deutsch",), _POS_HEADER_DE)
@@ -205,6 +214,16 @@ def fetch(url: str, dest_path: str | Path) -> Path:
     return dest
 
 
+def source_version_for(effective: date) -> str:
+    """The edition label an AL edition freezes with: ``BAG AL YYYY-MM-DD``.
+
+    One rule for both edition sources (the filename convention and an import manifest),
+    so the same edition hashes to the same records wherever its file lives.
+    """
+
+    return f"BAG AL {effective.isoformat()}"
+
+
 # --------------------------------------------------------------------------- #
 # Internals
 # --------------------------------------------------------------------------- #
@@ -240,7 +259,10 @@ def _require_headers(headers: list[str], required: tuple[str, ...]) -> None:
 def _guard_file_size(path: Path) -> None:
     if not path.exists():
         raise FileNotFoundError(f"BAG EAL source not found: {path}")
-    size = path.stat().st_size
+    _guard_size(path.stat().st_size)
+
+
+def _guard_size(size: int) -> None:
     if size > _MAX_BYTES:
         raise ValueError(
             f"BAG EAL source is {size} bytes, over the {_MAX_BYTES} limit; refusing to parse"
@@ -373,7 +395,7 @@ def _date_from_filename(name: str) -> date | None:
 
 def _source_version_from_filename(name: str) -> str | None:
     parsed = _date_from_filename(name)
-    return f"BAG AL {parsed.isoformat()}" if parsed else None
+    return source_version_for(parsed) if parsed else None
 
 
 def _cell(values: list[Any], index: int | None) -> Any:

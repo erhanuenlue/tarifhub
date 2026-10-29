@@ -8,13 +8,15 @@ production this is where a scheduled loader would fetch from BAG / OAAT / MinIO.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
+from datetime import date
 from pathlib import Path
+from typing import Any
 
 from tarifhub_ingest.models.tariff_model import TariffSystem
 
 # EAL (BAG Analysenliste) and SL (BAG ePL Spezialitätenliste) public source pages.
-_EAL_SOURCE_URL = "https://www.bag.admin.ch/de/analysenliste-al"
+EAL_SOURCE_URL = "https://www.bag.admin.ch/de/analysenliste-al"
 _EPL_SOURCE_URL = "https://epl.bag.admin.ch"
 
 _EAL_FILENAMES = ("eal_sample.xlsx", "eal_sample.csv", "bag_eal_sample.xlsx")
@@ -29,6 +31,13 @@ class SourceSpec:
     kind: str  # "xlsx" | "bag_eal" | "bag_epl"
     path: Path
     source_url: str
+    # Explicit edition (manifest imports): stamped onto every parsed row before mapping,
+    # so the frozen identity comes from the manifest, never from the file's name.
+    valid_from: date | None = None
+    source_version: str | None = None
+    # Pre-parsed rows (manifest imports): used instead of re-reading ``path``, so the
+    # bytes that were hash-verified are exactly the ones that get frozen.
+    rows: tuple[dict[str, Any], ...] | None = field(default=None, compare=False, repr=False)
 
 
 def default_sample_dir() -> Path:
@@ -48,7 +57,7 @@ def discover_samples(sample_dir: str | Path | None = None) -> list[SourceSpec]:
     eal = _first_existing(base, _EAL_FILENAMES)
     if eal:
         specs.append(
-            SourceSpec(system=TariffSystem.EAL, kind="xlsx", path=eal, source_url=_EAL_SOURCE_URL)
+            SourceSpec(system=TariffSystem.EAL, kind="xlsx", path=eal, source_url=EAL_SOURCE_URL)
         )
 
     epl = _first_existing(base, _EPL_FILENAMES)
