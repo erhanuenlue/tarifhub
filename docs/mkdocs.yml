@@ -8,10 +8,12 @@ site_author: Erhan Ünlü
 docs_dir: .
 site_dir: ../site
 # cas/ is the course-internal rubric working copy (gitignored); cockpit/ is the
-# post-submission design package (C-04). Neither is rendered into the site.
+# post-submission design package (C-04); agents/ is the agent-skills configuration
+# (tracked in the repo, not site content). None of them is rendered into the site.
 exclude_docs: |
   cas/
   cockpit/
+  agents/
 repo_url: https://github.com/erhanuenlue/tarifhub
 repo_name: erhanuenlue/tarifhub
 edit_uri: ""
