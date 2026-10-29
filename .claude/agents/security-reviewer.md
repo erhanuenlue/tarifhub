@@ -1,9 +1,9 @@
 ---
 name: security-reviewer
-description: Security review for diffs touching secrets handling, input parsing, the de-identification seam, or anything internet-facing. Runs on Opus (documented fallback for work the orchestrator's safety classifiers may decline).
+description: Security review for diffs touching secrets handling, input parsing, the de-identification seam, or anything internet-facing. Reports ranked findings; does not fix.
 tools: Read, Grep, Glob, Bash
-model: claude-opus-4-8
-effort: ultracode
+model: inherit
+effort: max
 memory: project
 ---
 

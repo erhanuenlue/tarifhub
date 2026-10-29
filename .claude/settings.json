@@ -1,6 +1,10 @@
 {
-  "model": "claude-opus-4-8",
-  "enabledMcpjsonServers": ["context7", "eraser"],
+  "model": "claude-opus-5-5",
+  "ultracode": false,
+  "enabledMcpjsonServers": [
+    "context7",
+    "eraser"
+  ],
   "permissions": {
     "allow": [
       "Bash(uv run pytest*)",
@@ -41,9 +45,10 @@
       "Bash(git reset --hard*)",
       "Read(.env*)",
       "Read(**/.env*)",
-      "Write(.env*)",
       "Bash(kubectl delete*)",
-      "Bash(helm uninstall*)"
+      "Bash(helm uninstall*)",
+      "Edit(.env*)",
+      "Edit(**/.env*)"
     ]
   },
   "hooks": {
@@ -66,15 +71,6 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/guard_frozen.sh"
           }
         ]
-      },
-      {
-        "matcher": "Task|Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/shipboard_emit.sh"
-          }
-        ]
       }
     ],
     "PostToolUse": [
@@ -86,92 +82,10 @@
             "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format.sh"
           }
         ]
-      },
-      {
-        "matcher": "Task|Agent",
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/shipboard_emit.sh"
-          }
-        ]
-      }
-    ],
-    "Notification": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify_telegram.sh"
-          }
-        ]
-      }
-    ],
-    "SessionStart": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
-          }
-        ]
-      }
-    ],
-    "UserPromptSubmit": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
-          }
-        ]
-      }
-    ],
-    "PreCompact": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
-          }
-        ]
-      }
-    ],
-    "Stop": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/brain_sync.sh --debounce"
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify_telegram.sh"
-          }
-        ]
-      }
-    ],
-    "SessionEnd": [
-      {
-        "hooks": [
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/journal_draft.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/brain_sync.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/vault_autocommit.sh"
-          },
-          {
-            "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR\"/.claude/hooks/session_track.sh"
-          }
-        ]
       }
     ]
+  },
+  "enabledPlugins": {
+    "agent-skills@addy-agent-skills": false
   }
 }
