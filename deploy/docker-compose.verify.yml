@@ -1,0 +1,64 @@
+# tarifhub isolated verification overlay (OPT-IN, for deploy/docker-compose.yml).
+#
+# Purpose: run the Postgres test legs and the manifest import's container path against a
+# throwaway stack that cannot collide with the development stack: its own project name,
+# container names, image tags and loopback ports, and Postgres storage on tmpfs (removed
+# with the container; no named volume is created). A distinct project name alone is not
+# enough, because the base file fixes container names. Use it only with db, ingestion-batch
+# and serving; the app and objects profiles keep their fixed names and ports.
+#
+# Always pass -p (a COMPOSE_PROJECT_NAME in the shell would beat the name below) and an
+# empty --env-file (nothing is interpolated from a .env file). From the repository root,
+# in bash or zsh (an array, since zsh does not word-split a plain variable):
+#   V=(-p tarifhub-verify --env-file /dev/null -f deploy/docker-compose.yml
+#      -f deploy/docker-compose.e5.yml -f deploy/docker-compose.verify.yml)
+#   docker compose "${V[@]}" up -d db             # Postgres 16 + pgvector on 127.0.0.1:55432
+#   (cd services/ingestion && TARIFHUB_PG_TEST_URL=postgresql://tarifhub:tarifhub@localhost:55432/tarifhub \
+#      uv run --no-sync pytest -q)                 # the engine-parameterised Postgres legs
+#   docker compose "${V[@]}" build ingestion-batch serving
+#   docker compose "${V[@]}" run --rm ingestion-batch \
+#     python -m tarifhub_ingest.cli --manifest /repo/data/manifests/bag-al.json
+#   docker compose "${V[@]}" up -d serving        # serving on 127.0.0.1:18001
+#   docker compose "${V[@]}" --profile app --profile batch down
+#                                                  # serving is in a profile; plain down keeps it
+#
+# The batch needs the e5 overlay: the Postgres vector(1024) column rejects the 16-dim
+# offline stub. Only the manifest and the AL source files are mounted, read-only, at their
+# repository-relative paths under /repo, so the manifest finds its documents, plus the
+# Hugging Face model store (hub/), as in the e5 overlay.
+name: tarifhub-verify
+
+services:
+  db:
+    container_name: tarifhub-verify-db
+    ports: !override ["127.0.0.1:55432:5432"]
+    volumes: !override
+      - ../db/schema.sql:/docker-entrypoint-initdb.d/00_schema.sql:ro
+      - ../db/migrations/001_init.sql:/docker-entrypoint-initdb.d/01_init.sql:ro
+    tmpfs:
+      - /var/lib/postgresql/data
+
+  # Shares the ingestion image; renamed so no build through this overlay retags the
+  # development image tarifhub-ingestion, and bound to loopback should it ever be started.
+  ingestion:
+    image: tarifhub-verify-ingestion
+    container_name: tarifhub-verify-ingestion
+    ports: !override ["127.0.0.1:18000:8000"]
+
+  ingestion-batch:
+    image: tarifhub-verify-ingestion
+    container_name: tarifhub-verify-ingestion-batch
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      TARIFHUB_DB_URL: postgresql://tarifhub:tarifhub@db:5432/tarifhub
+    volumes: !override
+      - ${HOME}/.cache/huggingface/hub:/home/tarifhub/.cache/huggingface/hub:ro
+      - ../data/manifests:/repo/data/manifests:ro
+      - ../data/raw/bag/al:/repo/data/raw/bag/al:ro
+
+  serving:
+    image: tarifhub-verify-serving
+    container_name: tarifhub-verify-serving
+    ports: !override ["127.0.0.1:18001:8000"]
