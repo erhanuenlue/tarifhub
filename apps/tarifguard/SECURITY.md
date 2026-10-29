@@ -9,7 +9,7 @@ and what was upgraded. The same rationale is summarised in the architecture docu
 
 The triage below is the one of 2026-06-20. Since 2026-10-29 the console runs `next`
 15.5.28, which still pins `postcss@8.4.31`, so `package.json` carries an npm `overrides`
-entry that moves next's own `postcss` to `^8.5.18`. The whole tree, including the copy
+entry that moves next's own `postcss` to `^8.5.23`. The whole tree, including the copy
 traced into `.next/standalone`, now resolves one patched PostCSS (8.5.32), so the PostCSS
 row and paragraphs below describe the earlier tree. The same change moved `sharp` (next's
 optional image dependency) to 0.35.5 and `zod` to 4.6.7 (GHSA-mrhx-c7xc-m3w5).
