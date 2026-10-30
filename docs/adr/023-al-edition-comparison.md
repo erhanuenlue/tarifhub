@@ -17,3 +17,5 @@ We compare two AL editions read-only in ingestion (`compare_editions`, CLI `--ma
 ## Consequences
 - (+) A removed position is never inferred from a short or failed import, every entry cites frozen record hashes and the pinned BAG documents, and repeated runs give byte-identical output.
 - (-) The comparison needs the git-ignored workbooks locally, as the import does. Limitations, remarks, cumulability and laboratory flags are not compared; on the 2026 editions far more positions differ only there than in the compared fields ([evidence](../evidence/2026-10-30-al-edition-comparison.md)), so the result is not every change BAG published. Revisit when those columns enter the record or when an HTTP or MCP surface is needed.
+
+*Update 2026-10-30: since [ADR-024](024-al-workbook-text.md), the comparison also lists the literal text changes of `Limitationen`, `Bemerkungen`, `Kumulierbarkeit` and the laboratory flags of the German sheet, read from the verified workbooks; the classification by the compared fields and its counts are unchanged.*
