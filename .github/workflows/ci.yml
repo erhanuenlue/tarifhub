@@ -88,15 +88,16 @@ jobs:
             # ingestion's runtime pytest/httpx; the dependency prune made that explicit.
             (cd "$svc" && uv sync --quiet --frozen --extra dev && uv run --no-sync pytest -q tests/test_read_parity.py)
           done
-      - name: Manifest import and served editions against Postgres 16 + pgvector
+      - name: Manifest import, edition comparison and served editions against Postgres 16 + pgvector
         # Only the Postgres legs (-k postgres; the python job runs the SQLite legs), in the
         # environments the step above synced. pytest exits 5 when it selects nothing, and the
         # junit check fails the step if a Postgres case was skipped, so a missing
         # TARIFHUB_PG_TEST_URL cannot pass silently.
         run: |
           (cd services/ingestion && uv run --no-sync pytest -q tests/test_manifest_import.py -k postgres --junitxml="$RUNNER_TEMP/manifest-pg.xml")
+          (cd services/ingestion && uv run --no-sync pytest -q tests/test_edition_comparison.py -k postgres --junitxml="$RUNNER_TEMP/comparison-pg.xml")
           (cd services/serving && uv run --no-sync pytest -q tests/test_manifest_editions.py -k postgres --junitxml="$RUNNER_TEMP/editions-pg.xml")
-          python3 - "$RUNNER_TEMP/manifest-pg.xml" "$RUNNER_TEMP/editions-pg.xml" <<'PY'
+          python3 - "$RUNNER_TEMP/manifest-pg.xml" "$RUNNER_TEMP/comparison-pg.xml" "$RUNNER_TEMP/editions-pg.xml" <<'PY'
           import sys
           import xml.etree.ElementTree as ET
           for path in sys.argv[1:]:
