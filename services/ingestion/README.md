@@ -102,12 +102,44 @@ Each entry cites the `version` and `record_hash` of its edition member; later ve
 same date, such as a review correction, are cited as `successor_versions` and never compared
 in its place. A change gives the exact before and after value (decimals as the hash writes
 them: `21.6`, `18`), and each edition lists its manifest documents. Only `compared_fields`
-are compared (`category`, the three designations, `price_chf`, `tax_points`, `unit`), so
-`unchanged` means unchanged in those fields. `scope_limitation` names every workbook column
-the comparison does not see, such as `Limitationen`, `Bemerkungen`, `Kumulierbarkeit` and
-the laboratory columns: the result is not the list of every change BAG published. `removed`
-means listed in the earlier verified full list and absent from the later one; it is not a
-legal repeal, a deleted record or a changed `as_of` result.
+classify positions (`category`, the three designations, `price_chf`, `tax_points`, `unit`),
+so `unchanged` means unchanged in those fields. `removed` means listed in the earlier
+verified full list and absent from the later one; it is not a legal repeal, a deleted record
+or a changed `as_of` result.
+
+`workbook_text` compares, beside that classification, the published text of 24 German
+columns the record does not carry ([ADR-024](../../docs/adr/024-al-workbook-text.md)), for
+every position listed in both editions: `Limitationen`, `Bemerkungen` and `Kumulierbarkeit`
+(columns I to K of the 2026 workbooks) and the 21 laboratory flags. Those are S to AB, under
+the banner for the laboratories of Article 54 KVV (eight columns, each a type of laboratory
+billing for its own needs or on external order, plus `Hausbesuch` and `Schnelle Analyse`),
+and AC to AM, the eleven titles of the practice laboratories of physicians with specific
+further-education titles. The prescriber flags `Hebammen` and `Chiropraktoren oder
+Chiropraktorinnen` are not among them. The cells are read with their sheet, header and cell
+references (4707.1's cumulability is `K1012` in January, `K1013` in July) from the same
+bytes the comparison verified against the manifest, and formulas are read as formulas,
+never as their cached values. Two texts are
+equal when they match after Unicode NFC normalisation and whitespace folding
+(`normalization`); any other difference is a change, shown verbatim, with `from_text` or
+`to_text` null only for an empty cell. A change states what the cells say, not a changed
+rule or entitlement (`interpretation: "none"`, so `Oui` to `Ja` is a change of text), and it
+never moves a position out of `unchanged`; a position also listed under `changed` carries
+`in_changed: true` and is listed once.
+
+`coverage` is `complete` when every requested column was compared and `partial` when an
+edition has a requested column missing, named by two headers or holding a value that is not
+text (a formula, number, date, boolean or error). Such a column is compared in neither
+edition: it is listed under `not_comparable` for each edition concerned, with the header
+cells naming it or the cells holding the other values, and counted nowhere. With no column
+compared, `coverage` is `unavailable` and `counts`, `cells_changed_by_column` and
+`positions` are null, never a count of unchanged texts; the comparison still exits 0, since
+the compared fields were compared. A position number written as a formula refuses the
+comparison, even though the import reads the cell's cached value. Not compared at all: the
+other columns the record does not carry (the prescriber flags and BAG's change dates among
+them), the French and Italian sheets, the texts of added and removed positions, cell
+formatting and the PDFs. `scope_limitation` names the columns compared as text and every
+other workbook column the comparison does not see, so the result is still not the list of
+every change BAG published.
 
 ## Configuration (env)
 

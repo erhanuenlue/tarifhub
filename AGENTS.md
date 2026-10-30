@@ -44,7 +44,7 @@ deploy/                  docker-compose.yml (wired review-loop + batch stack) + 
                          (real-e5 vector recording) + helm/ (k3d, the CAS K8s proof); the root
                          docker-compose.yml is the light read-side dev stack
 docs/                    arc42/ (13 chapters, MkDocs Material → the deliverable site) + adr/ (register
-                         001..023 + legacy/) + method/ (AI-tools chapter) + evidence/ + criterion-map.md
+                         001..024 + legacy/) + method/ (AI-tools chapter) + evidence/ + criterion-map.md
 tools/                   cas_check.py (CI ratchet) + switch_model.sh (main-model pin) + bench/search_latency.py
                          + search_eval/ (latency + quality harnesses: use these for any search
                          performance question before hand-rolling measurement). Historical, not part of
@@ -59,7 +59,7 @@ aise-harness/, prompts/, knowledge/, docs/cockpit/, scripts/setup-claude-code.sh
 
 Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010; docs.yml builds the Pages site on any docs/** push to main and publishes when the DEPLOY_PAGES=true repo variable is set; it also offers workflow_dispatch) · OpenTelemetry instrumented in serving (FastAPI request traces + a custom search span and duration histogram; OTLP export opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`, a true no-op when unset; ADR-011), with Prometheus/Grafana + Sentry as intended backends, not yet wired.
 
-ADR register: `docs/adr/` 001..023, three-digit numbering (ADR-001 Python-first, ADR-013 demo scope, ADR-020 Codex seat; ADR-018 and ADR-020 record the earlier model-seat setup, the current one is CLAUDE.md plus `.claude/`). `docs/adr/legacy/` preserves the pre-2026-06-11 register under DIFFERENT, colliding numbers: never cite a legacy number in new text; resolve old citations via `docs/adr/legacy/README.md`.
+ADR register: `docs/adr/` 001..024, three-digit numbering (ADR-001 Python-first, ADR-013 demo scope, ADR-020 Codex seat; ADR-018 and ADR-020 record the earlier model-seat setup, the current one is CLAUDE.md plus `.claude/`). `docs/adr/legacy/` preserves the pre-2026-06-11 register under DIFFERENT, colliding numbers: never cite a legacy number in new text; resolve old citations via `docs/adr/legacy/README.md`.
 
 ## Commands
 
