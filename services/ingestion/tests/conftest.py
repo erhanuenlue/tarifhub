@@ -20,3 +20,10 @@ def engine(request, tmp_path) -> Iterator[Engine]:
     """Yield a provisioned, isolated DB engine (sqlite always; postgres when opted in)."""
 
     yield from make_engine(request.param, tmp_path)
+
+
+@pytest.fixture(params=ENGINE_PARAMS)
+def bare_engine(request, tmp_path) -> Iterator[Engine]:
+    """Like ``engine``, but the isolated database exists without any table."""
+
+    yield from make_engine(request.param, tmp_path, schema=False)

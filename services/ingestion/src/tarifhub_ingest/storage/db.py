@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import sqlite3
 from dataclasses import dataclass
+from pathlib import Path
 from urllib.parse import urlparse
 
 _SQLITE_SCHEMA = """
@@ -82,12 +83,21 @@ class Database:
 
         return "?" if self.dialect == "sqlite" else "%s"
 
-    def connect(self):
-        """Open a DB-API connection for the active dialect."""
+    def connect(self, *, read_only: bool = False):
+        """Open a DB-API connection for the active dialect.
+
+        ``read_only`` opens a connection that cannot write: SQLite opens the file in
+        ``mode=ro`` (a missing file raises instead of being created), and Postgres starts
+        every transaction READ ONLY.
+        """
 
         if self.dialect == "sqlite":
             path = self.db_url.replace("sqlite:///", "", 1).replace("sqlite://", "", 1)
-            conn = sqlite3.connect(path or ":memory:", check_same_thread=False)
+            if read_only:
+                uri = f"{Path(path).resolve().as_uri()}?mode=ro"
+                conn = sqlite3.connect(uri, uri=True, check_same_thread=False)
+            else:
+                conn = sqlite3.connect(path or ":memory:", check_same_thread=False)
             conn.row_factory = sqlite3.Row
             return conn
         # Postgres: import guarded so SQLite-only runs need no driver installed.
@@ -100,6 +110,8 @@ class Database:
         # the existing explicit ``conn.commit()`` calls, so autocommit stays OFF here.
         conn = psycopg.connect(self.db_url)
         conn.row_factory = psycopg.rows.dict_row
+        if read_only:
+            conn.read_only = True
         return conn
 
     def init_schema(self, conn) -> None:

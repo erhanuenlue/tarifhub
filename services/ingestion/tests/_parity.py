@@ -53,8 +53,9 @@ def _admin_url_and_dbname(base_url: str, dbname: str) -> tuple[str, str]:
     return urlunparse(new), dbname
 
 
-def _create_pg_scratch(base_url: str) -> tuple[str, str]:
-    """CREATE a uniquely-named scratch database; apply db/schema.sql. Returns its URL."""
+def _create_pg_scratch(base_url: str, *, schema: bool = True) -> tuple[str, str]:
+    """CREATE a uniquely-named scratch database; apply db/schema.sql unless ``schema`` is
+    False. Returns its URL."""
 
     import psycopg
 
@@ -67,6 +68,8 @@ def _create_pg_scratch(base_url: str) -> tuple[str, str]:
         admin.close()
 
     scratch_url, _ = _admin_url_and_dbname(base_url, scratch)
+    if not schema:
+        return scratch_url, scratch
     schema_sql = _SCHEMA_SQL.read_text(encoding="utf-8")
     conn = psycopg.connect(scratch_url, autocommit=True)
     try:
@@ -92,19 +95,21 @@ def _drop_pg_scratch(base_url: str, scratch: str) -> None:
         admin.close()
 
 
-def make_engine(label: str, tmp_path) -> Iterator[Engine]:
+def make_engine(label: str, tmp_path, *, schema: bool = True) -> Iterator[Engine]:
     """Yield a provisioned :class:`Engine` for ``label`` ("sqlite" | "postgres").
 
     SQLite: a fresh temp-file db with the mirrored DDL applied.
     Postgres: a fresh scratch database with ``db/schema.sql`` applied; dropped on
-    teardown. Generator so callers can ``yield from`` inside a pytest fixture.
+    teardown. ``schema=False`` leaves either one existing but without any table (SQLite:
+    an empty file). Generator so callers can ``yield from`` inside a pytest fixture.
     """
 
     if label == "sqlite":
         url = f"sqlite:///{tmp_path / 'parity.db'}"
         db = Database.from_url(url)
         conn = db.connect()
-        db.init_schema(conn)
+        if schema:
+            db.init_schema(conn)
         conn.close()
         yield Engine(label=label, db_url=url, db=db)
         return
@@ -112,7 +117,7 @@ def make_engine(label: str, tmp_path) -> Iterator[Engine]:
     if label == "postgres":
         if not PG_URL:  # pragma: no cover - guarded by ENGINE_PARAMS
             raise RuntimeError("postgres engine requested without TARIFHUB_PG_TEST_URL")
-        scratch_url, scratch = _create_pg_scratch(PG_URL)
+        scratch_url, scratch = _create_pg_scratch(PG_URL, schema=schema)
         try:
             db = Database.from_url(scratch_url)
             yield Engine(label=label, db_url=scratch_url, db=db)
