@@ -73,6 +73,23 @@ _DISCIPLINE_COLUMNS = (
 )
 _DISCIPLINE_FLAG = "Ja"
 
+# The columns parse() carries into a row, per language sheet. The discipline columns only
+# select the category (CATEGORY_COLUMNS, read from the German sheet); every other column of
+# the workbook stays out of the canonical record.
+CARRIED_COLUMNS: dict[str, tuple[str, ...]] = {
+    "Deutsch": (_H_POS_DE, _H_TP_DE, _H_DESIG_DE),
+    "Français": (_H_POS_FR, _H_DESIG_FR),
+    "Italiano": (_H_POS_IT, _H_DESIG_IT),
+}
+CATEGORY_COLUMNS: dict[str, tuple[str, ...]] = {"Deutsch": _DISCIPLINE_COLUMNS}
+
+# The sheet titles parse() looks for, per language, and the header that anchors each sheet.
+_SHEETS = (
+    ("Deutsch", ("Deutsch",), _POS_HEADER_DE),
+    ("Français", ("Français", "Francais"), _POS_HEADER_FR),
+    ("Italiano", ("Italiano",), _POS_HEADER_IT),
+)
+
 # analysenliste_YYYY-MM-DD.xlsx  ->  the publication date.
 _FILENAME_DATE_RE = re.compile(r"analysenliste_(\d{4})-(\d{2})-(\d{2})", re.IGNORECASE)
 
@@ -222,6 +239,37 @@ def source_version_for(effective: date) -> str:
     """
 
     return f"BAG AL {effective.isoformat()}"
+
+
+def column_headers(path: str | Path, *, content: bytes | None = None) -> dict[str, tuple[str, ...]]:
+    """Each language sheet's header row as parse() finds it, blank cells left out.
+
+    Keyed like CARRIED_COLUMNS, for the sheets the workbook has, so a caller can name the
+    columns the canonical record does not carry. ``content`` works as in parse().
+    """
+
+    path = Path(path)
+    if content is None:
+        _guard_file_size(path)
+        source: Any = str(path)
+    else:
+        _guard_size(len(content))
+        source = BytesIO(content)
+
+    from openpyxl import load_workbook  # noqa: PLC0415  (lazy, as in parse)
+
+    workbook = load_workbook(filename=source, read_only=True, data_only=True)
+    try:
+        sheets = {s.title: s for s in workbook.worksheets}
+        found: dict[str, tuple[str, ...]] = {}
+        for label, titles, pos_header in _SHEETS:
+            sheet = _pick_sheet(sheets, titles, pos_header)
+            headers = _find_header_row(sheet, pos_header) if sheet is not None else None
+            if headers is not None:
+                found[label] = tuple(header for header in headers if header)
+        return found
+    finally:
+        workbook.close()
 
 
 # --------------------------------------------------------------------------- #

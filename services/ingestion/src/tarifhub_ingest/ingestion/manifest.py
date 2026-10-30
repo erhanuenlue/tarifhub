@@ -566,18 +566,7 @@ def _plan(
     problems: list[str] = []
     for item in prepared:
         effective = item.edition.effective_date
-        missing, conflicting = [], []
-        for code, candidate in item.candidates.items():
-            same_date = [v for v in known.get(code, ()) if v.valid_from == effective]
-            if not same_date:
-                missing.append(code)
-            elif not matches_prefill(candidate, same_date[0]):
-                conflicting.append(code)
-        unlisted = sorted(
-            code
-            for code, versions in known.items()
-            if code not in item.candidates and any(v.valid_from == effective for v in versions)
-        )
+        _, missing, conflicting, unlisted = _match_stored(item, known)
         newer = sorted(
             code for code in missing if any(v.valid_from > effective for v in known.get(code, ()))
         )
@@ -608,6 +597,34 @@ def _plan(
             known.setdefault(code, []).append(item.candidates[code])
     _refuse_if(problems)
     return plans
+
+
+def _match_stored(
+    item: _PreparedEdition, versions_by_code: dict[str, list[TariffRecord]]
+) -> tuple[dict[str, list[TariffRecord]], list[str], list[str], list[str]]:
+    """Match an edition's file positions with the stored versions of its date.
+
+    Returns ``(same_dated, missing, conflicting, unlisted)``: per position its stored
+    versions of that date, lowest first (the first is the edition's member, the rest are
+    post-freeze successors); the positions with none; those whose member has other content
+    than the file; and the stored positions of that date the file does not list.
+    """
+
+    effective = item.edition.effective_date
+    same_dated: dict[str, list[TariffRecord]] = {}
+    missing, conflicting = [], []
+    for code, candidate in item.candidates.items():
+        same_dated[code] = [v for v in versions_by_code.get(code, ()) if v.valid_from == effective]
+        if not same_dated[code]:
+            missing.append(code)
+        elif not matches_prefill(candidate, same_dated[code][0]):
+            conflicting.append(code)
+    unlisted = sorted(
+        code
+        for code, versions in versions_by_code.items()
+        if code not in item.candidates and any(v.valid_from == effective for v in versions)
+    )
+    return same_dated, missing, conflicting, unlisted
 
 
 def _edition_fields(record: TariffRecord) -> tuple[Any, ...]:

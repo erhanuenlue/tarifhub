@@ -90,6 +90,7 @@ nav:
           - "ADR-020 · Codex seat model lifecycle (gpt-5.5, then gpt-5.6-sol)": adr/020-codex-seat-model-lifecycle.md
           - "ADR-021 · Dated BAG AL editions from a hash-checked manifest, one transaction": adr/021-al-manifest-import.md
           - "ADR-022 · Python images from their lockfiles, every image built before merge": adr/022-locked-image-builds.md
+          - "ADR-023 · AL edition comparison against the hash-verified full lists": adr/023-al-edition-comparison.md
       - 10 · Quality Requirements: arc42/10-quality-requirements.md
       - 11 · Risks & Technical Debt: arc42/11-risks-technical-debt.md
       - 12 · Test Strategy: arc42/13-test-strategy.md
