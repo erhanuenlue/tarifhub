@@ -4,19 +4,24 @@ Both editions come from the tracked manifest, never from per-code version number
 documents are verified and their full lists parsed from the verified bytes, exactly as
 :func:`import_manifest` does. The comparison reads the stored EAL history once, takes each
 position's edition member by the import's own rule and classifies every position by
-:data:`COMPARED_FIELDS` alone: workbook columns the frozen records do not carry are named in
-the result's scope limitation, never compared. It never imports, initialises a database,
-writes an audit event or calls a model; it reports frozen values and computes none.
+:data:`COMPARED_FIELDS` alone. Beside that classification it compares the published text of
+selected German columns the frozen records do not carry (``bag_eal.TEXT_COLUMNS``, read with
+their cell references from the same verified bytes) and lists each literal change once,
+interpreting none; every other uncarried column is named in the result's scope limitation,
+never compared. It never imports, initialises a database, writes an audit event or calls a
+model; it reports frozen values and published texts and computes none.
 """
 
 from __future__ import annotations
 
 import re
+import unicodedata
 from collections import defaultdict
 from collections.abc import Iterable
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
+from typing import Literal
 
 from pydantic import BaseModel, ConfigDict
 
@@ -50,12 +55,34 @@ COMPARED_FIELDS = (
 )
 
 _SCOPE_SUMMARY = (
-    "Only compared_fields are compared, so unchanged means equal in every compared field. "
-    "Workbook columns the frozen records do not carry (columns_not_compared) are not "
-    "compared, and a change in them is not reported; the discipline flags count only "
-    "through category, the first one marked Ja. Removed means listed in the earlier "
-    "edition's verified full-list workbook and absent from the later one: not a legal "
-    "repeal, a deleted record or a changed as_of result."
+    "Only compared_fields classify positions, so unchanged means equal in every compared "
+    "field. Of the workbook columns the frozen records do not carry, those in "
+    "columns_compared_as_text are compared as published text under workbook_text, which "
+    "never makes a position changed; the others (columns_not_compared) are not compared, and "
+    "a change in them is not reported. The discipline flags count only through category, the "
+    "first one marked Ja. Removed means listed in the earlier edition's verified full-list "
+    "workbook and absent from the later one: not a legal repeal, a deleted record or a "
+    "changed as_of result."
+)
+
+# What two texts may differ in and still be equal: Unicode NFC, and every run of whitespace
+# read as one space with leading and trailing whitespace ignored. Nothing else.
+TEXT_NORMALIZATION = ("unicode_nfc", "whitespace_folding")
+
+_TEXT_SUMMARY = (
+    "Texts of columns_compared on the German sheet of both verified full-list workbooks, for "
+    "every position listed in both editions. Two texts are equal when they match after "
+    "Unicode NFC normalization with each run of whitespace read as one space and leading and "
+    "trailing whitespace ignored, so an empty or whitespace-only cell has no text; words, "
+    "case, punctuation and digits count as written. from_text and to_text are the cells "
+    "verbatim, null when a cell holds no value. A text change states what the cells say, not "
+    "a changed rule or entitlement (interpretation none: Oui and Ja are different texts), and "
+    "never makes a position changed; in_changed marks a position also listed under changed. "
+    "A requested column an edition does not let the comparison read (not_comparable) is not "
+    "compared and counts nowhere: coverage is complete when every requested column was "
+    "compared, partial when some were, and unavailable when none was, and then nothing is "
+    "counted or listed. Texts of added and removed positions, other columns and sheets, cell "
+    "formatting and the PDFs are not compared."
 )
 
 _PLAIN_NUMBER = re.compile(r"\d+(?:\.\d+)?")  # an AL position number: 4700, 1024.1, 1099.11
@@ -81,6 +108,7 @@ class ScopeLimitation(BaseModel):
     summary: str
     columns_compared: dict[str, tuple[str, ...]]
     columns_compared_only_as_category: dict[str, tuple[str, ...]]
+    columns_compared_as_text: dict[str, tuple[str, ...]]  # under workbook_text, never a change
     columns_not_compared: dict[str, tuple[str, ...]]
 
 
@@ -141,10 +169,89 @@ class ChangedPosition(BaseModel):
     changes: tuple[FieldChange, ...]
 
 
+class TextChange(BaseModel):
+    """One cell whose published text differs between the two editions (texts verbatim)."""
+
+    model_config = _RESULT
+
+    column: str
+    from_cell: str
+    to_cell: str
+    from_text: str | None  # None: the cell holds no value
+    to_text: str | None
+
+
+class TextPosition(BaseModel):
+    """A position listed in both editions with at least one text change, listed once."""
+
+    model_config = _RESULT
+
+    tariff_code: str
+    in_changed: bool  # also listed under changed, for a compared field
+    changes: tuple[TextChange, ...]
+
+
+class UncomparableColumn(BaseModel):
+    """A requested column one edition's workbook does not let the comparison read."""
+
+    model_config = _RESULT
+
+    column: str
+    effective_date: date
+    reason: Literal["missing", "repeated", "not_text"]
+    cells: tuple[str, ...]  # repeated: the header cells naming it; not_text: the cells concerned
+
+
+class TextHeader(BaseModel):
+    """The header cell a compared column was read under, its text verbatim."""
+
+    model_config = _RESULT
+
+    column: str
+    cell: str
+    text: str
+
+
+class TextSource(BaseModel):
+    """Where an edition's texts were read: its verified full-list workbook, sheet and header."""
+
+    model_config = _RESULT
+
+    document: ManifestDocument
+    sheet: str
+    header_row: int
+    headers: tuple[TextHeader, ...]  # one per compared column
+
+
+class WorkbookText(BaseModel):
+    """The published texts of selected German columns, compared beside the classification.
+
+    ``counts``, ``cells_changed_by_column`` and ``positions`` are None when no requested
+    column could be compared (coverage unavailable): nothing was compared, so nothing is
+    counted as unchanged.
+    """
+
+    model_config = _RESULT
+
+    summary: str
+    interpretation: Literal["none"] = "none"
+    normalization: tuple[str, ...] = TEXT_NORMALIZATION
+    coverage: Literal["complete", "partial", "unavailable"]
+    columns_requested: tuple[str, ...]
+    columns_compared: tuple[str, ...]
+    not_comparable: tuple[UncomparableColumn, ...]
+    from_source: TextSource
+    to_source: TextSource
+    counts: dict[str, int] | None
+    cells_changed_by_column: dict[str, int] | None
+    positions: tuple[TextPosition, ...] | None
+
+
 class EditionComparison(BaseModel):
     """Every position of two AL editions, each classified exactly once by compared_fields.
 
-    ``unchanged`` lists the positions equal in every compared field; a change in a workbook
+    ``unchanged`` lists the positions equal in every compared field; such a position may
+    still have text changes, listed under ``workbook_text``. A change in any other workbook
     column the records do not carry (``scope_limitation``) is not seen, so this is not the
     list of every change BAG published.
     """
@@ -160,6 +267,7 @@ class EditionComparison(BaseModel):
     removed: tuple[ListedPosition, ...]
     changed: tuple[ChangedPosition, ...]
     unchanged: tuple[str, ...]
+    workbook_text: WorkbookText
 
 
 def compare_editions(
@@ -200,7 +308,7 @@ def compare_editions(
             }
         )
         before, after = _prepare_all(selected, root)  # verified, parsed and mapped
-        columns = [_workbook_columns(root, item) for item in (before, after)]
+        read = [_read_workbook(root, item) for item in (before, after)]
     except ManifestError as exc:
         raise EditionComparisonError(exc.problems) from None
 
@@ -212,7 +320,8 @@ def compare_editions(
     _refuse([*problems, *old_problems, *new_problems])
 
     changed, unchanged = [], []
-    for code in sorted(old.keys() & new.keys()):
+    shared = sorted(old.keys() & new.keys())
+    for code in shared:
         old_values, new_values = _values(old[code][0]), _values(new[code][0])
         changes = tuple(
             FieldChange(field=name, from_value=old_values[name], to_value=new_values[name])
@@ -232,10 +341,13 @@ def compare_editions(
             unchanged.append(code)
     added = _listed(new, sorted(new.keys() - old.keys()))
     removed = _listed(old, sorted(old.keys() - new.keys()))
+    text = _workbook_text(
+        (before, after), [cells for _, cells in read], shared, {p.tariff_code for p in changed}
+    )
     return EditionComparison(
         from_edition=_edition(before),
         to_edition=_edition(after),
-        scope_limitation=_scope(columns),
+        scope_limitation=_scope([headers for headers, _ in read], text.columns_compared),
         counts={
             "added": len(added),
             "removed": len(removed),
@@ -246,6 +358,7 @@ def compare_editions(
         removed=removed,
         changed=tuple(changed),
         unchanged=tuple(unchanged),
+        workbook_text=text,
     )
 
 
@@ -338,19 +451,148 @@ def _refuse(problems: Iterable[str]) -> None:
         raise EditionComparisonError(found)
 
 
-def _workbook_columns(root: Path, item: _PreparedEdition) -> dict[str, tuple[str, ...]]:
-    """The header rows of an edition's full list, read from bytes verified once more."""
+def _read_workbook(
+    root: Path, item: _PreparedEdition
+) -> tuple[dict[str, tuple[str, ...]], bag_eal.TextCells]:
+    """The header rows and the German text cells of an edition's full list, both read from
+    the same bytes, verified once more."""
 
     content, problems = _verify(root, item.document, keep=True)
     _refuse_if(problems)
-    return bag_eal.column_headers(item.document.path, content=content)
+    path = item.document.path
+    try:
+        return (
+            bag_eal.column_headers(path, content=content),
+            bag_eal.text_cells(path, content=content),
+        )
+    except Exception as exc:  # noqa: BLE001  as in _prepare_all, an unreadable workbook refuses
+        raise ManifestError([f"{path}: {type(exc).__name__}: {exc}"]) from None
 
 
-def _scope(columns: list[dict[str, tuple[str, ...]]]) -> ScopeLimitation:
-    """Sort both workbooks' columns into compared, category-only and not compared."""
+def _workbook_text(
+    editions: tuple[_PreparedEdition, _PreparedEdition],
+    read: list[bag_eal.TextCells],
+    codes: list[str],
+    changed: set[str],
+) -> WorkbookText:
+    """Every text change of the positions ``codes``, in the columns both editions can read;
+    ``changed`` holds the positions listed under changed."""
+
+    before, after = read
+    requested = tuple(column.name for column in before.columns)
+    compared = tuple(
+        old.name
+        for old, new in zip(before.columns, after.columns, strict=True)
+        if old.readable and new.readable
+    )
+    positions = []
+    for code in codes:
+        old_cells, new_cells = before.rows[code], after.rows[code]
+        changes = tuple(
+            TextChange(
+                column=name,
+                from_cell=old_cells[name].cell,
+                to_cell=new_cells[name].cell,
+                from_text=old_cells[name].text,
+                to_text=new_cells[name].text,
+            )
+            for name in compared
+            if _folded(old_cells[name].text) != _folded(new_cells[name].text)
+        )
+        if changes:
+            positions.append(
+                TextPosition(tariff_code=code, in_changed=code in changed, changes=changes)
+            )
+    if compared == requested:
+        coverage = "complete"
+    elif compared:
+        coverage = "partial"
+    else:
+        coverage = "unavailable"
+    counts = by_column = listed = None  # no column compared: no count, not even of unchanged
+    if compared:
+        counts = {
+            "positions_compared": len(codes),
+            "positions_with_text_changes": len(positions),
+            "positions_in_changed": sum(p.in_changed for p in positions),
+            "cells_changed": sum(len(p.changes) for p in positions),
+        }
+        by_column = {
+            name: sum(c.column == name for p in positions for c in p.changes) for name in compared
+        }
+        listed = tuple(positions)
+    return WorkbookText(
+        summary=_TEXT_SUMMARY,
+        coverage=coverage,
+        columns_requested=requested,
+        columns_compared=compared,
+        not_comparable=_not_comparable(editions, read),
+        from_source=_text_source(editions[0], before, compared),
+        to_source=_text_source(editions[1], after, compared),
+        counts=counts,
+        cells_changed_by_column=by_column,
+        positions=listed,
+    )
+
+
+def _not_comparable(
+    editions: tuple[_PreparedEdition, _PreparedEdition], read: list[bag_eal.TextCells]
+) -> tuple[UncomparableColumn, ...]:
+    """Each requested column an edition does not let the comparison read, with the reason."""
+
+    found = []
+    for columns in zip(*(cells.columns for cells in read), strict=True):
+        for item, column in zip(editions, columns, strict=True):
+            if not column.headers:
+                reason, cells = "missing", ()
+            elif len(column.headers) > 1:
+                reason, cells = "repeated", tuple(header.cell for header in column.headers)
+            elif column.not_text:
+                reason, cells = "not_text", column.not_text
+            else:
+                continue
+            found.append(
+                UncomparableColumn(
+                    column=column.name,
+                    effective_date=item.edition.effective_date,
+                    reason=reason,
+                    cells=cells,
+                )
+            )
+    return tuple(found)
+
+
+def _folded(text: str | None) -> str:
+    """``text`` as TEXT_NORMALIZATION compares it; a cell without text folds to ''."""
+
+    return " ".join(unicodedata.normalize("NFC", text or "").split())
+
+
+def _text_source(
+    item: _PreparedEdition, read: bag_eal.TextCells, compared: tuple[str, ...]
+) -> TextSource:
+    return TextSource(
+        document=item.document,
+        sheet=read.sheet,
+        header_row=read.header_row,
+        headers=tuple(
+            TextHeader(column=column.name, cell=column.headers[0].cell, text=column.headers[0].text)
+            for column in read.columns
+            if column.name in compared
+        ),
+    )
+
+
+def _scope(columns: list[dict[str, tuple[str, ...]]], as_text: tuple[str, ...]) -> ScopeLimitation:
+    """Sort both workbooks' columns into compared, category-only, text and not compared.
+
+    ``as_text`` holds the German columns workbook_text compared, so a requested column that
+    could not be compared stays listed as not compared.
+    """
 
     compared: dict[str, tuple[str, ...]] = {}
     by_category: dict[str, tuple[str, ...]] = {}
+    by_text: dict[str, tuple[str, ...]] = {}
     not_compared: dict[str, tuple[str, ...]] = {}
     for sheet, carried in bag_eal.CARRIED_COLUMNS.items():
         names: list[str] = []
@@ -360,14 +602,20 @@ def _scope(columns: list[dict[str, tuple[str, ...]]]) -> ScopeLimitation:
                 if name not in names:
                     names.append(name)
         category = bag_eal.CATEGORY_COLUMNS.get(sheet, ())
+        text = as_text if sheet in bag_eal.TEXT_COLUMNS else ()
         compared[sheet] = tuple(n for n in names if n in carried)
         if category:
             by_category[sheet] = tuple(n for n in names if n in category)
-        not_compared[sheet] = tuple(n for n in names if n not in carried and n not in category)
+        if sheet in bag_eal.TEXT_COLUMNS:
+            by_text[sheet] = tuple(n for n in names if n in text)
+        not_compared[sheet] = tuple(
+            n for n in names if n not in carried and n not in category and n not in text
+        )
     return ScopeLimitation(
         summary=_SCOPE_SUMMARY,
         columns_compared=compared,
         columns_compared_only_as_category=by_category,
+        columns_compared_as_text=by_text,
         columns_not_compared=not_compared,
     )
 

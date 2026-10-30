@@ -9,8 +9,9 @@ the manifest's dated AL editions oldest first, as one transaction, after verifyi
 listed document and the stored EAL history; an unsafe batch exits 2 with every problem
 listed and no tariff or audit row written. ``--manifest ... --compare FROM TO`` compares two
 of its editions as stored, on a read-only connection (nothing is created, initialised,
-imported or audited) and prints the comparison as JSON; an unsafe comparison exits 2 with
-every problem listed. No AI imports beyond what the pipeline already pulls.
+imported or audited) and prints the comparison as JSON, the literal text changes of selected
+German workbook columns included; an unsafe comparison exits 2 with every problem listed.
+No AI imports beyond what the pipeline already pulls.
 """
 
 from __future__ import annotations
