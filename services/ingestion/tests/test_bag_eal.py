@@ -29,6 +29,52 @@ _FIXTURE = (
 )
 _EAL_URL = "https://www.bag.admin.ch/de/analysenliste-al"
 
+# Five real positions of the 1 January and 1 July 2026 workbooks, copied by
+# ``tests/fixtures/eal/make_edition_fixtures.py`` (see its docstring for what changes).
+TEXT_FIXTURES = {
+    date(2026, 1, 1): _FIXTURE.with_name("Analysenliste per 1. Januar 2026_text_fixture.xlsx"),
+    date(2026, 7, 1): _FIXTURE.with_name("Analysenliste per 1. Juli 2026_text_fixture.xlsx"),
+}
+
+# The German columns read as published text and their header cells, as both 2026 BAG
+# workbooks name them: the billing-condition texts (I to K) and the laboratory flags (S to AB
+# for the laboratories of Article 54 KVV, AC to AM for the practice laboratories of physicians
+# with specific further-education titles).
+GERMAN_TEXT_COLUMNS = (
+    ("Limitationen", "I2"),
+    ("Bemerkungen", "J2"),
+    ("Kumulierbarkeit", "K2"),
+    ("Auftragslaboratorien nach Artikel 54 Absatz 3 KVV (im Fremdauftrag)", "S2"),
+    ("Spitallaboratorien nach Artikel 54 Absatz 3 KVV (für Eigenbedarf )", "T2"),
+    ("Spitallaboratorien nach Artikel 54 Absatz 3 KVV (im Fremdauftrag)", "U2"),
+    (
+        "Spitallaboratorien nach Artikel 54 Absatz 1 Buchstabe c in Verbindung mit Artikel 54 "
+        "Absatz 2 KVV (für Eigenbedarf)",
+        "V2",
+    ),
+    (
+        "Spitallaboratorien nach Artikel 54 Absatz 1 Buchstabe c in Verbindung mit Artikel 54 "
+        "Absatz 2 KVV (im Fremdauftrag)",
+        "W2",
+    ),
+    ("Spitallaboratorien nach Artikel 54 Absatz 1 Buchstabe b KVV (für Eigenbedarf)", "X2"),
+    ("Offizin eines Apothekers oder einer Apothekerin (im Fremdauftrag)", "Y2"),
+    ("Praxislaboratorium eines Arztes/ einer Ärztin (für Eigenbedarf)", "Z2"),
+    ("Hausbesuch (für Eigenbedarf)", "AA2"),
+    ("Schnelle Analyse", "AB2"),
+    ("Allergologie und klinische Immunologie", "AC2"),
+    ("Dermatologie und Venerologie", "AD2"),
+    ("Endokrinologie und Diabetologie", "AE2"),
+    ("Gastroenterologie", "AF2"),
+    ("Gynäkologie und Geburtshilfe", "AG2"),
+    ("Hämatologie und medizinische Onkologie", "AH2"),
+    ("Kinder und Jugendmedizin", "AI2"),
+    ("Physikalische Medizin und Rehabilitation", "AJ2"),
+    ("Pneumologie", "AK2"),
+    ("Rheumatologie", "AL2"),
+    ("Tropen- und Reisemedizin", "AM2"),
+)
+
 # Pinned content hash of the frozen Pos-1000 record as produced by the pipeline
 # (map_raw -> deterministic scorer confidence 1.0, requires_review False -> freeze).
 # To regenerate: parse the fixture, map_raw Pos 1000 with the EAL system + source_url,
@@ -383,3 +429,68 @@ def test_pipeline_is_idempotent_on_rerun(tmp_path, monkeypatch):
     assert second.frozen == 0
     assert second.skipped_existing == first.frozen
     conn.close()
+
+
+# --------------------------------------------------------------------------- #
+# Published text with its provenance (ADR-024)
+# --------------------------------------------------------------------------- #
+
+
+def test_text_cells_cite_the_sheet_header_and_physical_cell_of_every_value():
+    january, july = (bag_eal.text_cells(TEXT_FIXTURES[day]) for day in sorted(TEXT_FIXTURES))
+
+    for read in (january, july):
+        assert (read.sheet, read.header_row) == ("Deutsch", 2)
+        assert [(c.name, c.headers, c.not_text) for c in read.columns] == [
+            (name, (bag_eal.TextCell(cell, name),), ()) for name, cell in GERMAN_TEXT_COLUMNS
+        ]
+    assert sorted(january.rows) == ["1000", "1474.1", "1762", "4707.1"]
+    assert sorted(july.rows) == ["1000", "1474.1", "1762", "1779", "4707.1"]
+    # An empty cell is a cell without text, never an absent column.
+    assert january.rows["1474.1"]["Limitationen"] == bag_eal.TextCell("I4", None)
+    assert july.rows["1474.1"]["Limitationen"] == bag_eal.TextCell(
+        "I4",
+        "Nicht zur Bestimmung des Placental Growth Factors (PlGF) zum Screening auf "
+        "Präeklampsie im ersten Trimester bei asymptomatischen Schwangeren.",
+    )
+    assert january.rows["1762"]["Gynäkologie und Geburtshilfe"] == bag_eal.TextCell("AG5", "Oui")
+    # 4707.1 moves down one row in July, below the new 1779; its text stays verbatim.
+    assert january.rows["4707.1"]["Kumulierbarkeit"] == bag_eal.TextCell(
+        "K6", "Kumulierbar mit 4707.20 bis maximal 18 Taxpunkte pro Tag"
+    )
+    assert july.rows["4707.1"]["Kumulierbarkeit"] == bag_eal.TextCell(
+        "K7", "Kumulierbar mit 4707.20 bis maximal 13 Taxpunkte pro Tag"
+    )
+    assert july.rows["4707.1"]["Limitationen"].text.endswith("mit der Präsenztaxe 4707.00 anwendbar.\n")
+
+
+def test_text_cells_refuse_a_repeated_position_rather_than_overwrite_its_cells(tmp_path):
+    path = _build_workbook(
+        tmp_path / "analysenliste_2026-01-01.xlsx",
+        de_headers=["Kapitel", "Pos.-Nr.", "TP", "Bezeichnung", "Limitationen"],
+        de_rows=[
+            ["k", "1000", 76.5, "Vitamin D", "Erste Limitation"],
+            ["k", "1000", 8.5, "Hämatokrit", "Zweite Limitation"],  # duplicate join key
+        ],
+    )
+    with pytest.raises(ValueError, match="repeats position '1000'"):
+        bag_eal.text_cells(path)
+
+
+@pytest.mark.parametrize(
+    ("title", "problem"),
+    [("Tabelle1", "no German"), ("Deutsch", "no header row")],
+    ids=["no-german-sheet", "no-header-row"],
+)
+def test_text_cells_refuse_a_workbook_without_a_german_header_to_cite(tmp_path, title, problem):
+    from openpyxl import Workbook
+
+    workbook = Workbook()
+    workbook.active.title = title
+    workbook.active.append(["Kapitel", "Nr.", "Limitationen"])  # no 'Pos.-Nr.' anchor
+    workbook.active.append(["k", "1000", "Nur einmal pro Tag."])
+    path = tmp_path / "analysenliste_2026-01-01.xlsx"
+    workbook.save(path)
+
+    with pytest.raises(ValueError, match=problem):
+        bag_eal.text_cells(path)

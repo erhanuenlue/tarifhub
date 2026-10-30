@@ -6,8 +6,10 @@ Excel format). One workbook, three parallel sheets ``Deutsch`` / ``Français`` /
 
 ``parse`` is a pure function of the file (no AI, no network): it emits a list of
 canonical-keyed ``dict`` rows that :func:`tarifhub_ingest.mappers.tariff_mapper.map_raw`
-consumes. ``fetch`` (stdlib only, used by the scale-run driver, never by tests)
-downloads the artifact and writes a ``.sha256`` sidecar idempotently.
+consumes. ``text_cells`` reads selected German columns the record does not carry as
+published text, each value with its cell reference, for the edition comparison.
+``fetch`` (stdlib only, used by the scale-run driver, never by tests) downloads the
+artifact and writes a ``.sha256`` sidecar idempotently.
 
 ``valid_from`` / ``source_version`` are derived purely from the FILENAME convention
 ``analysenliste_YYYY-MM-DD.xlsx`` — a deterministic function of the input path, so
@@ -19,6 +21,7 @@ from __future__ import annotations
 import hashlib
 import re
 import urllib.request
+from dataclasses import dataclass
 from datetime import date
 from io import BytesIO
 from pathlib import Path
@@ -82,6 +85,41 @@ CARRIED_COLUMNS: dict[str, tuple[str, ...]] = {
     "Italiano": (_H_POS_IT, _H_DESIG_IT),
 }
 CATEGORY_COLUMNS: dict[str, tuple[str, ...]] = {"Deutsch": _DISCIPLINE_COLUMNS}
+
+# The columns text_cells() reads as published text (ADR-024), in workbook order: the billing
+# conditions (handbook 6.8 to 6.10) and the laboratory flags, which say which laboratories may
+# bill a position (6.13, 6.14). A header names a column when its text, each run of whitespace
+# read as one space, equals the name. The prescriber flags (6.15) are not among them.
+TEXT_COLUMNS: dict[str, tuple[str, ...]] = {
+    "Deutsch": (
+        "Limitationen",
+        "Bemerkungen",
+        "Kumulierbarkeit",
+        "Auftragslaboratorien nach Artikel 54 Absatz 3 KVV (im Fremdauftrag)",
+        "Spitallaboratorien nach Artikel 54 Absatz 3 KVV (für Eigenbedarf )",
+        "Spitallaboratorien nach Artikel 54 Absatz 3 KVV (im Fremdauftrag)",
+        "Spitallaboratorien nach Artikel 54 Absatz 1 Buchstabe c in Verbindung mit Artikel 54 "
+        "Absatz 2 KVV (für Eigenbedarf)",
+        "Spitallaboratorien nach Artikel 54 Absatz 1 Buchstabe c in Verbindung mit Artikel 54 "
+        "Absatz 2 KVV (im Fremdauftrag)",
+        "Spitallaboratorien nach Artikel 54 Absatz 1 Buchstabe b KVV (für Eigenbedarf)",
+        "Offizin eines Apothekers oder einer Apothekerin (im Fremdauftrag)",
+        "Praxislaboratorium eines Arztes/ einer Ärztin (für Eigenbedarf)",
+        "Hausbesuch (für Eigenbedarf)",
+        "Schnelle Analyse",
+        "Allergologie und klinische Immunologie",
+        "Dermatologie und Venerologie",
+        "Endokrinologie und Diabetologie",
+        "Gastroenterologie",
+        "Gynäkologie und Geburtshilfe",
+        "Hämatologie und medizinische Onkologie",
+        "Kinder und Jugendmedizin",
+        "Physikalische Medizin und Rehabilitation",
+        "Pneumologie",
+        "Rheumatologie",
+        "Tropen- und Reisemedizin",
+    )
+}
 
 # The sheet titles parse() looks for, per language, and the header that anchors each sheet.
 _SHEETS = (
@@ -268,6 +306,143 @@ def column_headers(path: str | Path, *, content: bytes | None = None) -> dict[st
             if headers is not None:
                 found[label] = tuple(header for header in headers if header)
         return found
+    finally:
+        workbook.close()
+
+
+@dataclass(frozen=True)
+class TextCell:
+    """One cell as the workbook holds it: its reference (``I313``) and its text, verbatim.
+
+    ``text`` is None only for a cell that holds no value.
+    """
+
+    cell: str
+    text: str | None
+
+
+@dataclass(frozen=True)
+class TextColumn:
+    """A TEXT_COLUMNS name on the sheet: every header cell that names it and, when exactly one
+    does, the cells under it whose value is not text (a formula, number, date, boolean or
+    error), which are never read as text or as empty."""
+
+    name: str
+    headers: tuple[TextCell, ...]
+    not_text: tuple[str, ...] = ()
+
+    @property
+    def readable(self) -> bool:
+        """One header names the column and each cell under it holds text or nothing."""
+
+        return len(self.headers) == 1 and not self.not_text
+
+
+@dataclass(frozen=True)
+class TextCells:
+    """The German sheet's TEXT_COLUMNS as :func:`text_cells` read them."""
+
+    sheet: str
+    header_row: int
+    columns: tuple[TextColumn, ...]  # in TEXT_COLUMNS order
+    rows: dict[str, dict[str, TextCell]]  # position -> readable column -> its cell
+
+
+def text_cells(path: str | Path, *, content: bytes | None = None) -> TextCells:
+    """The German sheet's TEXT_COLUMNS as published, each value with its cell reference.
+
+    Rows join by position number exactly as in parse(). The workbook is read with its
+    formulas rather than their cached values, so a cell counts as text only when it holds a
+    string; a column with any other value is listed with those cells and not read.
+    ``content`` works as in parse().
+    """
+
+    path = Path(path)
+    if content is None:
+        _guard_file_size(path)
+        source: Any = str(path)
+    else:
+        _guard_size(len(content))
+        source = BytesIO(content)
+
+    from openpyxl import load_workbook  # noqa: PLC0415  (lazy, as in parse)
+    from openpyxl.utils import get_column_letter  # noqa: PLC0415
+
+    workbook = load_workbook(filename=source, read_only=True, data_only=False)
+    try:
+        sheets = {s.title: s for s in workbook.worksheets}
+        sheet = _pick_sheet(sheets, ("Deutsch",), _POS_HEADER_DE)
+        if sheet is None:
+            raise ValueError("BAG EAL workbook has no German ('Deutsch') sheet")
+        rows = sheet.iter_rows()
+        header = next(
+            (
+                row
+                for _, row in zip(range(_HEADER_SEARCH_ROWS), rows)
+                if len(row) > 1 and _as_str(row[1].value) == _POS_HEADER_DE
+            ),
+            None,
+        )
+        if header is None:
+            raise ValueError(f"BAG EAL 'Deutsch' sheet has no header row with {_POS_HEADER_DE!r}")
+        names = [" ".join((_as_str(cell.value) or "").split()) for cell in header]
+        position = {name: i for i, name in enumerate(names)}[_H_POS_DE]  # as in parse()
+        headers = {
+            name: tuple(
+                TextCell(cell.coordinate, str(cell.value))
+                for cell, header_name in zip(header, names, strict=True)
+                if header_name == name
+            )
+            for name in TEXT_COLUMNS["Deutsch"]
+        }
+        read = {name: names.index(name) for name, found in headers.items() if len(found) == 1}
+
+        rows_read: dict[str, dict[str, TextCell]] = {}
+        not_text: dict[str, list[str]] = {name: [] for name in read}
+        for row in rows:
+            code_cell = row[position] if position < len(row) else None
+            tariff_code = _as_str(code_cell.value) if code_cell is not None else None
+            if not tariff_code:
+                continue  # no position number -> not a tariff position (as in parse)
+            if code_cell.data_type == "f":  # parse() would read its cached value, if any
+                raise ValueError(
+                    f"BAG EAL 'Deutsch' sheet: the position number in {code_cell.coordinate} is a "
+                    "formula; position numbers must be literal (frozen join key)"
+                )
+            if tariff_code in rows_read:  # the frozen join key, as in parse()
+                raise ValueError(
+                    f"BAG EAL 'Deutsch' sheet repeats position {tariff_code!r}; "
+                    "position numbers must be unique (frozen join key)"
+                )
+            if len(rows_read) >= _MAX_ROWS:
+                raise ValueError(
+                    f"BAG EAL workbook exceeds the {_MAX_ROWS} row limit; refusing to parse"
+                )
+            cells: dict[str, TextCell] = {}
+            for name, i in read.items():
+                reference = f"{get_column_letter(i + 1)}{code_cell.row}"
+                cell = row[i] if i < len(row) else None
+                if cell is None or cell.value is None:
+                    cells[name] = TextCell(reference, None)
+                elif cell.data_type == "s" and isinstance(cell.value, str):
+                    cells[name] = TextCell(reference, cell.value)
+                else:
+                    not_text[name].append(reference)
+            rows_read[tariff_code] = cells
+        columns = tuple(
+            TextColumn(name=name, headers=found, not_text=tuple(not_text.get(name, ())))
+            for name, found in headers.items()
+        )
+        readable = {column.name for column in columns if column.readable}
+        return TextCells(
+            sheet=sheet.title,
+            header_row=header[1].row,
+            columns=columns,
+            rows={
+                code: {name: cell for name, cell in cells.items() if name in readable}
+                for code, cells in rows_read.items()
+            },
+        )
     finally:
         workbook.close()
 
