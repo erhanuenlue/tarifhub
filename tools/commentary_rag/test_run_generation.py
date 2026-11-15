@@ -14,12 +14,15 @@ import copy
 import hashlib
 import json
 import sys
+import threading
 from pathlib import Path
 
+import httpx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import generation
 import run_generation
 
 TAG = "2026-01-01"
@@ -171,8 +174,9 @@ def response(answer: dict) -> str:
         {"type": "text", "text": json.dumps(answer, ensure_ascii=False)}]}, ensure_ascii=False)
 
 
-def finished(prepared, *, this_run: bool) -> tuple:
-    """D answered validly as D-1: in this run (its response saved under this tag) or earlier."""
+def finished(prepared, *, saved_here: bool, in_result: bool) -> tuple:
+    """D answered validly as D-1, its request and response saved under this tag or elsewhere,
+    and listed in this tag's run result or not (an earlier run, or an interrupted one)."""
     results, local, _ = prepared
     text = response(ANSWER)
     settle = {"event": "settle", "attempt": "D-1", "case": "D", "outcome": "valid",
@@ -183,10 +187,12 @@ def finished(prepared, *, this_run: bool) -> tuple:
         + "\n" + json.dumps(settle) + "\n", encoding="utf-8")
     artifacts = local / f"{TAG}-generation"
     (artifacts / "responses").mkdir(parents=True)
-    if this_run:
+    if saved_here:  # a run saves an attempt's request and response before settling it
+        (artifacts / "requests").mkdir()
+        (artifacts / "requests" / "D-1.json").write_text("{}", encoding="utf-8")
         (artifacts / "responses" / "D-1.json").write_text(text, encoding="utf-8")
-    attempts = [{k: v for k, v in settle.items() if k not in ("event", "at")}] if this_run else []
-    skipped = [] if this_run else [{"case": "D", "reason": "already answered validly (D-1)"}]
+    attempts = [{k: v for k, v in settle.items() if k not in ("event", "at")}] if in_result else []
+    skipped = [] if in_result else [{"case": "D", "reason": "already answered validly (D-1)"}]
     (artifacts / "run-result.json").write_text(json.dumps({
         "started_at": "s", "finished_at": "f", "plan": [], "attempts": attempts,
         "not_attempted": skipped, "retries_skipped": [], "stopped": None}), encoding="utf-8")
@@ -194,7 +200,7 @@ def finished(prepared, *, this_run: bool) -> tuple:
 
 
 def test_report_writes_the_record_and_review_sheet_of_a_finished_run(prepared):
-    record, sheet, _ = finished(prepared, this_run=True)
+    record, sheet, _ = finished(prepared, saved_here=True, in_result=True)
 
     assert run_generation.main(["report", "--tag", TAG, "--prepared", TAG]) == 0
 
@@ -205,7 +211,7 @@ def test_report_writes_the_record_and_review_sheet_of_a_finished_run(prepared):
 
 
 def test_report_refuses_a_saved_response_that_no_longer_matches_its_recorded_hash(prepared):
-    record, sheet, artifacts = finished(prepared, this_run=True)
+    record, sheet, artifacts = finished(prepared, saved_here=True, in_result=True)
     altered = {**ANSWER, "claims": [{"text": "Der Tarif sinkt.", "citations": ["jul/p6/1"]}]}
     (artifacts / "responses" / "D-1.json").write_text(response(altered), encoding="utf-8")
 
@@ -216,7 +222,7 @@ def test_report_refuses_a_saved_response_that_no_longer_matches_its_recorded_has
 
 
 def test_a_run_reports_only_its_own_attempts_not_a_case_answered_in_an_earlier_run(prepared):
-    record, _, _ = finished(prepared, this_run=False)  # D-1 is in the ledger, saved elsewhere
+    record, _, _ = finished(prepared, saved_here=False, in_result=False)  # saved under another tag
 
     run_generation.main(["report", "--tag", TAG, "--prepared", TAG])
 
@@ -225,3 +231,57 @@ def test_a_run_reports_only_its_own_attempts_not_a_case_answered_in_an_earlier_r
     assert [(c["case"], c["outcome"]) for c in written["checks"]] == [("D", "not_attempted")]
     assert written["run"]["not_attempted"] == [
         {"case": "D", "reason": "already answered validly (D-1)"}]
+
+
+def test_a_step_reads_the_contexts_prepared_under_its_own_tag_by_default(prepared):
+    # prepare --tag T wrote T's contexts; run --tag T must use them, not another day's.
+    with pytest.raises(SystemExit, match="ANTHROPIC_API_KEY is not set"):
+        run_generation.main(["run", "--tag", TAG])
+
+
+def test_a_resumed_run_still_reports_an_answer_settled_before_its_interruption(prepared):
+    # D-1 was saved under this tag and settled, then the run stopped before writing its result;
+    # the resumed run skipped D as already answered.
+    record, sheet, _ = finished(prepared, saved_here=True, in_result=False)
+
+    run_generation.main(["report", "--tag", TAG, "--prepared", TAG])
+
+    written = json.loads(record.read_text(encoding="utf-8"))
+    assert [a["attempt"] for a in written["attempts"]] == ["D-1"]
+    assert [(c["case"], c["outcome"]) for c in written["checks"]] == [("D", "valid")]
+    assert "Der Tarif steigt auf 64.4 TP." in sheet.read_text(encoding="utf-8")
+
+
+def test_a_run_refused_by_another_runs_lock_publishes_nothing(prepared, monkeypatch):
+    results, local, _ = prepared
+    entered, release = threading.Event(), threading.Event()
+
+    def provider(request: httpx.Request) -> httpx.Response:
+        if request.url.path == "/v1/messages/count_tokens":
+            return httpx.Response(200, json={"input_tokens": 1000})
+        entered.set()
+        release.wait(10)
+        return httpx.Response(200, headers={"request-id": "req_test"}, json={
+            **json.loads(response(ANSWER)), "id": "msg_test", "type": "message",
+            "role": "assistant", "stop_sequence": None,
+            "usage": {"input_tokens": 1000, "output_tokens": 2000}})
+
+    monkeypatch.setattr(run_generation, "_client", lambda config: generation.client(
+        "test-key", config, http_client=httpx.Client(transport=httpx.MockTransport(provider))))
+    outputs = (local / f"{TAG}-generation" / "run-result.json", results / f"{TAG}-generation.json",
+               local / f"{TAG}-review-sheet.md")
+    done: dict = {}
+    first = threading.Thread(target=lambda: done.update(code=run_generation.main(["run", "--tag", TAG])))
+    first.start()
+    assert entered.wait(10)
+    try:
+        second = run_generation.main(["run", "--tag", TAG])
+        published_by_second = [p.name for p in outputs if p.exists()]
+    finally:
+        release.set()
+        first.join(10)
+
+    assert (second, published_by_second) == (2, [])
+    assert done["code"] == 0
+    record = json.loads(outputs[1].read_text(encoding="utf-8"))
+    assert [(a["case"], a["status"]) for a in record["answers"]] == [("D", "answered")]

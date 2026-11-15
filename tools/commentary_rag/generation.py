@@ -39,6 +39,7 @@ BASE_URL = "https://api.anthropic.com"
 STATUSES = ("answered", "partial", "insufficient_evidence")
 # An API key or workspace ID a provider error might echo: redacted before any record or output.
 _CREDENTIAL = re.compile(r"sk-ant-[A-Za-z0-9_-]+|wrkspc_[A-Za-z0-9]+")
+LOCKED_OUT = "another run holds the lock"  # how a run refused by another run's lock stops
 
 ANSWER_SCHEMA = {
     "type": "object",
@@ -231,7 +232,7 @@ def run(items: list[dict], *, client: anthropic.Anthropic, config: Config, prici
     with _ledger_lock(ledger) as held:
         if not held:
             return {"plan": [], "attempts": [], "retries_skipped": [], "not_attempted": [],
-                    "stopped": f"another run holds the lock of {ledger.name}; nothing was sent"}
+                    "stopped": f"{LOCKED_OUT} of {ledger.name}; nothing was sent"}
         return _run(items, client=client, config=config, pricing=pricing, ledger=ledger,
                     artifacts=artifacts, plan_only=False)
 

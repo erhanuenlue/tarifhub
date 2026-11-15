@@ -64,8 +64,9 @@ on eight dev cases with no held-out test, not an accuracy figure.
   counts, planned cost), `run` (requests, then `report`), `report` (public record and local
   review sheet from the ledger and local artifacts, no API call; `--sheet-only` keeps the record).
   Outputs carry the date of their own step (`--tag`, default today); `--prepared` names the
-  `prepare` outputs to use (default 2026-11-14). No step overwrites an output an earlier run
-  wrote (added 2026-11-15, after the recorded run).
+  `prepare` outputs to use (default: the same `--tag`; the 2026-11-15 run used 2026-11-14 and
+  defaulted to it then). No step overwrites an output an earlier run wrote, and a `run` refused by
+  another run's ledger lock publishes nothing (added 2026-11-15, after the recorded run).
 - `rubric.json`: the answer rubric, **AI-drafted before any generation and used unchanged in
   Erhan's review of 2026-11-15** (which notes that some support quotes, such as D1-R5 and D6-R3,
   are shortened anchors): required claims with verified support quotes and optional term checks,
@@ -106,7 +107,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 58 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 61 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
@@ -159,13 +160,13 @@ is not recorded. uv's `--env-file` does not override a variable already set in t
 
 ```bash
 HF_HUB_OFFLINE=1 uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
-  python tools/commentary_rag/run_generation.py prepare
+  python tools/commentary_rag/run_generation.py prepare --tag <date>
 uv run --project services/ingestion --frozen --offline --extra ai --extra dev --env-file .env \
-  python tools/commentary_rag/run_generation.py plan
+  python tools/commentary_rag/run_generation.py plan --tag <date>
 uv run --project services/ingestion --frozen --offline --extra ai --extra dev --env-file .env \
-  python tools/commentary_rag/run_generation.py run
+  python tools/commentary_rag/run_generation.py run --tag <date>
 uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
-  python tools/commentary_rag/run_generation.py report --tag 2026-11-15 [--sheet-only]
+  python tools/commentary_rag/run_generation.py report --tag <date> [--sheet-only]
 (cd services/ingestion && uv sync --frozen --offline --extra dev)
 ```
 
@@ -193,7 +194,9 @@ answer; a second run on the same ledger is refused while one is sending; a valid
 settled only after its response is saved; provider errors are redacted of key and workspace
 identifiers; the answer checks' denominators; every step refuses to overwrite an earlier output,
 `run` refuses contexts that differ from the saved record in any field the request carries, and
-`report` refuses a saved response whose hash differs from its ledger entry. What they miss: real model behaviour, real token counts,
+`report` refuses a saved response whose hash differs from its ledger entry and reports the
+attempts whose requests its run saved; a `run` refused by another run's lock publishes nothing;
+`--prepared` defaults to the step's own tag. What they miss: real model behaviour, real token counts,
 real prices and whether a cited passage supports a claim.
 
 **Code after the recorded run.** The 2026-11-15 run record names the tool files it ran with by
@@ -202,8 +205,9 @@ SHA-256 (`run.environment.tool_files_sha256`, uncommitted on top of `88cd681`). 
 no longer skip for a missing dependency; and, after an independent review, `run` checks every
 field of the contexts against the saved record, a run holds a lock on the ledger, a valid answer
 is settled only after its response is saved, `report` verifies response hashes and covers only
-its own run's attempts, provider error text is redacted, and evidence of unattempted cases is no
-longer counted under failed generations. None of this changes a request, a recorded value or a
+its own run's attempts (those whose requests it saved), a run refused by another run's lock
+publishes nothing, `--prepared` defaults to the step's own tag, provider error text is redacted,
+and evidence of unattempted cases is no longer counted under failed generations. None of this changes a request, a recorded value or a
 metric of the recorded run, which did not exercise this code (its contexts pass the new checks).
 
 ## Limitations

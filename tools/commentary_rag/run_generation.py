@@ -83,7 +83,8 @@ def _refuse_existing(*paths: Path) -> None:
 
 def _write_json(path: Path, value) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text(json.dumps(value, ensure_ascii=False, indent=1) + "\n", encoding="utf-8")
+    with path.open("x", encoding="utf-8") as handle:  # never replaces an earlier output
+        handle.write(json.dumps(value, ensure_ascii=False, indent=1) + "\n")
 
 
 def _paths(tag: str, prepared: str) -> dict[str, Path]:
@@ -328,6 +329,9 @@ def run(args: argparse.Namespace) -> int:
     started = _now()
     result = generation.run(items, client=client, config=config, pricing=pricing,
                             ledger=LEDGER, artifacts=paths["artifacts"])
+    if (result["stopped"] or "").startswith(generation.LOCKED_OUT):  # the other run publishes
+        print(f"stopped: {result['stopped']}")
+        return 2
     _write_json(paths["result"], {"started_at": started, "finished_at": _now(), **result})
     return report(args)
 
@@ -372,8 +376,10 @@ def _answer(paths: dict[str, Path], attempt: dict, it: dict) -> dict | None:
 def build_record(items, data, result, paths, config, pricing_data) -> dict:  # noqa: PLR0913
     """The public record: configuration, contexts by hash, every attempt, checks, no answers."""
 
-    own = {a["attempt"] for a in result["attempts"]}  # a run's record covers its own attempts
-    attempts = [a for a in generation.settled(LEDGER) if a["attempt"] in own]
+    # A run's record covers its own attempts: those whose request it saved under its tag (saved
+    # before settling, so an attempt settled before an interruption still counts).
+    saved = paths["artifacts"] / "requests"
+    attempts = [a for a in generation.settled(LEDGER) if (saved / f"{a['attempt']}.json").exists()]
     rows, answer_rows = [], []
     for it in items:
         mine = [a for a in attempts if a["case"] == it["case"]]
@@ -509,7 +515,8 @@ def _write_review_sheet(path: Path, items: list[dict], record: dict, paths) -> N
         lines += [f"- Review focus: {it['rubric']['review_focus']}", "",
                   f"Erhan, overall: appropriate behaviour for this case? {box}  Note:", ""]
     path.parent.mkdir(parents=True, exist_ok=True)
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    with path.open("x", encoding="utf-8") as handle:  # never replaces an earlier sheet
+        handle.write("\n".join(lines) + "\n")
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -519,11 +526,13 @@ def main(argv: list[str] | None = None) -> int:
                         help="date prefix of this step's outputs (default: today)")
     parser.add_argument("--sheet-only", action="store_true",
                         help="report: re-render the local review sheet, keep the record as is")
-    parser.add_argument("--prepared", default="2026-11-14",
-                        help="date prefix of the prepare outputs that plan, run and report use")
+    parser.add_argument("--prepared",
+                        help="date prefix of the prepare outputs that plan, run and report use "
+                             "(default: --tag; the 2026-11-15 run used 2026-11-14)")
     parser.add_argument("--manifest", type=Path, default=REPO / "data/manifests/bag-al.json")
     args = parser.parse_args(argv)
     args.manifest = args.manifest.resolve()
+    args.prepared = args.prepared or args.tag
     return {"prepare": prepare, "plan": plan, "run": run, "report": report}[args.step](args)
 
 
