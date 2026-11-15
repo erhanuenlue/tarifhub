@@ -97,7 +97,7 @@ cd apps/tarifguard && npm install && npm run dev
 ```
 
 Command gotchas (each one has burned a session):
-- After any `uv run --extra ai` step (e5 recording), re-sync with `uv sync --frozen --extra dev` before running the offline suite: a polluted venv masks the e5-to-stub fallback. CI never installs the ai extra.
+- After any `uv run --extra ai` step (e5 recording), re-sync with `uv sync --frozen --extra dev` before running the offline suite: a polluted venv masks the e5-to-stub fallback. In CI the service test environments stay dev-only and no image installs the ai extra; only the separate `commentary-rag` job installs the ingestion ai and dev extras, on its own runner. Keep the two apart locally as well: the pilot gets its own `UV_PROJECT_ENVIRONMENT` (Commands).
 - Compose interpolates `TARIFHUB_DB_URL` from `.env` into containers (docker-compose.yml): a `.env` carrying the host form `@localhost` breaks the serving container, which needs `@db:5432`. Recreate with `TARIFHUB_DB_URL='postgresql://tarifhub:tarifhub@db:5432/tarifhub' docker compose up -d --force-recreate serving`.
 - When capturing test counts or coverage for docs, re-derive from a fresh run with `uv run --no-sync pytest -q --junitxml=out.xml` and read the testsuite attributes: the piped `-q` summary line is swallowed in this repo's services. Never trust committed doc numbers.
 
