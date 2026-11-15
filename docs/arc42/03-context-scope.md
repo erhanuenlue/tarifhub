@@ -22,6 +22,13 @@ inputs are public federal tariff lists, outputs are frozen tariff records.
 | PIS/HIS systems | REST/OpenAPI + FHIR R4 read | frozen tariff records, versions, diffs, search | UC-04, UC-05, UC-06 |
 | AI agents | MCP (`search_tariffs`, `get_tariff`, `explain_record`, read-only) | frozen records verbatim | UC-07 |
 
+**Outside this boundary: the commentary pilot.** The commentary RAG pilot ([ADR-025](../adr/025-commentary-retrieval.md)) is a local tool in `tools/commentary_rag/`, not part of L0 to L3. It has two partners of its own, and neither reaches the tariff database or the served interfaces. It sends no patient data: only a question, the selected editions and public commentary text.
+
+| Communication partner | Interface | Data exchanged | Used by |
+| --- | --- | --- | --- |
+| BAG commentary on the changes to the Analysenliste | PDF per edition, pinned by SHA-256 in `data/manifests/bag-al.json`, read through the ingestion manifest loader | commentary text with editions and page numbers | commentary pilot |
+| Anthropic Messages API | HTTPS, direct, `claude-opus-5-5` | out: one question, its editions and five passages with provenance; in: answer status, claims with passage citations, missing evidence, token usage | commentary pilot (`plan`, `run`) |
+
 ## External data sources (L0 ingestion)
 
 The L0 ingestion layer harmonises public Swiss ambulatory tariff publications into the

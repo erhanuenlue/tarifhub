@@ -121,7 +121,7 @@ tests of fill-reuse, **fail-closed parsing** tests of the schema validation that
 model output as untrusted, a **human-in-the-loop write-back** family that pins the review
 queue where flagged AI fills are approved or corrected before a human freezes them, and a
 **demonstration** family that exercises the real Claude structured-output contract and the real
-multilingual-e5 ranking, so the intelligent behaviour is shown directly and not only mocked away.
+multilingual-e5 ranking, so the intelligent behaviour is shown directly and not only mocked away. Outside the services, the commentary RAG pilot ([ADR-025](../adr/025-commentary-retrieval.md)) has its own offline suite, the seventh family below.
 
 ### 1 · Guardrail: the boundary itself
 
@@ -224,6 +224,17 @@ push. Families 1 to 5 test the guardrails without ever needing the AI. Family 6 
 Claude call shape and the real e5 ranking, using a mocked client and recorded vectors, so the intelligent
 behaviour is exercised in CI without a live key or a model download.
 
+### 7 · The commentary pilot: offline, at the provider's HTTP boundary
+
+`tools/commentary_rag/` (outside the services, [§5](05-building-block-view.md#outside-the-services-the-commentary-rag-pilot)) has 43 offline tests in six files, run with the ingestion lockfile's `ai` and `dev` extras and poppler's `pdftotext`:
+
+- **Corpus (11):** tiny real PDFs written per test go through the manifest loader, the hash check and `pdftotext`: provenance per passage, page-bounded splitting, tables, headings, and refusal of a missing or altered document or a wrong printed page number.
+- **Retrieval (3) and metrics (8):** a hand-computed BM25 score, RRF as defined, an edition selection that never returns another edition's passage, the metric definitions on worked examples, recomputation of both committed retrieval records from their stored rankings, and refusal to overwrite a record.
+- **Generation (11):** the real `anthropic` client talks to an `httpx.MockTransport`, with no key and no network. Each request carries only its own question and passages and none of the scoring fields, sends no tools, fallback or sampling parameters and is counted before it is sent; schema violations, cut-off answers and out-of-context citations are kept as reported; one HTTP call per attempt; a timeout is charged at its reservation; access, model and configuration blockers stop the run; a request whose ceiling would pass the budget is never sent; a valid answer is never requested again.
+- **Answer checks (2) and steps (8):** the check denominators keep retrieval misses, generation failures and abstention apart; every step refuses to overwrite an output an earlier run wrote.
+
+They do not cover real model behaviour, real token counts or prices, the real e5 model (a stand-in embedder and tokenizer are used) or whether a cited passage supports a claim; those come from the recorded runs and the human review ([§10](10-quality-requirements.md#commentary-rag-pilot-recorded-evaluation)). The suite refuses to start without the `anthropic` client or `pdftotext`, so a missing dependency fails instead of skipping.
+
 ## What CI runs per PR
 
 From `.github/workflows/ci.yml`, on every push to `main` and every pull request:
@@ -232,6 +243,7 @@ From `.github/workflows/ci.yml`, on every push to `main` and every pull request:
 |---|---|
 | `python` | Per service: `uv sync --frozen` → `uvx ruff check .` → `uv run pytest -q` (offline). A dedicated step re-runs the ingestion + serving boundary tests with `-v` so the determinism gate is visible in the log, and a coverage step gates ingestion, serving, mcp and intelligence at `--cov-fail-under=80`. |
 | `python-parity` | Spins a `pgvector/pgvector:pg16` service container and runs the ingestion + serving read-parity suites against real Postgres 16 + pgvector (`TARIFHUB_PG_TEST_URL` set). |
+| `commentary-rag` | The commentary pilot in its own runner, so the `ai` extra never enters the dev-only service environments: `uv sync --frozen --extra ai --extra dev` for ingestion, poppler, `ruff check` of `tools/commentary_rag` under the ingestion ruleset, the offline suite, and a junit check that fails on any skipped test or uncollected test file. No secret, no model download (`HF_HUB_OFFLINE=1`). |
 | `console` | When `apps/tarifguard/package.json` exists: `npm ci` → `npm run lint` → `npm run build` → `npm run test --if-present`. |
 | `security` | `gitleaks` (secrets) → `Trivy` (fs scan, fail on HIGH/CRITICAL) → `Syft` SBOM (`spdx-json`, uploaded as an artifact). |
 | `docs` | `mkdocs build -f docs/mkdocs.yml --strict`: a broken link or nav entry fails the build. |

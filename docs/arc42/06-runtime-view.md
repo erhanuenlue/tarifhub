@@ -1,6 +1,6 @@
 # Runtime View
 
-Three scenarios show the architecture at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (now implemented end to end: the console review form proxies to the ingestion review endpoint, which persists a new frozen version in the store, [ADR-013](../adr/013-demo-scope.md)). Each scenario is traceable to code under `services/`. Across all three, the value-path invariant holds: no AI computes or mutates a billing value at serve time. This is the determinism boundary established in §8 (Crosscutting Concepts).
+Three scenarios show the platform at work: the deterministic harmonisation pipeline (live), semantic search through the serving API (live), and the expert review loop (now implemented end to end: the console review form proxies to the ingestion review endpoint, which persists a new frozen version in the store, [ADR-013](../adr/013-demo-scope.md)). Each is traceable to code under `services/`. Across all three, the value-path invariant holds: no AI computes or mutates a billing value at serve time. This is the determinism boundary established in §8 (Crosscutting Concepts). A fourth scenario runs outside the services: the commentary RAG pilot, a local tool that reads no tariff record and writes nothing to the store ([ADR-025](../adr/025-commentary-retrieval.md)).
 
 ## Scenario 1: harmonise to freeze (the pipeline)
 
@@ -49,6 +49,44 @@ The console review form (`apps/tarifguard/app/api/review`) GETs the review queue
 6. The new version carries `requires_review = false` and the record leaves the queue *(live)*.
 
 The freeze line itself is defended in depth: `versioning/` and `audit/` are write-protected against AI edits by the `guard_frozen` hook, and the boundary is CI-enforced by `test_determinism_boundary.py`.
+
+## Scenario 4: a cited explanation from the BAG commentaries (local pilot, outside the services)
+
+The commentary pilot (`tools/commentary_rag/`, [§5](05-building-block-view.md#outside-the-services-the-commentary-rag-pilot)) runs as separate local steps from the repository root, in the ingestion project's environment with its `ai` extra. Nothing in this scenario reads or writes the tariff database, and no step is reachable through serving, MCP or the console.
+
+1. **Build the corpus.** For each AL edition the manifest names a commentary PDF with its SHA-256. The ingestion manifest loader reads and verifies the bytes, `pdftotext` turns exactly those bytes into pages, and each page becomes passages that carry edition, document hash, page, printed page label and section. A missing or mismatching document refuses the run.
+2. **Retrieve (`prepare`).** For one question and an explicit edition selection, BM25 and the e5 dense ranking each order the passages of the selected editions only, and reciprocal rank fusion combines them. The top 5 form the case's context. Before any generation the frozen retrieval is rerun and must reproduce the saved record's top 5 and passage hashes, or the step refuses.
+3. **Plan.** Each request is counted with the provider's token-counting endpoint and priced at its ceiling (counted input with a 10 % margin plus the full output allowance), with nothing generated.
+4. **Generate (`run`).** For each case the ceiling is reserved in the append-only ledger, refused if it would pass the budget or the attempt cap, and only then is one request sent. It holds the question, the editions and the five passages as escaped, untrusted data, without tools, web search, fallback model or client retries. The answer must match the schema (status `answered`, `partial` or `insufficient_evidence`, claims with passage citations, missing evidence), and every citation is checked against that request's own passages. A failure is recorded as it came, never repaired.
+5. **Record (`report`).** The public record in `results/` keeps configuration, contexts by hash, every attempt with usage and calculated cost, and the deterministic checks. Passage text, raw requests and responses and the human-review sheet stay in the git-ignored `local/` folder. No step overwrites an earlier output.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  actor Op as Operator (local shell)
+  participant Pilot as run_generation.py
+  participant Ret as corpus.py + retrieval.py
+  participant Led as Ledger (results/)
+  participant API as Anthropic Messages API
+  Op->>Pilot: prepare
+  Pilot->>Ret: verified PDFs to passages, rank the selected editions
+  Ret-->>Pilot: top 5 per case (must equal the saved record)
+  Op->>Pilot: plan
+  Pilot->>API: count_tokens per request (nothing generated)
+  Op->>Pilot: run
+  loop each case, within the attempt cap
+    Pilot->>Led: reserve the ceiling (refused over budget)
+    Pilot->>API: messages.create(question, editions, 5 passages)
+    API-->>Pilot: status, claims with citations, missing evidence
+    Pilot->>Pilot: schema and citation-membership checks
+    Pilot->>Led: settle at the cost of the reported usage
+  end
+  Pilot-->>Op: record (results/), review sheet (local/)
+```
+
+> **Figure: One pilot run.** The steps are separate local commands. The only network partner is the Anthropic API; the tariff database, serving, MCP and the console take no part.
+
+The recorded run, its checks and the human review are in [§10](10-quality-requirements.md#commentary-rag-pilot-recorded-evaluation).
 
 ## Record lifecycle (states)
 

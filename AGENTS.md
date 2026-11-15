@@ -58,7 +58,7 @@ aise-harness/, prompts/, knowledge/, docs/cockpit/, scripts/setup-claude-code.sh
 
 ## Stack
 
-Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010; docs.yml builds the Pages site on any docs/** push to main and publishes when the DEPLOY_PAGES=true repo variable is set; it also offers workflow_dispatch) · OpenTelemetry instrumented in serving (FastAPI request traces + a custom search span and duration histogram; OTLP export opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`, a true no-op when unset; ADR-011), with Prometheus/Grafana + Sentry as intended backends, not yet wired.
+Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only inside the services; the read-only commentary pilot in `tools/`, ADR-025, calls the Messages API directly) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010; docs.yml builds the Pages site on any docs/** push to main and publishes when the DEPLOY_PAGES=true repo variable is set; it also offers workflow_dispatch) · OpenTelemetry instrumented in serving (FastAPI request traces + a custom search span and duration histogram; OTLP export opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`, a true no-op when unset; ADR-011), with Prometheus/Grafana + Sentry as intended backends, not yet wired.
 
 ADR register: `docs/adr/` 001..025, three-digit numbering (ADR-001 Python-first, ADR-013 demo scope, ADR-020 Codex seat; ADR-018 and ADR-020 record the earlier model-seat setup, the current one is CLAUDE.md plus `.claude/`). `docs/adr/legacy/` preserves the pre-2026-06-11 register under DIFFERENT, colliding numbers: never cite a legacy number in new text; resolve old citations via `docs/adr/legacy/README.md`.
 
@@ -80,6 +80,11 @@ mkdocs build -f docs/mkdocs.yml --strict # the CI docs gate (mkdocs<2 pinned); '
                                          # Binary is a uv tool at ~/.local/bin/mkdocs; python3 -m mkdocs FAILS.
                                          # Missing? uv tool install 'mkdocs<2' --with 'mkdocs-material>=9,<10' \
                                          #   --with 'mkdocs-enumerate-headings-plugin<1'
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion --frozen \
+  --extra ai --extra dev python -m pytest tools/commentary_rag -q
+                                         # the commentary pilot's offline suite (ADR-025, CI job commentary-rag):
+                                         # needs poppler's pdftotext; the separate venv keeps the ai extra out of
+                                         # the ingestion venv. It refuses to start without anthropic or pdftotext
 python3 tools/cas_check.py               # CAS structural floor; CI runs '--ci' as a ratchet vs
                                          # tools/cas_baseline.json: run it before pushing doc changes
 docker compose up -d db                  # dev Postgres+pgvector (named volume), not a test database: the PG
@@ -132,13 +137,14 @@ All `.env*` files at any depth (including `.env.example`) are read- and edit-den
 
 Run the checks that apply before calling any work finished; report each result honestly (failing test = say so with output; skipped step = say so and why):
 
-1. Per touched service: `cd services/<svc> && uv run --no-sync pytest -q` green (offline).
+1. Per touched service: `cd services/<svc> && uv run --no-sync pytest -q` green (offline). Touched `tools/commentary_rag/`: its suite green (Commands).
 2. `uvx ruff check .` inside each touched service dir, clean (never `ruff format .`, see Commands).
 3. If `docs/` changed: `mkdocs build -f docs/mkdocs.yml --strict` green AND `python3 tools/cas_check.py --ci` green (ratchet). If `apps/tarifguard/` changed: `npm run lint && npm run build && npm test` (all three are CI gates).
 4. `git diff --name-only main...HEAD` and `git status --porcelain` contain no freeze-line path (see The one inviolable rule).
 5. Review the full diff. Any `services/` diff: check the determinism boundary (checklist in `.claude/agents/determinism-auditor.md`). A diff touching secrets, input parsing, the de-identification seam or anything internet-facing: security review (focus list in `.claude/agents/security-reviewer.md`). An independent review by a second model family when it adds value (from Claude: Codex, read-only commands in `.claude/agents/codex-reviewer.md`). Claude does them inline by default and runs them as the agents in `.claude/agents/` only when Erhan has authorized delegation for the task (CLAUDE.md); other harnesses do them inline and say which they skipped.
-6. Report: changed files, the checks actually run with their results, anything skipped and why.
-7. Commit, push, PR and merge only on Erhan's explicit request; a merged architectural decision gets an ADR (both in Conventions).
-8. A prompt ending in "then /ship" means the steps in `.claude/skills/ship/SKILL.md` (any harness can follow the file): confirm scope, run checks, review, PR and CI only on explicit request, report.
+6. Architecture and documentation impact: assess every change for its effect on the architecture and its documentation, update the affected arc42 chapters, their diagrams and the relevant ADRs in the same change, and state the documentation impact briefly in the PR description (what was updated, or why nothing needed to be).
+7. Report: changed files, the checks actually run with their results, anything skipped and why.
+8. Commit, push, PR and merge only on Erhan's explicit request; a merged architectural decision gets an ADR (both in Conventions).
+9. A prompt ending in "then /ship" means the steps in `.claude/skills/ship/SKILL.md` (any harness can follow the file): confirm scope, run checks, review, PR and CI only on explicit request, report.
 
 Reusing results: a check result already obtained may stand in for a re-run only while its tested content, the relevant configuration, dependencies and environment, and its coverage all still apply; name each reused result and why it still applies. Re-run the affected checks after a relevant change, a failure or an unresolved concern. Reuse never waives a required check: CI must pass on the latest pushed revision before any merge, and the determinism-boundary check and any required security review must cover the diff as it will land. Postgres legs run only against a disposable database (`TARIFHUB_PG_TEST_URL` under Environment).

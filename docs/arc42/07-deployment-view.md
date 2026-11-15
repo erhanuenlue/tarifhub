@@ -9,7 +9,7 @@ from the document alone. Full verbatim capture is in
 
 ## Sub-systems and their containers
 
-Each box in the [building-block view](05-building-block-view.md) maps to exactly one image.
+Each container in the [building-block view](05-building-block-view.md) maps to exactly one image.
 The boundary that matters is the **freeze line**: everything left of it runs pre-freeze and
 may use AI. Everything right of it is the deterministic value path and ships no LLM client.
 
@@ -34,6 +34,10 @@ post-CAS-scope scaffolds ([§5](05-building-block-view.md)). They are packaged l
 other sub-system so the chart and Compose can bring up the full topology, but they sit
 outside the MVP value path (`kassenflow`/`meldepilot` ship `enabled: false` in the chart).
 All read-side sub-systems, in or out of the MVP path, stay post-freeze and ship no LLM client.
+
+### Not deployed: the commentary RAG pilot
+
+The commentary pilot (`tools/commentary_rag/`, [ADR-025](../adr/025-commentary-retrieval.md)) has no image, no Compose service, no Helm template and no port. It runs on a developer machine from the repository root through `uv` in the ingestion project's environment with the `ai` extra (the locked `anthropic` client and the e5 stack), with poppler's `pdftotext` installed and, for `prepare`, the e5 model already in the local Hugging Face cache. `plan` and `run` read `ANTHROPIC_API_KEY` from the root `.env` through `uv run --env-file` and reach the Anthropic API directly; the other steps and the tests need no network. Its outputs are files, not tables: JSON records and an append-only JSONL ledger in `tools/commentary_rag/results/` (committed), and passage text, raw requests and responses and the human-review files in the git-ignored `tools/commentary_rag/local/`. There is no passage table in PostgreSQL, no telemetry and no monitoring. In CI only its offline tests run, in their own `commentary-rag` job ([§13](13-test-strategy.md#what-ci-runs-per-pr)).
 
 ## Style choice: distributed services along the freeze line
 

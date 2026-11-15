@@ -445,6 +445,27 @@ the recorded vectors or the documented figures fails the offline suite and CI. T
 2026-06-11 live run against Postgres + pgvector remains the provenance for the numbers, which
 are EAL-corpus-scoped.
 
+## Commentary RAG pilot: recorded evaluation
+
+The commentary pilot ([ADR-025](../adr/025-commentary-retrieval.md), [§5](05-building-block-view.md#outside-the-services-the-commentary-rag-pilot)) is outside the services and carries no NFR above: these are observed results on **eight AI-drafted dev cases** (six with gold evidence, two unanswerable in the selected commentary), with no held-out test. Full records: [retrieval evidence](../evidence/2026-11-14-commentary-retrieval.md), [generation evidence](../evidence/2026-11-15-commentary-generation.md).
+
+**Retrieval** (corrected passage construction, 40 passages, top 5, 256-token passages; the corrections were informed by the baseline's misses on these cases). Recall and MRR are means over the six cases with gold evidence; wrong-edition passages are summed over the seven cases that target one edition.
+
+| Method | Mode | Evidence Recall@5 | MRR@5 | Wrong-edition passages@5 |
+|---|---|---|---|---|
+| BM25 | edition filter | 0.875 | 0.875 | 0/35 (by construction) |
+| Dense (e5) | edition filter | 0.750 | 0.708 | 0/35 (by construction) |
+| Hybrid (RRF) | edition filter | 0.833 | 0.722 | 0/35 (by construction) |
+| Hybrid (RRF) | no filter | 1.000 | 0.681 | 10/35 |
+
+The generator received the hybrid ranking under the edition filter: it misses D1 (gold passages at ranks 6 and 7) and finds every gold item of D2 to D6. A pre-generation rerun reproduced all rankings, scores and passage hashes.
+
+**Generation** (run `2026-11-15-generation`, `claude-opus-5-5`, effort `max`, one request per case): 8 of 8 schema-valid answers on first attempts, all 54 citations inside their own request's context, U1 and U2 answered `insufficient_evidence` as expected, and D1 abstained on its retrieval miss. 27,296 input and 91,081 output tokens, a calculated **$1.930804** from reported usage (not an invoice). These are deterministic checks: a citation inside the context is not proof that the passage supports the claim.
+
+**Human review** (Erhan Ünlü, one reviewer, not blinded, confirmed 2026-11-15): 48 of 48 structured claims supported by what they cite, of which 27 fully relevant to their question (14 partly, 7 not); 14 of the 19 required rubric claims covered, the 5 missing all D1's; end to end 5 cases answered, 2 appropriate abstentions and 1 not answered (D1, a retrieval failure that its justified abstention does not repair). Summary: `tools/commentary_rag/results/2026-11-15-human-review-summary.json`.
+
+**Limitations.** Two short documents, eight dev cases, one run of one model, one non-blinded reviewer; a random ranking already reaches an expected Evidence Recall@5 of 0.259 with the edition filter. None of this is an accuracy figure for unseen questions. The run record names the tool files it ran with by hash; later changes to the pilot's code (such as the refusal to overwrite earlier outputs) did not take part in it.
+
 ## Acceptance criteria
 
 One Given/When/Then per use case from the [§1 catalogue](01-introduction-goals.md), each

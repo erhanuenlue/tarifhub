@@ -8,7 +8,7 @@ This is the consolidated ADR register, adopted from Architecture v2.1 (2026-06):
 | 002 | Split services along the freeze line: ingestion (write, pre-freeze) and serving (read, post-freeze) share only the database contract | Accepted | [002](../adr/002-freeze-line-decomposition.md) |
 | 003 | Use one canonical, versioned, immutable record model with a locked, additive-only field set | Accepted | [003](../adr/003-canonical-record-model.md) |
 | 004 | Freeze reviewed records under a SHA-256 content hash with append-only audit-log lineage | Accepted | [004](../adr/004-freeze-content-hash-lineage.md) |
-| 005 | Keep exactly one live-AI seam (`ai_map`), pre-freeze, non-billing fields only, with human review below the confidence threshold | Accepted | [005](../adr/005-single-ai-seam.md) |
+| 005 | Keep exactly one live-AI seam (`ai_map`), pre-freeze, non-billing fields only, with human review below the confidence threshold (inside the services; ADR-025 adds a read-only seam outside them) | Accepted | [005](../adr/005-single-ai-seam.md) |
 | 006 | Use PostgreSQL 16 + pgvector as the single system of record and vector index | Accepted | [006](../adr/006-postgres-pgvector.md) |
 | 007 | Store immutable raw source artifacts in S3-compatible object storage, referenced from the audit log | Accepted | [007](../adr/007-object-store-raw-artifacts.md) |
 | 008 | Serve REST + FHIR R4 + MCP over one shared service layer (built), with GraphQL + XML designed, not built | Accepted | [008](../adr/008-api-styles.md) |

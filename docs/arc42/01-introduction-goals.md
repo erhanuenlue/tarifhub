@@ -28,6 +28,7 @@ Across all of this, no AI computes or mutates a billing value at serve time. Thi
 - **UC-04 (serve deterministically):** deliberately zero AI. The value path is provably LLM-free, enforced by an AST boundary test in CI, so the determinism guarantee is itself a verified property of the deliverable.
 - **UC-06 (find):** multilingual-e5 embeddings give cross-lingual DE/FR/IT retrieval over frozen records. ML ranks, never alters, the served values.
 - **UC-09 (explain):** the serving `/api/v1/explain` endpoint is deterministic and record-grounded (no AI on the value path). The AI value is the L3 console's labelled, de-identified AI explanation seam, which can never change a served value.
+- **Change explanation (pilot, outside the platform):** a local tool retrieves passages of the BAG commentaries on AL changes and has Claude write a German answer citing them by edition and page ([ADR-025](../adr/025-commentary-retrieval.md)). It is not wired into serving, MCP or the console, has no database access and never computes a tariff value; it was evaluated on eight dev cases ([§10](10-quality-requirements.md#commentary-rag-pilot-recorded-evaluation)).
 
 ## Functional requirements
 
