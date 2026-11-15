@@ -14,6 +14,15 @@ The concept that cuts across every layer is the determinism boundary:
 
 It is enforced structurally, not by convention: AST boundary tests (`services/ingestion/tests/test_determinism_boundary.py`, `services/serving/tests/test_serving_boundary.py`) fail CI if an LLM client becomes importable on the value path, and a write-guard hook (`.claude/hooks/guard_frozen.sh`) protects `versioning/`, `audit/` and applied migrations. Everything below assumes this boundary. The full set of autonomous quality gates that lets AI assistance run with full autonomy above this line while never crossing it (the freeze-line guard, the fitness ratchet and the merge green-contract) is described in [the AI-SE framework chapter](../method/ai-se-framework.md).
 
+### A second AI seam, outside the services
+
+Inside the services, `ai_map` stays the only live-AI seam ([ADR-005](../adr/005-single-ai-seam.md)). The commentary RAG pilot ([ADR-025](../adr/025-commentary-retrieval.md), [§5](05-building-block-view.md#outside-the-services-the-commentary-rag-pilot)) is a second, read-only seam in `tools/`, placed there so that the services' boundary tests keep their LLM allowlist unchanged. The rule holds for it as follows:
+
+- **It never computes, updates or replaces a tariff value.** The generated text explains a change from public BAG commentary passages and may quote the tariff numbers they state; it reaches no tariff record, billing result, database or served response. Values belong to the deterministic [edition comparison](../adr/023-al-edition-comparison.md).
+- **Enforced by placement, not by an AST test.** No service can import `tools/`, and the pilot calls only the ingestion manifest loader, its hash check and the e5 embedder: the manifest module it imports also contains the import's storage code, which the pilot never calls, and the pilot opens no database connection. No boundary test scans `tools/`; a future integration into a service would meet the existing tests and needs its own decision.
+- **Untrusted input, checked output.** Passage text goes to the model as escaped data the system prompt marks as untrusted; the answer is checked against a schema and every citation against that request's passages. A citation that passes is not proof of support: semantic support is a human judgement ([§10](10-quality-requirements.md#commentary-rag-pilot-recorded-evaluation)).
+- **Credentials and cost.** The key comes from the root `.env` through `uv run --env-file` and is checked for presence only, never printed or recorded; an optional `ANTHROPIC_WORKSPACE_ID` is sent as a header and its value is not recorded. Provider error text is redacted of key and workspace identifiers before it reaches a record. Spending is bounded before sending by a reserved ceiling per request in an append-only ledger, an attempt cap and a budget, with client retries off; one run at a time holds the ledger's lock.
+
 ## Modern application concepts
 
 The enterprise application concepts taught in the Modulplan, each as implemented in this repository.

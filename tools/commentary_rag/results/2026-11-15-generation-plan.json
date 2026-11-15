@@ -1,0 +1,191 @@
+{
+ "recorded_at": "2026-11-14T23:21:02+00:00",
+ "model_info": {
+  "type": "model",
+  "id": "claude-opus-5-5",
+  "display_name": "Claude Opus 5.5",
+  "created_at": "2026-09-21T16:24:00Z",
+  "line": "opus",
+  "max_input_tokens": 1000000,
+  "max_tokens": 128000,
+  "capabilities": {
+   "batch": {
+    "supported": true
+   },
+   "citations": {
+    "supported": true
+   },
+   "code_execution": {
+    "supported": true
+   },
+   "context_management": {
+    "supported": true,
+    "clear_tool_uses_20250919": {
+     "supported": true
+    },
+    "clear_thinking_20251015": {
+     "supported": true
+    },
+    "compact_20260112": {
+     "supported": true
+    }
+   },
+   "effort": {
+    "supported": true,
+    "low": {
+     "supported": true
+    },
+    "medium": {
+     "supported": true
+    },
+    "high": {
+     "supported": true
+    },
+    "xhigh": {
+     "supported": true
+    },
+    "max": {
+     "supported": true
+    }
+   },
+   "image_input": {
+    "supported": true
+   },
+   "pdf_input": {
+    "supported": true
+   },
+   "server_tools": {
+    "supported": true,
+    "code_execution": {
+     "supported": true
+    },
+    "web_search": {
+     "supported": true
+    }
+   },
+   "structured_outputs": {
+    "supported": true
+   },
+   "thinking": {
+    "supported": true,
+    "types": {
+     "enabled": {
+      "supported": false
+     },
+     "adaptive": {
+      "supported": true
+     },
+     "disabled": {
+      "supported": false
+     },
+     "between_tools": {
+      "supported": false
+     }
+    }
+   }
+  },
+  "lifecycle": "active",
+  "deprecated_at": null,
+  "retires_at": null
+ },
+ "configuration": {
+  "provider": "Anthropic Messages API, direct",
+  "base_url": "https://api.anthropic.com",
+  "model": "claude-opus-5-5",
+  "effort": "max",
+  "thinking": {
+   "type": "adaptive"
+  },
+  "thinking_display": "API default (omitted)",
+  "max_tokens": 32000,
+  "max_tokens_bounds": "thinking and answer together",
+  "timeout_s": 1200.0,
+  "client_max_retries": 0,
+  "max_attempts": 10,
+  "retry_policy": "after every case had one attempt, a failed case is retried while the ledger has fewer than max_attempts attempts; valid answers are never repeated; any other 4xx or a returned model that differs stops the run",
+  "budget_usd": 100.0,
+  "input_margin": 1.1,
+  "workspace_header": "not sent",
+  "not_sent": "tools, web search, MCP servers, server-side fallbacks, sampling parameters, prompt caching, inference_geo, fast mode",
+  "system_prompt_sha256": "f8698c98e3742f40ad329b1f2d4df40e4eebf482d1990ec36fc8c8ca93945e40",
+  "answer_schema_sha256": "31f86409999f8e88212d79079edf199437d133db9bc9d0c977c2b6d288452d4c",
+  "retrieval": {
+   "method": "hybrid",
+   "mode": "edition_filter",
+   "k": 5,
+   "token_budget": 256
+  }
+ },
+ "pricing": {
+  "model": "claude-opus-5-5",
+  "currency": "USD",
+  "unit": "per million tokens",
+  "input": 4.0,
+  "cache_write_5m": 5.0,
+  "cache_write_1h": 8.0,
+  "cache_read": 0.2,
+  "output": 20.0,
+  "source": "https://platform.claude.com/docs/en/about-claude/pricing.md (Model pricing table, row Claude Opus 5.5)",
+  "retrieved": "2026-11-14",
+  "source_sha256": "048ccb65c7aa39a16f8475d92bec1730bc9e42c63b79085e2f0f1e6e5f867cd1",
+  "notes": "Standard first-party rates: no batch discount, no fast mode, global inference (the 1.1x US data-residency multiplier applies only when a response reports inference_geo us). Thinking tokens are billed as output tokens. Costs computed from these rates are calculated costs, not a verified invoice."
+ },
+ "rubric_sha256": "654ca467de6eda5b90f9ba0034f7813aa3ab36961daf2834054ff14445125f4d",
+ "rows": [
+  {
+   "case": "D1",
+   "input_tokens": 3148,
+   "ceiling_usd": 0.653852,
+   "request_sha256": "b964337a18fe6013c20e44c4bd302c3225a68471fc2c000d479e918f3da48509"
+  },
+  {
+   "case": "D2",
+   "input_tokens": 3520,
+   "ceiling_usd": 0.655492,
+   "request_sha256": "b7bab319d90f2d1f82c934629cfa67761b03e1225b0c78d652ec55706b078ace"
+  },
+  {
+   "case": "D3",
+   "input_tokens": 3370,
+   "ceiling_usd": 0.654832,
+   "request_sha256": "e0c17b7b8b8a32a24d8bc779d111ec097693ec2288b052df784e1427cbf663fa"
+  },
+  {
+   "case": "D4",
+   "input_tokens": 3369,
+   "ceiling_usd": 0.654824,
+   "request_sha256": "350aa89c86f553686345a3ccc244c6a818b01b05c4e74d205eff7cd95dc9faf4"
+  },
+  {
+   "case": "D5",
+   "input_tokens": 3533,
+   "ceiling_usd": 0.655548,
+   "request_sha256": "c921e066a11d52a4acbf8d7d61704cf01aa89b7ce29a03d7e156ecc3c312fab3"
+  },
+  {
+   "case": "D6",
+   "input_tokens": 3712,
+   "ceiling_usd": 0.656336,
+   "request_sha256": "cd277cbf8c30b76ff6b38b1f12cc34649143febc082cb83aee4573ebff69b205"
+  },
+  {
+   "case": "U1",
+   "input_tokens": 3487,
+   "ceiling_usd": 0.655344,
+   "request_sha256": "072df89939af9483c04d98513bc5b04c8fee3d724e1e74846a0b90cb14e43f44"
+  },
+  {
+   "case": "U2",
+   "input_tokens": 3157,
+   "ceiling_usd": 0.653892,
+   "request_sha256": "25ee51c4ee5d9780d1add9de4964a4e3117e85807168e72b57f3f6fa8e8a85d9"
+  }
+ ],
+ "not_attempted": [],
+ "totals": {
+  "first_pass_ceiling_usd": 5.24012,
+  "worst_case_ceiling_usd": 6.56336,
+  "committed_before_usd": 0,
+  "budget_usd": 100.0
+ }
+}

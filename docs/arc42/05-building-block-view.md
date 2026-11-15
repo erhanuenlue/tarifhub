@@ -32,14 +32,14 @@ The two L3 apps **KassenFlow** and **MeldePilot** are the same kind of out-of-sc
 
 ![C4 component view: ingestion](../diagrams/c4-component-ingestion.svg)
 
-The ingestion service is the only place where AI runs, and only at the `map` step, consistent with the value-path invariant: no AI computes or mutates a billing value at serve time.
+Within the services, ingestion is the only place where live AI runs, and only at the `map` step, consistent with the value-path invariant: no AI computes or mutates a billing value at serve time. The commentary pilot is a second, read-only AI seam outside every service ([below](#outside-the-services-the-commentary-rag-pilot), [ADR-025](../adr/025-commentary-retrieval.md)).
 
 | Component | Module (under `services/ingestion/src/tarifhub_ingest/`) | Responsibility |
 |-----------|-----------------------------------------------------------|----------------|
 | Adapters | `adapters/bag_eal.py`, `adapters/bag_epl.py` | Source-specific acquisition and parsing into raw rows: BAG EAL (XLSX) and the BAG ePL Spezialitätenliste (the specialty medicines list, FHIR R5 NDJSON, streamed and traversed inside the adapter, [ADR-015](../adr/015-epl-sl-fhir-ingestion.md)) |
 | Parsers | `parsers/xlsx_parser.py` | Generic XLSX parsing into raw row dicts with a pinned parser version. The EAL and SL sources parse inside their own adapters, so there is no standalone FHIR parser module |
 | Mapper | `mappers/tariff_mapper.py` (`map_raw`) | Deterministic mapping to the canonical `TariffRecord`, owns **all billing values** |
-| `ai_map` seam | `mappers/tariff_mapper.py` (`ai_map`, `AIRefinement`) | The **only live-AI point in the system**: fill-only on non-billing fields, deterministic gap-gate decides whether to call at all, structured output via `messages.parse`, deterministic fallback to `map_raw` without an API key |
+| `ai_map` seam | `mappers/tariff_mapper.py` (`ai_map`, `AIRefinement`) | The **only live-AI point inside the services** (the commentary pilot outside them is described [below](#outside-the-services-the-commentary-rag-pilot)): fill-only on non-billing fields, deterministic gap-gate decides whether to call at all, structured output via `messages.parse`, deterministic fallback to `map_raw` without an API key |
 | Validator | `validators/tariff_validator.py` (`validate`, `ValidationResult`) | Schema and business-rule checks. Failures fail closed into review |
 | Confidence scorer | `confidence/scorer.py` (`score`) | Deterministic harmonisation-confidence score per record |
 | Review routing | `ingestion/pipeline.py` (`requires_review`) | Flags records with confidence below `TARIFHUB_REVIEW_THRESHOLD` (default 0.85) or failed validation for human review |
@@ -92,3 +92,45 @@ The approve action, where a proposal becomes a frozen record with a new version 
 Explain panel (UC-09, live): the explanation renders on the labelled AI surface. It is deterministic and rule-generated, assembled only from record fields and prefixed `[deterministic]`, never invented, while the matching record versions below it appear verbatim with their version and truncated `record_hash` chips. The panel takes a tariff code plus an optional clinical-context field, which is de-identified server-side so that the serving explain seam receives the code alone and no model is ever called.
 
 ![TarifGuard explain panel](../img/console/explain-panel.png)
+
+## Outside the services: the commentary RAG pilot
+
+`tools/commentary_rag/` answers questions about the BAG commentaries on the changes to the Analysenliste with passages cited by edition, document and page ([ADR-025](../adr/025-commentary-retrieval.md)). It is a local command-line tool, not a container: it has no image, no port and no database connection, and serving, MCP and the console neither call it nor show its output. It depends on the ingestion service in one direction only, importing the manifest loader with its hash check and the e5 embedder; no service imports the tool.
+
+```mermaid
+flowchart TB
+  MAN["data/manifests/bag-al.json<br/>commentary PDF per edition, SHA-256"]
+  ING["services/ingestion, imported read-only:<br/>manifest loader + hash check, e5 embedder"]
+  subgraph PILOT["tools/commentary_rag: local tool, no database access"]
+    direction TB
+    COR["corpus.py<br/>verified bytes, pdftotext, page-bounded passages"]
+    RET["retrieval.py<br/>BM25 + e5 + RRF over the selected editions"]
+    EVA["evaluation.py, run_eval.py<br/>dev cases, retrieval metrics"]
+    GEN["generation.py, run_generation.py<br/>requests, schema and citation checks, budget ledger"]
+    ANS["answers.py<br/>deterministic answer checks"]
+    COR --> RET
+    RET --> EVA
+    RET --> GEN
+    GEN --> ANS
+  end
+  MAN --> COR
+  ING -.-> COR
+  ING -.-> RET
+  GEN <--> API["Anthropic Messages API<br/>claude-opus-5-5"]
+  EVA --> RES["results/, committed JSON<br/>rankings, metrics, ledger, usage, cost"]
+  ANS --> RES
+  GEN --> LOC["local/, git-ignored<br/>passage text, raw requests and responses, review"]
+```
+
+> **Figure: The commentary pilot and its dependencies.** The pilot reads the hash-verified commentary PDFs through the ingestion manifest loader, ranks their passages and sends the top five per question to Claude. Dashed: imports from the ingestion service. The pilot has no edge to the database or to the serving, MCP and console containers above.
+
+| Module | Responsibility |
+|---|---|
+| `corpus.py` | Reads each edition's commentary PDF through the ingestion manifest loader and hash check and hands the verified bytes to `pdftotext`. Builds passages that never cross a page, each carrying its edition, document SHA-256, BAG URL, PDF page, printed page label (checked against the page index) and section |
+| `retrieval.py` | BM25, multilingual-e5 (the ingestion embedder) and their reciprocal rank fusion over an explicit edition selection: a passage of an unselected edition is never a candidate |
+| `evaluation.py`, `run_eval.py` | The dev cases with verbatim evidence quotes, the retrieval metrics, the recorded retrieval runs and their recomputation from the stored rankings |
+| `generation.py` | One Messages request per case (the question, the selected editions and five passages with provenance, sent as escaped, untrusted data, and nothing else), the answer schema (status, claims with passage citations, missing evidence), local schema and citation-membership checks, and the spending guard (token count, reserved ceiling, append-only ledger, attempt cap, no client retries) |
+| `answers.py` | Deterministic checks of the answers that keep retrieval misses, generation failures and abstention apart. Checks, not semantic or legal validation |
+| `run_generation.py` | The steps `prepare` (retrieval rerun and contexts), `plan` (token counts and cost ceilings), `run` (requests, then the record) and `report`. No step overwrites an output an earlier run wrote |
+
+Implemented and recorded: retrieval on eight dev cases and one generation run, both described in [§10](10-quality-requirements.md#commentary-rag-pilot-recorded-evaluation). Not built: a service, an API, MCP or console integration, a container, passage storage in PostgreSQL and any production monitoring. Planned in the second progress report and not yet decided as architecture: a bounded agent with read-only tools, a change brief joining the deterministic [edition comparison](../adr/023-al-edition-comparison.md) with the cited commentary answer, and a held-out test set rated blind by a second person. Each would need its own decision before it touches a service.
