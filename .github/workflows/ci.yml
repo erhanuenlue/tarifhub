@@ -110,6 +110,43 @@ jobs:
                   sys.exit("the Postgres manifest tests did not all run")
           PY
 
+  # The BAG commentary RAG pilot (tools/commentary_rag, ADR-025) lives outside every service, so
+  # the per-service loop above never collects it. Its own runner keeps the ingestion `ai` extra
+  # (the locked anthropic client) out of the dev-only service environments. No secret is passed:
+  # the provider is a mocked HTTP transport, the embedder a stand-in, and HF_HUB_OFFLINE refuses
+  # any model download. The junit check fails the job if a test is skipped or a test file was
+  # not collected (the suite also refuses to start without anthropic or pdftotext).
+  commentary-rag:
+    runs-on: ubuntu-latest
+    env:
+      UV_FROZEN: "1"
+      HF_HUB_OFFLINE: "1"
+    steps:
+      - uses: actions/checkout@v6
+      - uses: astral-sh/setup-uv@v8.2.0 # exact tag: astral-sh has no floating v8 alias yet
+      - name: Poppler (pdftotext reads the generated test PDFs)
+        run: sudo apt-get update -q && sudo apt-get install -y -q poppler-utils
+      - name: Lint + offline tests of the commentary pilot (ingestion lockfile, ai + dev extras)
+        run: |
+          (cd services/ingestion && uv sync --quiet --frozen --extra ai --extra dev)
+          uvx ruff check --config services/ingestion/pyproject.toml tools/commentary_rag
+          uv run --project services/ingestion --no-sync python -m pytest tools/commentary_rag -q -rs --junitxml="$RUNNER_TEMP/commentary-rag.xml"
+          python3 - "$RUNNER_TEMP/commentary-rag.xml" tools/commentary_rag <<'PY'
+          import collections
+          import pathlib
+          import sys
+          import xml.etree.ElementTree as ET
+          suite = ET.parse(sys.argv[1]).getroot()
+          suite = suite if suite.tag == "testsuite" else suite.find("testsuite")
+          tests, skipped = int(suite.get("tests")), int(suite.get("skipped"))
+          per_file = collections.Counter(c.get("classname").rsplit(".", 1)[-1] for c in suite.iter("testcase"))
+          files = sorted(p.stem for p in pathlib.Path(sys.argv[2]).glob("test_*.py"))
+          print(f"{tests} pilot tests ran, {skipped} skipped: {dict(sorted(per_file.items()))}")
+          missing = [f for f in files if not per_file[f]]
+          if skipped or missing or not tests:
+              sys.exit(f"the pilot suite did not run in full (skipped {skipped}, files without tests {missing})")
+          PY
+
   console:
     runs-on: ubuntu-latest
     steps:
