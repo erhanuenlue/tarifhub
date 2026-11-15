@@ -3,7 +3,8 @@
 Dense ranking uses a stand-in embedder with fixed vectors; the real multilingual-e5 model is
 used only in the recorded evaluation run.
 
-    uv run --project services/ingestion --no-sync python -m pytest tools/commentary_rag -q
+    uv run --project services/ingestion --frozen --offline --extra ai --extra dev \\
+        python -m pytest tools/commentary_rag -q
 """
 
 from __future__ import annotations

@@ -176,6 +176,11 @@ as the generator), so they are not independent and decide nothing:
   sheet are local and git-ignored; the public record holds hashes, counts, usage and cost, no
   answer text. No credential or workspace ID is stored anywhere.
 - The answers come from one run each; the model is not deterministic, and no repeat was made.
+- Update 2026-11-15, before publication: `run_generation.py` and `run_eval.py` changed again
+  after the review, so the published files differ from the hashes the record pins for them.
+  Every step and `run_eval.py --out` now refuse to overwrite an existing output, and the
+  offline tests no longer skip for a missing dependency. No request, check or metric changed,
+  the run did not exercise this code, and no record of the run was rewritten.
 
 ## Assessment at the time of the run
 

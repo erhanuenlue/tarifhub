@@ -259,6 +259,8 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--compare", type=Path, nargs=2, metavar=("BEFORE", "AFTER"),
                         help="compare two records; with --out, also write the comparison JSON")
     args = parser.parse_args(argv)
+    if args.out is not None and args.out.exists():  # recorded runs are evidence, never replaced
+        raise SystemExit(f"refused: {args.out} already exists; write a new record instead")
     if args.compare:
         before, after = (json.loads(p.read_text(encoding="utf-8")) for p in args.compare)
         diff = evaluation.compare_records(before, after)

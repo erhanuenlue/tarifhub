@@ -50,6 +50,8 @@ on eight dev cases with no held-out test, not an accuracy figure.
     passage identities removed, added or changed and the evidence items whose passages moved.
 - `test_corpus.py`, `test_retrieval.py`, `test_evaluation.py`: offline tests with small generated
   PDFs, a stand-in tokenizer and a stand-in embedder.
+- `conftest.py`: stops the suite with a message when the `anthropic` client or `pdftotext` is
+  missing, so no test is skipped for a missing dependency.
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the
   answer schema (status, claims with passage citations, missing evidence), local validation
@@ -62,15 +64,17 @@ on eight dev cases with no held-out test, not an accuracy figure.
   counts, planned cost), `run` (requests, then `report`), `report` (public record and local
   review sheet from the ledger and local artifacts, no API call; `--sheet-only` keeps the record).
   Outputs carry the date of their own step (`--tag`, default today); `--prepared` names the
-  `prepare` outputs to use (default 2026-11-14).
+  `prepare` outputs to use (default 2026-11-14). No step overwrites an output an earlier run
+  wrote (added 2026-11-15, after the recorded run).
 - `rubric.json`: the answer rubric, **AI-drafted before any generation and used unchanged in
   Erhan's review of 2026-11-15** (which notes that some support quotes, such as D1-R5 and D6-R3,
   are shortened anchors): required claims with verified support quotes and optional term checks,
   optional background, expected status.
 - `pricing.json`: the `claude-opus-5-5` prices used for calculated costs, with source URL, date
   and page hash.
-- `test_generation.py` (needs the `ai` extra), `test_answers.py`: offline tests of the generation
-  run against a mocked provider HTTP boundary and of the answer checks.
+- `test_generation.py`, `test_answers.py`, `test_run_generation.py`: offline tests of the
+  generation run against a mocked provider HTTP boundary, of the answer checks, and of the steps'
+  refusal to overwrite earlier outputs.
 - `results/2026-11-14-retrieval-rerun.json`: the pre-generation rerun of the corrected run
   (identical rankings, scores, metrics and passages).
 - `results/2026-11-15-generation-plan.json` (the plan the run used, no workspace header) and
@@ -102,10 +106,14 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests (no model, no network; poppler's `pdftotext` must be installed):
+Offline tests, all 43 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+`ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
+them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
+suite in its own `commentary-rag` job):
 
 ```bash
-uv run --project services/ingestion --no-sync python -m pytest tools/commentary_rag -q
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion \
+  --frozen --extra ai --extra dev python -m pytest tools/commentary_rag -q
 ```
 
 Recorded run (the model must already be in the Hugging Face cache; `--offline` and
@@ -138,14 +146,8 @@ SentenceTransformer's own preprocessing.
 
 ## Generation
 
-Offline tests (the `ai` extra provides the locked `anthropic` client; no key, no network: the
-provider is a mocked HTTP transport, and the live key is removed from the test environment):
-
-```bash
-uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
-  python -m pytest tools/commentary_rag -q
-(cd services/ingestion && uv sync --frozen --offline --extra dev)
-```
+The generation tests use the offline command above: the provider is a mocked HTTP transport,
+and the live key is removed from the test environment.
 
 The pilot, from the repository root. `prepare` needs the cached e5 model and no network; `plan`
 and `run` read `ANTHROPIC_API_KEY` from the root `.env` through uv (presence is checked, the value
@@ -167,9 +169,10 @@ uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
 (cd services/ingestion && uv sync --frozen --offline --extra dev)
 ```
 
-Do not run `report` again for the 2026-11-15 run: it re-renders
-`local/2026-11-15-review-sheet.md` with empty ratings, and the completed review is checked against
-that sheet's hash. Erhan's ratings live in `local/2026-11-15-human-review.json`.
+`report` refuses for the 2026-11-15 run, since its record and review sheet exist: re-rendering
+`local/2026-11-15-review-sheet.md` would empty the ratings the completed review was checked
+against (by hash). Erhan's ratings live in `local/2026-11-15-human-review.json`. Every other step
+refuses in the same way when its output exists.
 
 Fixed settings: `claude-opus-5-5`, effort `max` (the repository's quality-before-cost rule; the
 API default for this model is `medium`), adaptive thinking, `max_tokens` 32,000 (thinking and
@@ -188,6 +191,12 @@ reported, never repaired; one HTTP call per attempt; retries within the cap; blo
 run; a request whose ceiling would pass the budget is never sent; a rerun never repeats a valid
 answer; the answer checks' denominators. What they miss: real model behaviour, real token counts,
 real prices and whether a cited passage supports a claim.
+
+**Code after the recorded run.** The 2026-11-15 run record names the tool files it ran with by
+SHA-256 (`run.environment.tool_files_sha256`, uncommitted on top of `88cd681`). Changed since, on
+2026-11-15: the steps and `run_eval.py --out` refuse to overwrite an existing output, and the
+tests no longer skip for a missing dependency. Neither changes a request, a check or a metric,
+and the run did not exercise them.
 
 ## Limitations
 

@@ -15,12 +15,12 @@ from pathlib import Path
 
 import pytest
 
-anthropic = pytest.importorskip("anthropic", reason="needs the ingestion 'ai' extra (anthropic)")
-import httpx  # noqa: E402
+import anthropic
+import httpx
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import generation  # noqa: E402
+import generation
 
 JUL = "2026-07-01"
 PRICING = generation.Pricing(input=4.0, output=20.0, cache_write_5m=5.0, cache_write_1h=8.0,

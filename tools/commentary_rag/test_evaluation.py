@@ -2,7 +2,8 @@
 
 Expected metric values are worked out by hand in the comments, independent of the code.
 
-    uv run --project services/ingestion --no-sync python -m pytest tools/commentary_rag -q
+    uv run --project services/ingestion --frozen --offline --extra ai --extra dev \\
+        python -m pytest tools/commentary_rag -q
 """
 
 from __future__ import annotations
@@ -150,8 +151,6 @@ RESULTS = Path(__file__).resolve().parent / "results"
 @pytest.mark.parametrize("name", ["2026-11-14-retrieval.json",
                                   "2026-11-14-retrieval-corrected.json"])
 def test_the_recorded_run_recomputes_exactly_and_no_input_was_truncated(name):
-    if not (RESULTS / name).exists():
-        pytest.skip(f"no recorded run {name}")
     record = json.loads((RESULTS / name).read_text(encoding="utf-8"))
 
     assert evaluation.recompute(record) == []
@@ -244,3 +243,19 @@ def test_load_cases_refuses_every_reference_the_corpus_does_not_support(tmp_path
         ("none", ()),
     ]
 
+
+@pytest.mark.parametrize("compare", [False, True])
+def test_run_eval_never_overwrites_an_existing_record(tmp_path, compare):
+    import run_eval  # noqa: PLC0415
+
+    existing = tmp_path / "record.json"
+    existing.write_text("recorded\n", encoding="utf-8")
+    records = [str(RESULTS / "2026-11-14-retrieval.json"),
+               str(RESULTS / "2026-11-14-retrieval-corrected.json")]
+    argv = ["--compare", *records] if compare else []
+
+    # Without the refusal a run would need the e5 model; a comparison would write at once.
+    with pytest.raises(SystemExit, match="refused: .*already exists"):
+        run_eval.main([*argv, "--out", str(existing)])
+
+    assert existing.read_text(encoding="utf-8") == "recorded\n"

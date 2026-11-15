@@ -68,7 +68,17 @@ def _now() -> str:
 
 
 def _rel(path: Path) -> str:
-    return str(path.relative_to(REPO))
+    return str(path.relative_to(REPO)) if path.is_relative_to(REPO) else str(path)
+
+
+def _refuse_existing(*paths: Path) -> None:
+    """A step never replaces what an earlier run wrote: its records are evidence."""
+
+    existing = [_rel(p) for p in paths if p.exists()]
+    if existing:
+        raise SystemExit(f"refused: {', '.join(existing)} already exists; a step never "
+                         "overwrites an earlier output (use a new --tag, or move the file "
+                         "deliberately)")
 
 
 def _write_json(path: Path, value) -> None:
@@ -121,10 +131,11 @@ def reproduction(saved: dict, rerun: dict) -> dict:
 
 
 def prepare(args: argparse.Namespace) -> int:
+    paths = _paths(args.tag, args.tag)
+    _refuse_existing(paths["rerun"], paths["contexts"])
     import corpus  # noqa: PLC0415 - prepare alone needs the e5 stack
     import run_eval  # noqa: PLC0415
 
-    paths = _paths(args.tag, args.tag)
     saved = json.loads(CORRECTED.read_text(encoding="utf-8"))
     rerun = run_eval._run(argparse.Namespace(  # the same code path as the saved run
         manifest=args.manifest, cases=HERE / "cases.json", token_budget=256, k=5,
@@ -264,6 +275,7 @@ def _configuration(config: generation.Config) -> dict:
 
 def plan(args: argparse.Namespace) -> int:
     paths = _paths(args.tag, args.prepared)
+    _refuse_existing(paths["plan"])
     items, _ = _items(paths)
     config = generation.Config()
     pricing, pricing_data = _pricing()
@@ -294,6 +306,7 @@ def plan(args: argparse.Namespace) -> int:
 
 def run(args: argparse.Namespace) -> int:
     paths = _paths(args.tag, args.prepared)
+    _refuse_existing(paths["result"], paths["record"], paths["sheet"])
     items, _ = _items(paths)
     config = generation.Config()
     pricing, _ = _pricing()
@@ -309,11 +322,13 @@ def report(args: argparse.Namespace) -> int:
     """Rebuild the public record and the review sheet from the ledger and local artifacts."""
 
     paths = _paths(args.tag, args.prepared)
+    sheet_only = getattr(args, "sheet_only", False)
+    _refuse_existing(paths["sheet"], *(() if sheet_only else (paths["record"],)))
     items, data = _items(paths)
     config = generation.Config()
     _, pricing_data = _pricing()
     result = json.loads(paths["result"].read_text(encoding="utf-8"))
-    if getattr(args, "sheet_only", False):  # re-render the local sheet; the record stays as written
+    if sheet_only:  # re-render the local sheet; the record stays as written
         record = json.loads(paths["record"].read_text(encoding="utf-8"))
     else:
         record = build_record(items, data, result, paths, config, pricing_data)

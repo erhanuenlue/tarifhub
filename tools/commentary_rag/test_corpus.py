@@ -4,14 +4,14 @@ Each test writes a tiny real PDF and a manifest into a temporary repository, so 
 loader, the hash check and pdftotext run end to end. Token counts come from a stand-in counter
 (one token per word); the real e5 tokenizer is exercised in the recorded evaluation run.
 
-    uv run --project services/ingestion --no-sync python -m pytest tools/commentary_rag -q
+    uv run --project services/ingestion --frozen --offline --extra ai --extra dev \\
+        python -m pytest tools/commentary_rag -q
 """
 
 from __future__ import annotations
 
 import hashlib
 import json
-import shutil
 import sys
 from pathlib import Path
 
@@ -21,8 +21,6 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import corpus
 import retrieval
-
-pytestmark = pytest.mark.skipif(shutil.which("pdftotext") is None, reason="needs poppler pdftotext")
 
 JUL = "2026-07-01"
 JAN = "2026-01-01"
