@@ -1,0 +1,266 @@
+{
+ "schema": 1,
+ "kind": "public aggregate summary of the completed human document-grounding review of run 2026-11-15-generation",
+ "run_id": "2026-11-15-generation",
+ "reviewer": "Erhan Ünlü",
+ "review_confirmed_on": "2026-11-15",
+ "recorded_at": "2026-11-15T11:49:40+00:00",
+ "method": "One reviewer (Erhan Ünlü), not blinded: cases, rubric, earlier result reports and the model were known. Each of the eight stored answers was judged against the passages and provenance the generator actually received, the rubric and both original BAG commentaries: source support and relevance of every structured claim, coverage of every required rubric claim, the case and its reference, the stated missing evidence, and each case overall. An AI assistant supported presentation and recording and made no ratings. The detailed ratings, comments and answers stay in the git-ignored local directory.",
+ "limitations": [
+  "Eight AI-drafted development cases (judged appropriate in this review); D1 is the Zwischenbericht 1 demo case; no held-out evaluation.",
+  "One reviewer, not blinded, no second rater, no agreement statistic.",
+  "One generation run per case with one model and one configuration; no repeat, no variance estimate.",
+  "Support is judged against the five passages and metadata each request received; a retrieval miss is not repaired by other PDF pages.",
+  "A document-grounding review, not an independent expert validation and not a professional medical or legal certification.",
+  "The results describe this run on these cases; they are not an accuracy figure and do not generalise to other questions."
+ ],
+ "results": {
+  "claims": {
+   "total": 48,
+   "source_support": {
+    "yes": 48
+   },
+   "relevance": {
+    "no": 7,
+    "partly": 14,
+    "yes": 27
+   },
+   "note": "Support and relevance are separate judgements: a supported claim can still be irrelevant to the question."
+  },
+  "required_claims": {
+   "total": 19,
+   "coverage": {
+    "no": 5,
+    "yes": 14
+   },
+   "coverage_by_case": {
+    "D2": {
+     "yes": 3
+    },
+    "D3": {
+     "yes": 2
+    },
+    "D4": {
+     "yes": 3
+    },
+    "D5": {
+     "yes": 2
+    },
+    "D6": {
+     "yes": 4
+    },
+    "D1": {
+     "no": 5
+    }
+   },
+   "note": "14 of 19 across all six cases with required claims; the 5 not covered are all D1's. Restricting the count to the five cases whose evidence was retrieved (14 of 14) would hide the end-to-end failure."
+  },
+  "cases": {
+   "behaviour_appropriate": {
+    "partly": 1,
+    "yes": 7
+   },
+   "end_to_end": {
+    "D2": "answered",
+    "D3": "answered",
+    "D4": "answered",
+    "D5": "answered",
+    "D6": "answered",
+    "U1": "appropriate_abstention",
+    "U2": "appropriate_abstention",
+    "D1": "not_answered_retrieval_failure"
+   },
+   "note": "U1 and U2 abstained appropriately; this means the selected commentary passages do not state the answer, not that no tariff or change exists. D1's abstention was justified by the retrieval miss, but its question remains unanswered."
+  },
+  "per_case": {
+   "D2": {
+    "answer_status": "answered",
+    "end_to_end": "answered",
+    "behaviour_appropriate": "yes",
+    "claims": 6,
+    "claims_supported": 6,
+    "claim_relevance": {
+     "partly": 1,
+     "yes": 5
+    },
+    "required_claims": 3,
+    "required_covered": 3,
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "no scale value (judged correct search anchors, not complete proof of every sub-claim)"
+   },
+   "D3": {
+    "answer_status": "answered",
+    "end_to_end": "answered",
+    "behaviour_appropriate": "yes",
+    "claims": 6,
+    "claims_supported": 6,
+    "claim_relevance": {
+     "partly": 2,
+     "yes": 4
+    },
+    "required_claims": 2,
+    "required_covered": 2,
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "no scale value (judged correct search anchors, not complete proof of every sub-claim)"
+   },
+   "D4": {
+    "answer_status": "answered",
+    "end_to_end": "answered",
+    "behaviour_appropriate": "yes",
+    "claims": 6,
+    "claims_supported": 6,
+    "claim_relevance": {
+     "partly": 2,
+     "yes": 4
+    },
+    "required_claims": 3,
+    "required_covered": 3,
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "no scale value (judged correct search anchors, not complete proof of every sub-claim)"
+   },
+   "D5": {
+    "answer_status": "answered",
+    "end_to_end": "answered",
+    "behaviour_appropriate": "yes",
+    "claims": 7,
+    "claims_supported": 7,
+    "claim_relevance": {
+     "partly": 2,
+     "yes": 5
+    },
+    "required_claims": 2,
+    "required_covered": 2,
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "no scale value (judged correct search anchors, not complete proof of every sub-claim)"
+   },
+   "D6": {
+    "answer_status": "answered",
+    "end_to_end": "answered",
+    "behaviour_appropriate": "yes",
+    "claims": 13,
+    "claims_supported": 13,
+    "claim_relevance": {
+     "no": 1,
+     "partly": 3,
+     "yes": 9
+    },
+    "required_claims": 4,
+    "required_covered": 4,
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "no scale value (judged correct search anchors, not complete proof of every sub-claim)"
+   },
+   "U1": {
+    "answer_status": "insufficient_evidence",
+    "end_to_end": "appropriate_abstention",
+    "behaviour_appropriate": "yes",
+    "claims": 0,
+    "claims_supported": "not_applicable (no structured claims)",
+    "claim_relevance": "not_applicable (no structured claims)",
+    "required_claims": 0,
+    "required_covered": "not_applicable (no required claims)",
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "not_applicable"
+   },
+   "U2": {
+    "answer_status": "insufficient_evidence",
+    "end_to_end": "appropriate_abstention",
+    "behaviour_appropriate": "yes",
+    "claims": 0,
+    "claims_supported": "not_applicable (no structured claims)",
+    "claim_relevance": "not_applicable (no structured claims)",
+    "required_claims": 0,
+    "required_covered": "not_applicable (no required claims)",
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "not_applicable"
+   },
+   "D1": {
+    "answer_status": "insufficient_evidence",
+    "end_to_end": "not_answered_retrieval_failure",
+    "behaviour_appropriate": "partly",
+    "claims": 10,
+    "claims_supported": 10,
+    "claim_relevance": {
+     "no": 6,
+     "partly": 4
+    },
+    "required_claims": 5,
+    "required_covered": 0,
+    "case_appropriate": "yes",
+    "reference_expectation": "yes",
+    "gold_evidence": "no scale value (judged correct search anchors, not complete proof of every sub-claim)"
+   }
+  }
+ },
+ "not_settled_by_the_review": [
+  "D2.case_assessment.gold_evidence (scale value)",
+  "D2.overall.relevance",
+  "D3.case_assessment.gold_evidence (scale value)",
+  "D3.overall.relevance",
+  "D4.case_assessment.gold_evidence (scale value)",
+  "D4.overall.relevance",
+  "D5.case_assessment.gold_evidence (scale value)",
+  "D5.overall.relevance",
+  "D6.case_assessment.gold_evidence (scale value)",
+  "D6.overall.relevance",
+  "U1.overall.relevance",
+  "U2.overall.relevance",
+  "D1.case_assessment.gold_evidence (scale value)",
+  "D1.overall.relevance"
+ ],
+ "distinctions": {
+  "citation_membership_vs_semantic_support": {
+   "citation_membership (deterministic check)": "54 of 54 citations inside their own request's context",
+   "semantic_support (human review)": "48 of 48 structured claims judged supported by their cited passages and metadata"
+  },
+  "support_vs_relevance": {
+   "no": 7,
+   "partly": 14,
+   "yes": 27
+  },
+  "completeness_vs_abstention": {
+   "required_claims_covered": "14 of 19",
+   "expected_abstentions_appropriate": "2 of 2 (U1, U2)",
+   "abstention_on_retrieval_miss": "D1: partly appropriate; question not answered"
+  },
+  "calculated_cost_vs_invoice": "USD 1.930804 calculated from provider-reported usage and pricing.json; not reconciled with an invoice",
+  "development_set_vs_general_performance": "eight development cases only; no held-out test"
+ },
+ "run_facts_from_the_record": {
+  "valid_answers": "8 of 8 on first attempts",
+  "latency_s": {
+   "sum": 741.0,
+   "median": 50.3,
+   "min": 36.253,
+   "max": 211.419
+  },
+  "calculated_cost_usd": 1.930804,
+  "ledger_entries": 16
+ },
+ "sources_sha256": {
+  "results/2026-11-15-generation.json": "6cde1ad1bb11dd40434db184b6d3d8f4713a2692424cc0645d08ad7a062663d6",
+  "results/generation-ledger.jsonl": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+  "cases.json": "9d471418546aebee350982c79d14890384f7735cc4ff843c6ae1642dff86441c",
+  "rubric.json": "654ca467de6eda5b90f9ba0034f7813aa3ab36961daf2834054ff14445125f4d",
+  "local/2026-11-14-contexts.json (git-ignored)": "cc7a46bfef25e142ef71b7c0bf0a1874cdfb1dd33dbe0dae4ee18bd8f410f276",
+  "local/2026-11-15-review-sheet.md (git-ignored)": "c905456898a258758fe97a2032645ebb565476eb20c1d846cfcf2b56355b8c93",
+  "local/TarifHub_RAG_Bewertung_Erhan_2026-11-15.md (git-ignored, approved review)": "52efe018181151a2e086a1ec1afb59cf8d1ae2ebb985a096e56af351e4861039",
+  "local/2026-11-15-human-review.json (git-ignored, structured review)": "3baa45240d37c1c04578f078706bc6a66a01764cbf3982bb5eb3c5a8a8bd0dcc",
+  "local/2026-11-15-generation/responses/D2-1.json (git-ignored)": "baa987d71e63228868d5829bd4cad09211e9bacd309a45af25229b71a7eb9df2",
+  "local/2026-11-15-generation/responses/D3-1.json (git-ignored)": "cfca8fb331ce2b26ea7dfe49cd58810fcffdbf2dabdebd8bde37a460c8aca4e5",
+  "local/2026-11-15-generation/responses/D4-1.json (git-ignored)": "9d477040ae7ef7ad5ab66656c5fb404ba298018479da14f987e42819b5caeb6a",
+  "local/2026-11-15-generation/responses/D5-1.json (git-ignored)": "ca6c074b4bfa22244998d9ac15b5c0d3969f3d30eda6e64ac15cbb9b56ee4d9f",
+  "local/2026-11-15-generation/responses/D6-1.json (git-ignored)": "d7368226ab5492dc274e7e68f794a6a983d3069b62ecdbcb8df1fe134ab182b3",
+  "local/2026-11-15-generation/responses/U1-1.json (git-ignored)": "96bbdad77399223ca7cc0efcd04dd36f5f481f3583d3f49532da7855fa1b2eaf",
+  "local/2026-11-15-generation/responses/U2-1.json (git-ignored)": "3d136ca4c406c25ae8a3a146893bb4100854862699cd639be458999c388f3edb",
+  "local/2026-11-15-generation/responses/D1-1.json (git-ignored)": "33e7c9b54a82bb1c75789432167c54a9e06dd33c06911c57eed9d14a93bdac3c",
+  "BAG commentary 2026-01-01": "0d335bd46adec0254a91e260cebe976f86fd0cfb54bb97ea8ecf98cadfd7e4fc",
+  "BAG commentary 2026-07-01": "fe1856df9f7d0023aac52e13dc61a0055a7105b4810f18cc8822366625af5105"
+ }
+}

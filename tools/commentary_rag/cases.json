@@ -1,0 +1,102 @@
+{
+  "schema": 1,
+  "status": "AI-drafted by Claude (claude-opus-5-5) on 2026-11-14 from the pdftotext output of the two hash-verified BAG commentaries. Pending Erhan's review: no reference, quote or expectation here has been checked by a person.",
+  "split": "dev/pilot only. None of these cases is a held-out test; D1 is the Zwischenbericht 1 demo case, which that report keeps outside the locked test set.",
+  "relevance_unit": "An evidence item is a verbatim quote (NFC, whitespace folded) on one page of one edition's commentary. A passage covers it when it is from that edition and page and contains the quote. Cases of kind no_supporting_evidence have no items: their Evidence Recall@5 and MRR@5 are undefined, never 0.",
+  "cases": [
+    {
+      "id": "D1",
+      "kind": "evidence_expected",
+      "origin": "Zwischenbericht 1 demo case (Beispielanfrage, p. 3); used before, so dev only",
+      "question": "Was hat sich zum 1. Juli 2026 bei den Positionen 4700.00 und 1368.00 geändert? Erkläre den dokumentierten Zusammenhang und zeige Belege, Gültigkeit und offene Prüfpunkte.",
+      "target_editions": ["2026-07-01"],
+      "reference_expectation": "1368.00 rises from 59.4 TP to 64.4 TP because the Auftragstaxe 4700.00 falls by 5 TP from 21.6 TP to 16.6 TP, so the total payment for the newborn screening stays the same (sole provider: no fees for service, the centralisation argument does not apply). In force on 1 July 2026; the 1368.00 tariff stays under evaluation until 30 June 2028 and is to be recalculated in transAL-2.",
+      "context_not_required": "2026-07-01 p. 4, section 2.4: the general cut of the Auftragstaxe by CHF 5 (4700.00 is not named there).",
+      "evidence": [
+        {"edition": "2026-07-01", "page": 6, "section": "2.5", "quote": "indem der Tarif für die Position 1368.00 von 59.4 TP auf 64.4 TP erhöht wird, da die Auftragstaxe um 5 TP von 21.6 TP auf 16.6 TP reduziert wird"},
+        {"edition": "2026-07-01", "page": 7, "section": "2.5", "quote": "Der Tarif der Position 1368.00 bleibt bis 30. Juni 2028 in Evaluation"}
+      ]
+    },
+    {
+      "id": "D2",
+      "kind": "evidence_expected",
+      "origin": "pilot case drafted on 2026-11-01, not used in any earlier report",
+      "question": "Welche Analysepositionen werden per 1. Juli 2026 um 20 Prozent gekürzt?",
+      "target_editions": ["2026-07-01"],
+      "reference_expectation": "Vitamin D (1006.00), Holotranscobalamin (1727.10) and Vitamin B12 bzw. Cobalamin (1749.00), each cut by 20 %, in force on 1 July 2026. Seven further positions are cut by 10 %.",
+      "evidence": [
+        {"edition": "2026-07-01", "page": 5, "section": "2.4", "quote": "Vitamin D 1006.00 20"},
+        {"edition": "2026-07-01", "page": 5, "section": "2.4", "quote": "Holotranscobalamin (Holo TC) 1727.10 20"},
+        {"edition": "2026-07-01", "page": 5, "section": "2.4", "quote": "Vitamin B12 bzw. Cobalamin 1749.00 20"}
+      ]
+    },
+    {
+      "id": "D3",
+      "kind": "evidence_expected",
+      "origin": "pilot case drafted on 2026-11-01; 1779.00 and 1474.10 also appear in the increment-3 workbook fixtures",
+      "question": "Mit welchen Positionen ist die neue Position 1779.00 nicht kumulierbar?",
+      "target_editions": ["2026-07-01"],
+      "reference_expectation": "Not cumulable with 1777.00 (sFlt-1/PlGF ratio) or with 1474.10 (Zytokine/Adhäsionsmoleküle/-Rezeptoren/-Inhibitoren); 1474.10 can no longer be billed for PlGF. In force on 1 July 2026.",
+      "evidence": [
+        {"edition": "2026-07-01", "page": 3, "section": "2.1", "quote": "Die Position 1779.00 ist nicht kumulierbar mit der Position 1777.00"},
+        {"edition": "2026-07-01", "page": 3, "section": "2.1", "quote": "Sie ist auch nicht mit der Position 1474.10 «Zytokine/Adhäsionsmoleküle/-Rezeptoren/-Inhibitoren» kumulierbar."}
+      ]
+    },
+    {
+      "id": "D4",
+      "kind": "evidence_expected",
+      "origin": "pilot case drafted on 2026-11-01",
+      "question": "Wie hat sich der Tarif der Position 1619.00 «Procalcitonin» per 1. Januar 2026 geändert?",
+      "target_editions": ["2026-01-01"],
+      "reference_expectation": "Cut from 75.6 TP (set by the 10 % linear cut of 1 August 2022, before that 84 TP) to 63.3 TP, recalculated from transparently reported, plausibility-checked costs; an interim solution until the transAL-2 tariffs take effect. In force on 1 January 2026.",
+      "evidence": [
+        {"edition": "2026-01-01", "page": 3, "section": "2.2", "quote": "von 84 Taxpunkten (TP) auf 75.6 TP reduziert"},
+        {"edition": "2026-01-01", "page": 3, "section": "2.2", "quote": "resultieren in einem neu berechneten Tarif von 63.3 TP"},
+        {"edition": "2026-01-01", "page": 3, "section": "2.2", "quote": "Bei dieser Tarifanpassung handelt sich um eine Übergangslösung"}
+      ]
+    },
+    {
+      "id": "D5",
+      "kind": "evidence_expected",
+      "origin": "pilot case drafted on 2026-11-01",
+      "question": "Darf die Position 3489.00 bei einer Onychomykose zur Therapieerfolgskontrolle zulasten der OKP verrechnet werden?",
+      "target_editions": ["2026-01-01"],
+      "reference_expectation": "No. For nail fungus the clinical proof of therapy success is considered appropriate; only for fungal infections of skin and hair may the therapy success be confirmed in the laboratory with 3489.00. In force on 1 January 2026.",
+      "evidence": [
+        {"edition": "2026-01-01", "page": 4, "section": "2.3", "quote": "Die Position 3489.00 darf somit bei einer Onychomykose nicht zur Therapieerfolgskontrolle zulasten der OKP verrechnet werden."}
+      ]
+    },
+    {
+      "id": "D6",
+      "kind": "evidence_expected",
+      "origin": "pilot case drafted on 2026-11-01; the only case needing both editions",
+      "question": "Was sagen die Kommentare beider Fassungen über das Projekt transAL-2?",
+      "target_editions": ["2026-01-01", "2026-07-01"],
+      "reference_expectation": "January: the 1619.00 cut is an interim solution until the tariffs revised in transAL-2 take effect. July: the cuts of 1 July 2026 are measures brought forward relative to transAL-2; transAL-2, re-tariffing every position except the Schnelle Analysen, continues as planned; the 1368.00 tariff is to be recalculated in transAL-2.",
+      "evidence": [
+        {"edition": "2026-01-01", "page": 3, "section": "2.2", "quote": "der im Rahmen des Projekts transAL-2 überarbeiteten Tarife aller Positionen der AL"},
+        {"edition": "2026-07-01", "page": 5, "section": "2.4", "quote": "bei denen es sich um im Verhältnis zu transAL-2 vorgezogene Massnahmen handelt"},
+        {"edition": "2026-07-01", "page": 5, "section": "2.4", "quote": "Gleichzeitig läuft das Projekt transAL-2"},
+        {"edition": "2026-07-01", "page": 7, "section": "2.5", "quote": "im Rahmen der Tarifrevision der Analysenliste (transAL-2) basierend auf dem neuen Tarifmodell neu berechnet werden"}
+      ]
+    },
+    {
+      "id": "U1",
+      "kind": "no_supporting_evidence",
+      "origin": "pilot case drafted on 2026-11-01",
+      "question": "Wie hoch ist der Tarif der Position 1034.00 (Alpha-Fetoprotein, AFP) per 1. Juli 2026?",
+      "target_editions": ["2026-07-01"],
+      "reference_expectation": "Neither commentary states this tariff. The July commentary names AFP as position 1034.00 (p. 7, section 3.1, in the rejected GAAD application) without a tariff; the January commentary does not mention 1034.00. The tariff is in the full list, outside this corpus.",
+      "evidence": []
+    },
+    {
+      "id": "U2",
+      "kind": "no_supporting_evidence",
+      "origin": "pilot case drafted on 2026-11-01; a temporal trap",
+      "question": "Was ändert sich per 1. Juli 2026 für die Position 1619.00 «Procalcitonin»?",
+      "target_editions": ["2026-07-01"],
+      "reference_expectation": "The July commentary does not mention 1619.00. The January commentary describes the change of 1 January 2026 (75.6 TP to 63.3 TP); a passage from it is wrong-edition evidence for this question.",
+      "evidence": []
+    }
+  ]
+}

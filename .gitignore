@@ -66,3 +66,6 @@ vault/cas-audit/
 # Superseded brand iterations
 docs/brand/assets/_legacy_v4/
 docs/brand/assets/_legacy_v5/
+
+# Commentary RAG pilot: full request contexts, raw responses, answers and the review sheet stay local
+tools/commentary_rag/local/

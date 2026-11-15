@@ -1,0 +1,160 @@
+{
+ "schema": 1,
+ "status": "Provisional answer rubric, AI-drafted by Claude (claude-opus-5-5) on 2026-11-14 from the text of the two hash-verified BAG commentaries, before any answer was generated. Pending Erhan's review: no claim, support quote, check term or expected status here has been checked by a person. It must not be extended or relaxed from model outputs.",
+ "rules": {
+  "required_claims": "What a complete answer must state. Each has support quotes (edition, PDF page, verbatim text) that the run checks against the corpus; a claim is available to the generator only when a passage covering its support is in the request's context.",
+  "check_terms": "Optional deterministic term check: every group needs one of its variants in the answer's claim texts (NFC, case-folded, whitespace folded, decimal comma read as point). null means the claim is semantic and left to human review. A passing term check is not semantic validation (a negated or misattributed statement can pass it).",
+  "optional_background": "Statements an answer may add; never required, never scored.",
+  "expected_status": "The status an answer should have if all evidence were retrieved. For D1 the retrieval at k=5 misses the evidence, so its scoring reports the retrieval miss and the generator's behaviour separately.",
+  "insufficient_evidence": "For U1 and U2 it means the selected commentary edition does not state the answer, not that no tariff or change exists."
+ },
+ "cases": [
+  {
+   "id": "D1",
+   "expected_status": "answered",
+   "required_claims": [
+    {"id": "D1-R1", "claim": "Der Tarif der Position 1368.00 steigt von 59.4 TP auf 64.4 TP.",
+     "support": [{"edition": "2026-07-01", "page": 6, "quote": "indem der Tarif für die Position 1368.00 von 59.4 TP auf 64.4 TP erhöht wird"}],
+     "check_terms": [["1368.00"], ["59.4"], ["64.4"]]},
+    {"id": "D1-R2", "claim": "Die Auftragstaxe (Position 4700.00) sinkt um 5 TP von 21.6 TP auf 16.6 TP.",
+     "support": [{"edition": "2026-07-01", "page": 6, "quote": "da die Auftragstaxe um 5 TP von 21.6 TP auf 16.6 TP reduziert wird"}],
+     "check_terms": [["4700.00", "Auftragstaxe"], ["21.6"], ["16.6"]]},
+    {"id": "D1-R3", "claim": "Zusammenhang: Die Erhöhung von 1368.00 gleicht die Senkung der Auftragstaxe aus, die gesamte Vergütung für das Neugeborenen-Screening bleibt gleich.",
+     "support": [{"edition": "2026-07-01", "page": 6, "quote": "wird die gesamte Vergütung für das Neugeborenen-Screening Schweiz beibehalten"}],
+     "check_terms": null},
+    {"id": "D1-R4", "claim": "Gültigkeit: Die Änderung tritt per 1. Juli 2026 in Kraft.",
+     "support": [{"edition": "2026-07-01", "page": 7, "quote": "Diese Änderung tritt per 1. Juli 2026 in Kraft."}],
+     "check_terms": [["1. Juli 2026", "01.07.2026", "1.7.2026"]]},
+    {"id": "D1-R5", "claim": "Offener Prüfpunkt: Der Tarif von 1368.00 bleibt bis 30. Juni 2028 in Evaluation und ist im Rahmen von transAL-2 neu zu berechnen.",
+     "support": [{"edition": "2026-07-01", "page": 7, "quote": "Der Tarif der Position 1368.00 bleibt bis 30. Juni 2028 in Evaluation"}],
+     "check_terms": [["30. Juni 2028", "30.06.2028", "30.6.2028"]]}
+   ],
+   "optional_background": [
+    {"claim": "Vorher: 1368.00 zu 59.4 TP und 4700.00 zu 21.6 TP pro Auftrag, total CHF 81.- pro Analyse.",
+     "support": [{"edition": "2026-07-01", "page": 6, "quote": "die Position 4700.00 «Auftragstaxe» zu 21.6 TP"}]},
+    {"claim": "Begründung: einziger Anbieter, keine «fees for service»; das Argument der Zentralisierung trifft nicht zu.",
+     "support": [{"edition": "2026-07-01", "page": 7, "quote": "Als einziger Anbieter der Analyse ist davon auszugehen"}]},
+    {"claim": "Die allgemeine Kürzung der Auftragstaxe (Abschnitt 2.4, ohne Nennung von 4700.00).",
+     "support": [{"edition": "2026-07-01", "page": 4, "quote": "Kürzung des Tarifs der Auftragstaxe um CHF 5.-"}]}
+   ],
+   "review_focus": "Retrieval at k=5 misses both evidence pages (ranks 6 and 7). Check whether any tariff value is stated without a cited passage that contains it."
+  },
+  {
+   "id": "D2",
+   "expected_status": "answered",
+   "required_claims": [
+    {"id": "D2-R1", "claim": "Vitamin D (1006.00) wird um 20 % gekürzt.",
+     "support": [{"edition": "2026-07-01", "page": 5, "quote": "Vitamin D 1006.00 20"}],
+     "check_terms": [["1006.00"]]},
+    {"id": "D2-R2", "claim": "Holotranscobalamin (Holo TC, 1727.10) wird um 20 % gekürzt.",
+     "support": [{"edition": "2026-07-01", "page": 5, "quote": "Holotranscobalamin (Holo TC) 1727.10 20"}],
+     "check_terms": [["1727.10"]]},
+    {"id": "D2-R3", "claim": "Vitamin B12 bzw. Cobalamin (1749.00) wird um 20 % gekürzt.",
+     "support": [{"edition": "2026-07-01", "page": 5, "quote": "Vitamin B12 bzw. Cobalamin 1749.00 20"}],
+     "check_terms": [["1749.00"]]}
+   ],
+   "optional_background": [
+    {"claim": "Sieben weitere Positionen werden um 10 % gekürzt.",
+     "support": [{"edition": "2026-07-01", "page": 5, "quote": "C-reaktives Protein (CRP) 1245.00 10"}]},
+    {"claim": "Die Kürzungen treten per 1. Juli 2026 in Kraft und sind gegenüber transAL-2 vorgezogene Massnahmen.",
+     "support": [{"edition": "2026-07-01", "page": 5, "quote": "treten per 1. Juli 2026 in Kraft"}]}
+   ],
+   "review_focus": "No position cut by 10 % may be listed as cut by 20 %."
+  },
+  {
+   "id": "D3",
+   "expected_status": "answered",
+   "required_claims": [
+    {"id": "D3-R1", "claim": "1779.00 ist nicht kumulierbar mit 1777.00 (sFlt-1 / PlGF Ratio).",
+     "support": [{"edition": "2026-07-01", "page": 3, "quote": "Die Position 1779.00 ist nicht kumulierbar mit der Position 1777.00"}],
+     "check_terms": [["1777.00"]]},
+    {"id": "D3-R2", "claim": "1779.00 ist nicht kumulierbar mit 1474.10 (Zytokine/Adhäsionsmoleküle/-Rezeptoren/-Inhibitoren).",
+     "support": [{"edition": "2026-07-01", "page": 3, "quote": "Sie ist auch nicht mit der Position 1474.10 «Zytokine/Adhäsionsmoleküle/-Rezeptoren/-Inhibitoren» kumulierbar."}],
+     "check_terms": [["1474.10"]]}
+   ],
+   "optional_background": [
+    {"claim": "1474.10 kann nicht mehr für PlGF zulasten der OKP verrechnet werden.",
+     "support": [{"edition": "2026-07-01", "page": 3, "quote": "Die Position 1474.10 kann nicht mehr für PlGF zu Lasten der OKP verrechnet werden."}]},
+    {"claim": "Inkrafttreten per 1. Juli 2026.",
+     "support": [{"edition": "2026-07-01", "page": 3, "quote": "Diese Änderungen treten per 1. Juli 2026 in Kraft."}]}
+   ],
+   "review_focus": "No further non-cumulable position may be invented."
+  },
+  {
+   "id": "D4",
+   "expected_status": "answered",
+   "required_claims": [
+    {"id": "D4-R1", "claim": "Neuer Tarif: 63.3 TP (neu berechnet aus transparent ausgewiesenen, plausibilisierten Kosten).",
+     "support": [{"edition": "2026-01-01", "page": 3, "quote": "resultieren in einem neu berechneten Tarif von 63.3 TP"}],
+     "check_terms": [["63.3"]]},
+    {"id": "D4-R2", "claim": "Bisheriger Tarif: 75.6 TP (seit der linearen Senkung um 10 % per 1. August 2022, vorher 84 TP).",
+     "support": [{"edition": "2026-01-01", "page": 3, "quote": "von 84 Taxpunkten (TP) auf 75.6 TP reduziert"}],
+     "check_terms": [["75.6"]]},
+    {"id": "D4-R3", "claim": "Die Anpassung ist eine Übergangslösung bis zum Inkrafttreten der in transAL-2 überarbeiteten Tarife.",
+     "support": [{"edition": "2026-01-01", "page": 3, "quote": "Bei dieser Tarifanpassung handelt sich um eine Übergangslösung"}],
+     "check_terms": [["übergang"]]}
+   ],
+   "optional_background": [
+    {"claim": "Inkrafttreten per 1. Januar 2026.",
+     "support": [{"edition": "2026-01-01", "page": 3, "quote": "Diese Änderung tritt per 1. Januar 2026 in Kraft."}]}
+   ],
+   "review_focus": "The answer must not present 75.6 TP as the new tariff or 63.3 TP as computed by the model."
+  },
+  {
+   "id": "D5",
+   "expected_status": "answered",
+   "required_claims": [
+    {"id": "D5-R1", "claim": "Nein: 3489.00 darf bei einer Onychomykose nicht zur Therapieerfolgskontrolle zulasten der OKP verrechnet werden.",
+     "support": [{"edition": "2026-01-01", "page": 4, "quote": "Die Position 3489.00 darf somit bei einer Onychomykose nicht zur Therapieerfolgskontrolle zulasten der OKP verrechnet werden."}],
+     "check_terms": null},
+    {"id": "D5-R2", "claim": "Begründung: Bei Nagelpilzen gilt der klinische Nachweis des Therapieerfolgs als zweckmässig.",
+     "support": [{"edition": "2026-01-01", "page": 4, "quote": "Bei Nagelpilzen wird der klinische Nachweis des Therapieerfolgs als zweckmässig angesehen."}],
+     "check_terms": null}
+   ],
+   "optional_background": [
+    {"claim": "Bei Pilzinfektionen von Haut und Haaren darf der Therapieerfolg auch laborseitig mit 3489.00 bestätigt werden.",
+     "support": [{"edition": "2026-01-01", "page": 4, "quote": "kann bei Pilzinfektionen der Haut und Haare der Therapieerfolg nach Abschluss der Behandlung nicht nur klinisch, sondern auch laborseitig bestätigt werden"}]},
+    {"claim": "Die neue Position 3489.00 tritt per 1. Januar 2026 in Kraft.",
+     "support": [{"edition": "2026-01-01", "page": 4, "quote": "Die neue Position 3489.00 tritt per 1. Januar 2026 in Kraft."}]}
+   ],
+   "review_focus": "The polarity (not billable) is what matters; the term check cannot see it."
+  },
+  {
+   "id": "D6",
+   "expected_status": "answered",
+   "required_claims": [
+    {"id": "D6-R1", "claim": "Januar-Ausgabe: Die Tarifanpassung von 1619.00 ist eine Übergangslösung bis zum Inkrafttreten der in transAL-2 überarbeiteten Tarife aller AL-Positionen.",
+     "support": [{"edition": "2026-01-01", "page": 3, "quote": "der im Rahmen des Projekts transAL-2 überarbeiteten Tarife aller Positionen der AL"}],
+     "check_terms": [["übergang"], ["1619.00", "Procalcitonin"]]},
+    {"id": "D6-R2", "claim": "Juli-Ausgabe: Die Tarifkürzungen per 1. Juli 2026 sind gegenüber transAL-2 vorgezogene Massnahmen.",
+     "support": [{"edition": "2026-07-01", "page": 5, "quote": "bei denen es sich um im Verhältnis zu transAL-2 vorgezogene Massnahmen handelt"}],
+     "check_terms": [["vorgezogen"]]},
+    {"id": "D6-R3", "claim": "Juli-Ausgabe: transAL-2, die Neutarifierung aller Positionen ausser den Schnellen Analysen, läuft planmässig weiter.",
+     "support": [{"edition": "2026-07-01", "page": 5, "quote": "Gleichzeitig läuft das Projekt transAL-2"}],
+     "check_terms": null},
+    {"id": "D6-R4", "claim": "Juli-Ausgabe: Der Tarif von 1368.00 ist im Rahmen von transAL-2 auf Basis des neuen Tarifmodells neu zu berechnen.",
+     "support": [{"edition": "2026-07-01", "page": 7, "quote": "im Rahmen der Tarifrevision der Analysenliste (transAL-2) basierend auf dem neuen Tarifmodell neu berechnet werden"}],
+     "check_terms": [["1368.00"]]}
+   ],
+   "optional_background": [],
+   "review_focus": "Each statement must be attributed to the edition it comes from."
+  },
+  {
+   "id": "U1",
+   "expected_status": "insufficient_evidence",
+   "required_claims": [],
+   "optional_background": [
+    {"claim": "Die Juli-Ausgabe nennt AFP als Position 1034.00 (im abgelehnten GAAD-Antrag), ohne Tarif.",
+     "support": [{"edition": "2026-07-01", "page": 7, "quote": "Analyse Alpha-Fetoprotein (AFP, Position 1034.00)"}]}
+   ],
+   "review_focus": "No tariff value for 1034.00 may be stated; the gap means only that the selected commentary does not state it."
+  },
+  {
+   "id": "U2",
+   "expected_status": "insufficient_evidence",
+   "required_claims": [],
+   "optional_background": [],
+   "review_focus": "The July commentary does not mention 1619.00. Stating the January change (75.6 TP to 63.3 TP) as a July change would be a temporal error; the January edition is not selected for this question."
+  }
+ ]
+}

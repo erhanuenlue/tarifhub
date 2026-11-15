@@ -1,0 +1,1247 @@
+{
+ "run": {
+  "run_id": "2026-11-15-generation",
+  "label": "first commentary RAG generation pilot (exploratory, dev cases only)",
+  "started_at": "2026-11-14T23:21:11+00:00",
+  "finished_at": "2026-11-14T23:33:33+00:00",
+  "recorded_at": "2026-11-14T23:33:33+00:00",
+  "configuration": {
+   "provider": "Anthropic Messages API, direct",
+   "base_url": "https://api.anthropic.com",
+   "model": "claude-opus-5-5",
+   "effort": "max",
+   "thinking": {
+    "type": "adaptive"
+   },
+   "thinking_display": "API default (omitted)",
+   "max_tokens": 32000,
+   "max_tokens_bounds": "thinking and answer together",
+   "timeout_s": 1200.0,
+   "client_max_retries": 0,
+   "max_attempts": 10,
+   "retry_policy": "after every case had one attempt, a failed case is retried while the ledger has fewer than max_attempts attempts; valid answers are never repeated; any other 4xx or a returned model that differs stops the run",
+   "budget_usd": 100.0,
+   "input_margin": 1.1,
+   "workspace_header": "not sent",
+   "not_sent": "tools, web search, MCP servers, server-side fallbacks, sampling parameters, prompt caching, inference_geo, fast mode",
+   "system_prompt_sha256": "f8698c98e3742f40ad329b1f2d4df40e4eebf482d1990ec36fc8c8ca93945e40",
+   "answer_schema_sha256": "31f86409999f8e88212d79079edf199437d133db9bc9d0c977c2b6d288452d4c",
+   "retrieval": {
+    "method": "hybrid",
+    "mode": "edition_filter",
+    "k": 5,
+    "token_budget": 256
+   }
+  },
+  "model_info": {
+   "type": "model",
+   "id": "claude-opus-5-5",
+   "display_name": "Claude Opus 5.5",
+   "created_at": "2026-09-21T16:24:00Z",
+   "line": "opus",
+   "max_input_tokens": 1000000,
+   "max_tokens": 128000,
+   "capabilities": {
+    "batch": {
+     "supported": true
+    },
+    "citations": {
+     "supported": true
+    },
+    "code_execution": {
+     "supported": true
+    },
+    "context_management": {
+     "supported": true,
+     "clear_tool_uses_20250919": {
+      "supported": true
+     },
+     "clear_thinking_20251015": {
+      "supported": true
+     },
+     "compact_20260112": {
+      "supported": true
+     }
+    },
+    "effort": {
+     "supported": true,
+     "low": {
+      "supported": true
+     },
+     "medium": {
+      "supported": true
+     },
+     "high": {
+      "supported": true
+     },
+     "xhigh": {
+      "supported": true
+     },
+     "max": {
+      "supported": true
+     }
+    },
+    "image_input": {
+     "supported": true
+    },
+    "pdf_input": {
+     "supported": true
+    },
+    "server_tools": {
+     "supported": true,
+     "code_execution": {
+      "supported": true
+     },
+     "web_search": {
+      "supported": true
+     }
+    },
+    "structured_outputs": {
+     "supported": true
+    },
+    "thinking": {
+     "supported": true,
+     "types": {
+      "enabled": {
+       "supported": false
+      },
+      "adaptive": {
+       "supported": true
+      },
+      "disabled": {
+       "supported": false
+      },
+      "between_tools": {
+       "supported": false
+      }
+     }
+    }
+   },
+   "lifecycle": "active",
+   "deprecated_at": null,
+   "retires_at": null
+  },
+  "pricing": {
+   "model": "claude-opus-5-5",
+   "currency": "USD",
+   "unit": "per million tokens",
+   "input": 4.0,
+   "cache_write_5m": 5.0,
+   "cache_write_1h": 8.0,
+   "cache_read": 0.2,
+   "output": 20.0,
+   "source": "https://platform.claude.com/docs/en/about-claude/pricing.md (Model pricing table, row Claude Opus 5.5)",
+   "retrieved": "2026-11-14",
+   "source_sha256": "048ccb65c7aa39a16f8475d92bec1730bc9e42c63b79085e2f0f1e6e5f867cd1",
+   "notes": "Standard first-party rates: no batch discount, no fast mode, global inference (the 1.1x US data-residency multiplier applies only when a response reports inference_geo us). Thinking tokens are billed as output tokens. Costs computed from these rates are calculated costs, not a verified invoice."
+  },
+  "retrieval": {
+   "saved_record": {
+    "path": "tools/commentary_rag/results/2026-11-14-retrieval-corrected.json",
+    "sha256": "764c45ee0841e74827f17ccc51a0bdbe0934a9d6ec85ce7434801ec2cb962e3d"
+   },
+   "rerun_record_sha256": "332510cd0592aad876976e456c849b9bcd0ef0bd58600c655e0e96f50927aea1",
+   "reproduction": {
+    "rankings_identical": "48/48",
+    "max_abs_score_difference": 0.0,
+    "metrics_identical": true,
+    "settings_differ": [],
+    "passages": {
+     "removed": [],
+     "added": [],
+     "changed": [],
+     "unchanged": 40
+    },
+    "context_top_k_identical": true
+   }
+  },
+  "rubric": {
+   "path": "tools/commentary_rag/rubric.json",
+   "sha256": "654ca467de6eda5b90f9ba0034f7813aa3ab36961daf2834054ff14445125f4d",
+   "status": "provisional, AI-drafted before generation, pending review"
+  },
+  "ledger": {
+   "path": "tools/commentary_rag/results/generation-ledger.jsonl",
+   "committed_usd": 1.930804
+  },
+  "stopped": null,
+  "not_attempted": [],
+  "retries_skipped": [],
+  "environment": {
+   "python": "3.13.12",
+   "platform": "macOS-15.8.1-arm64-arm-64bit-Mach-O",
+   "packages": {
+    "anthropic": "0.109.1",
+    "httpx": "0.28.1"
+   },
+   "anthropic_version_header": "2023-06-01 (set by the installed client)",
+   "git_head": "88cd681e40b9fff3bc7013a9daad51093f7a63e5",
+   "tool_files_sha256": {
+    "corpus.py": "38a1572daf525e9a2356a29f7eb53d0769127e7afa05826925be5170ce701e5f",
+    "retrieval.py": "7803c83d4f0a3a9e4bcdb94450587878b64d715fd6d77e8176fc50b9f3cf0d5a",
+    "evaluation.py": "899ba8e9adb525921528c2a967ab9e08d06e18680681d53b2e0171ed1214abc5",
+    "run_eval.py": "0426def70d8aeef84923863f79260848a748db0948f87b5574ca16fa640d2257",
+    "cases.json": "9d471418546aebee350982c79d14890384f7735cc4ff843c6ae1642dff86441c",
+    "generation.py": "d29c76bbc5c57004ef9d13f1713e63d457af569d6e92668bf2867296b3b943b5",
+    "answers.py": "7cf9eb249d7f77bee04087b8e3b644ba1d3b1319dea88078f65dede05ae90478",
+    "run_generation.py": "43ea74f5a1b6f3f69b1154199de71e4ee1c7ea9321124a6649a1775899c526ab",
+    "rubric.json": "654ca467de6eda5b90f9ba0034f7813aa3ab36961daf2834054ff14445125f4d",
+    "pricing.json": "f3d8bb8e65c5bbecb1dfd2f5c7f2b6c65b70934a1de1df3f500d96d02e31538e"
+   }
+  },
+  "human_review": "pending: semantic support of every claim and the rubric itself",
+  "cost_note": "calculated from reported usage and the recorded prices, not an invoice"
+ },
+ "contexts": [
+  {
+   "case": "D1",
+   "editions": [
+    "2026-07-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p4/s2.3/2",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "09d683f81609a11fba0ef4d34f39ca42a2a33ef10510e90825831624df6308f6"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p4/s2.4/1",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "3ae9bf00ad38b7c79556a05035ec624dab99ebe4f0adfe6cd55ca0c81bf633af"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p7/s2.6/1",
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.6",
+     "text_sha256": "d46226a41ed261caa27f030d271cd2678b95dc8ca62404f9f620b13e0ba0cc73"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p8/s4.1/1",
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.1",
+     "text_sha256": "cead34d19658d64b7d28d6b0ed21064f3b67d73707e72187aefa23b05b6dfaeb"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    }
+   ],
+   "request_sha256": "b964337a18fe6013c20e44c4bd302c3225a68471fc2c000d479e918f3da48509"
+  },
+  {
+   "case": "D2",
+   "editions": [
+    "2026-07-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p5/s2.4/3",
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "311c1f48d394f146b5f497c498a58c75ebe2d5c4d09ab30035ef58485af0d193"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p4/s2.4/1",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "3ae9bf00ad38b7c79556a05035ec624dab99ebe4f0adfe6cd55ca0c81bf633af"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p5/s2.4/1",
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "d0c0f2c141585e2d1495be97f96b77c8af59d8944ffef4966f1ff85befc9bb2b"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p7/s2.6/1",
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.6",
+     "text_sha256": "d46226a41ed261caa27f030d271cd2678b95dc8ca62404f9f620b13e0ba0cc73"
+    }
+   ],
+   "request_sha256": "b7bab319d90f2d1f82c934629cfa67761b03e1225b0c78d652ec55706b078ace"
+  },
+  {
+   "case": "D3",
+   "editions": [
+    "2026-07-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p3/s2.1/2",
+     "edition": "2026-07-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "d117ae8d98df017f732d7bc4bf5da7c161a50d2f667126aeec5f1ec9cd42c643"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p3/s2.2/1",
+     "edition": "2026-07-01",
+     "page": 3,
+     "section": "2.2",
+     "text_sha256": "edec94068ba948c52510fe28aa6ae5f8b98c7df8745bc985038dd6cf08dbe211"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p7/s2.5/1",
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.5",
+     "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p3/s2.1/3",
+     "edition": "2026-07-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "2011d615c546749d6ca552230ce5eb28b7ee6ba6ec34537ef33781dfb1e4c76c"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p6/s2.5/5",
+     "edition": "2026-07-01",
+     "page": 6,
+     "section": "2.5",
+     "text_sha256": "30f04e754d8e5c3872ef3b3f391563f1c0e4098f622b4ff1ba101369e5f75ab2"
+    }
+   ],
+   "request_sha256": "e0c17b7b8b8a32a24d8bc779d111ec097693ec2288b052df784e1427cbf663fa"
+  },
+  {
+   "case": "D4",
+   "editions": [
+    "2026-01-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-01-01/p3/s2.2/1",
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.2",
+     "text_sha256": "898c246fb6deb4acbc6e217c8dbe5af70cf6508b2984a5952eec2c1b60498f9c"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-01-01/p4/s2.3/3",
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "132f4e5c5db87dc1b7bec2a9294d4b5bb12117f0a986e935be1bd5f24b979f38"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-01-01/p3/s2.1/1",
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "49e6a692616d91c446acb9e62648cf585720080e3bdb76dd8fccef5547db0081"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-01-01/p4/s3.1/2",
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "3.1",
+     "text_sha256": "4b936a30dd80bb9981dafe81e685ebcc7a73dbd129d89d2e496a18730a7bc9c3"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-01-01/p5/s3.2/2",
+     "edition": "2026-01-01",
+     "page": 5,
+     "section": "3.2",
+     "text_sha256": "fae32cb9d750df1d6e8a838f11eb49446a08dd0400540f326594023354692278"
+    }
+   ],
+   "request_sha256": "350aa89c86f553686345a3ccc244c6a818b01b05c4e74d205eff7cd95dc9faf4"
+  },
+  {
+   "case": "D5",
+   "editions": [
+    "2026-01-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-01-01/p4/s2.3/3",
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "132f4e5c5db87dc1b7bec2a9294d4b5bb12117f0a986e935be1bd5f24b979f38"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-01-01/p3/s2.2/1",
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.2",
+     "text_sha256": "898c246fb6deb4acbc6e217c8dbe5af70cf6508b2984a5952eec2c1b60498f9c"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-01-01/p4/s2.3/2",
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "6ee283e1541e054212f66a74cb7d456f4765e5ec819da7d4e24b7b4c3b88f0ca"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-01-01/p4/s2.3/1",
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "f62b8cb23154f05585c14c5727423406f10621674b195f28cecb406f750a167d"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-01-01/p3/s2.3/1",
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.3",
+     "text_sha256": "ea72ac9281c59245ed8680eef7473d1d2b7f2f717ffc1f43bbf8a1dbfd12df58"
+    }
+   ],
+   "request_sha256": "c921e066a11d52a4acbf8d7d61704cf01aa89b7ce29a03d7e156ecc3c312fab3"
+  },
+  {
+   "case": "D6",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p5/s2.4/3",
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "311c1f48d394f146b5f497c498a58c75ebe2d5c4d09ab30035ef58485af0d193"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p7/s2.5/1",
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.5",
+     "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-01-01/p3/s2.2/1",
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.2",
+     "text_sha256": "898c246fb6deb4acbc6e217c8dbe5af70cf6508b2984a5952eec2c1b60498f9c"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-01-01/p4/s3.1/1",
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "3.1",
+     "text_sha256": "79a588246b0a1161c945417d897e39c879f32e267fff30959898d46156365a5d"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p4/s2.4/2",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "338fbc959434f1a9250d2a427fb50b6fffd91d8e5ca36f729ee2e36021b69790"
+    }
+   ],
+   "request_sha256": "cd277cbf8c30b76ff6b38b1f12cc34649143febc082cb83aee4573ebff69b205"
+  },
+  {
+   "case": "U1",
+   "editions": [
+    "2026-07-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p6/s2.5/5",
+     "edition": "2026-07-01",
+     "page": 6,
+     "section": "2.5",
+     "text_sha256": "30f04e754d8e5c3872ef3b3f391563f1c0e4098f622b4ff1ba101369e5f75ab2"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p7/s2.5/1",
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.5",
+     "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p4/s2.4/1",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "3ae9bf00ad38b7c79556a05035ec624dab99ebe4f0adfe6cd55ca0c81bf633af"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p6/s2.5/2",
+     "edition": "2026-07-01",
+     "page": 6,
+     "section": "2.5",
+     "text_sha256": "ee85fabfdd5b00e34bc60bdf1b8d06ade2ada350177543c2e5265664ee8db20d"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    }
+   ],
+   "request_sha256": "072df89939af9483c04d98513bc5b04c8fee3d724e1e74846a0b90cb14e43f44"
+  },
+  {
+   "case": "U2",
+   "editions": [
+    "2026-07-01"
+   ],
+   "passages": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p3/s2.1/3",
+     "edition": "2026-07-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "2011d615c546749d6ca552230ce5eb28b7ee6ba6ec34537ef33781dfb1e4c76c"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p6/s2.5/5",
+     "edition": "2026-07-01",
+     "page": 6,
+     "section": "2.5",
+     "text_sha256": "30f04e754d8e5c3872ef3b3f391563f1c0e4098f622b4ff1ba101369e5f75ab2"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p7/s2.5/1",
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.5",
+     "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p5/s2.4/3",
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "311c1f48d394f146b5f497c498a58c75ebe2d5c4d09ab30035ef58485af0d193"
+    }
+   ],
+   "request_sha256": "25ee51c4ee5d9780d1add9de4964a4e3117e85807168e72b57f3f6fa8e8a85d9"
+  }
+ ],
+ "attempts": [
+  {
+   "event": "settle",
+   "attempt": "D1-1",
+   "case": "D1",
+   "request_sha256": "b964337a18fe6013c20e44c4bd302c3225a68471fc2c000d479e918f3da48509",
+   "reserved_usd": 0.653852,
+   "http_status": 200,
+   "request_id": "req_011Ch3gKogWFgfiof1AooRSg",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3148,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 26183,
+    "output_tokens_details": {
+     "thinking_tokens": 23833
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "insufficient_evidence",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 10,
+   "response_sha256": "33e7c9b54a82bb1c75789432167c54a9e06dd33c06911c57eed9d14a93bdac3c",
+   "cost_basis": "usage",
+   "cost_usd": 0.536252,
+   "outcome": "valid",
+   "latency_s": 211.419,
+   "at": "2026-11-14T23:24:44+00:00"
+  },
+  {
+   "event": "settle",
+   "attempt": "D2-1",
+   "case": "D2",
+   "request_sha256": "b7bab319d90f2d1f82c934629cfa67761b03e1225b0c78d652ec55706b078ace",
+   "reserved_usd": 0.655492,
+   "http_status": 200,
+   "request_id": "req_011Ch3gbPfpnfuuxuxGMTj3w",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3520,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 15547,
+    "output_tokens_details": {
+     "thinking_tokens": 14578
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "answered",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 6,
+   "response_sha256": "baa987d71e63228868d5829bd4cad09211e9bacd309a45af25229b71a7eb9df2",
+   "cost_basis": "usage",
+   "cost_usd": 0.32502,
+   "outcome": "valid",
+   "latency_s": 128.358,
+   "at": "2026-11-14T23:26:52+00:00"
+  },
+  {
+   "event": "settle",
+   "attempt": "D3-1",
+   "case": "D3",
+   "request_sha256": "e0c17b7b8b8a32a24d8bc779d111ec097693ec2288b052df784e1427cbf663fa",
+   "reserved_usd": 0.654832,
+   "http_status": 200,
+   "request_id": "req_011Ch3gkrR9kzzUy9pBSQCL2",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3370,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 6099,
+    "output_tokens_details": {
+     "thinking_tokens": 5331
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "answered",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 6,
+   "response_sha256": "cfca8fb331ce2b26ea7dfe49cd58810fcffdbf2dabdebd8bde37a460c8aca4e5",
+   "cost_basis": "usage",
+   "cost_usd": 0.13546,
+   "outcome": "valid",
+   "latency_s": 48.734,
+   "at": "2026-11-14T23:27:41+00:00"
+  },
+  {
+   "event": "settle",
+   "attempt": "D4-1",
+   "case": "D4",
+   "request_sha256": "350aa89c86f553686345a3ccc244c6a818b01b05c4e74d205eff7cd95dc9faf4",
+   "reserved_usd": 0.654824,
+   "http_status": 200,
+   "request_id": "req_011Ch3gpSoxNhbf6fe1B89uq",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3369,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 5640,
+    "output_tokens_details": {
+     "thinking_tokens": 5010
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "answered",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 6,
+   "response_sha256": "9d477040ae7ef7ad5ab66656c5fb404ba298018479da14f987e42819b5caeb6a",
+   "cost_basis": "usage",
+   "cost_usd": 0.126276,
+   "outcome": "valid",
+   "latency_s": 46.477,
+   "at": "2026-11-14T23:28:27+00:00"
+  },
+  {
+   "event": "settle",
+   "attempt": "D5-1",
+   "case": "D5",
+   "request_sha256": "c921e066a11d52a4acbf8d7d61704cf01aa89b7ce29a03d7e156ecc3c312fab3",
+   "reserved_usd": 0.655548,
+   "http_status": 200,
+   "request_id": "req_011Ch3gssYKP5XbMMEjPrf7u",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3533,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 6482,
+    "output_tokens_details": {
+     "thinking_tokens": 5609
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "answered",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 7,
+   "response_sha256": "ca6c074b4bfa22244998d9ac15b5c0d3969f3d30eda6e64ac15cbb9b56ee4d9f",
+   "cost_basis": "usage",
+   "cost_usd": 0.143772,
+   "outcome": "valid",
+   "latency_s": 51.922,
+   "at": "2026-11-14T23:29:19+00:00"
+  },
+  {
+   "event": "settle",
+   "attempt": "D6-1",
+   "case": "D6",
+   "request_sha256": "cd277cbf8c30b76ff6b38b1f12cc34649143febc082cb83aee4573ebff69b205",
+   "reserved_usd": 0.656336,
+   "http_status": 200,
+   "request_id": "req_011Ch3gwhWvzC7d16pxdcEE5",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3712,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 22478,
+    "output_tokens_details": {
+     "thinking_tokens": 20501
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "answered",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 13,
+   "response_sha256": "d7368226ab5492dc274e7e68f794a6a983d3069b62ecdbcb8df1fe134ab182b3",
+   "cost_basis": "usage",
+   "cost_usd": 0.464408,
+   "outcome": "valid",
+   "latency_s": 177.466,
+   "at": "2026-11-14T23:32:17+00:00"
+  },
+  {
+   "event": "settle",
+   "attempt": "U1-1",
+   "case": "U1",
+   "request_sha256": "072df89939af9483c04d98513bc5b04c8fee3d724e1e74846a0b90cb14e43f44",
+   "reserved_usd": 0.655344,
+   "http_status": 200,
+   "request_id": "req_011Ch3hAnKWdPzyETQey1ZHA",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3487,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 4019,
+    "output_tokens_details": {
+     "thinking_tokens": 3712
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "insufficient_evidence",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 0,
+   "response_sha256": "96bbdad77399223ca7cc0efcd04dd36f5f481f3583d3f49532da7855fa1b2eaf",
+   "cost_basis": "usage",
+   "cost_usd": 0.094328,
+   "outcome": "valid",
+   "latency_s": 36.253,
+   "at": "2026-11-14T23:32:53+00:00"
+  },
+  {
+   "event": "settle",
+   "attempt": "U2-1",
+   "case": "U2",
+   "request_sha256": "25ee51c4ee5d9780d1add9de4964a4e3117e85807168e72b57f3f6fa8e8a85d9",
+   "reserved_usd": 0.653892,
+   "http_status": 200,
+   "request_id": "req_011Ch3hDTGcsV4PM8p1UG6AH",
+   "returned_model": "claude-opus-5-5",
+   "stop_reason": "end_turn",
+   "usage": {
+    "input_tokens": 3157,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation": {
+     "ephemeral_5m_input_tokens": 0,
+     "ephemeral_1h_input_tokens": 0
+    },
+    "output_tokens": 4633,
+    "output_tokens_details": {
+     "thinking_tokens": 4273
+    },
+    "service_tier": "standard",
+    "inference_geo": "global",
+    "speed": "standard"
+   },
+   "error": null,
+   "status": "insufficient_evidence",
+   "schema_problems": [],
+   "citations_outside_context": [],
+   "claims": 0,
+   "response_sha256": "3d136ca4c406c25ae8a3a146893bb4100854862699cd639be458999c388f3edb",
+   "cost_basis": "usage",
+   "cost_usd": 0.105288,
+   "outcome": "valid",
+   "latency_s": 40.348,
+   "at": "2026-11-14T23:33:33+00:00"
+  }
+ ],
+ "answers": [
+  {
+   "case": "D1",
+   "attempt": "D1-1",
+   "status": "insufficient_evidence",
+   "claims": 10,
+   "cited_passages": [
+    "2026-07-01/p4/s2.2/1",
+    "2026-07-01/p4/s2.3/2",
+    "2026-07-01/p4/s2.4/1",
+    "2026-07-01/p7/s2.6/1",
+    "2026-07-01/p8/s4.1/1"
+   ],
+   "missing_evidence_items": 9,
+   "answer_sha256": "b54954245137392efddabee4a5c1aa666514631c8f410dd66fd46de4f8bd7bca"
+  },
+  {
+   "case": "D2",
+   "attempt": "D2-1",
+   "status": "answered",
+   "claims": 6,
+   "cited_passages": [
+    "2026-07-01/p5/s2.4/1",
+    "2026-07-01/p5/s2.4/3"
+   ],
+   "missing_evidence_items": 1,
+   "answer_sha256": "70cc5548bb5cde72d25fa23378dc7d3f4b621f8f90ee2ff5bb3bc0ffe9842384"
+  },
+  {
+   "case": "D3",
+   "attempt": "D3-1",
+   "status": "answered",
+   "claims": 6,
+   "cited_passages": [
+    "2026-07-01/p3/s2.1/2",
+    "2026-07-01/p3/s2.1/3"
+   ],
+   "missing_evidence_items": 0,
+   "answer_sha256": "4cc1f174f7ad3cd0c53ecc6121ca0062ac427898bf90f32e4a1a1f20c83af416"
+  },
+  {
+   "case": "D4",
+   "attempt": "D4-1",
+   "status": "answered",
+   "claims": 6,
+   "cited_passages": [
+    "2026-01-01/p3/s2.2/1"
+   ],
+   "missing_evidence_items": 0,
+   "answer_sha256": "1cd05c7d573c2de1a5450f33c54ae7279c837631f7b749a039e7ed4cdbd51b82"
+  },
+  {
+   "case": "D5",
+   "attempt": "D5-1",
+   "status": "answered",
+   "claims": 7,
+   "cited_passages": [
+    "2026-01-01/p3/s2.3/1",
+    "2026-01-01/p4/s2.3/1",
+    "2026-01-01/p4/s2.3/2",
+    "2026-01-01/p4/s2.3/3"
+   ],
+   "missing_evidence_items": 0,
+   "answer_sha256": "c02458f816e0ee3a142dea50d37ebbda7412db6823eef7f77dd19901500b8b49"
+  },
+  {
+   "case": "D6",
+   "attempt": "D6-1",
+   "status": "answered",
+   "claims": 13,
+   "cited_passages": [
+    "2026-01-01/p3/s2.2/1",
+    "2026-07-01/p4/s2.4/2",
+    "2026-07-01/p5/s2.4/3",
+    "2026-07-01/p7/s2.5/1"
+   ],
+   "missing_evidence_items": 3,
+   "answer_sha256": "29d53cb471e9de3818c0ca407f54a0d746aa2aa3a27f7ee55b693840235aeaf3"
+  },
+  {
+   "case": "U1",
+   "attempt": "U1-1",
+   "status": "insufficient_evidence",
+   "claims": 0,
+   "cited_passages": [],
+   "missing_evidence_items": 2,
+   "answer_sha256": "bfcdbaab03e72c6e9fff30ed6df548840e1f92254049a2aec66fd7ed92cb7d0b"
+  },
+  {
+   "case": "U2",
+   "attempt": "U2-1",
+   "status": "insufficient_evidence",
+   "claims": 0,
+   "cited_passages": [],
+   "missing_evidence_items": 3,
+   "answer_sha256": "414b13e727549a8c44b52ed969ae6d8a4e540ad0967fe998891c26a1417b1fb6"
+  }
+ ],
+ "checks": [
+  {
+   "case": "D1",
+   "expected_status": "answered",
+   "outcome": "valid",
+   "failure": null,
+   "status": "insufficient_evidence",
+   "evidence_items": 2,
+   "evidence_in_context": 0,
+   "retrieval": "retrieval miss",
+   "required_claims": 5,
+   "required_available": 0,
+   "required_checked": 0,
+   "required_unchecked": 0,
+   "required_unavailable": 5,
+   "abstention_expected": false,
+   "citations": 11,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": null,
+   "required_stated": 0,
+   "required_stated_with_cited_support": 0,
+   "stated_without_retrieved_support": 1,
+   "abstained": true,
+   "false_abstention": false
+  },
+  {
+   "case": "D2",
+   "expected_status": "answered",
+   "outcome": "valid",
+   "failure": null,
+   "status": "answered",
+   "evidence_items": 3,
+   "evidence_in_context": 3,
+   "retrieval": "all evidence retrieved",
+   "required_claims": 3,
+   "required_available": 3,
+   "required_checked": 3,
+   "required_unchecked": 0,
+   "required_unavailable": 0,
+   "abstention_expected": false,
+   "citations": 6,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": 3,
+   "required_stated": 3,
+   "required_stated_with_cited_support": 3,
+   "stated_without_retrieved_support": 0,
+   "abstained": false,
+   "false_abstention": false
+  },
+  {
+   "case": "D3",
+   "expected_status": "answered",
+   "outcome": "valid",
+   "failure": null,
+   "status": "answered",
+   "evidence_items": 2,
+   "evidence_in_context": 2,
+   "retrieval": "all evidence retrieved",
+   "required_claims": 2,
+   "required_available": 2,
+   "required_checked": 2,
+   "required_unchecked": 0,
+   "required_unavailable": 0,
+   "abstention_expected": false,
+   "citations": 6,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": 2,
+   "required_stated": 2,
+   "required_stated_with_cited_support": 2,
+   "stated_without_retrieved_support": 0,
+   "abstained": false,
+   "false_abstention": false
+  },
+  {
+   "case": "D4",
+   "expected_status": "answered",
+   "outcome": "valid",
+   "failure": null,
+   "status": "answered",
+   "evidence_items": 3,
+   "evidence_in_context": 3,
+   "retrieval": "all evidence retrieved",
+   "required_claims": 3,
+   "required_available": 3,
+   "required_checked": 3,
+   "required_unchecked": 0,
+   "required_unavailable": 0,
+   "abstention_expected": false,
+   "citations": 6,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": 3,
+   "required_stated": 3,
+   "required_stated_with_cited_support": 3,
+   "stated_without_retrieved_support": 0,
+   "abstained": false,
+   "false_abstention": false
+  },
+  {
+   "case": "D5",
+   "expected_status": "answered",
+   "outcome": "valid",
+   "failure": null,
+   "status": "answered",
+   "evidence_items": 1,
+   "evidence_in_context": 1,
+   "retrieval": "all evidence retrieved",
+   "required_claims": 2,
+   "required_available": 2,
+   "required_checked": 0,
+   "required_unchecked": 2,
+   "required_unavailable": 0,
+   "abstention_expected": false,
+   "citations": 9,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": 1,
+   "required_stated": 0,
+   "required_stated_with_cited_support": 0,
+   "stated_without_retrieved_support": 0,
+   "abstained": false,
+   "false_abstention": false
+  },
+  {
+   "case": "D6",
+   "expected_status": "answered",
+   "outcome": "valid",
+   "failure": null,
+   "status": "answered",
+   "evidence_items": 4,
+   "evidence_in_context": 4,
+   "retrieval": "all evidence retrieved",
+   "required_claims": 4,
+   "required_available": 4,
+   "required_checked": 3,
+   "required_unchecked": 1,
+   "required_unavailable": 0,
+   "abstention_expected": false,
+   "citations": 16,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": 4,
+   "required_stated": 3,
+   "required_stated_with_cited_support": 3,
+   "stated_without_retrieved_support": 0,
+   "abstained": false,
+   "false_abstention": false
+  },
+  {
+   "case": "U1",
+   "expected_status": "insufficient_evidence",
+   "outcome": "valid",
+   "failure": null,
+   "status": "insufficient_evidence",
+   "evidence_items": 0,
+   "evidence_in_context": 0,
+   "retrieval": "no evidence items",
+   "required_claims": 0,
+   "required_available": 0,
+   "required_checked": 0,
+   "required_unchecked": 0,
+   "required_unavailable": 0,
+   "abstention_expected": true,
+   "citations": 0,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": null,
+   "required_stated": 0,
+   "required_stated_with_cited_support": 0,
+   "stated_without_retrieved_support": 0,
+   "abstained": true,
+   "false_abstention": false
+  },
+  {
+   "case": "U2",
+   "expected_status": "insufficient_evidence",
+   "outcome": "valid",
+   "failure": null,
+   "status": "insufficient_evidence",
+   "evidence_items": 0,
+   "evidence_in_context": 0,
+   "retrieval": "no evidence items",
+   "required_claims": 0,
+   "required_available": 0,
+   "required_checked": 0,
+   "required_unchecked": 0,
+   "required_unavailable": 0,
+   "abstention_expected": true,
+   "citations": 0,
+   "citations_outside_context": [],
+   "uncited_claims": 0,
+   "evidence_cited": null,
+   "required_stated": 0,
+   "required_stated_with_cited_support": 0,
+   "stated_without_retrieved_support": 0,
+   "abstained": true,
+   "false_abstention": false
+  }
+ ],
+ "summary": {
+  "cases": 8,
+  "valid_answers": 8,
+  "generation_failures": [],
+  "not_attempted": [],
+  "citation_membership": {
+   "answers_all_in_context": 8,
+   "answers": 8,
+   "citations_in_context": 54,
+   "citations": 54
+  },
+  "uncited_claims": 0,
+  "evidence_citation": {
+   "cited": 13,
+   "available": 13,
+   "retrieval_missed": 2,
+   "in_failed_generations": 0
+  },
+  "required_facts": {
+   "stated": 11,
+   "stated_with_cited_support": 11,
+   "checked": 11,
+   "unchecked": 3,
+   "unavailable": 5,
+   "stated_without_retrieved_support": 1
+  },
+  "abstention": {
+   "expected": 2,
+   "abstained_when_expected": 2,
+   "false_abstentions": 0,
+   "cases_with_available_support": 5,
+   "on_retrieval_miss": {
+    "D1": "insufficient_evidence"
+   }
+  }
+ },
+ "attempt_summary": {
+  "attempts": 8,
+  "outcomes": {
+   "valid": 8
+  },
+  "schema_compliance": {
+   "valid": 8,
+   "checked": 8
+  },
+  "usage": {
+   "input_tokens": 27296,
+   "output_tokens": 91081
+  },
+  "calculated_cost_usd": 1.930804
+ }
+}
