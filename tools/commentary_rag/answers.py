@@ -14,7 +14,8 @@ claim is left to human review. Definitions (fixed before any answer was generate
 * Required facts (rubric): a required claim is available when a passage covering its support is
   in the context. A claim with check terms is *stated* when every term group has one variant in
   the answer's claim texts (NFC, case-folded, whitespace folded, decimal comma read as point); it
-  is *stated with cited support* when the answer also cites a passage covering its support. A
+  is *stated with cited support* when the answer also cites a passage covering its support (at
+  answer level: the terms may stand in one claim and the citation in another). A
   claim without check terms is left to human review. A term match for an unavailable claim is
   flagged for review (a fact from outside the context, or a negation), never credited.
 * Abstention: status ``insufficient_evidence``. Expected for cases without supporting evidence;
@@ -123,7 +124,9 @@ def summarize(rows: list[dict]) -> dict:
             "available": total("evidence_in_context", valid),
             "retrieval_missed": sum(r["evidence_items"] - r["evidence_in_context"] for r in rows),
             "in_failed_generations": sum(r["evidence_in_context"] for r in rows
-                                         if r["outcome"] != "valid"),
+                                         if r["outcome"] == "generation_failure"),
+            "in_not_attempted": sum(r["evidence_in_context"] for r in rows
+                                    if r["outcome"] == "not_attempted"),
         },
         "required_facts": {
             "stated": total("required_stated", valid),

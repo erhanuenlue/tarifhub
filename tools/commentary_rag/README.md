@@ -106,7 +106,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 43 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 58 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
@@ -189,14 +189,22 @@ none of the scoring fields, sends no tools, fallbacks or sampling parameters, an
 before it is sent; schema violations, cut-off answers and out-of-context citations are kept as
 reported, never repaired; one HTTP call per attempt; retries within the cap; blockers stop the
 run; a request whose ceiling would pass the budget is never sent; a rerun never repeats a valid
-answer; the answer checks' denominators. What they miss: real model behaviour, real token counts,
+answer; a second run on the same ledger is refused while one is sending; a valid answer is
+settled only after its response is saved; provider errors are redacted of key and workspace
+identifiers; the answer checks' denominators; every step refuses to overwrite an earlier output,
+`run` refuses contexts that differ from the saved record in any field the request carries, and
+`report` refuses a saved response whose hash differs from its ledger entry. What they miss: real model behaviour, real token counts,
 real prices and whether a cited passage supports a claim.
 
 **Code after the recorded run.** The 2026-11-15 run record names the tool files it ran with by
 SHA-256 (`run.environment.tool_files_sha256`, uncommitted on top of `88cd681`). Changed since, on
-2026-11-15: the steps and `run_eval.py --out` refuse to overwrite an existing output, and the
-tests no longer skip for a missing dependency. Neither changes a request, a check or a metric,
-and the run did not exercise them.
+2026-11-15: the steps and `run_eval.py --out` refuse to overwrite an existing output; the tests
+no longer skip for a missing dependency; and, after an independent review, `run` checks every
+field of the contexts against the saved record, a run holds a lock on the ledger, a valid answer
+is settled only after its response is saved, `report` verifies response hashes and covers only
+its own run's attempts, provider error text is redacted, and evidence of unattempted cases is no
+longer counted under failed generations. None of this changes a request, a recorded value or a
+metric of the recorded run, which did not exercise this code (its contexts pass the new checks).
 
 ## Limitations
 
@@ -215,6 +223,8 @@ and the run did not exercise them.
   A page without a printed footer would get no page label (both documents have one on every
   content page).
 - Sentences are split by a German heuristic with an abbreviation list.
+- The term check for a required claim works at answer level: its terms may stand in one claim and
+  the covering citation in another. Claim-level support is the human review's judgement.
 - `pdftotext` artefacts stay in the text: inline footnote numbers, hyphens dropped at line breaks
   (`NeugeborenenScreening`), table cells flattened into one line.
 - BM25 has no stemming or decompounding, and its statistics are computed per edition selection,

@@ -19,11 +19,15 @@ connection error is charged at its reservation, since the provider may have bill
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import html
 import json
 import math
+import os
+import re
 import time
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -33,6 +37,8 @@ import anthropic
 MODEL = "claude-opus-5-5"
 BASE_URL = "https://api.anthropic.com"
 STATUSES = ("answered", "partial", "insufficient_evidence")
+# An API key or workspace ID a provider error might echo: redacted before any record or output.
+_CREDENTIAL = re.compile(r"sk-ant-[A-Za-z0-9_-]+|wrkspc_[A-Za-z0-9]+")
 
 ANSWER_SCHEMA = {
     "type": "object",
@@ -195,7 +201,7 @@ def _schema_problems(data) -> list[str]:
     if problems:
         return problems
     if not isinstance(data["status"], str) or data["status"] not in STATUSES:
-        problems.append(f"status {data['status']!r} is not one of {', '.join(STATUSES)}")
+        problems.append(f"status is not one of {', '.join(STATUSES)}")  # model text stays local
     if not isinstance(data["missing_evidence"], list) or not all(
             isinstance(m, str) for m in data["missing_evidence"]):
         problems.append("missing_evidence is not a list of strings")
@@ -215,8 +221,40 @@ def run(items: list[dict], *, client: anthropic.Anthropic, config: Config, prici
     """Plan and send one request per case; return the plan, every attempt and any stop reason.
 
     With ``plan_only`` the requests are only counted and priced; nothing is sent to generate.
+    Otherwise the run holds the ledger's lock throughout, so no other run can check the cap and
+    budget or reserve on the same ledger until it ends.
     """
 
+    if plan_only:
+        return _run(items, client=client, config=config, pricing=pricing, ledger=ledger,
+                    artifacts=artifacts, plan_only=True)
+    with _ledger_lock(ledger) as held:
+        if not held:
+            return {"plan": [], "attempts": [], "retries_skipped": [], "not_attempted": [],
+                    "stopped": f"another run holds the lock of {ledger.name}; nothing was sent"}
+        return _run(items, client=client, config=config, pricing=pricing, ledger=ledger,
+                    artifacts=artifacts, plan_only=False)
+
+
+@contextmanager
+def _ledger_lock(ledger: Path):
+    """An exclusive, non-blocking lock on the ledger's folder: True when held."""
+
+    ledger.parent.mkdir(parents=True, exist_ok=True)
+    folder = os.open(ledger.parent, os.O_RDONLY)
+    try:
+        try:
+            fcntl.flock(folder, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except BlockingIOError:
+            yield False
+            return
+        yield True
+    finally:
+        os.close(folder)  # closing the descriptor releases the lock
+
+
+def _run(items: list[dict], *, client: anthropic.Anthropic, config: Config, pricing: Pricing,  # noqa: PLR0913
+         ledger: Path, artifacts: Path | None, plan_only: bool) -> dict:
     result = {"plan": [], "attempts": [], "retries_skipped": [], "not_attempted": [],
               "stopped": None}
     answered = {e["case"]: e["attempt"] for e in _events(ledger)
@@ -313,12 +351,12 @@ def _attempt(it: dict, body: dict, row: dict, *, client, config: Config, pricing
     record["latency_s"] = round(time.monotonic() - started, 3)
     if text is not None:
         record["response_sha256"] = hashlib.sha256(text.encode("utf-8")).hexdigest()
-    _append(ledger, {"event": "settle", **record, "at": _now()})
-    if artifacts is not None:
+    if artifacts is not None:  # saved before settling: a settled valid answer is never lost
         _write(artifacts / "requests" / f"{record['attempt']}.json",
                json.dumps(body, ensure_ascii=False, indent=1))
         if text is not None:
             _write(artifacts / "responses" / f"{record['attempt']}.json", text)
+    _append(ledger, {"event": "settle", **record, "at": _now()})
     return record
 
 
@@ -344,11 +382,12 @@ def _response(data: dict, it: dict, config: Config, pricing: Pricing) -> dict:
 
 
 def error_text(exc: anthropic.APIStatusError) -> str:
-    """The provider's error type and message, without request details."""
+    """The provider's error type and message, without request details or credentials."""
 
     body = exc.body if isinstance(exc.body, dict) else {}
     detail = body.get("error", {}) if isinstance(body.get("error"), dict) else {}
-    return f"{detail.get('type', type(exc).__name__)}: {detail.get('message', '')}".strip()
+    text = f"{detail.get('type', type(exc).__name__)}: {detail.get('message', '')}".strip()
+    return _CREDENTIAL.sub("[redacted]", text)
 
 
 def _write(path: Path, content: str) -> None:

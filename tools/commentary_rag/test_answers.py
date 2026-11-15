@@ -77,7 +77,8 @@ def test_case_checks_separate_retrieval_misses_generation_failures_and_abstentio
     # Evidence citation counts only items retrieved for a valid answer: A's one item.
     # Retrieval misses: B 2 + E 1; D's retrieved item fell to a generation failure.
     assert summary["evidence_citation"] == {
-        "cited": 1, "available": 1, "retrieval_missed": 3, "in_failed_generations": 1}
+        "cited": 1, "available": 1, "retrieval_missed": 3, "in_failed_generations": 1,
+        "in_not_attempted": 0}
     assert summary["required_facts"] == {
         "stated": 1, "stated_with_cited_support": 1, "checked": 1, "unchecked": 1,
         "unavailable": 2, "stated_without_retrieved_support": 1}
@@ -107,3 +108,18 @@ def test_attempt_summary_counts_schema_compliance_over_completed_responses_only(
                                    "timeout": 1, "http_529": 1}
     assert summary["usage"] == {"input_tokens": 3900, "output_tokens": 41000}
     assert summary["calculated_cost_usd"] == 1.5144
+
+
+def test_evidence_of_an_unattempted_case_is_not_counted_as_a_failed_generation():
+    # F: evidence retrieved, but the case was never sent (budget or attempt cap).
+    unattempted = answers.score_case(
+        case_id="F", expected_status="answered", evidence=[{"f1"}], context=["f1"],
+        required=[required("F-R1", {"f1"}, [["1006.00"]])], answer=None, failure=None)
+
+    summary = answers.summarize([D, unattempted])
+
+    assert (summary["generation_failures"], summary["not_attempted"]) == (["D"], ["F"])
+    # D's one retrieved item fell to a generation failure; F's was never sent.
+    assert summary["evidence_citation"] == {
+        "cited": 0, "available": 0, "retrieval_missed": 0, "in_failed_generations": 1,
+        "in_not_attempted": 1}

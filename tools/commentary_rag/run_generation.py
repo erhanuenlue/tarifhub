@@ -213,15 +213,29 @@ def _items(paths: dict[str, Path]) -> tuple[list[dict], dict]:
 
     data = json.loads(paths["contexts"].read_text(encoding="utf-8"))
     saved = json.loads(CORRECTED.read_text(encoding="utf-8"))
-    hashes = {p["passage_id"]: p["text_sha256"] for p in saved["passages"]}
+    meta = {p["passage_id"]: p for p in saved["passages"]}
+    cases = {c["id"]: c for c in saved["cases"]}
+    titles = {d["edition"]: d["title"] for d in saved["run"]["documents"]}
     top = _top(saved)
     for it in data["items"]:
-        ids = [p["passage_id"] for p in it["passages"]]
-        if ids != top[it["case"]]:
-            raise SystemExit(f"refused: {it['case']} context differs from the saved top 5")
-        for p in it["passages"]:
-            if not (_sha256_text(p["text"]) == p["text_sha256"] == hashes[p["passage_id"]]):
-                raise SystemExit(f"refused: passage text of {p['passage_id']} does not match")
+        case = cases.get(it["case"])
+        if case is None or (it["question"], it["editions"]) != (case["question"],
+                                                                 case["target_editions"]):
+            raise SystemExit(f"refused: {it['case']} question or editions differ from the "
+                             "saved record")
+        if [p["passage_id"] for p in it["passages"]] != top[it["case"]]:
+            raise SystemExit(f"refused: {it['case']} context differs from the saved record's top 5")
+        for p in it["passages"]:  # everything the request carries, not only the text
+            m = meta[p["passage_id"]]
+            if not (_sha256_text(p["text"]) == p["text_sha256"] == m["text_sha256"]
+                    and (_sha256_text(p["context"]) if p["context"] else None)
+                    == m["context_sha256"]
+                    and all(p[k] == m[k] for k in ("edition", "page", "page_label", "section",
+                                                   "section_title"))
+                    and p["edition"] in case["target_editions"]
+                    and p["document_title"] == titles[p["edition"]]):
+                raise SystemExit(f"refused: {it['case']} passage {p['passage_id']} does not match "
+                                 "the saved record")
     return data["items"], data
 
 
@@ -343,7 +357,12 @@ def report(args: argparse.Namespace) -> int:
 
 
 def _answer(paths: dict[str, Path], attempt: dict, it: dict) -> dict | None:
+    """The saved answer of a settled attempt, refused unless it is the response it recorded."""
+
     text = (paths["artifacts"] / "responses" / f"{attempt['attempt']}.json").read_text("utf-8")
+    if _sha256_text(text) != attempt["response_sha256"]:
+        raise SystemExit(f"refused: the saved response of {attempt['attempt']} does not match "
+                         "its recorded hash")
     content = json.loads(text).get("content", [])
     body = "".join(b.get("text", "") for b in content if b.get("type") == "text")
     answer, _, _ = generation.validate(body, [p["passage_id"] for p in it["passages"]])
@@ -353,7 +372,8 @@ def _answer(paths: dict[str, Path], attempt: dict, it: dict) -> dict | None:
 def build_record(items, data, result, paths, config, pricing_data) -> dict:  # noqa: PLR0913
     """The public record: configuration, contexts by hash, every attempt, checks, no answers."""
 
-    attempts = generation.settled(LEDGER)
+    own = {a["attempt"] for a in result["attempts"]}  # a run's record covers its own attempts
+    attempts = [a for a in generation.settled(LEDGER) if a["attempt"] in own]
     rows, answer_rows = [], []
     for it in items:
         mine = [a for a in attempts if a["case"] == it["case"]]
@@ -449,7 +469,8 @@ def _write_review_sheet(path: Path, items: list[dict], record: dict, paths) -> N
                   + f"; expected status {c['expected_status']}", ""]
         answer = None
         if it["case"] in finals:
-            attempt = {"attempt": finals[it["case"]]["attempt"]}
+            attempt = next(a for a in record["attempts"]
+                           if a["attempt"] == finals[it["case"]]["attempt"])
             answer = _answer(paths, attempt, it)
         if answer:
             lines += ["### Answer (claims as generated)", ""]

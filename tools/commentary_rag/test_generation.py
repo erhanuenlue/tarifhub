@@ -10,6 +10,7 @@ credential is removed from the environment), no cost. Expected values are worked
 from __future__ import annotations
 
 import json
+import threading
 import sys
 from pathlib import Path
 
@@ -292,3 +293,72 @@ def test_a_configured_workspace_is_sent_as_a_header_on_every_request(tmp_path):
                                    messages=[{"role": "user", "content": "x"}])
 
     assert seen == ["wrkspc_test", "wrkspc_test", None]  # count, create; then without
+
+
+def test_a_valid_answer_is_settled_only_after_its_response_is_saved(tmp_path):
+    ledger = tmp_path / "ledger.jsonl"
+    blocked = tmp_path / "artifacts"
+    blocked.write_text("a file, not a folder", encoding="utf-8")  # saving the response fails
+    first = Provider(message(answer(("Der Tarif steigt.", ["jul/p6/1"]))))
+
+    with pytest.raises(OSError):
+        generation.run([D], client=first.client(), config=generation.Config(), pricing=PRICING,
+                       ledger=ledger, artifacts=blocked)
+
+    # Not settled, so still reserved and counted, and not taken for answered on the next run.
+    assert [json.loads(line)["event"] for line in ledger.read_text().splitlines()] == ["reserve"]
+    assert generation.committed_usd(ledger) == 0.6444
+    second = Provider(message(answer(("Der Tarif steigt.", ["jul/p6/1"]))))
+    result = generation.run([D], client=second.client(), config=generation.Config(),
+                            pricing=PRICING, ledger=ledger, artifacts=tmp_path / "saved")
+    assert [(a["attempt"], a["outcome"]) for a in result["attempts"]] == [("D-2", "valid")]
+    assert (tmp_path / "saved" / "responses" / "D-2.json").exists()
+
+
+def test_a_second_run_on_the_same_ledger_is_refused_while_the_first_is_sending(tmp_path):
+    entered, release = threading.Event(), threading.Event()
+
+    class Slow(Provider):
+        def __call__(self, request):
+            if request.url.path == "/v1/messages":
+                entered.set()
+                release.wait(10)
+            return super().__call__(request)
+
+    ledger = tmp_path / "ledger.jsonl"
+    first = Slow(message(answer(("Der Tarif steigt.", ["jul/p6/1"]))))
+    second = Provider(message(answer(status="insufficient_evidence")))
+    done: dict = {}
+    worker = threading.Thread(target=lambda: done.update(result=generation.run(
+        [D], client=first.client(), config=generation.Config(), pricing=PRICING, ledger=ledger)))
+    worker.start()
+    assert entered.wait(10)
+    try:
+        result = generation.run([U], client=second.client(), config=generation.Config(),
+                                pricing=PRICING, ledger=ledger)
+    finally:
+        release.set()
+        worker.join(10)
+
+    # Checking the cap and budget and reserving must not interleave with another run's.
+    assert second.counts == [] and second.creates == [] and result["attempts"] == []
+    assert result["stopped"].startswith("another run")
+    assert [a["attempt"] for a in done["result"]["attempts"]] == ["D-1"]
+
+
+def test_public_diagnostics_never_carry_a_credential_or_generated_text(tmp_path):
+    echoed = "key sk-ant-api03-SECRETKEY0123456789 in workspace wrkspc_01SECRETSPACE is not allowed"
+    refused = Provider(httpx.Response(403, json={
+        "type": "error", "error": {"type": "permission_error", "message": echoed}}))
+    rambling = Provider(message({"status": "Die Antwort lautet " + "x" * 200, "claims": [],
+                                 "missing_evidence": []}))
+
+    stopped = run(refused, [D], tmp_path / "a")
+    invalid = run(rambling, [U], tmp_path / "b")
+
+    public = json.dumps([stopped, invalid]) + "".join(
+        (tmp_path / part / "ledger.jsonl").read_text() for part in ("a", "b"))
+    for secret in ("SECRETKEY", "SECRETSPACE", "Die Antwort"):
+        assert secret not in public
+    assert stopped["stopped"].startswith("D-1 http_403: permission_error:")
+    assert invalid["attempts"][0]["outcome"] == "schema_invalid"
