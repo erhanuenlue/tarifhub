@@ -145,7 +145,8 @@ changed.
   arguments and errors are local.
 - `test_evidence_agent.py`: offline tests of the loop with the real `anthropic` client on a
   mocked HTTP transport, a fake key, the real search, a stand-in monotonic clock and temporary
-  ledgers and artifact folders; one test reads a byte copy of the recorded Phase 2 ledger.
+  ledgers and artifact folders; two tests read byte copies of the recorded Phase 2 ledger, one
+  of them altered.
 - `results/2026-11-14-retrieval-rerun.json`: the pre-generation rerun of the corrected run
   (identical rankings, scores, metrics and passages).
 - `results/2026-11-15-generation-plan.json` (the plan the run used, no workspace header) and
