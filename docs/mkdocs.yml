@@ -93,6 +93,7 @@ nav:
           - "ADR-023 · AL edition comparison against the hash-verified full lists": adr/023-al-edition-comparison.md
           - "ADR-024 · AL workbook texts compared as published, from the verified workbooks": adr/024-al-workbook-text.md
           - "ADR-025 · BAG commentary retrieval and cited explanations outside the services": adr/025-commentary-retrieval.md
+          - "ADR-026 · Commentary evidence search bounded in code (proposed)": adr/026-commentary-evidence-search.md
       - 10 · Quality Requirements: arc42/10-quality-requirements.md
       - 11 · Risks & Technical Debt: arc42/11-risks-technical-debt.md
       - 12 · Test Strategy: arc42/13-test-strategy.md
