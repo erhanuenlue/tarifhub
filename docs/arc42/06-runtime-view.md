@@ -88,6 +88,42 @@ sequenceDiagram
 
 The recorded run, its checks and the human review are in [§10](10-quality-requirements.md#commentary-rag-pilot-recorded-evaluation).
 
+## Scenario 5: the evidence-seeking agent for one question (tested offline only)
+
+The loop of [ADR-026](../adr/026-commentary-evidence-search.md) (proposed, `tools/commentary_rag/evidence_agent.py`) has run only against a mocked provider and temporary ledgers: no runner passes it a live client, the request shape and the usage the provider reports are unverified, and nothing below is a recorded run.
+
+1. **Start.** The question holds the folder lock of its books for its whole run; refused by the lock, it counts, sends and writes nothing. The recorded Phase 2 ledger must still have the hash pinned in the agent's code (a caller can only repeat it, not choose another), the active ledger beside it must read cleanly, and the question must not be in it already. It is admitted only when three calls at the 80,000-token input cap, each at its ceiling, fit beside everything committed under USD 100. The ceiling is the agent's own, one calculation for admission and reservations: the counted input with a 10 % margin at the dearest input rate, the full output allowance and the US data-residency multiplier, rounded up to a micro-dollar (USD 1.4784 at the cap). The first request carries the Phase 2 content for the question (its editions and fixed top-5 passages), the Phase 2 system prompt with a short instruction to search for what the passages do not state, and one tool, the commentary search. One monotonic deadline is set for the question.
+2. **Each call.** If time is left, the request is token-counted with a timeout no longer than the time left, refused above the input cap, saved and reserved at its ceiling under its call ID. The deadline is checked again: a request it stops is recorded as never sent, which releases the reservation. Otherwise the request is sent once. The raw response is saved and the call settled, at the cost of its validated usage or, when nothing can be priced (a timeout, an error response, missing usage), at its whole reservation. A failed write stops the question: a sent call, or one whose release could not be saved, stays reserved. A tool is offered unless this is the third call or the two searches or the ten passages are used up.
+3. **A search request.** Exactly one call of the known tool is run by code within the search bounds; anything else (an unknown tool, several calls, a call when none was offered, a cut-off or declined response) ends the question without running it, and so does a cost above the reservation. The assistant turn is appended as returned and the tool result follows with its tool-use ID; refused and failed searches return as error results and use their round.
+4. **An answer.** It is accepted only when it matches the answer schema and cites only passages supplied in this conversation; otherwise the outcome is an invalid answer. An answer with status `insufficient_evidence` is a legitimate outcome, apart from errors. Acceptance never depends on the settlement: a rejected response has been settled all the same.
+5. **The deadline.** It is checked before each count, after the count and reservation just before sending, after each call and after each search. Once it has passed, nothing more is counted, sent or searched, and a late response is settled but not used. The check is cooperative: it cannot interrupt a request already sent or a search in progress.
+
+```mermaid
+sequenceDiagram
+  autonumber
+  participant Agent as evidence_agent.py
+  participant Books as ledgers and artifacts (temporary in tests)
+  participant API as Messages API (mocked in tests)
+  participant Search as evidence_search.py
+  Agent->>Books: folder lock, pinned hash and both ledgers checked, admission for three calls at the cap
+  loop at most three calls, while the deadline has not passed
+    Agent->>API: count_tokens (timeout at most the time left)
+    Agent->>Books: save the request, reserve its ceiling
+    Agent->>API: messages.create, tool offered or tool_choice none
+    API-->>Agent: assistant turn
+    Agent->>Books: save the response, settle from usage or keep the reservation
+    alt one call of search_commentary, while offered
+      Agent->>Search: arguments, question state
+      Search-->>Agent: new passages or a refusal or tool error, next state
+      Agent->>Agent: append the assistant turn, then the tool result for its ID
+    else an answer
+      Agent->>Agent: schema check, citations only among supplied passages
+    end
+  end
+```
+
+> **Figure: One question in the agent loop.** Every arrow to the API has only ever reached a mocked transport, and every arrow to the books a temporary folder. Any other response ends the question with a distinct outcome: provider error, incomplete generation, protocol error, invalid answer or deadline; the books add refused, persistence error and spending stop, each before any further request is sent.
+
 ## Record lifecycle (states)
 
 ![Record lifecycle](../diagrams/state-record-lifecycle.svg)
