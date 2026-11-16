@@ -25,6 +25,22 @@ justified (overall partly appropriate); U1 and U2 abstained appropriately. Aggre
 `results/2026-11-15-human-review-summary.json`; detailed ratings stay local. This describes one run
 on eight dev cases with no held-out test, not an accuracy figure.
 
+**Seeking missing evidence (UC2), offline increments (2026-11-15 and 16):** `evidence_search.py`
+is the commentary search of the evidence-seeking agent (ADR-026, proposed), one read-only search
+whose bounds are code; `evidence_agent.py` is the agent's loop for one question, with per-call
+spending protection. Both are tested offline only, the loop against a mocked provider with
+temporary ledgers. **The loop is not ready for live use:** there is no runner and no command,
+it has never called the provider, and the provider contract (the request shape and the usage
+it reports) is unverified; its deadline is cooperative, not a hard limit. Its books: USD 100 is
+one aggregate limit for Phase 2 and Phase 3 together; `results/generation-ledger.jsonl` stays
+byte-identical and counts with all it committed (USD 1.930804, SHA-256
+`e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa`), and all later spending goes
+to one active ledger beside it, `phase3-ledger.jsonl`, which no run has written yet. The hash
+is pinned in the agent's code, not chosen by a caller. The comparison with fixed top-5 and
+top-10 contexts is planned, not built: those conditions do not yet use the shared accounting
+path, and the Phase 2 runner must not be used during Phase 3 to bypass it. Nothing above
+changed.
+
 ## Files
 
 - `corpus.py`: manifest, hash-verified bytes, `pdftotext` on stdin, page-bounded passages. Each
@@ -76,6 +92,60 @@ on eight dev cases with no held-out test, not an accuracy figure.
 - `test_generation.py`, `test_answers.py`, `test_run_generation.py`: offline tests of the
   generation run against a mocked provider HTTP boundary, of the answer checks, and of the steps'
   refusal to overwrite earlier outputs.
+- `evidence_search.py`: the commentary search of the evidence-seeking agent (ADR-026,
+  proposed). `search_commentary(arguments, state, *, retriever, passages, limits)` runs one
+  search request: hybrid ranking over the question's selected editions only, at most
+  `min(5, remaining capacity)` passages not yet supplied from the top 10, at most 10 passages per
+  question (the fixed five included) and two search rounds (refused and failed requests use
+  theirs). It returns the next state, the tool result as escaped passage data, a publishable
+  `record` (IDs, ranks, scores, hashes, counts, outcome) and a `local` part with the raw
+  arguments and error text; the tool result carries passage text and stays local too. Only the
+  agent loop below calls it, and only against a mocked provider so far.
+- `test_evidence_search.py`: offline tests of the search on a synthetic two-edition corpus with
+  hand-worked rankings, the real retriever and a stand-in e5 embedder.
+- `evidence_agent.py`: the evidence-seeking agent's loop for one question, **not ready for live
+  use** (no runner, provider contract unverified). `run_case(task, *, client, retriever,
+  passages, clock, budget_s, spending)` takes an `AgentTask` (case ID, question, selected
+  editions, verified fixed passages: nothing used to score the answer) and a required `Spending`
+  (the historical ledger and its expected SHA-256, which must be the hash pinned in the code,
+  the active ledger beside it, both in `results/` and refused anywhere else, and a local
+  artifact folder; the limit, the Phase 2 settings and the prices of `pricing.json` are fixed
+  in code), and sends the Phase 2 request
+  content and system
+  prompt with a generic search instruction and the one tool; at most three generation calls,
+  the conversation only appended to (assistant turns as returned, tool results by tool-use ID),
+  no tool on the last call or once searches or passages are used up, no retries (switched off
+  on whatever client is given). An answer is
+  accepted only when it matches the schema and cites only supplied passages. Outcomes: `answer`
+  (with its own status, `insufficient_evidence` included), `invalid_answer`,
+  `incomplete_generation`, `protocol_error`, `provider_error`, `deadline`, and for the books
+  `refused` (locked, already run, damaged or changed books, admission or input over its
+  limit), `persistence_error` (a failed write) and `spending_stop` (a cost above its
+  reservation, before a further call). Spending: the case holds Phase 2's folder lock
+  throughout; it is admitted only if three calls at the 80,000-token input cap fit beside all
+  committed spending under USD 100; each call is counted, refused above the cap, saved under
+  `artifacts/requests/<case>-call<n>.json`, reserved at its ceiling and only then sent (a request
+  the deadline stops is recorded as never sent), its raw response saved under `responses/` and
+  settled at its validated usage cost, or at its whole reservation when nothing can be priced
+  (timeouts, error responses, missing usage), recorded as exposure, not an invoice. The ceiling
+  is the agent's own, for admission and reservations alike: the counted input with a 10 %
+  margin at the dearest input rate of `pricing.json` (8 USD per million, an hour's cache
+  write), the full 32,000-token output allowance and the 1.1 US multiplier, rounded up to a
+  micro-dollar: USD 0.71852 at 1,500 counted tokens, 1.4784 at the cap, so a question is
+  admitted against 4.4352. Any usage the settlement prices within the margin fits its
+  reservation; that is a calculation from recorded prices, not a billing guarantee. A failed
+  write stops the case; a sent call, or one whose release was not saved, stays reserved. The
+  books are used by their canonical paths (a link from elsewhere cannot move the lock), and a
+  settlement must match the cost of its saved usage and a call ID its case. A late
+  or invalid response is settled and still not accepted. One monotonic deadline per question,
+  checked before each count, after the count and reservation just before sending, after each
+  generation call and after each search, and bounding every request's timeout; cooperative,
+  since a check cannot interrupt a request or a search already running. The record and the
+  ledger hold IDs, codes, counts, hashes, usage counts and amounts; requests, responses, search
+  arguments and errors are local.
+- `test_evidence_agent.py`: offline tests of the loop with the real `anthropic` client on a
+  mocked HTTP transport, a fake key, the real search, a stand-in monotonic clock and temporary
+  ledgers and artifact folders; one test reads a byte copy of the recorded Phase 2 ledger.
 - `results/2026-11-14-retrieval-rerun.json`: the pre-generation rerun of the corrected run
   (identical rankings, scores, metrics and passages).
 - `results/2026-11-15-generation-plan.json` (the plan the run used, no workspace header) and
@@ -107,7 +177,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 61 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 208 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
