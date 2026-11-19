@@ -1,0 +1,321 @@
+{
+ "run": {
+  "case": "D1",
+  "tag": "2026-11-20",
+  "question_sha256": "e35d33da11359de74904494bcbcb790fc090812f467bb70d3abd0a10dc7cd750",
+  "editions": [
+   "2026-07-01"
+  ],
+  "time_budget_s": 600.0,
+  "configuration": {
+   "model": "claude-opus-5-5",
+   "effort": "max",
+   "thinking": {
+    "type": "adaptive"
+   },
+   "max_tokens": 32000,
+   "timeout_s": 1200.0,
+   "client_max_retries": 0,
+   "budget_usd": 100.0,
+   "input_margin": 1.1,
+   "generation_calls": 3,
+   "max_input_tokens": 80000,
+   "search_limits": {
+    "max_rounds": 2,
+    "max_passages": 10,
+    "per_search": 5,
+    "window": 10,
+    "max_query_chars": 200,
+    "max_seeking_chars": 300
+   },
+   "system_prompt_sha256": "9d066f4966a56f8d53a8a3899262a5e64f1f0a5ccc151bbdc98e275faa92db83",
+   "answer_schema_sha256": "31f86409999f8e88212d79079edf199437d133db9bc9d0c977c2b6d288452d4c"
+  },
+  "corpus": {
+   "manifest": {
+    "path": "data/manifests/bag-al.json",
+    "sha256": "3a3c98567a51dacaae6eef2abe976d789179f297fc3a612a82c6a51622e986b9"
+   },
+   "documents": [
+    {
+     "edition": "2026-01-01",
+     "sha256": "0d335bd46adec0254a91e260cebe976f86fd0cfb54bb97ea8ecf98cadfd7e4fc",
+     "source_url": "https://www.bag.admin.ch/dam/de/sd-web/0qHwQnPwQLSf/Kommentar%20zu%20den%20%C3%84nderungen%20des%20Anh.%203%20KLV%20per%2001.01.26.pdf",
+     "page_count": 5
+    },
+    {
+     "edition": "2026-07-01",
+     "sha256": "fe1856df9f7d0023aac52e13dc61a0055a7105b4810f18cc8822366625af5105",
+     "source_url": "https://www.bag.admin.ch/dam/de/sd-web/4UyRNXXha5kI/Kommentar%20zu%20den%20%C3%84nderungen%20des%20Anh.%203%20KLV%20per%2001.07.26_final.pdf",
+     "page_count": 8
+    }
+   ],
+   "passages": 40
+  },
+  "books": {
+   "historical_ledger": "generation-ledger.jsonl",
+   "historical_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+   "active_ledger": "phase3-ledger.jsonl"
+  },
+  "environment": {
+   "python": "3.13.12",
+   "packages": {
+    "anthropic": "0.109.1",
+    "httpx": "0.28.1"
+   },
+   "git_head": "df5d20d45a95cf3ba9ae95880d83b8f6770e6f28",
+   "tool_files_uncommitted": false,
+   "tool_files_sha256": {
+    "run_question.py": "3d9129f56dd635d01524b6278689901c4a7704652db2cf119b6cda021ae67a30",
+    "evidence_agent.py": "7e057b21078e989aea8abccf92fa0c3db61825ec19afaa82b80c99324003744b",
+    "evidence_search.py": "439e4c856bbcb62056eadd7672c22444eafdcbeed1bd7855012c813cf28710ef",
+    "generation.py": "4ee8822cae96985a5a9e0ec62bda34c9b12574625524913b16530ff54e416e3a",
+    "retrieval.py": "7803c83d4f0a3a9e4bcdb94450587878b64d715fd6d77e8176fc50b9f3cf0d5a",
+    "corpus.py": "38a1572daf525e9a2356a29f7eb53d0769127e7afa05826925be5170ce701e5f",
+    "run_eval.py": "ada4ccf0e23a8f93e5793947a77a42e8ffd3752fddb8c58cf3402bb68de3701b",
+    "pricing.json": "f3d8bb8e65c5bbecb1dfd2f5c7f2b6c65b70934a1de1df3f500d96d02e31538e"
+   }
+  },
+  "provider_contract": "unverified before the first live run (ADR-026)",
+  "started_at": "2026-11-19T23:19:07+00:00",
+  "finished_at": "2026-11-19T23:22:37+00:00"
+ },
+ "initial_retrieval": {
+  "method": "hybrid",
+  "mode": "edition_filter",
+  "k": 5,
+  "token_budget": 256,
+  "query_tokens": 47,
+  "embedder": {
+   "model": "intfloat/multilingual-e5-large",
+   "device": "mps:0",
+   "cache_revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+   "max_seq_length": 512,
+   "packages": {
+    "sentence-transformers": "5.6.1",
+    "transformers": "5.11.0",
+    "tokenizers": "0.22.2",
+    "torch": "2.12.0"
+   }
+  },
+  "passages": [
+   {
+    "rank": 1,
+    "passage_id": "2026-07-01/p4/s2.3/2",
+    "score": 0.030798389007344232,
+    "edition": "2026-07-01",
+    "page": 4,
+    "section": "2.3",
+    "text_sha256": "09d683f81609a11fba0ef4d34f39ca42a2a33ef10510e90825831624df6308f6"
+   },
+   {
+    "rank": 2,
+    "passage_id": "2026-07-01/p4/s2.4/1",
+    "score": 0.0304147465437788,
+    "edition": "2026-07-01",
+    "page": 4,
+    "section": "2.4",
+    "text_sha256": "3ae9bf00ad38b7c79556a05035ec624dab99ebe4f0adfe6cd55ca0c81bf633af"
+   },
+   {
+    "rank": 3,
+    "passage_id": "2026-07-01/p7/s2.6/1",
+    "score": 0.029877369007803793,
+    "edition": "2026-07-01",
+    "page": 7,
+    "section": "2.6",
+    "text_sha256": "d46226a41ed261caa27f030d271cd2678b95dc8ca62404f9f620b13e0ba0cc73"
+   },
+   {
+    "rank": 4,
+    "passage_id": "2026-07-01/p8/s4.1/1",
+    "score": 0.02967032967032967,
+    "edition": "2026-07-01",
+    "page": 8,
+    "section": "4.1",
+    "text_sha256": "cead34d19658d64b7d28d6b0ed21064f3b67d73707e72187aefa23b05b6dfaeb"
+   },
+   {
+    "rank": 5,
+    "passage_id": "2026-07-01/p4/s2.2/1",
+    "score": 0.029551337359792925,
+    "edition": "2026-07-01",
+    "page": 4,
+    "section": "2.2",
+    "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+   }
+  ]
+ },
+ "agent": {
+  "case": "D1",
+  "budget_s": 600.0,
+  "generation_calls": 2,
+  "calls": [
+   {
+    "call": 1,
+    "attempt": "D1-call1",
+    "tool_choice": "auto",
+    "request_sha256": "4d242dda1a76cf701184dce0c1ad9e6943e7fc56c0da7a2c224e16dcebb14dca",
+    "counted_input_tokens": 3860,
+    "reserved_usd": 0.741365,
+    "response_sha256": "b85bfdcddf63281ab51c787032ae823486960b75baf7ac19c3b3e0f284560b95",
+    "usage": {
+     "input_tokens": 3860,
+     "output_tokens": 528,
+     "cache_creation_input_tokens": 0,
+     "cache_read_input_tokens": 0,
+     "cache_creation_1h_input_tokens": 0,
+     "thinking_tokens": 307,
+     "us_inference": false
+    },
+    "cost_usd": 0.026,
+    "cost_basis": "usage",
+    "above_reservation": false,
+    "returned_model": "claude-opus-5-5",
+    "stop_reason": "tool_use"
+   },
+   {
+    "call": 2,
+    "attempt": "D1-call2",
+    "tool_choice": "none",
+    "request_sha256": "3a48c115b67a09bdaf680c95eec93e9bb54fb7954a01b1dc1856f7c896445489",
+    "counted_input_tokens": 7288,
+    "reserved_usd": 0.77455,
+    "response_sha256": "079ddfafe6ebf17f360cac1d503db6820ad046ac7b9100f9c022754280555ac7",
+    "usage": {
+     "input_tokens": 7288,
+     "output_tokens": 25270,
+     "cache_creation_input_tokens": 0,
+     "cache_read_input_tokens": 0,
+     "cache_creation_1h_input_tokens": 0,
+     "thinking_tokens": 22194,
+     "us_inference": false
+    },
+    "cost_usd": 0.534552,
+    "cost_basis": "usage",
+    "above_reservation": false,
+    "returned_model": "claude-opus-5-5",
+    "stop_reason": "end_turn"
+   }
+  ],
+  "searches": [
+   {
+    "round": 1,
+    "outcome": "passages",
+    "method": "hybrid",
+    "editions": [
+     "2026-07-01"
+    ],
+    "window": 10,
+    "returned": [
+     {
+      "passage_id": "2026-07-01/p4/s2.4/3",
+      "rank": 1,
+      "score": 0.032018442622950824,
+      "edition": "2026-07-01",
+      "page": 4,
+      "section": "2.4",
+      "text_sha256": "949eb415d1f8514f2f425380fc93029395215c376d3c2fbad24b121e9ab2d801"
+     },
+     {
+      "passage_id": "2026-07-01/p6/s2.5/5",
+      "rank": 2,
+      "score": 0.031099324975891997,
+      "edition": "2026-07-01",
+      "page": 6,
+      "section": "2.5",
+      "text_sha256": "30f04e754d8e5c3872ef3b3f391563f1c0e4098f622b4ff1ba101369e5f75ab2"
+     },
+     {
+      "passage_id": "2026-07-01/p4/s2.4/2",
+      "rank": 4,
+      "score": 0.030834914611005692,
+      "edition": "2026-07-01",
+      "page": 4,
+      "section": "2.4",
+      "text_sha256": "338fbc959434f1a9250d2a427fb50b6fffd91d8e5ca36f729ee2e36021b69790"
+     },
+     {
+      "passage_id": "2026-07-01/p6/s2.5/3",
+      "rank": 5,
+      "score": 0.029957522915269395,
+      "edition": "2026-07-01",
+      "page": 6,
+      "section": "2.5",
+      "text_sha256": "99c21eabedf347c4147fdb9a39bddca632aa365fa7194c50e15fe9b0977ab453"
+     },
+     {
+      "passage_id": "2026-07-01/p5/s2.4/2",
+      "rank": 6,
+      "score": 0.02967032967032967,
+      "edition": "2026-07-01",
+      "page": 5,
+      "section": "2.4",
+      "text_sha256": "e4f096c19c880759bfe9475f3c24fde088c6a00f053d7d3cc7171b747e474e5e"
+     }
+    ],
+    "already_supplied": [
+     "2026-07-01/p4/s2.4/1"
+    ],
+    "rounds_left": 1,
+    "passages_left": 0
+   }
+  ],
+  "spending": {
+   "budget_usd": 100.0,
+   "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+   "baseline_committed_usd": 1.930804,
+   "committed_before_usd": 1.930804,
+   "admission_usd": 4.4352
+  },
+  "outcome": "answer",
+  "detail": null,
+  "elapsed_s": 210.82235808391124,
+  "supplied": [
+   "2026-07-01/p4/s2.3/2",
+   "2026-07-01/p4/s2.4/1",
+   "2026-07-01/p7/s2.6/1",
+   "2026-07-01/p8/s4.1/1",
+   "2026-07-01/p4/s2.2/1",
+   "2026-07-01/p4/s2.4/3",
+   "2026-07-01/p6/s2.5/5",
+   "2026-07-01/p4/s2.4/2",
+   "2026-07-01/p6/s2.5/3",
+   "2026-07-01/p5/s2.4/2"
+  ],
+  "schema_problems": 0,
+  "citations_outside_supplied": 0,
+  "cited": [
+   "2026-07-01/p4/s2.4/1",
+   "2026-07-01/p4/s2.4/2",
+   "2026-07-01/p4/s2.4/3",
+   "2026-07-01/p5/s2.4/2",
+   "2026-07-01/p6/s2.5/3",
+   "2026-07-01/p6/s2.5/5"
+  ]
+ },
+ "answer": {
+  "status": "partial",
+  "claims": 17,
+  "cited_passages": [
+   "2026-07-01/p4/s2.4/1",
+   "2026-07-01/p4/s2.4/2",
+   "2026-07-01/p4/s2.4/3",
+   "2026-07-01/p5/s2.4/2",
+   "2026-07-01/p6/s2.5/3",
+   "2026-07-01/p6/s2.5/5"
+  ],
+  "missing_evidence_items": 6,
+  "answer_sha256": "aa9ea5460028a6254122da4b8c24f0214c6e36ed4b6da9075839cb6d21489acb"
+ },
+ "status": {
+  "execution": "answer",
+  "detail": null,
+  "answer": "partial",
+  "accounting": "priced"
+ },
+ "notes": [
+  "An answer is accepted when it matches the answer schema and cites only passages supplied to the model; that is a deterministic check, not evidence that its claims are correct or supported, which needs human review against the cited passages.",
+  "Costs are calculated from reported usage and pricing.json, or kept at the reservation where nothing could be priced; they are not an invoice."
+ ]
+}
