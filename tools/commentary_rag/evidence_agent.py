@@ -1,8 +1,9 @@
-"""The evidence-seeking agent's loop for one question (ADR-026): NOT READY FOR LIVE USE.
+"""The evidence-seeking agent's loop for one question (ADR-026): LIVE CONTRACT UNVERIFIED.
 
 Every call is accounted, but the loop has never called the provider: the request shape (a strict
 tool, the answer format beside tools, ``tool_choice`` none, replayed thinking blocks) and live
-operation are unverified, and no runner or command calls it.
+operation are unverified. Its one caller is the one-question runner ``run_question.py``, which
+is tested offline only; no live run has been made.
 
 One question goes to the model with the Phase 2 request content (its question, editions and
 fixed top-5 passages, ADR-025), the Phase 2 system prompt with a short, generic instruction to
@@ -97,6 +98,8 @@ HISTORICAL_LEDGER = "generation-ledger.jsonl"
 HISTORICAL_SHA256 = "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa"
 ACTIVE_LEDGER = "phase3-ledger.jsonl"
 AGGREGATE_LIMIT_USD = 100.0
+# A case ID is a plain name: it names the case's calls in the ledger and its artifact files.
+CASE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 PRICES = Path(__file__).resolve().parent / "pricing.json"
 US_INFERENCE = Fraction(11, 10)  # the data-residency multiplier ``Pricing.cost`` applies
 # Stop reasons a public record may name; any other value the provider sends becomes "unknown".
@@ -452,7 +455,7 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
                          "Phase 3 together, with the Phase 2 settings that set each ceiling; "
                          "another limit or setting needs another decision")
     pricing = _prices(config)
-    if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}", task.case_id):
+    if not CASE_ID.fullmatch(task.case_id):
         raise ValueError("the case id must be a plain name: it names the case's artifact files")
     with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
         return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,

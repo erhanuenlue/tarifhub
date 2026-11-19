@@ -25,13 +25,14 @@ justified (overall partly appropriate); U1 and U2 abstained appropriately. Aggre
 `results/2026-11-15-human-review-summary.json`; detailed ratings stay local. This describes one run
 on eight dev cases with no held-out test, not an accuracy figure.
 
-**Seeking missing evidence (UC2), offline increments (2026-11-15 and 16):** `evidence_search.py`
-is the commentary search of the evidence-seeking agent (ADR-026, proposed), one read-only search
-whose bounds are code; `evidence_agent.py` is the agent's loop for one question, with per-call
-spending protection. Both are tested offline only, the loop against a mocked provider with
-temporary ledgers. **The loop is not ready for live use:** there is no runner and no command,
-it has never called the provider, and the provider contract (the request shape and the usage
-it reports) is unverified; its deadline is cooperative, not a hard limit. Its books: USD 100 is
+**Seeking missing evidence (UC2), offline increments (2026-11-15, 16 and 18):**
+`evidence_search.py` is the commentary search of the evidence-seeking agent (ADR-026, proposed),
+one read-only search whose bounds are code; `evidence_agent.py` is the agent's loop for one
+question, with per-call spending protection; `run_question.py` is the one-question runner that
+ranks a question afresh and hands it to the loop once. All three are tested offline only, against
+a mocked provider with temporary ledgers. **The runner exists and is tested offline; the live
+provider contract remains unverified:** nothing has called the provider yet, so the request shape
+and the usage it reports are unchecked, and the deadline is cooperative, not a hard limit. Its books: USD 100 is
 one aggregate limit for Phase 2 and Phase 3 together; `results/generation-ledger.jsonl` stays
 byte-identical and counts with all it committed (USD 1.930804, SHA-256
 `e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa`), and all later spending goes
@@ -103,8 +104,8 @@ changed.
   agent loop below calls it, and only against a mocked provider so far.
 - `test_evidence_search.py`: offline tests of the search on a synthetic two-edition corpus with
   hand-worked rankings, the real retriever and a stand-in e5 embedder.
-- `evidence_agent.py`: the evidence-seeking agent's loop for one question, **not ready for live
-  use** (no runner, provider contract unverified). `run_case(task, *, client, retriever,
+- `evidence_agent.py`: the evidence-seeking agent's loop for one question, tested offline only
+  (**live provider contract unverified**; its one caller is `run_question.py`). `run_case(task, *, client, retriever,
   passages, clock, budget_s, spending)` takes an `AgentTask` (case ID, question, selected
   editions, verified fixed passages: nothing used to score the answer) and a required `Spending`
   (the historical ledger and its expected SHA-256, which must be the hash pinned in the code,
@@ -147,6 +148,14 @@ changed.
   mocked HTTP transport, a fake key, the real search, a stand-in monotonic clock and temporary
   ledgers and artifact folders; two tests read byte copies of the recorded Phase 2 ledger, one
   of them altered.
+- `run_question.py`: the one-question runner of the agent (below, "One question with the
+  evidence-seeking agent"): `prepare` (offline: input checks, verified corpus, fresh top 5) and
+  `run` (the live step: one `run_case` call, local and public outputs, exit codes).
+- `test_run_question.py`: offline tests of the runner's command over a tiny real corpus
+  (generated PDFs through the real corpus builder), the real retriever, the real loop and the
+  real `anthropic` client on a mocked HTTP transport with a fake key; only the e5 model and the
+  provider's HTTP side are stand-ins. Every test checks that the repository's `results/`,
+  `local/` and ledgers stay byte-identical.
 - `results/2026-11-14-retrieval-rerun.json`: the pre-generation rerun of the corrected run
   (identical rankings, scores, metrics and passages).
 - `results/2026-11-15-generation-plan.json` (the plan the run used, no workspace header) and
@@ -178,7 +187,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 208 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 256 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
@@ -280,6 +289,84 @@ its own run's attempts (those whose requests it saved), a run refused by another
 publishes nothing, `--prepared` defaults to the step's own tag, provider error text is redacted,
 and evidence of unattempted cases is no longer counted under failed generations. None of this changes a request, a recorded value or a
 metric of the recorded run, which did not exercise this code (its contexts pass the new checks).
+
+## One question with the evidence-seeking agent
+
+`run_question.py` runs the agent of ADR-026 on exactly one question. Both steps take the
+question, a stable case ID, an explicit edition selection and a finite time budget, and check
+their form before anything is loaded (a case ID and a tag are plain names, editions are distinct
+`YYYY-MM-DD` dates, the time budget is a finite number of seconds above 0); that the corpus has
+each edition is checked once it is built. They refuse outputs an earlier run left under the
+same tag, build the hash-verified corpus with
+the cached e5 model (the runner forces Hugging Face offline mode: a missing model or package or
+the 16-dimensional stub is refused, nothing is downloaded), refuse a question longer than the
+model's 512-token input instead of truncating it, and rank the question afresh: hybrid, the
+selected editions only, top 5, as in the Phase 2 pilot. Only the question, its case ID, its
+editions and those passages reach the agent; no dev case, gold evidence, rubric or expected
+answer is read. The agent's own searches use the same corpus and retriever.
+
+Offline preparation (no key, no client, nothing sent, nothing written, no ledger created; it
+prints the initial passages by ID and score and the paths a run would write):
+
+```bash
+HF_HUB_OFFLINE=1 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
+  uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
+  python tools/commentary_rag/run_question.py prepare --case-id <ID> \
+  --edition <YYYY-MM-DD> [--edition <YYYY-MM-DD>] --time-budget-s <seconds> \
+  --question "<question>" [--tag <date>]
+```
+
+The live step, **only when a live run is explicitly authorised**: the same arguments with `run`
+and the key from the root `.env` (presence checked before the model loads, never printed; the
+workspace-header note under Generation applies):
+
+```bash
+HF_HUB_OFFLINE=1 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
+  uv run --project services/ingestion --frozen --offline --extra ai --extra dev --env-file .env \
+  python tools/commentary_rag/run_question.py run --case-id <ID> \
+  --edition <YYYY-MM-DD> --time-budget-s <seconds> --question "<question>" [--tag <date>]
+```
+
+`run` calls `evidence_agent.run_case` exactly once; that call may send up to three generation
+requests (each token-counted first), all accounted in `results/phase3-ledger.jsonl` under the
+aggregate USD 100 limit with the books, prices, settings, search bounds and SDK retries (off)
+fixed in code; the runner has no option for any of them. The case ID is the identity in the
+books: a case already in the active ledger is refused whatever `--tag` says, and nothing is
+retried or renamed automatically. The time budget starts when the agent starts (after the corpus
+and the model are loaded) and is cooperative: a request already sent is not interrupted.
+
+Outputs, written only when the agent reserved at least one call or may have (a reservation whose
+ledger write failed, reported as uncertain accounting); otherwise nothing of the case is in the
+books, nothing is written, and the case can be run again:
+
+- `local/<tag>-question-<case>/` (git-ignored): `requests/` and `responses/` (each call's raw
+  request and response, saved by the agent), `answer.json` (an accepted answer) and
+  `result.json` (question, editions, statuses, answer, `CaseResult.record` and
+  `CaseResult.local`: requests, responses, search arguments, errors).
+- `results/<tag>-question-<case>.json`: provenance (question by SHA-256, settings, prompt and
+  schema hashes, corpus and tool-file hashes, the books, git head), the initial ranking by ID,
+  score and hash, named keys of `CaseResult.record` (codes, counts, IDs, hashes, usage, amounts),
+  answer metadata (status, claim and missing-evidence counts, cited IDs, answer hash) and the
+  statuses. No question, answer, passage, search or error text.
+
+Each output is written on its own: a write that fails leaves the others and the request and
+response artifacts in place, and nothing is sent again to repair a report. The command prints
+the execution status (the agent's outcome and detail), the answer status (`answered`,
+`partial`, `insufficient_evidence` or none) and the accounting status (`priced`,
+`above_reservation`, `uncertain`, `nothing_reserved`, with every call's reservation, cost, basis
+and flag) separately. A schema-valid answer that cites only supplied passages is a checked
+answer, not a correct one: its claims need human review against the cited passages.
+
+| Exit | Meaning (when several apply, the first row wins) |
+|---|---|
+| 7 | persistence: the agent or the runner could not write the ledger or an output |
+| 5 | spending stop: a call cost more than its reservation; an answer is still kept locally |
+| 6 | accounting uncertain: a sent call could not be priced (its reservation stays committed, as for every timeout and error response) or its settlement is not confirmed |
+| 3 | refused: by the runner before any provider work (existing outputs, no key, model, package or corpus unavailable) or by the agent's books (lock, case already run, damaged or changed books, admission, input over the cap) |
+| 4 | not answered: invalid answer, cut-off generation, protocol or provider error, deadline |
+| 0 | a structurally accepted answer or abstention (`answered`, `partial` or `insufficient_evidence`), persisted, every call priced within its reservation; it does not establish answer quality |
+| 2 | invalid input, nothing counted or sent: the arguments are checked before anything loads; an edition the corpus lacks and a question over the model's input are found once the corpus and the model are loaded |
+| 1 | an unexpected error |
 
 ## Limitations
 
