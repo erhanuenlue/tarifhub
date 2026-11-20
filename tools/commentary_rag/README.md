@@ -111,7 +111,8 @@ Erhan's review. One development observation, not an evaluation. No earlier recor
   theirs). It returns the next state, the tool result as escaped passage data, a publishable
   `record` (IDs, ranks, scores, hashes, counts, outcome) and a `local` part with the raw
   arguments and error text; the tool result carries passage text and stays local too. Only the
-  agent loop below calls it, and only against a mocked provider so far.
+  agent loop below calls it: in the tests against a mocked provider, and once live, for the one
+  search of the D1 run (2026-11-20).
 - `test_evidence_search.py`: offline tests of the search on a synthetic two-edition corpus with
   hand-worked rankings, the real retriever and a stand-in e5 embedder.
 - `evidence_agent.py`: the evidence-seeking agent's loop for one question, tested offline and run

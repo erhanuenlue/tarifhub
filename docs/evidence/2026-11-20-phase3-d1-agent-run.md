@@ -10,17 +10,19 @@ record matches that revision). Python 3.13.12, `anthropic` 0.109.1, `httpx` 0.28
 
 **One development observation, not an evaluation.** D1 is a dev case already used in Phase 2
 and in the first progress report; nothing is held out, nothing was repeated, and no other
-condition (fixed top 5 or top 10) was run. Every statement below is a deterministic check of
-saved files; whether the answer's claims are supported and relevant awaits Erhan's review.
+condition (fixed top 5 or top 10) was run. The figures below come from the saved files and
+deterministic checks of them; whether the answer's claims are supported and relevant awaits
+Erhan's review.
 
 ## Inputs
 
 - `run_question.py run --case-id D1 --edition 2026-07-01 --time-budget-s 600 --tag 2026-11-20`
   with the D1 question verbatim (SHA-256 `e35d33da1135...`), the API key from the root `.env`
   and the workspace header off, as in the [2026-11-15 run](2026-11-15-commentary-generation.md).
-- The fresh initial top 5 (hybrid, edition 2026-07-01 only) equals the recorded Phase 2 context
-  of D1 in IDs, order, scores and text hashes: `p4/s2.3/2`, `p4/s2.4/1`, `p7/s2.6/1`,
-  `p8/s4.1/1`, `p4/s2.2/1` (all `2026-07-01/`). The offline `prepare` step reproduced it before
+- The fresh initial top 5 (hybrid, edition 2026-07-01 only) equals D1's recorded Phase 2
+  context, in IDs, order and text hashes (`2026-11-15-generation.json`) and in scores
+  (`2026-11-14-retrieval-corrected.json`): `p4/s2.3/2`, `p4/s2.4/1`, `p7/s2.6/1`, `p8/s4.1/1`,
+  `p4/s2.2/1` (all `2026-07-01/`). The offline `prepare` step reproduced it before
   the run. No dev case, gold evidence, rubric or expected answer reached the agent.
 - Before `prepare`, the local commentary environment had to be rebuilt offline from the lockfile
   (a temporary-folder purge had removed files of it); no repository file changed.
