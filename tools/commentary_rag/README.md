@@ -37,8 +37,8 @@ counts with all it committed (USD 1.930804, SHA-256
 `e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa`), and all later spending goes
 to one active ledger beside it, [`results/phase3-ledger.jsonl`](results/phase3-ledger.jsonl). The
 hash is pinned in the agent's code, not chosen by a caller. The comparison with fixed top-5 and
-top-10 contexts is planned, not built: those conditions do not yet use the shared accounting
-path, and the Phase 2 runner must not be used during Phase 3 to bypass it.
+top-10 contexts is built and tested offline since 2026-11-21 (below): all three conditions use
+the agent's accounting path, and the Phase 2 runner must not be used during Phase 3 to bypass it.
 
 **First live run (2026-11-20, dev case D1, code of `main` at `df5d20d`):** one authorised
 invocation of `run_question.py run` (evidence:
@@ -60,6 +60,18 @@ behaviour partly appropriate. The answer covered both tariff changes and how the
 other, the effective date only partly, and missed the evaluation through 30 June 2028 and the
 recalculation under transAL-2, whose passage the agent never received. Scoped to this one dev
 case; details on the evidence page, ratings and notes local.
+
+**Phase 3 comparison, offline increment (2026-11-21):** `run_comparison.py` runs each question
+under three conditions through the agent's one accounting path: A (`fixed5`), the Phase 2 request
+with the hybrid top 5; B (`fixed10`), the same request with the top 10; C (`agent`), the
+evidence-seeking agent from the top 5. Each cell (case and condition) is its own identity in the
+books, and one case ID names one question over one edition selection. Built and tested offline
+only (mocked provider, temporary ledgers); no comparison has run
+live and the recorded ledgers are unchanged. Its offline plan for six candidate cases, E1 to E6
+(AI-drafted, kept local, awaiting Erhan's review), is
+[`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): 18 cells,
+a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about USD 6.29 estimated
+(from development cases, not a bound). Details under "Comparing the three conditions" below.
 
 ## Files
 
@@ -125,9 +137,12 @@ case; details on the evidence page, ratings and notes local.
 - `test_evidence_search.py`: offline tests of the search on a synthetic two-edition corpus with
   hand-worked rankings, the real retriever and a stand-in e5 embedder.
 - `evidence_agent.py`: the evidence-seeking agent's loop for one question, tested offline and run
-  live once (**live provider contract verified only in part**, by the D1 run above; its one
-  caller is `run_question.py`). `run_case(task, *, client, retriever,
-  passages, clock, budget_s, spending)` takes an `AgentTask` (case ID, question, selected
+  live once (**live provider contract verified only in part**, by the D1 run above; its
+  callers are `run_question.py` and `run_comparison.py`). `run_case(task, *, client, retriever,
+  passages, clock, budget_s, spending, condition="agent")` runs one question under one condition
+  of `CONDITIONS` (fixed in code, chosen by name): `fixed5` and `fixed10` send the Phase 2
+  request itself with at most 5 or 10 passages, once, without any tool, admitted at one call's
+  ceiling; `agent` is the loop described here. It takes an `AgentTask` (case ID, question, selected
   editions, verified fixed passages: nothing used to score the answer) and a required `Spending`
   (the historical ledger and its expected SHA-256, which must be the hash pinned in the code,
   the active ledger beside it, both in `results/` and refused anywhere else, and a local
@@ -146,7 +161,7 @@ case; details on the evidence page, ratings and notes local.
   reservation, before a further call). Spending: the case holds Phase 2's folder lock
   throughout; it is admitted only if three calls at the 80,000-token input cap fit beside all
   committed spending under USD 100; each call is counted, refused above the cap, saved under
-  `artifacts/requests/<case>-call<n>.json`, reserved at its ceiling and only then sent (a request
+  `artifacts/requests/<case>-<condition>-call<n>.json`, reserved at its ceiling and only then sent (a request
   the deadline stops is recorded as never sent), its raw response saved under `responses/` and
   settled at its validated usage cost, or at its whole reservation when nothing can be priced
   (timeouts, error responses, missing usage), recorded as exposure, not an invoice. The ceiling
@@ -158,7 +173,8 @@ case; details on the evidence page, ratings and notes local.
   reservation; that is a calculation from recorded prices, not a billing guarantee. A failed
   write stops the case; a sent call, or one whose release was not saved, stays reserved. The
   books are used by their canonical paths (a link from elsewhere cannot move the lock), and a
-  settlement must match the cost of its saved usage and a call ID its case. A late
+  settlement must match the cost of its saved usage and a call ID its case and condition (every
+  event names its condition; entries without one, the D1 run's, are the agent's). A late
   or invalid response is settled and still not accepted. One monotonic deadline per question,
   checked before each count, after the count and reservation just before sending, after each
   generation call and after each search, and bounding every request's timeout; cooperative,
@@ -177,6 +193,15 @@ case; details on the evidence page, ratings and notes local.
   real `anthropic` client on a mocked HTTP transport with a fake key; only the e5 model and the
   provider's HTTP side are stand-ins. Every test checks that the repository's `results/`,
   `local/` and ledgers stay byte-identical.
+- `run_comparison.py`: the Phase 3 comparison (below, "Comparing the three conditions"): `plan`
+  (offline: matrix, order, bounds, admission headroom and labelled estimates from the books read
+  without the lock) and `run` (one ranking per case, then A, B and C through `run_case`).
+- `test_run_comparison.py`: offline tests of the comparison's command over a tiny real corpus whose
+  twelve-passage ranking is worked out by hand, the real retriever, loop and `anthropic` client on
+  a mocked HTTP transport and temporary books; the repository's `results/` and `local/` are
+  checked to stay byte-identical.
+- [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): the offline
+  plan for the candidate cases E1 to E6 (IDs and editions only), made against the recorded books.
 - `results/2026-11-14-retrieval-rerun.json`: the pre-generation rerun of the corrected run
   (identical rankings, scores, metrics and passages).
 - `results/2026-11-15-generation-plan.json` (the plan the run used, no workspace header) and
@@ -217,7 +242,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 256 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 316 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
@@ -360,8 +385,9 @@ HF_HUB_OFFLINE=1 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-ven
 `run` calls `evidence_agent.run_case` exactly once; that call may send up to three generation
 requests (each token-counted first), all accounted in `results/phase3-ledger.jsonl` under the
 aggregate USD 100 limit with the books, prices, settings, search bounds and SDK retries (off)
-fixed in code; the runner has no option for any of them. The case ID is the identity in the
-books: a case already in the active ledger is refused whatever `--tag` says, and nothing is
+fixed in code; the runner has no option for any of them. The case ID, under the condition
+`agent`, is the identity in the books (the comparison's C for the same case ID is the same cell):
+a case already in the active ledger as the agent's is refused whatever `--tag` says, and nothing is
 retried or renamed automatically. The time budget starts when the agent starts (after the corpus
 and the model are loaded) and is cooperative: a request already sent is not interrupted.
 
@@ -397,6 +423,139 @@ answer, not a correct one: its claims need human review against the cited passag
 | 0 | a structurally accepted answer or abstention (`answered`, `partial` or `insufficient_evidence`), persisted, every call priced within its reservation; it does not establish answer quality |
 | 2 | invalid input, nothing counted or sent: the arguments are checked before anything loads; an edition the corpus lacks and a question over the model's input are found once the corpus and the model are loaded |
 | 1 | an unexpected error |
+
+## Comparing the three conditions (Phase 3)
+
+`run_comparison.py` runs a set of questions under three conditions, each cell (one case under one
+condition) through `evidence_agent.run_case` and therefore through the same books, ceiling,
+admission, reservations, settlements, persistence, lock and answer checks. Built and tested
+offline on 2026-11-21; **no comparison has run live**, and a live run needs its own explicit
+authorisation.
+
+| | A `fixed5` | B `fixed10` | C `agent` |
+|---|---|---|---|
+| Fixed context | hybrid top 5 | hybrid top 10 | hybrid top 5 |
+| Most passages supplied | 5 | 10 | 10 (5 + at most 5 found) |
+| Generation calls | 1 | 1 | at most 3 |
+| Searches | none | none | at most 2 |
+| System prompt | Phase 2's | Phase 2's | Phase 2's + the search instruction |
+| Tools in the request | none (no `tools`, no `tool_choice`) | none | `search_commentary` |
+| Admission (every call at the 80,000-token cap) | USD 1.4784 | USD 1.4784 | USD 4.4352 |
+
+**Comparable by construction:** the model and settings (`claude-opus-5-5`, effort `max`, adaptive
+thinking, `max_tokens` 32,000, the request timeout, no retries, the JSON-schema answer format), the
+question text, its editions block, the rendering of every passage as escaped, untrusted data,
+one fresh ranking per question (hybrid over its editions only: A's five are B's first five and C's
+fixed five), the acceptance rule (schema, and citations only among the passages supplied), the
+per-cell time budget, the input cap and the ceiling. A and B send exactly the Phase 2 request of
+ADR-025.
+
+**Different by design:** C's system prompt carries the search instruction and its requests carry the
+tool definition (more input tokens); C may call up to three times, each later call carrying the
+whole conversation, so its token volume and cost are larger; C reaches at most ten passages, B's
+count, but through its own queries rather than the ranking's next five; A and B are admitted at
+one call's worst case, C at three; and every cell gets the same time budget, which A and B spend
+on one call and C shares across up to three calls and two searches (D1's two calls took 210.8 s
+of 600 s), so the per-cell budget of a live run must be chosen for C.
+
+**Accounting identity:** a cell is its case ID and its condition. Every ledger event a cell writes
+carries its `condition`, and its calls are `<case>-<condition>-call<n>` (`E1-fixed5-call1`); the
+one-question runner books the `agent` condition under the same identity. Every reservation also
+records the question's SHA-256 and the sorted editions: one case ID names one question over one
+edition selection, and a case booked before with another question or editions is refused under
+any condition (`case_redefined`). A cell already in the books is refused (`already_run`) whatever
+the tag or the entry point, and a call ID an older reservation holds is never written twice
+(`call_id_taken`). Ledger entries without a condition (the D1 run of 2026-11-20) are the agent's
+and record no question: the books never send D1 to the agent again and would admit D1 under
+`fixed5` or `fixed10`, but the comparison runner cannot pair those with D1's agent cell and
+refuses D1 (`unverifiable`). Code from before this change refuses books that hold an entry with a
+condition as damaged, so once one is written only this code or later can use the books.
+
+**Order and stops:** case by case, a case's A, B and C one after another, so each case's three
+answers come close together in time. Before loading anything, `run` refuses a matrix whose worst
+case (every cell still to run at its admission) does not fit beside everything committed under
+USD 100, and a case whose cells already in the books were asked another question or editions
+(`other`) or recorded none (`unverifiable`); every cell is still admitted again by the books.
+Every case is ranked before any cell runs, so no cell spends before every case can be ranked. The matrix stops, sending nothing
+further, after a cell with a failed write, a cost above its reservation, a call kept at its
+reservation (error responses, timeouts, unpriced usage) or a refusal other than a cell already in
+the books; nothing is retried. The lock is taken for each cell, so another invocation could run
+between the cells of a case; the books stay correct, but run one comparison at a time.
+
+**Input:** a cases file `{"cases": [{"id", "question", "editions"}]}` and nothing else: a field
+such as a reference answer, gold evidence or a rubric is refused before the file is used (exit 2),
+so nothing that scores an answer can reach a request.
+
+```bash
+# Offline plan: no corpus, model, client or key; nothing counted, sent or written; the books read
+# without the lock. Prints the matrix, the bounds and the assumptions behind them, each case's
+# pairing with cells already in the books, the admission headroom and labelled estimates.
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
+  uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
+  python tools/commentary_rag/run_comparison.py plan --cases <cases.json>
+# The live step, only when a paid comparison run is explicitly authorised:
+HF_HUB_OFFLINE=1 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
+  uv run --project services/ingestion --frozen --offline --extra ai --extra dev --env-file .env \
+  python tools/commentary_rag/run_comparison.py run --cases <cases.json> \
+  --time-budget-s <seconds per cell> [--tag <date>]
+```
+
+Outputs of `run`, only when a cell reserved a call: `local/<tag>-comparison/` (git-ignored: every
+call's request and response, `result.json` with the questions, answers and full traces) and
+`results/<tag>-comparison.json` (provenance with the question by hash, the plan, every case's
+ranking by ID, score and hash, and per cell its statuses, named metadata of the agent's record and
+answer metadata; no question, answer, passage or provider text). A repeated run under any tag
+sends nothing again and writes nothing (exit 3). Each cell's exit code follows the one-question
+runner's table; the matrix exits with the first of 7, 5, 6, 3, 4, 0 that any cell that ran has. A
+cell already in the books is skipped and sets the code only when no cell ran. The outputs of every
+cell that ended are written even when an unexpected error stops the matrix (exit 1).
+
+**Proposed plan (2026-11-21, offline):**
+[`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json), made by `plan`
+against the recorded books for the six candidate cases E1 to E6 (AI-drafted, in a local review
+packet awaiting Erhan's review; neither their questions nor their reference text are committed,
+and no retrieval or generation has been run on them). 18 cells in the order E1 A, B, C, then E2
+and so on; none is in the books, so every case pairs as `new`. The plan was made from the code of
+this branch (its `planned.git_head`) and states the assumptions of its bounds: the 80,000-token
+input cap, the 10 % margin at the dearest input rate (8 USD per million), the 32,000-token output
+allowance at 20 USD per million, the 1.1 US multiplier and the prices of `pricing.json`.
+
+| Figure | USD | Kind |
+|---|---|---|
+| Committed now (Phase 2 1.930804 + D1 0.560552) | 2.491356 | recorded |
+| Headroom under the limit of 100 | 97.508644 | recorded |
+| One call at the 80,000-token input cap | 1.4784 | bound |
+| One case (A + B + C admissions) | 7.392 | bound |
+| The matrix's worst case (6 cases) | 44.352 | bound: the admission check, not an expected cost |
+| Headroom after the worst case | 53.156644 | bound |
+| Estimate per cell: A, B, C | 0.24135, 0.24647, 0.560552 | ESTIMATE |
+| Estimate for the matrix | about 6.29 | ESTIMATE |
+
+The estimates are calculated costs of earlier usage settlements, not bounds or invoices: A from
+Phase 2's eight fixed top-5 requests, C from the one D1 agent run, and B, never observed, as A plus
+five passages' input (1,280 tokens at 4 USD per million). They come from development cases and say
+nothing firm about E1 to E6.
+
+What the offline tests show (`test_evidence_agent.py`, `test_run_comparison.py`, mocked provider,
+temporary books): A and B receive exactly the top 5 and top 10 of one ranking in rank order (rank 11
+excluded) as the Phase 2 request with no tool; C starts from A's request and keeps its bounds (its
+search returned ranks 6 to 10, which filled the passage budget, so its last call offered no tool);
+all cells write one active ledger under one pin, each admission counting the cells before it; a
+repeated run, under any tag or through the one-question runner, sends nothing again, and a
+stopped matrix resumes without sending its cells again; the recorded books refuse D1 under the
+agent and admit its other conditions; every reservation records its question and editions, a case
+booked with another is refused under any condition, and the comparison refuses, before the model
+loads, a case whose booked cells were asked something else or recorded no question; damaged books
+(a settlement under another condition, an unknown condition, a second call of a one-call
+condition, a call ID without its condition, malformed question fields) are refused; scoring fields
+in the input are refused and no reference text of a dev case reaches any request or output; a
+matrix whose worst case does not fit, or a case that cannot be ranked, is refused before anything
+is sent; the stop rule and the exit precedence are pinned (a cost above its reservation, a failed
+write, a refusal by the books and a call kept at its reservation stop the matrix, an unanswered
+cell does not; 7, 5, 6, 3, 4, 0; skipped cells never mask cells that ran); an unexpected error
+keeps the outputs of the cells before it; estimates count only cells whose every call was priced
+from usage. They do not show real model behaviour, real token counts or costs, or which condition
+answers better.
 
 ## Limitations
 
