@@ -19,8 +19,9 @@ model loads) and calls ``evidence_agent.run_case`` exactly once with the same co
 retriever for the agent's own searches, ``time.monotonic`` as its clock and the books, limit,
 prices and settings fixed in ``evidence_agent`` and ``generation`` (none can be passed here).
 That one call may send up to three generation requests, each counted, reserved and settled in
-``results/phase3-ledger.jsonl``. The case ID is the case's identity in the books: a case already
-there is refused whatever the tag, and nothing is retried or renamed.
+``results/phase3-ledger.jsonl``. The case ID under the condition ``agent`` is the case's identity
+in the books (the comparison's C for the same case ID is the same cell): a case already there as
+the agent's is refused whatever the tag, and nothing is retried or renamed.
 
 Outputs, only when the agent reserved at least one call or may have (a reservation whose ledger
 write failed); otherwise nothing of the case is in the books and nothing is written, so a

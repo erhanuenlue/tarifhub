@@ -1,11 +1,21 @@
-"""The evidence-seeking agent's loop for one question (ADR-026): LIVE CONTRACT UNVERIFIED.
+"""The evidence-seeking agent's loop for one question (ADR-026), and the comparison conditions.
 
-Every call is accounted, but the loop has never called the provider: the request shape (a strict
-tool, the answer format beside tools, ``tool_choice`` none, replayed thinking blocks) and live
-operation are unverified. Its one caller is the one-question runner ``run_question.py``, which
-is tested offline only; no live run has been made.
+Every call is accounted. The loop has called the provider in one live run (dev case D1,
+2026-11-20, two calls), which verified the request shape and usage those calls exercised; its
+error, timeout and deadline paths and the fixed conditions are tested offline only. Its callers
+are the one-question runner ``run_question.py`` and the comparison runner ``run_comparison.py``.
 
-One question goes to the model with the Phase 2 request content (its question, editions and
+Conditions (``CONDITIONS``, fixed in code, chosen by name): ``agent`` is the loop below;
+``fixed5`` and ``fixed10`` send the Phase 2 request itself with at most 5 or 10 passages, once,
+without any tool (no ``tools``, no ``tool_choice``), and are admitted at one call's ceiling.
+Every ledger event carries its condition and every call the ID ``<case>-<condition>-call<n>``;
+every reservation also records the question's SHA-256 and the sorted editions. The identity in
+the books is the case and its condition, and one case ID names one question over one edition
+selection: a case booked before with another question or editions is refused
+(``case_redefined``) under any condition. Reservations written before conditions existed (the
+D1 run) are the agent's and record no question.
+
+Under ``agent``, one question goes to the model with the Phase 2 request content (its question, editions and
 fixed top-5 passages, ADR-025), the Phase 2 system prompt with a short, generic instruction to
 search for what the passages do not state, and one tool, the commentary search of
 ``evidence_search``. The model either answers in the Phase 2 answer schema or asks for a
@@ -31,7 +41,7 @@ invocation's, and one refused by the lock counts, sends and writes nothing. The 
 ledger must have exactly the pinned bytes; the first question on an active ledger also pins its
 committed amount (open reservations at their ceiling) and the limit there. Any later change to
 either, or any damage to the active ledger (an emptied file, a call ID that does not name its
-case, a settlement that contradicts its basis or the cost of its saved usage), refuses the case
+case and condition, a settlement that contradicts its basis or the cost of its saved usage), refuses the case
 as the books are, without repair. Whole lines removed from the end of
 the active ledger cannot be told from the file alone.
 
@@ -41,9 +51,11 @@ although the request asks for no caching), plus the whole output allowance, time
 data-residency multiplier, computed exactly and rounded up to a micro-dollar. So any usage the
 settlement prices within the margin costs at most its reservation; it is the application's
 calculation from recorded prices, not a bound the provider's billing guarantees. A case is
-admitted only when its worst case fits: three calls at the 80,000-token input cap, each at its
-ceiling; this is a check, not a charge. A case already in the active ledger, completed or
-unresolved, is refused: nothing is sent or counted twice. Before each call its request is
+admitted only when its worst case fits: every call its condition allows (three for the agent)
+at the 80,000-token input cap, each at its
+ceiling (one call for a fixed condition); this is a check, not a charge. A cell (case and
+condition) already in the active ledger, completed or unresolved, is refused: nothing is sent or
+counted twice. Before each call its request is
 counted, refused above the cap, saved, and reserved at its ceiling; the deadline is then checked
 once more, and a request it stops is recorded as never sent, which releases its reservation.
 After the call the raw response is saved and the call settled: at the cost of its validated
@@ -302,8 +314,14 @@ def _ledger(path: Path, pricing: generation.Pricing) -> list[dict]:
             legacy = "condition" not in e
             chosen = CONDITIONS["agent"] if legacy else (
                 CONDITIONS.get(named) if isinstance(named, str) else None)
+            asked = e.get("question_sha256"), e.get("editions")
+            recorded = (  # what the case was asked: both or, before 2026-11-21, neither
+                ("question_sha256" not in e and "editions" not in e)
+                or (isinstance(asked[0], str) and re.fullmatch(r"[0-9a-f]{64}", asked[0])
+                    and isinstance(asked[1], list) and bool(asked[1])
+                    and all(isinstance(x, str) for x in asked[1])))
             ok = (attempt is not None and attempt not in reserved and isinstance(case, str)
-                  and chosen is not None and isinstance(call, int)
+                  and recorded and chosen is not None and isinstance(call, int)
                   and not isinstance(call, bool) and 1 <= call <= chosen.calls
                   and attempt == (f"{case}-call{call}" if legacy else f"{case}-{named}-call{call}")
                   and _amount(e.get("reserved_usd")))
@@ -443,16 +461,48 @@ def spending_state(config: generation.Config | None = None) -> dict:
         "committed_usd": (_micro(baseline) + _committed(events)) / 1_000_000,
         "call_ceiling_at_input_cap_usd": _ceiling(pricing, MAX_INPUT_TOKENS, config) / 1_000_000,
         "input_usd_per_mtok": pricing.input,
-        "cells": sorted({(e["case"], e.get("condition", "agent")) for e in events
-                         if e["event"] == "reserve"}),
-        # Phase 2's requests (ADR-025's fixed top 5) and every later call, by case and condition
-        "historical_settlements": [{"case": e.get("case"), "cost_usd": e.get("cost_usd"),
-                                    "cost_basis": e.get("cost_basis")}
-                                   for e in generation.settled(spending.baseline)],
-        "active_settlements": [{"case": e["case"], "condition": e.get("condition", "agent"),
-                                "cost_usd": e["cost_usd"], "cost_basis": e["cost_basis"]}
-                               for e in events if e["event"] == "settle"],
+        # What every bound above is calculated from: code and pricing.json.
+        "assumptions": {
+            "model": config.model, "input_cap_tokens": MAX_INPUT_TOKENS,
+            "input_margin": config.input_margin, "max_output_tokens": config.max_tokens,
+            "us_multiplier": float(US_INFERENCE),
+            "ceiling_input_usd_per_mtok": max(pricing.input, pricing.cache_write_5m,
+                                              pricing.cache_write_1h, pricing.cache_read),
+            "prices_usd_per_mtok": {k: getattr(pricing, k) for k in (
+                "input", "output", "cache_write_5m", "cache_write_1h", "cache_read")},
+            "prices_source": pricing.source, "prices_retrieved": pricing.retrieved},
+        "cells": _cells(events),
+        # Every reserved call with its settlement, if any: Phase 2's requests (ADR-025's fixed
+        # top 5, no condition) and every later call, by case and condition.
+        "historical_calls": _calls(generation._events(spending.baseline), None),
+        "active_calls": _calls(events, "agent"),
     }
+
+
+def _cells(events: list[dict]) -> list[dict]:
+    """Each cell (case and condition) with a reservation, and what it was asked: the question's
+    SHA-256 and the editions, None for a reservation written before 2026-11-21."""
+
+    cells: dict[tuple, dict] = {}
+    for e in events:
+        if e["event"] == "reserve":
+            condition = e.get("condition", "agent")
+            cells.setdefault((e["case"], condition), {
+                "case": e["case"], "condition": condition,
+                "question_sha256": e.get("question_sha256"), "editions": e.get("editions")})
+    return [cells[key] for key in sorted(cells)]
+
+
+def _calls(events: list[dict], unnamed: str | None) -> list[dict]:
+    """Each reserved call: its case, condition, and its settled cost and basis (None while the
+    reservation is open). ``unnamed`` is the condition of a call written without one."""
+
+    settled = {e.get("attempt"): e for e in events if e.get("event") == "settle"}
+    return [{"case": e.get("case"), "condition": e.get("condition", unnamed),
+             "attempt": e.get("attempt"),
+             "cost_usd": settled.get(e.get("attempt"), {}).get("cost_usd"),
+             "cost_basis": settled.get(e.get("attempt"), {}).get("cost_basis")}
+            for e in events if e.get("event") == "reserve"]
 
 
 def search_tool(editions: tuple[str, ...], limits: evidence_search.SearchLimits) -> dict:
@@ -524,16 +574,20 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
     pricing = _prices(config)
     if not CASE_ID.fullmatch(task.case_id):
         raise ValueError("the case id must be a plain name: it names the case's artifact files")
+    # What the case asks, as every reservation records it: one case ID, one question over one
+    # edition selection, whatever the condition (the plain SHA-256 public records publish).
+    asked = (hashlib.sha256(task.question.encode("utf-8")).hexdigest(), sorted(task.editions))
     with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
         return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
                      budget_s=budget_s, spending=spending, pricing=pricing, config=config,
-                     limits=limits, held=held, chosen=chosen)
+                     limits=limits, held=held, chosen=chosen, asked=asked)
 
 
 def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping],  # noqa: PLR0913
           clock: Callable[[], float], budget_s: float, spending: Spending,
           pricing: generation.Pricing, config: generation.Config,
-          limits: evidence_search.SearchLimits, held: bool, chosen: Condition) -> CaseResult:
+          limits: evidence_search.SearchLimits, held: bool, chosen: Condition,
+          asked: tuple[str, list[str]]) -> CaseResult:
     started = clock()
     deadline = started + budget_s
     first = generation.request({"question": task.question, "editions": list(task.editions),
@@ -579,6 +633,9 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
         events, baseline = _books(spending, config, pricing)
     except _Refused as refusal:
         return end("refused", refusal.detail)
+    if any(e["event"] == "reserve" and e["case"] == task.case_id and "question_sha256" in e
+           and (e["question_sha256"], e["editions"]) != asked for e in events):
+        return end("refused", "case_redefined")  # booked before with another question
     if any(e["event"] == "reserve" and e["case"] == task.case_id
            and e.get("condition", "agent") == chosen.name for e in events):
         return end("refused", "already_run")  # completed or unresolved: never sent again
@@ -641,7 +698,8 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
             return end("persistence_error", "request_not_saved")
         if not kept(lambda: generation._append(spending.ledger, {
                 "event": "reserve", "attempt": attempt, "case": task.case_id,
-                "condition": chosen.name, "call": call,
+                "condition": chosen.name, "question_sha256": asked[0], "editions": asked[1],
+                "call": call,
                 "request_sha256": _sha256(request), "counted_input_tokens": counted,
                 "reserved_usd": reserved, "at": generation._now()})):
             return end("persistence_error", "reservation_not_saved")  # and nothing was sent

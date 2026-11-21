@@ -7,8 +7,11 @@ top 10, each answered once without any tool; C ``agent``, the evidence-seeking a
 through ``evidence_agent.run_case``: the same books, ceiling, admission, reservations,
 settlements, persistence, lock and answer checks, under the accounting identity (case,
 condition) with the call IDs ``<case>-<condition>-call<n>``. A cell already in the books is
-refused there, whatever the tag or the entry point: the one-question runner books the agent
-under the same identity, and the D1 run of 2026-11-20 is D1's agent cell.
+refused there, whatever the tag or the entry point (the one-question runner books the agent
+under the same identity), and so is a case booked before with another question or editions.
+``run`` pairs new cells only with booked cells that recorded the same question and editions:
+it refuses a case whose booked cells were asked something else or recorded no question (the D1
+run of 2026-11-20 recorded none), before the model loads.
 
 The input is a cases file holding each case's ID, question and editions and nothing else: any
 other field (a reference answer, gold evidence, a rubric) is refused before the file is used, so
@@ -21,13 +24,17 @@ the aggregate limit, a bound) and ESTIMATES from earlier usage settlements, labe
 
 ``run`` is the live step and runs only when explicitly authorised. It checks the cases, refuses
 existing outputs, builds the client (the key's presence only), refuses when the plan's worst
-case does not fit, loads the verified corpus and the cached e5 model once (as the one-question
-runner does) and checks every case's editions and question length before any cell runs. Then it
-runs the matrix case by case, a case's A, B and C one after the other. Each case is ranked once,
-hybrid over its editions only: A receives the top 5, B the top 10 and C the top 5. The matrix
+case does not fit or a case cannot be paired, loads the verified corpus and the cached e5 model
+once (as the one-question runner does), checks every case's editions and question length and
+ranks every case (hybrid over its editions only) before any cell runs. Then it runs the matrix
+case by case, a case's A, B and C one after the other: A receives the top 5, B the top 10 and C
+the top 5 of the case's ranking, each cell with the same time budget, which C shares across its
+calls and searches. The matrix
 stops after a cell that needs a person (a failed write, a cost above its reservation, a call kept
 at its reservation, a refusal other than a cell already in the books); nothing is retried.
-Outputs, only when a cell reserved a call: ``local/<tag>-comparison/`` (git-ignored: each call's
+A cell already in the books is skipped and sets the exit code only when no cell ran. Outputs,
+only when a cell reserved a call, and written for every cell that ended even when an unexpected
+error stops the matrix: ``local/<tag>-comparison/`` (git-ignored: each call's
 request and response, ``result.json`` with questions, answers and traces) and
 ``results/<tag>-comparison.json`` (metadata only: hashes, IDs, scores, codes, counts, amounts).
 """
@@ -103,24 +110,27 @@ PRECEDENCE = (
 )
 STOPS = (EXIT_PERSISTENCE, EXIT_SPENDING_STOP, EXIT_ACCOUNTING_UNCERTAIN)
 EPILOG = """\
-exit codes of run (the cells' codes, the first row present wins; each cell's code as in
-run_question.py):
+exit codes of run (the codes of the cells that ran, the first row present wins; each cell's
+code as in run_question.py; a cell already in the books is skipped and counts only when no
+cell ran):
   7  persistence: a ledger or output write failed
   5  spending stop: a call cost more than its reservation
   6  accounting uncertain: a sent call could not be priced or its settlement is not confirmed
-  3  refused: by the runner before any provider work, or a cell by the books (a cell already
-     in the books is refused too, so a repeated run exits 3 and sends nothing again)
+  3  refused: by the runner before any provider work (a case that cannot be paired with its
+     cells in the books among them), or a cell by the books; a repeated run, whose cells are
+     all in the books, exits 3 and sends nothing again
   4  not answered: a cell ended without an accepted answer
-  0  every cell gave a structurally accepted answer or abstention, every call priced
+  0  every cell that ran gave a structurally accepted answer or abstention, every call priced
   2  invalid input, nothing loaded, counted or sent
-  1  an unexpected error (traceback)
+  1  an unexpected error (traceback; the outputs of the cells that ended are still written)
 plan exits 0 (printed), 2 (invalid input) or 3 (books refused); it sends and writes nothing."""
 NOTES = (
     *run_question.NOTES,
     "The conditions differ by design: A and B send the Phase 2 request with its own system "
     "prompt and no tool, once; C appends the search instruction to that system prompt, "
-    "offers its one search tool and may make three calls. Model, settings, question, "
-    "editions, initial ranking and answer checks are shared.",
+    "offers its one search tool and may make three calls, sharing one per-cell time budget "
+    "across them and its searches. Model, settings, question, editions, initial ranking and "
+    "answer checks are shared.",
     "Admission figures are bounds (every call at the input cap), not expected costs; "
     "estimates come from earlier usage settlements of development cases.",
 )
@@ -218,7 +228,10 @@ def _plan(cases: list[dict]) -> dict:
     state = evidence_agent.spending_state()
     ceiling = _micro(state["call_ceiling_at_input_cap_usd"])
     limits = evidence_search.SearchLimits()
-    in_books = {tuple(cell) for cell in state["cells"]}
+    in_books = {(cell["case"], cell["condition"]) for cell in state["cells"]}
+    booked: dict[str, list] = {}
+    for cell in state["cells"]:
+        booked.setdefault(cell["case"], []).append(cell)
     conditions = {}
     for name in ORDER:
         c = evidence_agent.CONDITIONS[name]
@@ -266,34 +279,72 @@ def _plan(cases: list[dict]) -> dict:
             "fits": committed + worst <= limit,
             "headroom_after_worst_case_usd": _usd(limit - committed - worst),
         },
+        "cases": [
+            {
+                "case": c["id"],
+                "editions": c["editions"],
+                "booked": [cell["condition"] for cell in booked.get(c["id"], [])],
+                "pairing": _pairing(c, booked.get(c["id"], [])),
+            }
+            for c in cases
+        ],
+        "assumptions": {
+            "label": (
+                "ASSUMPTIONS of the bounds, fixed in code and pricing.json: "
+                "each call's ceiling is its counted input with the margin at "
+                "the dearest input rate, plus every output token, times the "
+                "US multiplier; prices as recorded, not a billing guarantee"
+            ),
+            **state["assumptions"],
+        },
         "estimates": _estimates(state, order),
     }
+
+
+def _pairing(item: dict, booked: list[dict]) -> str:
+    """Whether a case's cells already in the books were asked what this case asks: new (none
+    booked), same, other (another question or editions), unverifiable (a cell recorded neither,
+    written before 2026-11-21) or question_not_given (a plan without the question)."""
+
+    if not booked:
+        return "new"
+    if any(
+        cell["question_sha256"] is None or cell["editions"] is None for cell in booked
+    ):
+        return "unverifiable"
+    if any(cell["editions"] != item["editions"] for cell in booked):
+        return "other"
+    if item.get("question") is None:
+        return "question_not_given"
+    asked = _sha256(item["question"])
+    return (
+        "same" if all(cell["question_sha256"] == asked for cell in booked) else "other"
+    )
 
 
 def _estimates(state: dict, order: list[dict]) -> dict:
     """The mean calculated cost of earlier cells priced from their usage, per condition."""
 
-    phase2: dict[
-        str, list
-    ] = {}  # Phase 2's requests were ADR-025's fixed top 5: fixed5 cells
-    for s in state["historical_settlements"]:
-        phase2.setdefault(s["case"], []).append(s)
+    # Phase 2's requests were ADR-025's fixed top 5, so each of its cases is a fixed5 cell.
+    phase2: dict[str, list] = {}
+    for call in state["historical_calls"]:
+        phase2.setdefault(call["case"], []).append(call)
     cells: dict[tuple, list] = {}
-    for s in state["active_settlements"]:
-        cells.setdefault((s["case"], s["condition"]), []).append(s)
+    for call in state["active_calls"]:
+        cells.setdefault((call["case"], call["condition"]), []).append(call)
 
-    def priced(
-        settlements: list,
-    ) -> float | None:  # a cell counts only if usage priced it all
-        if all(s["cost_basis"] == "usage" for s in settlements):
-            return sum(_micro(s["cost_usd"]) for s in settlements)
+    def priced(calls: list) -> int | None:
+        """A cell's cost in micro-dollars when every call it reserved was settled from its
+        usage; None while a reservation is open or a call was kept or released."""
+        if all(c["cost_basis"] == "usage" for c in calls):
+            return sum(_micro(c["cost_usd"]) for c in calls)
         return None
 
     observed = {name: [] for name in ORDER}
-    for settlements in phase2.values():
-        observed["fixed5"].append(priced(settlements))
-    for (_, name), settlements in cells.items():
-        observed[name].append(priced(settlements))
+    for calls in phase2.values():
+        observed["fixed5"].append(priced(calls))
+    for (_, name), calls in cells.items():
+        observed[name].append(priced(calls))
     per = {}
     for name in ORDER:
         costs = [c for c in observed[name] if c is not None]
@@ -493,15 +544,15 @@ def _cell(result: evidence_agent.CaseResult) -> tuple[dict, int]:
     return status, run_question._exit_code(result, accounting, persisted=True)
 
 
-def _run(
-    args: argparse.Namespace, cases: list[dict], client, plan: dict, loaded
+def _run(  # noqa: PLR0913
+    args: argparse.Namespace, cases: list[dict], client, plan: dict, loaded, ranked
 ) -> int:
-    """Run the matrix once, case by case, then keep and report what came back."""
+    """Run the matrix once, case by case, then keep and report what came back. The outputs of
+    every cell that ended are written even when an unexpected error stops the matrix."""
 
     paths = _paths(args.tag)
     provenance = _provenance(args, cases, loaded)
     passages = run_question._records(loaded)
-    retriever = retrieval.Retriever(loaded.built.passages, loaded.e5.embedder)
     books = (
         evidence_agent.BOOKS
     )  # read now: the books are wherever the agent keeps them
@@ -511,63 +562,12 @@ def _run(
         baseline_sha256=evidence_agent.HISTORICAL_SHA256,
         artifacts=paths["local"],
     )
-    started, stopped, reserved = _now(), None, False
-    rows = []  # (case, ranking, [(name, result or None, status, code)])
-    for item in cases:
-        ranking = retriever.rank(
-            item["question"], method=run_question.METHOD, editions=item["editions"]
-        )[:TOP_K]
-        cells = []
-        for name in ORDER:
-            if stopped:  # nothing after a cell that needs a person
-                cells.append(
-                    (
-                        name,
-                        None,
-                        {
-                            "execution": "not_run",
-                            "detail": "matrix_stopped",
-                            "answer": None,
-                            "accounting": "nothing_reserved",
-                        },
-                        None,
-                    )
-                )
-                continue
-            condition = evidence_agent.CONDITIONS[name]
-            task = evidence_agent.AgentTask(
-                case_id=item["id"],
-                question=item["question"],
-                editions=tuple(item["editions"]),
-                passages=tuple(
-                    passages[hit.passage_id] for hit in ranking[: condition.passages]
-                ),
-            )
-            result = evidence_agent.run_case(
-                task,
-                client=client,
-                retriever=retriever,
-                passages=passages,
-                clock=CLOCK,
-                budget_s=args.time_budget_s,
-                spending=spending,
-                condition=name,
-            )
-            status, code = _cell(result)
-            cells.append((name, result, status, code))
-            reserved = (
-                reserved
-                or bool(result.record.get("calls"))
-                or (result.detail == run_question.UNCONFIRMED_RESERVATION)
-            )
-            if code in STOPS or (
-                result.outcome == "refused" and result.detail not in CELL_REFUSALS
-            ):
-                stopped = {"case": item["id"], "condition": name}
-        rows.append((item, ranking, cells))
-    finished = _now()
+    retriever, rankings = ranked
+    times = {"started": _now(), "finished": None}
+    state = {"stopped": None, "reserved": False}
+    rows = []  # (case, ranking, [(name, result or None, status, code)]), filled as cells end
 
-    def ranked(ranking) -> list[dict]:
+    def ranked_ids(ranking) -> list[dict]:
         return [
             {
                 "rank": n,
@@ -583,15 +583,19 @@ def _run(
 
     def public() -> dict:
         return {
-            "run": {**provenance, "started_at": started, "finished_at": finished},
+            "run": {
+                **provenance,
+                "started_at": times["started"],
+                "finished_at": times["finished"],
+            },
             "plan": plan,
-            "stopped_after": stopped,
+            "stopped_after": state["stopped"],
             "cases": [
                 {
                     "case": item["id"],
                     "editions": item["editions"],
                     "question_sha256": _sha256(item["question"]),
-                    "ranking": ranked(ranking),
+                    "ranking": ranked_ids(ranking),
                     "cells": [
                         {
                             "condition": name,
@@ -643,28 +647,86 @@ def _run(
             ]
         }
 
-    # Nothing reserved means nothing of the matrix is in the books: no output either.
-    outputs = (
-        [(paths["local"] / "result.json", kept), (paths["public"], public)]
-        if reserved
-        else []
-    )
     done, failed = [], []
-    for (
-        path,
-        build,
-    ) in outputs:  # each built and written on its own; nothing is sent again
-        try:
-            run_question._write(path, build())
-        except (OSError, TypeError, ValueError) as exc:
-            failed.append({"path": str(path), "error": type(exc).__name__})
-        else:
-            done.append(str(path))
+    try:
+        for item in cases:
+            ranking, cells = rankings[item["id"]], []
+            rows.append((item, ranking, cells))
+            for name in ORDER:
+                if state["stopped"]:  # nothing after a cell that needs a person
+                    cells.append(
+                        (
+                            name,
+                            None,
+                            {
+                                "execution": "not_run",
+                                "detail": "matrix_stopped",
+                                "answer": None,
+                                "accounting": "nothing_reserved",
+                            },
+                            None,
+                        )
+                    )
+                    continue
+                condition = evidence_agent.CONDITIONS[name]
+                task = evidence_agent.AgentTask(
+                    case_id=item["id"],
+                    question=item["question"],
+                    editions=tuple(item["editions"]),
+                    passages=tuple(
+                        passages[hit.passage_id]
+                        for hit in ranking[: condition.passages]
+                    ),
+                )
+                result = evidence_agent.run_case(
+                    task,
+                    client=client,
+                    retriever=retriever,
+                    passages=passages,
+                    clock=CLOCK,
+                    budget_s=args.time_budget_s,
+                    spending=spending,
+                    condition=name,
+                )
+                status, code = _cell(result)
+                cells.append((name, result, status, code))
+                state["reserved"] = (
+                    state["reserved"]
+                    or bool(result.record.get("calls"))
+                    or (result.detail == run_question.UNCONFIRMED_RESERVATION)
+                )
+                if code in STOPS or (
+                    result.outcome == "refused" and result.detail not in CELL_REFUSALS
+                ):
+                    state["stopped"] = {"case": item["id"], "condition": name}
+    finally:  # nothing reserved means nothing of the matrix is in the books: no output either
+        times["finished"] = _now()
+        outputs = (
+            [(paths["local"] / "result.json", kept), (paths["public"], public)]
+            if state["reserved"]
+            else []
+        )
+        for (
+            path,
+            build,
+        ) in outputs:  # each built and written on its own; nothing sent again
+            try:
+                run_question._write(path, build())
+            except (OSError, TypeError, ValueError) as exc:
+                failed.append({"path": str(path), "error": type(exc).__name__})
+            else:
+                done.append(str(path))
+    # A cell already in the books was skipped, not run: it sets the exit code only when no
+    # cell ran at all (a repeated run is refused, exit 3).
     codes = {
-        code for _, _, cells in rows for _, _, _, code in cells if code is not None
+        code
+        for _, _, cells in rows
+        for _, _, status, code in cells
+        if code is not None
+        and not (status["execution"] == "refused" and status["detail"] in CELL_REFUSALS)
     }
     codes |= {EXIT_PERSISTENCE} if failed else set()
-    code = next(c for c in PRECEDENCE if c in codes)
+    code = next((c for c in PRECEDENCE if c in codes), EXIT_REFUSED)
     print(
         json.dumps(
             {
@@ -693,7 +755,7 @@ def _run(
                     for item, _, cells in rows
                     for name, result, status, code_ in cells
                 ],
-                "stopped_after": stopped,
+                "stopped_after": state["stopped"],
                 "exit_code": code,
                 "written": done,
                 "not_written": failed,
@@ -792,13 +854,47 @@ def main(argv: list[str] | None = None) -> int:
                 f"{plan['admission']['worst_case_usd']} does not fit the "
                 f"headroom of USD {plan['admission']['headroom_usd']}",
             )
+        unpaired = [
+            c for c in plan["cases"] if c["pairing"] in ("other", "unverifiable")
+        ]
+        if (
+            unpaired
+        ):  # a cell in the books asked something else cannot be paired with new ones
+            raise run_question._Stop(
+                EXIT_REFUSED,
+                "refused: case(s) with cells in the books "
+                "that were asked another question or editions, or whose "
+                "question was not recorded, cannot be compared: "
+                + ", ".join(f"{c['case']} ({c['pairing']})" for c in unpaired),
+            )
         loaded = run_question._load(args.manifest)
         for item in cases:  # every case checked before any cell runs
             run_question._checked(loaded, item["question"], item["editions"])
+        ranked = _rankings(cases, loaded)
     except run_question._Stop as stop:
         print(stop, file=sys.stderr)
         return stop.code
-    return _run(args, cases, client, plan, loaded)
+    return _run(args, cases, client, plan, loaded, ranked)
+
+
+def _rankings(cases: list[dict], loaded) -> tuple:
+    """The retriever and every case's ranking (hybrid, its editions only, top 10), all made
+    before any cell runs, so no cell spends before every case can be ranked."""
+
+    retriever = retrieval.Retriever(loaded.built.passages, loaded.e5.embedder)
+    rankings = {}
+    for item in cases:
+        try:
+            rankings[item["id"]] = retriever.rank(
+                item["question"], method=run_question.METHOD, editions=item["editions"]
+            )[:TOP_K]
+        except Exception as exc:  # noqa: BLE001 - however a ranking fails, nothing is sent
+            raise run_question._Stop(
+                EXIT_REFUSED,
+                f"refused: case {item['id']} could not be ranked "
+                f"({type(exc).__name__}); nothing was counted or sent",
+            ) from None
+    return retriever, rankings
 
 
 if __name__ == "__main__":

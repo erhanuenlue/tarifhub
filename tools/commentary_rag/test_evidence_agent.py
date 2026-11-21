@@ -1417,9 +1417,11 @@ def _cell_release(case: str, condition: str, attempt: str) -> dict:
     [_cell_reserve("E1", "fixed5", call=2)],
     [_cell_reserve("E1", "fixed5", attempt="E1-call1")],
     [{**_cell_reserve("E1", "agent"), "condition": None}],
+    [{**_cell_reserve("E1", "fixed5"), "question_sha256": "not a hash"}],
+    [{**_cell_reserve("E1", "fixed5"), "editions": "2026-07-01"}],
 ], ids=["settled_under_another_condition", "settled_without_its_condition", "unknown_condition",
         "second_call_of_a_one_call_condition", "call_id_without_its_condition",
-        "null_condition"])
+        "null_condition", "malformed_question_hash", "editions_not_a_list"])
 def test_books_whose_conditions_contradict_their_calls_are_refused_as_damaged(spending, rows):
     earlier(spending, 0.0, *rows)
     before = spending.ledger.read_bytes()
@@ -1430,3 +1432,46 @@ def test_books_whose_conditions_contradict_their_calls_are_refused_as_damaged(sp
     assert (result.outcome, result.detail) == ("refused", "ledger_damaged")
     assert provider.timeouts == []
     assert spending.ledger.read_bytes() == before
+
+
+
+def test_every_reservation_records_the_question_and_the_editions_it_was_asked(spending):
+    provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+    the_task = task(initial=("jul/k", "jan/a"), editions=(JUL, JAN))  # editions given unsorted
+
+    run(provider, the_task, spending, condition="fixed5")
+
+    (reserve,) = [e for e in events(spending) if e["event"] == "reserve"]
+    # The plain SHA-256 of the question's UTF-8, as public records publish it; editions sorted.
+    assert reserve["question_sha256"] == hashlib.sha256(
+        the_task.question.encode("utf-8")).hexdigest()
+    assert reserve["editions"] == [JAN, JUL]
+
+
+@pytest.mark.parametrize("change", ["question", "editions"])
+@pytest.mark.parametrize("condition", ["fixed5", "agent"])
+def test_a_case_booked_with_another_question_or_editions_is_refused_under_any_condition(
+        spending, change, condition):
+    run(Provider(Clock(), final(("Antwort.", ["jul/k"]))), task(), spending, condition="fixed10")
+    before = spending.ledger.read_bytes()
+    other = (task(question="Eine andere Frage?") if change == "question"
+             else task(initial=("jul/k", "jan/a"), editions=(JAN, JUL)))
+    provider = Provider(Clock(), final(("Nie gesendet.", ["jul/k"])))
+
+    result, _ = run(provider, other, spending, condition=condition)
+
+    # One case ID names one question over one edition selection, whatever the condition.
+    assert (result.outcome, result.detail) == ("refused", "case_redefined")
+    assert provider.timeouts == []
+    assert spending.ledger.read_bytes() == before
+
+
+def test_a_case_booked_before_questions_were_recorded_is_not_checked_by_the_books(spending):
+    # The D1 run's reservations carry no question: the books cannot compare it, so they let a
+    # new condition of that case through (the comparison runner refuses to pair it).
+    earlier(spending, 0.0, reservation("T1-call1", 0.5))
+    provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+
+    result, _ = run(provider, task(question="Eine andere Frage?"), spending, condition="fixed5")
+
+    assert result.outcome == "answer"

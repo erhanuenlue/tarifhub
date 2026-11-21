@@ -37,7 +37,7 @@ import generation
 import run_comparison
 import run_question
 from test_corpus import make_repo
-from test_evidence_agent import Clock, Provider, books, final, search_call
+from test_evidence_agent import Clock, Provider, _dearest, books, final, search_call
 from test_run_question import StandInE5, _tree
 
 JUL, JAN = "2026-07-01", "2026-01-01"
@@ -275,6 +275,36 @@ def test_plan_lays_out_the_matrix_its_bounds_and_headroom_and_loads_sends_and_wr
         ("E2", "fixed10", False),
         ("E2", "agent", True),
     ]
+    # E2's booked call has no question recorded (written before 2026-11-21): it cannot be paired.
+    assert [(c["case"], c["pairing"]) for c in plan["cases"]] == [
+        ("E1", "new"),
+        ("E2", "unverifiable"),
+    ]
+    assumptions = plan["assumptions"]
+    assert assumptions["label"].startswith("ASSUMPTIONS")
+    assert {
+        k: assumptions[k]
+        for k in (
+            "input_cap_tokens",
+            "input_margin",
+            "max_output_tokens",
+            "us_multiplier",
+            "ceiling_input_usd_per_mtok",
+        )
+    } == {
+        "input_cap_tokens": 80000,
+        "input_margin": 1.1,
+        "max_output_tokens": 32000,
+        "us_multiplier": 1.1,
+        "ceiling_input_usd_per_mtok": 8.0,
+    }
+    assert assumptions["prices_usd_per_mtok"] == {
+        "input": 4.0,
+        "output": 20.0,
+        "cache_write_5m": 5.0,
+        "cache_write_1h": 8.0,
+        "cache_read": 0.2,
+    }
     assert plan["order"][4]["editions"] == [JAN, JUL]
     assert {
         name: {
@@ -544,8 +574,9 @@ def test_a_cell_the_one_question_runner_booked_is_the_same_cell_in_the_compariso
 
     code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
 
-    # E1's agent cell is in the books already; A and B run, C is never sent again.
-    assert code == 3
+    # E1's agent cell is in the books already, asked the same question over the same editions:
+    # A and B run, C is never sent again, and the skipped cell does not mask the cells that ran.
+    assert code == 0
     assert len(provider.creates) == 2
     shown = json.loads(capsys.readouterr().out)
     assert [(c["condition"], c["execution"], c["detail"]) for c in shown["cells"]] == [
@@ -719,3 +750,393 @@ def test_a_cell_whose_accounting_needs_a_person_stops_the_matrix_and_nothing_aft
     ]
     public, _ = outputs(isolated)
     assert "SENTINEL" not in public.read_text("utf-8")  # provider text stays local
+
+
+def test_every_case_is_ranked_before_any_cell_is_sent(isolated, monkeypatch, capsys):
+    second = "Welche Pauschale gilt im zweiten Fall?"
+    stand_in = isolated["e5"]
+    embed_query = stand_in.embed_query
+
+    def failing(
+        text: str,
+    ) -> list[float]:  # the e5 model fails on the second question only
+        if text == second:
+            raise RuntimeError("stand-in e5 model failed")
+        return embed_query(text)
+
+    monkeypatch.setattr(stand_in, "embed_query", failing)
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(
+        argv(
+            isolated,
+            "run",
+            cases_file(isolated, case("E1"), case("E2", question=second)),
+        )
+    )
+
+    # E2 cannot be ranked, so nothing of E1 is sent either: no cell spends before every case
+    # has its ranking.
+    assert code == 3
+    assert "E2" in capsys.readouterr().err
+    assert (provider.counts, provider.creates) == ([], [])
+    assert written(isolated) == {}
+
+
+USAGE = {
+    "input_tokens": 1500,
+    "output_tokens": 900,
+    "cache_creation_input_tokens": 0,
+    "cache_read_input_tokens": 0,
+    "cache_creation_1h_input_tokens": 0,
+    "us_inference": False,
+}  # 0.024 USD at the recorded prices
+
+
+def _reserve(case_id: str, condition: str, call: int) -> dict:
+    return {
+        "event": "reserve",
+        "attempt": f"{case_id}-{condition}-call{call}",
+        "case": case_id,
+        "condition": condition,
+        "call": call,
+        "request_sha256": "0" * 64,
+        "counted_input_tokens": 1500,
+        "reserved_usd": 0.71852,
+        "at": "2026-11-21T00:00:00+00:00",
+    }
+
+
+def _settle(case_id: str, condition: str, call: int) -> dict:
+    return {
+        "event": "settle",
+        "attempt": f"{case_id}-{condition}-call{call}",
+        "case": case_id,
+        "condition": condition,
+        "sent": True,
+        "cost_usd": 0.024,
+        "cost_basis": "usage",
+        "above_reservation": False,
+        "usage": USAGE,
+        "response_sha256": "0" * 64,
+        "at": "2026-11-21T00:00:00+00:00",
+    }
+
+
+def test_estimates_count_only_cells_whose_every_call_was_priced_from_usage(
+    isolated, capsys
+):
+    pin = agent_cell("E2")[0]
+    rows = [
+        pin,
+        _reserve("E3", "agent", 1),
+        _settle("E3", "agent", 1),
+        _reserve("E3", "agent", 2),  # still open: E3's cost is not known yet
+        _reserve("E4", "fixed5", 1),
+        _settle("E4", "fixed5", 1),
+        _reserve("E6", "agent", 1),
+        _settle("E6", "agent", 1),
+        _reserve("E6", "agent", 2),
+        _settle("E6", "agent", 2),
+    ]
+    active(isolated).write_text("".join(json.dumps(e) + "\n" for e in rows), "utf-8")
+
+    assert (
+        run_comparison.main(argv(isolated, "plan", cases_file(isolated, case("E5"))))
+        == 0
+    )
+
+    estimates = json.loads(capsys.readouterr().out)["estimates"]["per_condition"]
+    # fixed5: the history's one call (0.25) and E4 (0.024), mean 0.137; fixed10 that plus
+    # 0.00512; the agent: E6's two calls (0.048), not E3, which still holds an open reservation.
+    assert {
+        name: (c["observed_cells"], c["usd_per_cell"]) for name, c in estimates.items()
+    } == {"fixed5": (2, 0.137), "fixed10": (0, 0.14212), "agent": (1, 0.048)}
+
+
+def test_a_case_whose_booked_cells_were_asked_something_else_is_refused_before_the_model_loads(
+    isolated, monkeypatch, capsys
+):
+    # The one-question runner books E1's agent cell for one question on July; a comparison then
+    # asks E1 another question over both editions. A and B must not be paired with that C.
+    monkeypatch.setattr(run_question, "RESULTS", isolated["tmp"] / "results")
+    monkeypatch.setattr(run_question, "LOCAL", isolated["tmp"] / "local")
+    monkeypatch.setattr(run_question, "CLOCK", isolated["clock"])
+    single = Provider(isolated["clock"], final(("C.", [TOP5[0]])))
+    monkeypatch.setattr(run_question, "_client", lambda config: single.client())
+    assert (
+        run_question.main(
+            [
+                "run",
+                "--case-id",
+                "E1",
+                "--question",
+                QUESTION,
+                "--tag",
+                "2026-11-21",
+                "--time-budget-s",
+                "600",
+                "--manifest",
+                str(isolated["manifest"]),
+                "--edition",
+                JUL,
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    books_before = active(isolated).read_bytes()
+    loads = len(isolated["loads"])
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(
+        argv(
+            isolated,
+            "run",
+            cases_file(
+                isolated,
+                case(
+                    "E1",
+                    question="Welche Pauschale gilt ab Januar?",
+                    editions=(JAN, JUL),
+                ),
+            ),
+        )
+    )
+
+    assert code == 3
+    assert "E1" in capsys.readouterr().err
+    assert (provider.counts, provider.creates) == ([], [])
+    assert len(isolated["loads"]) == loads  # refused before the model loads
+    assert active(isolated).read_bytes() == books_before
+
+
+def test_a_case_whose_booked_cell_recorded_no_question_is_refused_before_the_model_loads(
+    isolated, monkeypatch, capsys
+):
+    active(isolated).write_text(
+        "".join(json.dumps(e) + "\n" for e in agent_cell("E2")), "utf-8"
+    )
+    before = written(isolated)
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E2"))))
+
+    assert code == 3
+    assert "E2" in capsys.readouterr().err
+    assert (isolated["loads"], provider.counts, provider.creates) == ([], [], [])
+    assert written(isolated) == before
+
+
+class Counted(Provider):
+    """The provider's HTTP side with one token count per count request, from ``counts``, then
+    1,500 for any further count, so a matrix that went on would be seen counting and sending."""
+
+    def __init__(self, clock, *replies, counts) -> None:
+        super().__init__(clock, *replies)
+        self.planned = list(counts)
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        """Answer one request, the next planned count for a count request."""
+        if request.url.path == "/v1/messages/count_tokens":
+            count = self.planned.pop(0) if self.planned else 1500
+            self.count_reply = httpx.Response(200, json={"input_tokens": count})
+        return super().__call__(request)
+
+
+OUTSIDE = final(
+    ("Nicht geliefert.", [RANKED[10]])
+)  # rank 11 was never supplied: invalid
+
+
+def test_a_cost_above_its_reservation_stops_the_matrix(isolated, monkeypatch, capsys):
+    provider = live(
+        isolated,
+        monkeypatch,
+        {**final(("A.", [TOP5[0]])), "usage": _dearest(1651)},
+        *answers(),
+    )
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert code == 5
+    assert len(provider.creates) == 1
+    assert json.loads(capsys.readouterr().out)["stopped_after"] == {
+        "case": "E1",
+        "condition": "fixed5",
+    }
+
+
+def test_a_failed_write_stops_the_matrix_before_anything_is_sent(isolated, monkeypatch):
+    blocker = isolated["tmp"] / "blocker"
+    blocker.write_text("a file where the local folder's parent should be\n", "utf-8")
+    monkeypatch.setattr(run_comparison, "LOCAL", blocker / "local")
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    # A's request could not be saved, so it was neither reserved nor sent, and nothing followed.
+    assert code == 7
+    assert (len(provider.counts), provider.creates) == (1, [])
+
+
+def test_a_refusal_by_the_books_stops_the_matrix(isolated, monkeypatch):
+    provider = live(isolated, monkeypatch, *answers())
+
+    with generation._ledger_lock(
+        active(isolated)
+    ) as held:  # another invocation holds them
+        assert held
+        code = run_comparison.main(
+            argv(isolated, "run", cases_file(isolated, case("E1")))
+        )
+
+    assert code == 3
+    assert (provider.counts, provider.creates) == ([], [])
+
+
+def test_an_unanswered_cell_does_not_stop_the_matrix_and_exits_4(
+    isolated, monkeypatch, capsys
+):
+    provider = live(isolated, monkeypatch, OUTSIDE, *answers()[1:], *answers())
+
+    code = run_comparison.main(
+        argv(isolated, "run", cases_file(isolated, case("E1"), case("E2")))
+    )
+
+    assert code == 4
+    assert len(provider.creates) == 6
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["stopped_after"] is None
+    assert [c["execution"] for c in shown["cells"]] == [
+        "invalid_answer",
+        *["answer"] * 5,
+    ]
+
+
+@pytest.mark.parametrize(
+    ("second", "counts", "code"),
+    [
+        (OVERLOADED, (1500, 1500), 6),  # B kept at its reservation: 6 outranks A's 4
+        (None, (1500, 90000), 3),  # B over the input cap, refused: 3 outranks A's 4
+    ],
+    ids=["uncertain_over_unanswered", "refused_over_unanswered"],
+)
+def test_the_matrix_exits_with_the_most_serious_cell_and_stops_after_it(
+    isolated, monkeypatch, second, counts, code
+):
+    provider = Counted(
+        isolated["clock"],
+        OUTSIDE,
+        *((second,) if second else ()),
+        *answers(),
+        counts=counts,
+    )
+    monkeypatch.setattr(run_comparison, "_client", lambda config: provider.client())
+
+    assert (
+        run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+        == code
+    )
+
+    assert (len(provider.counts), len(provider.creates)) == (2, 2 if second else 1)
+
+
+def test_an_output_that_cannot_be_written_exits_7_although_every_cell_answered(
+    isolated, monkeypatch
+):
+    blocker = isolated["tmp"] / "blocker"
+    blocker.write_text("a file where the results folder's parent should be\n", "utf-8")
+    monkeypatch.setattr(run_comparison, "RESULTS", blocker / "results")
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert code == 7
+    assert len(provider.creates) == 3  # reporting is never repaired by sending again
+
+
+def test_an_unexpected_failure_keeps_the_outputs_of_the_cells_before_it(
+    isolated, monkeypatch
+):
+    real = evidence_agent.run_case
+    began: list[str] = []
+
+    def failing(task, **options):  # the loop fails unexpectedly in B
+        began.append(options["condition"])
+        if options["condition"] == "fixed10":
+            raise RuntimeError("unexpected failure in the loop")
+        return real(task, **options)
+
+    monkeypatch.setattr(evidence_agent, "run_case", failing)
+    provider = live(isolated, monkeypatch, *answers())
+
+    with pytest.raises(RuntimeError, match="unexpected failure"):
+        run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert (began, len(provider.creates)) == (["fixed5", "fixed10"], 1)
+    public, local = outputs(isolated)
+    record = json.loads(public.read_text("utf-8"))
+    assert [c["condition"] for c in record["cases"][0]["cells"]] == ["fixed5"]
+    assert (local / "result.json").exists()
+
+
+def test_a_matrix_stopped_by_a_cell_resumes_without_sending_its_cells_again(
+    isolated, monkeypatch, capsys
+):
+    cases = cases_file(isolated, case("E1"))
+    live(isolated, monkeypatch, OVERLOADED, *answers())
+    assert run_comparison.main(argv(isolated, "run", cases)) == 6
+    capsys.readouterr()
+    provider = live(isolated, monkeypatch, *answers()[1:])
+
+    code = run_comparison.main(argv(isolated, "run", cases, tag="2026-11-22"))
+
+    # A stays in the books with its reservation; B and C run now, A is never sent again.
+    assert code == 0
+    assert len(provider.creates) == 2
+    shown = json.loads(capsys.readouterr().out)
+    assert [(c["condition"], c["execution"]) for c in shown["cells"]] == [
+        ("fixed5", "refused"),
+        ("fixed10", "answer"),
+        ("agent", "answer"),
+    ]
+
+
+def test_plan_refuses_damaged_books(isolated, capsys):
+    active(isolated).write_text("not a ledger\n", "utf-8")
+
+    code = run_comparison.main(argv(isolated, "plan", cases_file(isolated, case("E1"))))
+
+    assert code == 3
+    assert "ledger_damaged" in capsys.readouterr().err
+
+
+def test_an_edition_the_corpus_lacks_is_refused_before_anything_is_sent(
+    isolated, monkeypatch
+):
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = exit_code(
+        argv(
+            isolated, "run", cases_file(isolated, case("E1", editions=("2026-04-01",)))
+        )
+    )
+
+    assert code == 2
+    assert (provider.counts, provider.creates) == ([], [])
+    assert written(isolated) == {}
+
+
+def test_existing_outputs_are_refused_before_the_model_loads(isolated, monkeypatch):
+    public, _ = outputs(isolated)
+    public.parent.mkdir(parents=True)
+    public.write_text("recorded\n", encoding="utf-8")
+    before = written(isolated)
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert code == 3
+    assert (isolated["loads"], provider.counts, provider.creates) == ([], [], [])
+    assert written(isolated) == before
