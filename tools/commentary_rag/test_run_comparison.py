@@ -980,7 +980,7 @@ def test_a_failed_write_stops_the_matrix_before_anything_is_sent(isolated, monke
     assert (len(provider.counts), provider.creates) == (1, [])
 
 
-def test_a_refusal_by_the_books_stops_the_matrix(isolated, monkeypatch):
+def test_a_refusal_by_the_books_stops_the_matrix(isolated, monkeypatch, capsys):
     provider = live(isolated, monkeypatch, *answers())
 
     with generation._ledger_lock(
@@ -991,8 +991,74 @@ def test_a_refusal_by_the_books_stops_the_matrix(isolated, monkeypatch):
             argv(isolated, "run", cases_file(isolated, case("E1")))
         )
 
+    # A is refused by the lock; the matrix stops there, so B and C are never tried.
     assert code == 3
     assert (provider.counts, provider.creates) == ([], [])
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["stopped_after"] == {"case": "E1", "condition": "fixed5"}
+    assert [(c["condition"], c["execution"], c["detail"]) for c in shown["cells"]] == [
+        ("fixed5", "refused", "locked"),
+        ("fixed10", "not_run", "matrix_stopped"),
+        ("agent", "not_run", "matrix_stopped"),
+    ]
+
+
+def test_a_failed_output_write_outranks_the_cell_that_stopped_the_matrix(
+    isolated, monkeypatch
+):
+    blocker = isolated["tmp"] / "blocker"
+    blocker.write_text("a file where the results folder's parent should be\n", "utf-8")
+    monkeypatch.setattr(run_comparison, "RESULTS", blocker / "results")
+    provider = live(isolated, monkeypatch, OVERLOADED, *answers())
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    # A's error response stops the matrix (6); the public record cannot be written (7).
+    assert code == 7
+    assert len(provider.creates) == 1
+
+
+def test_a_case_whose_booked_cells_cover_other_editions_is_refused_before_the_model_loads(
+    isolated, monkeypatch, capsys
+):
+    monkeypatch.setattr(run_question, "RESULTS", isolated["tmp"] / "results")
+    monkeypatch.setattr(run_question, "LOCAL", isolated["tmp"] / "local")
+    monkeypatch.setattr(run_question, "CLOCK", isolated["clock"])
+    single = Provider(isolated["clock"], final(("C.", [TOP5[0]])))
+    monkeypatch.setattr(run_question, "_client", lambda config: single.client())
+    assert (
+        run_question.main(
+            [
+                "run",
+                "--case-id",
+                "E1",
+                "--question",
+                QUESTION,
+                "--tag",
+                "2026-11-21",
+                "--time-budget-s",
+                "600",
+                "--manifest",
+                str(isolated["manifest"]),
+                "--edition",
+                JUL,
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
+    loads = len(isolated["loads"])
+    provider = live(isolated, monkeypatch, *answers())
+
+    # The same question, but over both editions: not the case the books hold.
+    code = run_comparison.main(
+        argv(isolated, "run", cases_file(isolated, case("E1", editions=(JAN, JUL))))
+    )
+
+    assert code == 3
+    assert "E1 (other)" in capsys.readouterr().err
+    assert (provider.counts, provider.creates) == ([], [])
+    assert len(isolated["loads"]) == loads
 
 
 def test_an_unanswered_cell_does_not_stop_the_matrix_and_exits_4(

@@ -315,9 +315,9 @@ def _ledger(path: Path, pricing: generation.Pricing) -> list[dict]:
             chosen = CONDITIONS["agent"] if legacy else (
                 CONDITIONS.get(named) if isinstance(named, str) else None)
             asked = e.get("question_sha256"), e.get("editions")
-            recorded = (  # what the case was asked: both or, before 2026-11-21, neither
+            recorded = (  # what the case was asked: both, with a condition, or neither
                 ("question_sha256" not in e and "editions" not in e)
-                or (isinstance(asked[0], str) and re.fullmatch(r"[0-9a-f]{64}", asked[0])
+                or (not legacy and isinstance(asked[0], str) and re.fullmatch(r"[0-9a-f]{64}", asked[0])
                     and isinstance(asked[1], list) and bool(asked[1])
                     and all(isinstance(x, str) for x in asked[1])))
             ok = (attempt is not None and attempt not in reserved and isinstance(case, str)

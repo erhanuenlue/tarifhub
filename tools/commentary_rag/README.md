@@ -242,7 +242,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 316 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 321 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
@@ -545,14 +545,17 @@ repeated run, under any tag or through the one-question runner, sends nothing ag
 stopped matrix resumes without sending its cells again; the recorded books refuse D1 under the
 agent and admit its other conditions; every reservation records its question and editions, a case
 booked with another is refused under any condition, and the comparison refuses, before the model
-loads, a case whose booked cells were asked something else or recorded no question; damaged books
+loads, a case whose booked cells were asked another question, cover other editions or recorded no
+question; damaged books
 (a settlement under another condition, an unknown condition, a second call of a one-call
 condition, a call ID without its condition, malformed question fields) are refused; scoring fields
 in the input are refused and no reference text of a dev case reaches any request or output; a
 matrix whose worst case does not fit, or a case that cannot be ranked, is refused before anything
 is sent; the stop rule and the exit precedence are pinned (a cost above its reservation, a failed
 write, a refusal by the books and a call kept at its reservation stop the matrix, an unanswered
-cell does not; 7, 5, 6, 3, 4, 0; skipped cells never mask cells that ran); an unexpected error
+cell does not; 6 and 3 rank before 4, a failed output write's 7 before a stopped cell's 6, and
+skipped cells never mask cells that ran; 5 and 6 cannot meet among cells, since the matrix stops
+at the first); an unexpected error
 keeps the outputs of the cells before it; estimates count only cells whose every call was priced
 from usage. They do not show real model behaviour, real token counts or costs, or which condition
 answers better.

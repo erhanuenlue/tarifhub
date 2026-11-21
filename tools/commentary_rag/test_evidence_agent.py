@@ -1419,9 +1419,11 @@ def _cell_release(case: str, condition: str, attempt: str) -> dict:
     [{**_cell_reserve("E1", "agent"), "condition": None}],
     [{**_cell_reserve("E1", "fixed5"), "question_sha256": "not a hash"}],
     [{**_cell_reserve("E1", "fixed5"), "editions": "2026-07-01"}],
+    [{**reservation("E1-call1", 0.5), "question_sha256": "0" * 64, "editions": [JUL]}],
 ], ids=["settled_under_another_condition", "settled_without_its_condition", "unknown_condition",
         "second_call_of_a_one_call_condition", "call_id_without_its_condition",
-        "null_condition", "malformed_question_hash", "editions_not_a_list"])
+        "null_condition", "malformed_question_hash", "editions_not_a_list",
+        "entry_without_condition_but_with_a_question"])
 def test_books_whose_conditions_contradict_their_calls_are_refused_as_damaged(spending, rows):
     earlier(spending, 0.0, *rows)
     before = spending.ledger.read_bytes()
@@ -1449,7 +1451,7 @@ def test_every_reservation_records_the_question_and_the_editions_it_was_asked(sp
 
 
 @pytest.mark.parametrize("change", ["question", "editions"])
-@pytest.mark.parametrize("condition", ["fixed5", "agent"])
+@pytest.mark.parametrize("condition", ["fixed5", "fixed10", "agent"])  # fixed10: the booked one
 def test_a_case_booked_with_another_question_or_editions_is_refused_under_any_condition(
         spending, change, condition):
     run(Provider(Clock(), final(("Antwort.", ["jul/k"]))), task(), spending, condition="fixed10")
