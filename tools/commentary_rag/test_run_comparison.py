@@ -1367,3 +1367,43 @@ def test_a_call_id_another_case_holds_stops_the_matrix_instead_of_skipping_the_c
     ]
     assert (provider.counts, provider.creates) == ([], [])
     assert books_now.read_bytes() == before
+
+
+def test_cells_already_in_the_books_are_left_out_of_the_rest_a_resumed_matrix_holds_back(
+    isolated, monkeypatch, capsys
+):
+    # E1's agent cell is already in the books (the one-question runner booked it, settled at
+    # 0.024 USD), and the rest of the matrix fits exactly: A's admission holds back only B's
+    # 1.4784 USD, 97.0192 + 0.024 + 1.4784 + 1.4784 = 100. Counting the booked C cell in the
+    # rest would refuse A.
+    books(
+        (
+            {"event": "reserve", "attempt": "H-1", "case": "H", "reserved_usd": 97.0192},
+            {
+                "event": "settle",
+                "attempt": "H-1",
+                "case": "H",
+                "cost_usd": 97.0192,
+                "cost_basis": "usage",
+            },
+        )
+    )
+    asked = {"question_sha256": run_comparison._sha256(QUESTION), "editions": [JUL]}
+    rows = (
+        {**agent_cell("E2")[0], "committed_usd": 97.0192},
+        {**_reserve("E1", "agent", 1), **asked},
+        _settle("E1", "agent", 1),
+    )
+    active(isolated).write_text("".join(json.dumps(e) + "\n" for e in rows), "utf-8")
+    provider = live(isolated, monkeypatch, *answers()[:2])
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert code == 0
+    shown = json.loads(capsys.readouterr().out)
+    assert [(c["condition"], c["execution"], c["detail"]) for c in shown["cells"]] == [
+        ("fixed5", "answer", None),
+        ("fixed10", "answer", None),
+        ("agent", "refused", "already_run"),
+    ]
+    assert len(provider.creates) == 2

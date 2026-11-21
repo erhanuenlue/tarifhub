@@ -250,7 +250,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 335 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 336 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
@@ -485,8 +485,8 @@ case (every cell still to run at its admission) does not fit beside everything c
 USD 100, and a case whose cells already in the books were asked another question or editions
 (`other`) or recorded none (`unverifiable`); every cell is still admitted again by the books,
 and its admission, under the lock, also holds back the worst case of the matrix's cells still to
-run after it, so a booking by another invocation in between stops the matrix before the rest of
-it no longer fits.
+run after it, so after a booking by another invocation in between, the matrix stops at the next
+cell once the rest of it no longer fits.
 Every case is ranked before any cell runs, so no cell spends before every case can be ranked. The matrix stops, sending nothing
 further, after a cell with a failed write, a cost above its reservation, a call kept at its
 reservation (error responses, timeouts, unpriced usage) or a refusal other than a cell already in

@@ -56,8 +56,8 @@ admitted only when its worst case fits: every call its condition allows (three f
 at the 80,000-token input cap, each at its
 ceiling (one call for a fixed condition); this is a check, not a charge. A comparison also passes
 the worst case of its cells still to run after this one (``matrix_rest_usd``), which the same
-check under the lock holds back, so a booking by another invocation between cells cannot leave
-the rest of the matrix without room. A cell (case and
+check under the lock holds back, so after a booking by another invocation between cells, no
+cell starts once the rest of the matrix no longer fits beside it. A cell (case and
 condition) already in the active ledger, completed or unresolved, is refused: nothing is sent or
 counted twice. Before each call its request is
 counted, refused above the cap, saved, and reserved at its ceiling; the deadline is then checked

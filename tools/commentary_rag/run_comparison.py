@@ -573,7 +573,7 @@ def _run(  # noqa: PLR0913
     retriever, rankings = ranked
     # Each cell's admission, under the lock, also holds back the worst case of the cells after
     # it that were not in the books when the matrix was admitted: a booking by another
-    # invocation in between stops the matrix before the rest of it no longer fits.
+    # invocation in between stops the matrix at the next cell once the rest no longer fits.
     rest_after, remaining = {}, sum(
         _micro(plan["conditions"][o["condition"]]["admission_usd"])
         for o in plan["order"]
