@@ -250,7 +250,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 325 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 335 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
@@ -483,11 +483,14 @@ condition as damaged, so once one is written only this code or later can use the
 answers come close together in time. Before loading anything, `run` refuses a matrix whose worst
 case (every cell still to run at its admission) does not fit beside everything committed under
 USD 100, and a case whose cells already in the books were asked another question or editions
-(`other`) or recorded none (`unverifiable`); every cell is still admitted again by the books.
+(`other`) or recorded none (`unverifiable`); every cell is still admitted again by the books,
+and its admission, under the lock, also holds back the worst case of the matrix's cells still to
+run after it, so a booking by another invocation in between stops the matrix before the rest of
+it no longer fits.
 Every case is ranked before any cell runs, so no cell spends before every case can be ranked. The matrix stops, sending nothing
 further, after a cell with a failed write, a cost above its reservation, a call kept at its
 reservation (error responses, timeouts, unpriced usage) or a refusal other than a cell already in
-the books; nothing is retried. The lock is taken for each cell, so another invocation could run
+the books (a call ID that another case's reservation holds among them); nothing is retried. The lock is taken for each cell, so another invocation could run
 between the cells of a case; the books stay correct, but run one comparison at a time.
 
 **Input:** a cases file `{"cases": [{"id", "question", "editions"}]}` and nothing else: a field
@@ -556,7 +559,7 @@ private gold evidence and the private rubric. The
 SHA-256 as every reservation of its cells records it, so the books of a later run can be matched
 to the frozen set. Scoring rules: required claims are scored and optional material never is; the
 required-evidence denominator holds the supports of the required claims only, so Evidence Recall is
-N/A for a case without them (E6); check terms are aids, never a verdict; section anchors are
+N/A for a case without them; check terms are aids, never a verdict; section anchors are
 checked by a person, since coverage matches edition, page and quote. Reporting: E1 apart from E2 to
 E6 (D1 overlap); for E4 and E5, single-edition January questions, B receives 10 of the January
 commentary's 11 passages; E2's edition filter keeps January out of every condition, so E2 does not
@@ -574,10 +577,12 @@ booked with another is refused under any condition, and the comparison refuses, 
 loads, a case whose booked cells were asked another question, cover other editions or recorded no
 question; damaged books
 (a settlement under another condition, an unknown condition, a second call of a one-call
-condition, a call ID without its condition, malformed question fields) are refused; scoring fields
+condition, a call ID without its condition, malformed question fields, a reservation with a
+condition that does not record its question and editions) are refused; scoring fields
 in the input are refused and no reference text of a dev case reaches any request or output; a
 matrix whose worst case does not fit, or a case that cannot be ranked, is refused before anything
-is sent; the stop rule and the exit precedence are pinned (a cost above its reservation, a failed
+is sent, and a booking by another invocation that leaves the rest of the matrix no room stops it
+before the next cell sends anything; the stop rule and the exit precedence are pinned (a cost above its reservation, a failed
 write, a refusal by the books and a call kept at its reservation stop the matrix, an unanswered
 cell does not; a stopped cell's 5, 6 or 3 ranks before an unanswered cell's 4, a failed output
 write's 7 before a stopped cell's 5 or 6, and skipped cells never mask cells that ran; 5 and 6

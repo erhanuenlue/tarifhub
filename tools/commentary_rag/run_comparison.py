@@ -81,8 +81,9 @@ LABELS = {"fixed5": "A", "fixed10": "B", "agent": "C"}
 TOP_K = max(c.passages for c in evidence_agent.CONDITIONS.values())
 CASE_KEYS = ("id", "question", "editions")
 TOOL_FILES = (*run_question.TOOL_FILES, "run_comparison.py")
-# Refusals that leave the books as they were and concern only their own cell.
-CELL_REFUSALS = ("already_run", "call_id_taken")
+# The one refusal that skips a cell: it is already in the books, so it is never sent again.
+# Any other refusal, a call ID that another case's reservation holds among them, stops the matrix.
+CELL_REFUSALS = ("already_run",)
 (
     EXIT_ANSWER,
     EXIT_INPUT,
@@ -570,6 +571,18 @@ def _run(  # noqa: PLR0913
         artifacts=paths["local"],
     )
     retriever, rankings = ranked
+    # Each cell's admission, under the lock, also holds back the worst case of the cells after
+    # it that were not in the books when the matrix was admitted: a booking by another
+    # invocation in between stops the matrix before the rest of it no longer fits.
+    rest_after, remaining = {}, sum(
+        _micro(plan["conditions"][o["condition"]]["admission_usd"])
+        for o in plan["order"]
+        if not o["in_books"]
+    )
+    for o in plan["order"]:
+        if not o["in_books"]:
+            remaining -= _micro(plan["conditions"][o["condition"]]["admission_usd"])
+        rest_after[(o["case"], o["condition"])] = remaining
     times = {"started": _now(), "finished": None}
     state = {"stopped": None, "reserved": False}
     rows = []  # (case, ranking, [(name, result or None, status, code)]), filled as cells end
@@ -694,6 +707,7 @@ def _run(  # noqa: PLR0913
                     budget_s=args.time_budget_s,
                     spending=spending,
                     condition=name,
+                    matrix_rest_usd=_usd(rest_after[(item["id"], name)]),
                 )
                 status, code = _cell(result)
                 cells.append((name, result, status, code))

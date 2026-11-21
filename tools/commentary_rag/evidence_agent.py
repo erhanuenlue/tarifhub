@@ -13,7 +13,8 @@ every reservation also records the question's SHA-256 and the sorted editions. T
 the books is the case and its condition, and one case ID names one question over one edition
 selection: a case booked before with another question or editions is refused
 (``case_redefined``) under any condition. Reservations written before conditions existed (the
-D1 run) are the agent's and record no question.
+D1 run) are the agent's and record no question; a reservation with a condition that does not
+record both is damage.
 
 Under ``agent``, one question goes to the model with the Phase 2 request content (its question, editions and
 fixed top-5 passages, ADR-025), the Phase 2 system prompt with a short, generic instruction to
@@ -53,7 +54,10 @@ settlement prices within the margin costs at most its reservation; it is the app
 calculation from recorded prices, not a bound the provider's billing guarantees. A case is
 admitted only when its worst case fits: every call its condition allows (three for the agent)
 at the 80,000-token input cap, each at its
-ceiling (one call for a fixed condition); this is a check, not a charge. A cell (case and
+ceiling (one call for a fixed condition); this is a check, not a charge. A comparison also passes
+the worst case of its cells still to run after this one (``matrix_rest_usd``), which the same
+check under the lock holds back, so a booking by another invocation between cells cannot leave
+the rest of the matrix without room. A cell (case and
 condition) already in the active ledger, completed or unresolved, is refused: nothing is sent or
 counted twice. Before each call its request is
 counted, refused above the cap, saved, and reserved at its ceiling; the deadline is then checked
@@ -315,8 +319,8 @@ def _ledger(path: Path, pricing: generation.Pricing) -> list[dict]:
             chosen = CONDITIONS["agent"] if legacy else (
                 CONDITIONS.get(named) if isinstance(named, str) else None)
             asked = e.get("question_sha256"), e.get("editions")
-            recorded = (  # what the case was asked: both, with a condition, or neither
-                ("question_sha256" not in e and "editions" not in e)
+            recorded = (  # what the case was asked: both with a condition, neither before them
+                (legacy and "question_sha256" not in e and "editions" not in e)
                 or (not legacy and isinstance(asked[0], str) and re.fullmatch(r"[0-9a-f]{64}", asked[0])
                     and isinstance(asked[1], list) and bool(asked[1])
                     and all(isinstance(x, str) for x in asked[1])))
@@ -539,15 +543,20 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
              clock: Callable[[], float], budget_s: float, spending: Spending,
              config: generation.Config | None = None,
              limits: evidence_search.SearchLimits | None = None,
-             condition: str = "agent") -> CaseResult:
+             condition: str = "agent", matrix_rest_usd: float = 0.0) -> CaseResult:
     """Run one question under one condition (``CONDITIONS``) to an outcome within ``budget_s``
-    seconds of ``clock``, every call accounted in ``spending``'s ledger."""
+    seconds of ``clock``, every call accounted in ``spending``'s ledger. ``matrix_rest_usd``
+    is the worst case of a comparison's cells still to run after this one: the admission, under
+    the lock, must fit it beside this cell's own (0 for a question on its own)."""
 
     config = config or generation.Config()
     limits = limits or evidence_search.SearchLimits()
     if condition not in CONDITIONS:
         raise ValueError(f"the condition must be one of {', '.join(CONDITIONS)}")
     chosen = CONDITIONS[condition]
+    if (isinstance(matrix_rest_usd, bool) or not isinstance(matrix_rest_usd, (int, float))
+            or not math.isfinite(matrix_rest_usd) or matrix_rest_usd < 0):
+        raise ValueError("the matrix rest must be a finite amount of USD, 0 or more")
     client = client.with_options(max_retries=0)  # whatever client is given: one send per call
     ids = [p["passage_id"] for p in task.passages]
     if (not task.editions or len(set(ids)) != len(ids)
@@ -580,14 +589,15 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
     with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
         return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
                      budget_s=budget_s, spending=spending, pricing=pricing, config=config,
-                     limits=limits, held=held, chosen=chosen, asked=asked)
+                     limits=limits, held=held, chosen=chosen, asked=asked,
+                     rest=_micro(matrix_rest_usd))
 
 
 def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping],  # noqa: PLR0913
           clock: Callable[[], float], budget_s: float, spending: Spending,
           pricing: generation.Pricing, config: generation.Config,
           limits: evidence_search.SearchLimits, held: bool, chosen: Condition,
-          asked: tuple[str, list[str]]) -> CaseResult:
+          asked: tuple[str, list[str]], rest: int) -> CaseResult:
     started = clock()
     deadline = started + budget_s
     first = generation.request({"question": task.question, "editions": list(task.editions),
@@ -643,8 +653,9 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
     if any(e["event"] == "reserve" and e["attempt"] in calls for e in events):
         return end("refused", "call_id_taken")  # an older reservation's ID: never written twice
     # Admission is a check, not a charge: every call at the input cap bounds a growing context.
+    # A comparison's cells still to run after this one are held back beside it (``rest``).
     admission = chosen.calls * _ceiling(pricing, MAX_INPUT_TOKENS, config)
-    if _micro(baseline) + _committed(events) + admission > _micro(config.budget_usd):
+    if _micro(baseline) + _committed(events) + admission + rest > _micro(config.budget_usd):
         return end("refused", "admission_budget")
     if not events and not kept(lambda: generation._append(spending.ledger, {
             "event": "baseline", "ledger": spending.baseline.name,

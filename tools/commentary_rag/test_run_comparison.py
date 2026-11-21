@@ -803,6 +803,8 @@ def _reserve(case_id: str, condition: str, call: int) -> dict:
         "request_sha256": "0" * 64,
         "counted_input_tokens": 1500,
         "reserved_usd": 0.71852,
+        "question_sha256": "0" * 64,  # every reservation with a condition records both
+        "editions": [JUL],
         "at": "2026-11-21T00:00:00+00:00",
     }
 
@@ -1274,3 +1276,94 @@ def test_an_unknown_field_name_is_shown_escaped(isolated, capsys):
         "\x1b" not in shown and "\\x1b" in shown
     )  # no terminal control sequence passes
     assert "SENTINEL" not in shown
+
+
+def _historical_92_608() -> None:
+    """A stand-in historical ledger that committed 92.608 USD: one case's worst case (7.392)
+    reaches exactly 100 USD."""
+    books(
+        (
+            {"event": "reserve", "attempt": "H-1", "case": "H", "reserved_usd": 92.608},
+            {
+                "event": "settle",
+                "attempt": "H-1",
+                "case": "H",
+                "cost_usd": 92.608,
+                "cost_basis": "usage",
+            },
+        )
+    )
+
+
+def test_a_matrix_admitted_at_exactly_the_limit_runs_every_cell(isolated, monkeypatch):
+    # Each cell's admission holds back the cells still to run after it; cells that settle
+    # within their admissions leave room for the rest, so all three run.
+    _historical_92_608()
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert code == 0
+    assert len(provider.creates) == 3
+
+
+def test_a_booking_after_the_check_that_leaves_the_rest_of_the_matrix_no_room_stops_it(
+    isolated, monkeypatch, capsys
+):
+    # The matrix fits exactly when run checks it. While the model loads, another invocation
+    # reserves 0.71852 USD, leaving 6.67348: A's own 1.4784 would fit, but not beside the
+    # 5.9136 of B and C still to run, so A is refused under the lock and nothing is sent.
+    _historical_92_608()
+    provider = live(isolated, monkeypatch, *answers())
+    rankings = run_comparison._rankings
+
+    def meanwhile(cases, loaded):
+        ranked = rankings(cases, loaded)
+        pin, other, _ = agent_cell("X1")
+        rows = ({**pin, "committed_usd": 92.608}, {**other, "reserved_usd": 0.71852})
+        active(isolated).write_text(
+            "".join(json.dumps(e) + "\n" for e in rows), "utf-8"
+        )  # an open reservation: committed until it settles
+        return ranked
+
+    monkeypatch.setattr(run_comparison, "_rankings", meanwhile)
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert code == 3
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["stopped_after"] == {"case": "E1", "condition": "fixed5"}
+    assert [(c["condition"], c["execution"], c["detail"]) for c in shown["cells"]] == [
+        ("fixed5", "refused", "admission_budget"),
+        ("fixed10", "not_run", "matrix_stopped"),
+        ("agent", "not_run", "matrix_stopped"),
+    ]
+    assert (provider.counts, provider.creates) == ([], [])
+    assert [e["event"] for e in ledger(isolated)] == ["baseline", "reserve"]
+
+
+def test_a_call_id_another_case_holds_stops_the_matrix_instead_of_skipping_the_cell(
+    isolated, monkeypatch, capsys
+):
+    # A reservation from before conditions existed, for a case named E1-fixed5, holds the call
+    # ID E1-fixed5-call1 that E1's A cell would use. A never ran, so it is not skipped as a
+    # cell already in the books: the matrix stops there and B and C are not sent.
+    books_now = active(isolated)
+    books_now.write_text(
+        "".join(json.dumps(e) + "\n" for e in agent_cell("E1-fixed5")), "utf-8"
+    )
+    before = books_now.read_bytes()
+    provider = live(isolated, monkeypatch, *answers())
+
+    code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+
+    assert code == 3
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["stopped_after"] == {"case": "E1", "condition": "fixed5"}
+    assert [(c["condition"], c["execution"], c["detail"]) for c in shown["cells"]] == [
+        ("fixed5", "refused", "call_id_taken"),
+        ("fixed10", "not_run", "matrix_stopped"),
+        ("agent", "not_run", "matrix_stopped"),
+    ]
+    assert (provider.counts, provider.creates) == ([], [])
+    assert books_now.read_bytes() == before

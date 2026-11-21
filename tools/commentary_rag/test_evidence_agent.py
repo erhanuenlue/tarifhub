@@ -193,9 +193,11 @@ def task(initial=INITIAL, editions=(JUL,), question="Welche Pauschale gilt und w
 
 def run(provider: Provider, the_task, spending: evidence_agent.Spending, *,  # noqa: PLR0913
         budget_s: float = 3600.0, config: generation.Config | None = None,
-        condition: str | None = None, **world_options):
+        condition: str | None = None, matrix_rest_usd: float | None = None, **world_options):
     retriever, passages, embedder = world(**world_options)
     chosen = {} if condition is None else {"condition": condition}  # None: the default, agent
+    if matrix_rest_usd is not None:  # None: the default, a question on its own
+        chosen["matrix_rest_usd"] = matrix_rest_usd
     result = evidence_agent.run_case(the_task, client=provider.client(), retriever=retriever,
                                      passages=passages, clock=provider.clock, budget_s=budget_s,
                                      spending=spending, config=config, **chosen)
@@ -1397,10 +1399,14 @@ def test_a_fixed_condition_runs_no_search_a_model_asks_for(spending, condition):
     assert [e["event"] for e in events(spending)] == ["baseline", "reserve", "settle"]
 
 
-def _cell_reserve(case: str, condition: str, call: int = 1, attempt: str | None = None) -> dict:
+def _cell_reserve(case: str, condition: str, call: int = 1, attempt: str | None = None, *,
+                  asked: bool = True) -> dict:
+    """A reservation under a condition; it records what its case was asked unless ``asked`` is
+    False, which the books refuse (every reservation with a condition records both)."""
     return {"event": "reserve", "attempt": attempt or f"{case}-{condition}-call{call}",
             "case": case, "condition": condition, "call": call, "request_sha256": "0" * 64,
-            "counted_input_tokens": 1500, "reserved_usd": 0.5, "at": "2026-11-21T08:00:00+00:00"}
+            "counted_input_tokens": 1500, "reserved_usd": 0.5, "at": "2026-11-21T08:00:00+00:00",
+            **({"question_sha256": "0" * 64, "editions": [JUL]} if asked else {})}
 
 
 def _cell_release(case: str, condition: str, attempt: str) -> dict:
@@ -1420,10 +1426,12 @@ def _cell_release(case: str, condition: str, attempt: str) -> dict:
     [{**_cell_reserve("E1", "fixed5"), "question_sha256": "not a hash"}],
     [{**_cell_reserve("E1", "fixed5"), "editions": "2026-07-01"}],
     [{**reservation("E1-call1", 0.5), "question_sha256": "0" * 64, "editions": [JUL]}],
+    [_cell_reserve("E1", "fixed5", asked=False)],
 ], ids=["settled_under_another_condition", "settled_without_its_condition", "unknown_condition",
         "second_call_of_a_one_call_condition", "call_id_without_its_condition",
         "null_condition", "malformed_question_hash", "editions_not_a_list",
-        "entry_without_condition_but_with_a_question"])
+        "entry_without_condition_but_with_a_question",
+        "condition_without_its_question_and_editions"])
 def test_books_whose_conditions_contradict_their_calls_are_refused_as_damaged(spending, rows):
     earlier(spending, 0.0, *rows)
     before = spending.ledger.read_bytes()
@@ -1477,3 +1485,39 @@ def test_a_case_booked_before_questions_were_recorded_is_not_checked_by_the_book
     result, _ = run(provider, task(question="Eine andere Frage?"), spending, condition="fixed5")
 
     assert result.outcome == "answer"
+
+
+@pytest.mark.parametrize(("open_usd", "outcome"), [(34.0864, "answer"), (34.086401, "refused")],
+                         ids=["exactly_the_limit", "one_microdollar_over"])
+def test_a_cell_is_admitted_only_when_the_rest_of_its_matrix_still_fits_beside_it(
+        open_usd, outcome):
+    # A comparison holds back the worst case of its cells still to run after this one (here
+    # 1.4784 USD): 60 + 34.0864 + 4.4352 + 1.4784 = 100 USD is admitted, a micro-dollar more is
+    # refused under the lock, before anything is counted or sent.
+    spending = books(({"event": "reserve", "attempt": "H-1", "case": "H", "reserved_usd": 60.0},
+                      {"event": "settle", "attempt": "H-1", "case": "H", "cost_usd": 60.0}))
+    earlier(spending, 60.0, reservation("P-call1", open_usd))
+    before = spending.ledger.read_bytes()
+    provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+
+    result, _ = run(provider, task(), spending, matrix_rest_usd=1.4784)
+
+    assert result.outcome == outcome
+    if outcome == "refused":
+        assert result.detail == "admission_budget"
+        assert provider.timeouts == []
+        assert spending.ledger.read_bytes() == before
+    else:
+        assert [e["event"] for e in events(spending)][2:] == ["reserve", "settle"]
+
+
+@pytest.mark.parametrize("rest", [-0.000001, float("inf"), float("nan"), True],
+                         ids=["negative", "infinite", "not_a_number", "a_bool"])
+def test_a_matrix_rest_that_is_not_a_finite_amount_is_refused_before_any_request(spending, rest):
+    provider = Provider(Clock(), final(("Nie gesendet.", ["jul/k"])))
+
+    with pytest.raises(ValueError, match="rest"):
+        run(provider, task(), spending, matrix_rest_usd=rest)
+
+    assert provider.timeouts == []
+    assert not spending.ledger.exists()
