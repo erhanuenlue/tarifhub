@@ -1249,3 +1249,28 @@ def test_a_spending_stop_ranks_below_a_failed_write_and_above_an_unanswered_cell
     )
 
     assert len(provider.creates) == sent  # the matrix stopped at the spending stop
+
+
+def test_a_cases_file_nested_too_deep_to_parse_is_invalid_input(isolated, monkeypatch):
+    provider = live(isolated, monkeypatch, *answers())
+    path = isolated["tmp"] / "input" / "deep.json"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    path.write_text("[" * 200_000 + "]" * 200_000, encoding="utf-8")
+
+    code = exit_code(argv(isolated, "run", path))
+
+    assert code == 2  # refused as input, not an unexpected error
+    assert (isolated["loads"], provider.counts, provider.creates) == ([], [], [])
+
+
+def test_an_unknown_field_name_is_shown_escaped(isolated, capsys):
+    cases = cases_file(isolated, {**case("E1"), "\x1b[31mrubric": "SENTINEL"})
+
+    code = exit_code(argv(isolated, "plan", cases))
+
+    assert code == 2
+    shown = capsys.readouterr().err
+    assert (
+        "\x1b" not in shown and "\\x1b" in shown
+    )  # no terminal control sequence passes
+    assert "SENTINEL" not in shown

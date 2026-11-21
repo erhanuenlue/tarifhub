@@ -155,7 +155,12 @@ def _cases(path: Path, *, questions: bool) -> list[dict] | str:
 
     try:
         data = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, UnicodeDecodeError, ValueError) as exc:
+    except (
+        OSError,
+        UnicodeDecodeError,
+        ValueError,
+        RecursionError,
+    ) as exc:  # nested too deep
         return f"--cases cannot be read as JSON ({type(exc).__name__})"
     if (
         not isinstance(data, dict)
@@ -169,10 +174,12 @@ def _cases(path: Path, *, questions: bool) -> list[dict] | str:
         if not isinstance(item, dict):
             return f"case {n} is not an object"
         extra = sorted(set(item) - set(CASE_KEYS))
-        if extra:  # names only: their values are never read
+        if extra:  # names only, escaped and shortened: their values are never read
+            shown = ", ".join(repr(name)[:40] for name in extra[:5])
             return (
                 f"case {n} has fields other than id, question and editions "
-                f"({', '.join(extra)}): nothing that scores an answer may be in the input"
+                f"({shown}{', ...' if len(extra) > 5 else ''}): nothing that scores an answer "
+                "may be in the input"
             )
         missing = sorted(
             {"id", "editions", *(("question",) if questions else ())} - set(item)

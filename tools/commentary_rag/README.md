@@ -242,7 +242,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 323 (no model, no key, no network): poppler's `pdftotext` and the ingestion
+Offline tests, all 325 (no model, no key, no network): poppler's `pdftotext` and the ingestion
 `ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
 them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
 suite in its own `commentary-rag` job):
