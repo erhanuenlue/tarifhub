@@ -29,18 +29,37 @@ on eight dev cases with no held-out test, not an accuracy figure.
 `evidence_search.py` is the commentary search of the evidence-seeking agent (ADR-026, proposed),
 one read-only search whose bounds are code; `evidence_agent.py` is the agent's loop for one
 question, with per-call spending protection; `run_question.py` is the one-question runner that
-ranks a question afresh and hands it to the loop once. All three are tested offline only, against
-a mocked provider with temporary ledgers. **The runner exists and is tested offline; the live
-provider contract remains unverified:** nothing has called the provider yet, so the request shape
-and the usage it reports are unchecked, and the deadline is cooperative, not a hard limit. Its books: USD 100 is
-one aggregate limit for Phase 2 and Phase 3 together; `results/generation-ledger.jsonl` stays
-byte-identical and counts with all it committed (USD 1.930804, SHA-256
+ranks a question afresh and hands it to the loop once. All three are tested offline, against a
+mocked provider with temporary ledgers, and the deadline is cooperative, not a hard limit. Its
+books: USD 100 is one aggregate limit for Phase 2 and Phase 3 together;
+[`results/generation-ledger.jsonl`](results/generation-ledger.jsonl) stays byte-identical and
+counts with all it committed (USD 1.930804, SHA-256
 `e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa`), and all later spending goes
-to one active ledger beside it, `phase3-ledger.jsonl`, which no run has written yet. The hash
-is pinned in the agent's code, not chosen by a caller. The comparison with fixed top-5 and
+to one active ledger beside it, [`results/phase3-ledger.jsonl`](results/phase3-ledger.jsonl). The
+hash is pinned in the agent's code, not chosen by a caller. The comparison with fixed top-5 and
 top-10 contexts is planned, not built: those conditions do not yet use the shared accounting
-path, and the Phase 2 runner must not be used during Phase 3 to bypass it. Nothing above
-changed.
+path, and the Phase 2 runner must not be used during Phase 3 to bypass it.
+
+**First live run (2026-11-20, dev case D1, code of `main` at `df5d20d`):** one authorised
+invocation of `run_question.py run` (evidence:
+[`docs/evidence/2026-11-20-phase3-d1-agent-run.md`](../../docs/evidence/2026-11-20-phase3-d1-agent-run.md),
+public record [`results/2026-11-20-question-D1.json`](results/2026-11-20-question-D1.json)). Two
+calls, both priced from their usage within their reservations (USD 0.560552 calculated, nothing
+left reserved, USD 2.491356 committed in all), one search, ten passages supplied, so the passage
+cap left no second search; a structurally accepted `partial` answer that cites one of D1's two
+previously missing passages (`2026-07-01/p6/s2.5/5`; `2026-07-01/p7/s2.5/1` was not retrieved,
+its rank for the agent's query unknown). The live provider contract is verified only for what
+that run exercised; no error, timeout or deadline path has run live. One development
+observation, not an evaluation. No earlier record changed.
+
+**Human review of the D1 run (confirmed 2026-11-21):** Erhan Ünlü rated the stored answer in a
+local worksheet (one reviewer, not blinded). Claims: support 16 yes, 1 partly, 0 no; relevance 9
+fully, 4 partly, 4 not. Rubric: 3 of 5 items covered, 1 partly, 1 not. Reported gaps: 5 accurate,
+1 partly; 3 fully relevant, 1 partly, 2 not. `partial` judged appropriate; the agent's overall
+behaviour partly appropriate. The answer covered both tariff changes and how they offset each
+other, the effective date only partly, and missed the evaluation through 30 June 2028 and the
+recalculation under transAL-2, whose passage the agent never received. Scoped to this one dev
+case; details on the evidence page, ratings and notes local.
 
 ## Files
 
@@ -101,11 +120,13 @@ changed.
   theirs). It returns the next state, the tool result as escaped passage data, a publishable
   `record` (IDs, ranks, scores, hashes, counts, outcome) and a `local` part with the raw
   arguments and error text; the tool result carries passage text and stays local too. Only the
-  agent loop below calls it, and only against a mocked provider so far.
+  agent loop below calls it: in the tests against a mocked provider, and once live, for the one
+  search of the D1 run (2026-11-20).
 - `test_evidence_search.py`: offline tests of the search on a synthetic two-edition corpus with
   hand-worked rankings, the real retriever and a stand-in e5 embedder.
-- `evidence_agent.py`: the evidence-seeking agent's loop for one question, tested offline only
-  (**live provider contract unverified**; its one caller is `run_question.py`). `run_case(task, *, client, retriever,
+- `evidence_agent.py`: the evidence-seeking agent's loop for one question, tested offline and run
+  live once (**live provider contract verified only in part**, by the D1 run above; its one
+  caller is `run_question.py`). `run_case(task, *, client, retriever,
   passages, clock, budget_s, spending)` takes an `AgentTask` (case ID, question, selected
   editions, verified fixed passages: nothing used to score the answer) and a required `Spending`
   (the historical ledger and its expected SHA-256, which must be the hash pinned in the code,
@@ -166,11 +187,20 @@ changed.
 - `results/2026-11-15-human-review-summary.json`: the public summary of Erhan's completed review
   (method, limitations, aggregate counts, fields the review leaves unsettled, source hashes; no
   answer text and no review comments).
+- [`results/phase3-ledger.jsonl`](results/phase3-ledger.jsonl) (the active ledger: its baseline
+  pin, then the D1 run's two reservations and two usage settlements) and
+  [`results/2026-11-20-question-D1.json`](results/2026-11-20-question-D1.json) (that run's public
+  record), both as the runner wrote them on 2026-11-20.
 - `local/` (git-ignored): contexts with passage text (`2026-11-14-contexts.json`), raw requests
   and responses and the run result (`2026-11-15-generation/`), the human-review sheet as generated
   (`2026-11-15-review-sheet.md`, ratings empty, kept unchanged), Erhan's approved review
   (`TarifHub_RAG_Bewertung_Erhan_2026-11-15.md`) and its structured transfer with every rating,
-  excerpt and the input hashes it was checked against (`2026-11-15-human-review.json`).
+  excerpt and the input hashes it was checked against (`2026-11-15-human-review.json`); for the
+  2026-11-20 D1 run, the runner's folder (`2026-11-20-question-D1/`: raw requests and responses,
+  answer, full result), its console output (`2026-11-20-question-D1-console/`), the review
+  worksheet as generated (`2026-11-20-D1-review-worksheet.md`, ratings empty, kept unchanged)
+  and Erhan's completed copy with his ratings and notes (`2026-11-20-D1-review-worksheet-erhan.md`,
+  confirmed 2026-11-21).
 
 ## Passage construction (corrected run)
 
