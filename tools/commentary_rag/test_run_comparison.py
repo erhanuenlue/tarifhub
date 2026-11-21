@@ -1206,3 +1206,46 @@ def test_existing_outputs_are_refused_before_the_model_loads(isolated, monkeypat
     assert code == 3
     assert (isolated["loads"], provider.counts, provider.creates) == ([], [], [])
     assert written(isolated) == before
+
+
+ABOVE = {
+    **final(("Teuer.", [TOP5[0]])),
+    "usage": _dearest(1651),
+}  # above its reservation
+
+
+@pytest.mark.parametrize(
+    ("replies", "blocked", "code", "sent"),
+    [
+        (
+            (OUTSIDE, ABOVE),
+            False,
+            5,
+            2,
+        ),  # B's spending stop (5) outranks A's unanswered 4
+        (
+            (ABOVE,),
+            True,
+            7,
+            1,
+        ),  # a failed output write (7) outranks A's spending stop (5)
+    ],
+    ids=["spending_stop_over_unanswered", "failed_write_over_spending_stop"],
+)
+def test_a_spending_stop_ranks_below_a_failed_write_and_above_an_unanswered_cell(  # noqa: PLR0913
+    isolated, monkeypatch, replies, blocked, code, sent
+):
+    if blocked:
+        blocker = isolated["tmp"] / "blocker"
+        blocker.write_text(
+            "a file where the results folder's parent should be\n", "utf-8"
+        )
+        monkeypatch.setattr(run_comparison, "RESULTS", blocker / "results")
+    provider = live(isolated, monkeypatch, *replies, *answers())
+
+    assert (
+        run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
+        == code
+    )
+
+    assert len(provider.creates) == sent  # the matrix stopped at the spending stop
