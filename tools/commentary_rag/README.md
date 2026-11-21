@@ -67,8 +67,10 @@ with the hybrid top 5; B (`fixed10`), the same request with the top 10; C (`agen
 evidence-seeking agent from the top 5. Each cell (case and condition) is its own identity in the
 books, and one case ID names one question over one edition selection. Built and tested offline
 only (mocked provider, temporary ledgers); no comparison has run
-live and the recorded ledgers are unchanged. Its offline plan for six candidate cases, E1 to E6
-(AI-drafted, kept local, awaiting Erhan's review), is
+live and the recorded ledgers are unchanged. Its evaluation set is six cases, E1 to E6, AI-drafted,
+decided by Erhan and frozen on 2026-11-21 before any retrieval or generation on them (hashes in
+[`results/2026-11-21-phase3-E-freeze.json`](results/2026-11-21-phase3-E-freeze.json); questions,
+gold evidence and rubric kept local). Its offline plan for these cases is
 [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): 18 cells,
 a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about USD 6.29 estimated
 (from development cases, not a bound). Details under "Comparing the three conditions" below.
@@ -201,7 +203,13 @@ a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about
   a mocked HTTP transport and temporary books; the repository's `results/` and `local/` are
   checked to stay byte-identical.
 - [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): the offline
-  plan for the candidate cases E1 to E6 (IDs and editions only), made against the recorded books.
+  plan for the cases E1 to E6 (IDs and editions only, made before they were frozen), made against
+  the recorded books.
+- [`results/2026-11-21-phase3-E-freeze.json`](results/2026-11-21-phase3-E-freeze.json): the freeze
+  record of the evaluation set E1 to E6: the SHA-256 of the runner input and of the private gold
+  evidence and rubric (all three kept local), each question's SHA-256 as the books record it, the
+  editions, the generic scoring and reporting rules, the decision and freeze dates and the
+  provenance; no question, evidence or rubric text.
 - `results/2026-11-14-retrieval-rerun.json`: the pre-generation rerun of the corrected run
   (identical rankings, scores, metrics and passages).
 - `results/2026-11-15-generation-plan.json` (the plan the run used, no workspace header) and
@@ -512,9 +520,9 @@ cell that ended are written even when an unexpected error stops the matrix (exit
 
 **Proposed plan (2026-11-21, offline):**
 [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json), made by `plan`
-against the recorded books for the six candidate cases E1 to E6 (AI-drafted, in a local review
-packet awaiting Erhan's review; neither their questions nor their reference text are committed,
-and no retrieval or generation has been run on them). 18 cells in the order E1 A, B, C, then E2
+against the recorded books for the six cases E1 to E6 from their IDs and editions, before they were
+frozen (their editions did not change; see the evaluation set below). Neither their questions nor
+their gold evidence or rubric are committed, and no retrieval or generation has been run on them. 18 cells in the order E1 A, B, C, then E2
 and so on; none is in the books, so every case pairs as `new`. The plan was made from the code of
 this branch (its `planned.git_head`) and states the assumptions of its bounds: the 80,000-token
 input cap, the 10 % margin at the dearest input rate (8 USD per million), the 32,000-token output
@@ -535,6 +543,24 @@ The estimates are calculated costs of earlier usage settlements, not bounds or i
 Phase 2's eight fixed top-5 requests, C from the one D1 agent run, and B, never observed, as A plus
 five passages' input (1,280 tokens at 4 USD per million). They come from development cases and say
 nothing firm about E1 to E6.
+
+**Evaluation set (frozen 2026-11-21):** six cases, AI-drafted by Claude from the text of the two
+commentaries without any retrieval or generation on them, decided by Erhan on 2026-11-21 (questions,
+required and optional elements, expected statuses and reporting rules; he also ruled on the one
+source conflict the verifier raised), checked by a fresh verifier agent that did not draft them,
+and frozen the same day, before this comparison. They are not called held-out or blind: the
+drafter knew D1's retrieval ranks, and E1 reuses D1's evidence passage. Three local files, never
+committed: the runner input (each case's ID, question and editions, the only file `run` reads), the
+private gold evidence and the private rubric. The
+[freeze record](results/2026-11-21-phase3-E-freeze.json) holds their SHA-256 and each question's
+SHA-256 as every reservation of its cells records it, so the books of a later run can be matched
+to the frozen set. Scoring rules: required claims are scored and optional material never is; the
+required-evidence denominator holds the supports of the required claims only, so Evidence Recall is
+N/A for a case without them (E6); check terms are aids, never a verdict; section anchors are
+checked by a person, since coverage matches edition, page and quote. Reporting: E1 apart from E2 to
+E6 (D1 overlap); for E4 and E5, single-edition January questions, B receives 10 of the January
+commentary's 11 passages; E2's edition filter keeps January out of every condition, so E2 does not
+test edition selection.
 
 What the offline tests show (`test_evidence_agent.py`, `test_run_comparison.py`, mocked provider,
 temporary books): A and B receive exactly the top 5 and top 10 of one ranking in rank order (rank 11

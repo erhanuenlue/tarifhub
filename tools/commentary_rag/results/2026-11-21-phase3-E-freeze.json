@@ -1,0 +1,160 @@
+{
+ "record": "Freeze record of the Phase 3 comparison set E1 to E6: hashes, editions, rules and provenance only; no question, evidence or rubric text.",
+ "decision": {
+  "by": "Erhan",
+  "date": "2026-11-21",
+  "what": "the case design of E1 to E6 (questions, required and optional elements, expected statuses, reporting rules) and, the same day, a ruling on the one source conflict the verifier raised (E3: a dated KLV article change that the question covers is required)",
+  "applied_by": "Claude (claude-opus-5-5) on 2026-11-21; the final wording applies the decisions and was not approved line by line"
+ },
+ "frozen_at": "2026-11-21T13:36:37Z",
+ "fixed_before_comparison": "Frozen before any retrieval, ranking or generation on E1 to E6 and before any cell of E1 to E6 was in the books (active ledger SHA-256 under books_at_freeze).",
+ "provenance": {
+  "drafted": "AI-drafted by Claude (claude-opus-5-5) on 2026-11-21 from the pdftotext output of the two hash-verified BAG commentaries, without running retrieval, ranking, embedding or generation on any candidate question.",
+  "drafting_qualifications": "The drafter knew from rubric.json (D1 review_focus) that retrieval at k=5 ranked the D1 evidence pages (2026-07-01 p. 6 and p. 7) at ranks 6 and 7, and E1 reuses D1's evidence passage on 2026-07-01 p. 6. The set is therefore not called held-out or blind.",
+  "verification": "The repo's verifier agent (claude-opus-5-5, fresh context, did not draft the cases) checked every case against the two commentaries without any retrieval or generation: a first pass (1 blocker, brought to Erhan and resolved by his ruling; 9 should-fix; 13 nits) and a re-check after the fixes (1 blocker, 1 should-fix, 6 nits), all resolved; the last changes were checked mechanically, not by the verifier a third time. Reports kept locally with the set."
+ },
+ "source_documents": [
+  {
+   "edition": "2026-01-01",
+   "path": "data/raw/bag/al/2026-01-01/Kommentar zu den Änderungen des Anh. 3 KLV per 01.01.26.pdf",
+   "sha256": "0d335bd46adec0254a91e260cebe976f86fd0cfb54bb97ea8ecf98cadfd7e4fc"
+  },
+  {
+   "edition": "2026-07-01",
+   "path": "data/raw/bag/al/2026-07-01/Kommentar zu den Änderungen des Anh. 3 KLV per 01.07.26_final.pdf",
+   "sha256": "fe1856df9f7d0023aac52e13dc61a0055a7105b4810f18cc8822366625af5105"
+  }
+ ],
+ "files": [
+  {
+   "role": "runner input",
+   "path": "tools/commentary_rag/local/2026-11-21-phase3-E-set/runner/cases.json",
+   "sha256": "93d1e25d32cb251e8ebd236fc2211e262fe3c661eeab2616a6ce42ced6f35b03",
+   "bytes": 1737,
+   "committed": false,
+   "holds": "each case's id, question and editions, nothing else: the only file run_comparison.py reads"
+  },
+  {
+   "role": "private gold evidence",
+   "path": "tools/commentary_rag/local/2026-11-21-phase3-E-set/private/gold-cases.json",
+   "sha256": "b0622f3c4c5e5a5b045e59e2bfb85119c2c865c96b147184a6ac7b5e31145aa4",
+   "bytes": 14144,
+   "committed": false,
+   "holds": "per case: kind, question, editions, reference expectation and the gold evidence items (the required-evidence denominator), with section anchors"
+  },
+  {
+   "role": "private rubric",
+   "path": "tools/commentary_rag/local/2026-11-21-phase3-E-set/private/rubric.json",
+   "sha256": "aab318ef99c87d30f9a6a85305098a0bf300e20b4411631ebb3e61c21aa4db3a",
+   "bytes": 35786,
+   "committed": false,
+   "holds": "per case: expected status, required claims with supports and check terms, optional background, gaps to name, errors to record, review focus; the scoring and reporting rules"
+  },
+  {
+   "role": "decision record",
+   "path": "tools/commentary_rag/local/2026-11-21-phase3-E-set/private/decisions.md",
+   "sha256": "2b00082931df27d09029121cc0ec1daeb99d20239655e2a82babb7c13f03039f",
+   "committed": false,
+   "holds": "Erhan's case decisions verbatim and his ruling on the verifier's blocker"
+  },
+  {
+   "role": "verification",
+   "path": "tools/commentary_rag/local/2026-11-21-phase3-E-set/private/verification/verifier-findings.md",
+   "sha256": "88d1abe9d570cbaa5dc5bf055e4ad4770f800ea0b965893081b9b950769cf6f0",
+   "committed": false,
+   "holds": "the verifier's first pass"
+  },
+  {
+   "role": "verification",
+   "path": "tools/commentary_rag/local/2026-11-21-phase3-E-set/private/verification/verifier-recheck.md",
+   "sha256": "03cbf6c1d56165ae96e961c84f5abbd6df5a673ba0f4dbcdb19712f569964d1a",
+   "committed": false,
+   "holds": "the verifier's re-check"
+  },
+  {
+   "role": "verification",
+   "path": "tools/commentary_rag/local/2026-11-21-phase3-E-set/private/verification/verifier-resolution.md",
+   "sha256": "687908a20b798540240794bff6b8b084ba9764fe0bac39d34ba0170fb47f24f1",
+   "committed": false,
+   "holds": "how each finding was resolved"
+  }
+ ],
+ "cases": [
+  {
+   "id": "E1",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "d0eb0e111ddaf1025f273d44213036b84e5708858b17e59967cf6d72ba9f3f7d"
+  },
+  {
+   "id": "E2",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "0bdbc3328e0c64e8a0eb0a01052a518123c96250d59406d06c9bb355290fa0fc"
+  },
+  {
+   "id": "E3",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "question_sha256": "ffe757140f44c14a42f30dfbdcea3dd2406c8092db59502caee2b952e3eba625"
+  },
+  {
+   "id": "E4",
+   "editions": [
+    "2026-01-01"
+   ],
+   "question_sha256": "bef1e0952b5fac29fcc2c381f61dbadebdde5e9d0b5910b1ca5679edb99ad5d9"
+  },
+  {
+   "id": "E5",
+   "editions": [
+    "2026-01-01"
+   ],
+   "question_sha256": "27e212463d154df23eee0810b6269271053ea524db1e18d5d1abac73ce873b22"
+  },
+  {
+   "id": "E6",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "68a7cbd623cd00e03a396dab9b19b0ec8cc290b31031474df79de9f6097c730d"
+  }
+ ],
+ "question_sha256": "SHA-256 of the question's UTF-8 bytes, as run_comparison._sha256 and evidence_agent compute it; every reservation of a cell records it with the sorted editions, so the books of a run can be matched to this set.",
+ "scoring_rules": {
+  "required_claims": "Only required claims are scored. A claim of kind gap (naming a stated absence) has no support quote, is scored by human review and adds nothing to the required-evidence denominator.",
+  "required_evidence": "A case's required-evidence denominator is its gold evidence items, which equal the supports of its required claims; optional supports are outside it. Evidence Recall with zero required evidence items is N/A, never 0.",
+  "coverage": "A passage covers an item when it is from the item's edition and page and contains the quote (NFC, whitespace folded; evaluation.covering). Section and occurrence anchors are checked by a person.",
+  "check_terms": "Aids only, never a verdict; null means human review only.",
+  "optional_background": "May be stated; never required, never scored; a wrong optional statement is recorded as an error, never as lost credit.",
+  "must_not": "Errors a person records against an answer; they never add credit.",
+  "expected_status": "answered, partial or insufficient_evidence (generation.STATUSES): the status an answer should have if all required evidence were in its context."
+ },
+ "reporting": [
+  "E1 is reported separately from E2 to E6 (known D1 passage overlap).",
+  "E4 and E5 are January-only questions; B (fixed10) receives 10 of the January commentary's 11 passages there.",
+  "E2's edition filter excludes the January commentary for every condition (the agent's search accepts only the case's editions), so E2 does not test edition selection.",
+  "E6 has no required evidence items: its Evidence Recall is N/A."
+ ],
+ "corpus_at_freeze": {
+  "passages": 40,
+  "per_edition": {
+   "2026-01-01": 11,
+   "2026-07-01": 29
+  },
+  "how": "question-free build of the hash-verified corpus (no ranking, no question embedding, no model call)"
+ },
+ "books_at_freeze": {
+  "results/generation-ledger.jsonl": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+  "results/phase3-ledger.jsonl": "ac0bd49ae8d91cd9716bac9bca78a5c1e211f7684b2ce6f9300b05361cfad12b",
+  "results/2026-11-20-question-D1.json": "3a63dee7ab30f208ec003fe6c7970e247f6c34ff6e20fbedebf19b345fffbecf"
+ },
+ "reproduce": [
+  "shasum -a 256 tools/commentary_rag/local/2026-11-21-phase3-E-set/runner/cases.json tools/commentary_rag/local/2026-11-21-phase3-E-set/private/gold-cases.json tools/commentary_rag/local/2026-11-21-phase3-E-set/private/rubric.json",
+  "python3 -c \"import json,hashlib,sys; [print(c['id'], hashlib.sha256(c['question'].encode('utf-8')).hexdigest()) for c in json.load(open(sys.argv[1], encoding='utf-8'))['cases']]\" tools/commentary_rag/local/2026-11-21-phase3-E-set/runner/cases.json"
+ ]
+}
