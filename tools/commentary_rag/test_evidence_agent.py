@@ -191,12 +191,14 @@ def task(initial=INITIAL, editions=(JUL,), question="Welche Pauschale gilt und w
                                     passages=tuple(passages[pid] for pid in initial))
 
 
-def run(provider: Provider, the_task, spending: evidence_agent.Spending, *,
-        budget_s: float = 3600.0, config: generation.Config | None = None, **world_options):
+def run(provider: Provider, the_task, spending: evidence_agent.Spending, *,  # noqa: PLR0913
+        budget_s: float = 3600.0, config: generation.Config | None = None,
+        condition: str | None = None, **world_options):
     retriever, passages, embedder = world(**world_options)
+    chosen = {} if condition is None else {"condition": condition}  # None: the default, agent
     result = evidence_agent.run_case(the_task, client=provider.client(), retriever=retriever,
                                      passages=passages, clock=provider.clock, budget_s=budget_s,
-                                     spending=spending, config=config)
+                                     spending=spending, config=config, **chosen)
     return result, embedder
 
 
@@ -215,10 +217,10 @@ def test_every_call_is_reserved_before_it_is_sent_and_settled_once_beside_the_hi
         "event": "baseline", "ledger": "generation-ledger.jsonl",
         "sha256": spending.baseline_sha256, "committed_usd": 2.1, "budget_usd": 100.0}
     assert [(e["event"], e["attempt"]) for e in calls] == [
-        ("reserve", "T1-call1"), ("settle", "T1-call1"), ("reserve", "T1-call2"),
-        ("settle", "T1-call2")]
+        ("reserve", "T1-agent-call1"), ("settle", "T1-agent-call1"), ("reserve", "T1-agent-call2"),
+        ("settle", "T1-agent-call2")]
     for n, (reserve, settle) in enumerate(zip(calls[::2], calls[1::2], strict=True), start=1):
-        attempt = f"T1-call{n}"
+        attempt = f"T1-agent-call{n}"
         assert (reserve["case"], reserve["counted_input_tokens"], reserve["reserved_usd"]) == (
             "T1", 1500, 0.71852)
         # 900 output tokens, 600 of them thinking: the thinking is not counted again.
@@ -294,7 +296,7 @@ def test_every_call_of_a_case_admitted_at_the_limit_stays_within_the_one_shared_
     assert (result.outcome, result.record["generation_calls"]) == ("answer", 3)
     calls = events(spending)[2:]
     assert [(e["event"], e["attempt"], e.get("reserved_usd", e.get("cost_usd"))) for e in calls] \
-        == [(event, f"T1-call{n}", usd) for n in (1, 2, 3)
+        == [(event, f"T1-agent-call{n}", usd) for n in (1, 2, 3)
             for event, usd in (("reserve", 0.71852), ("settle", 0.024))]
     assert generation.committed_usd(spending.ledger) == 35.6368  # 35.5648 + 3 x 0.024
     books_before = spending.ledger.read_bytes()
@@ -424,10 +426,10 @@ def test_a_failed_write_stops_the_case_and_a_sent_call_stays_reserved(  # noqa: 
     # and the record claims no settlement the ledger does not hold.
     assert generation.committed_usd(spending.ledger) == (0.71852 if sent else 0.0)
     assert [c.get("cost_basis") for c in result.record["calls"]] == [None] * sent
-    requests = spending.artifacts / "requests" / "T1-call1.json"
+    requests = spending.artifacts / "requests" / "T1-agent-call1.json"
     assert requests.exists() == (failure != "requests")
     if failure == "ledger_during":  # the raw response was saved before settling failed
-        assert (spending.artifacts / "responses" / "T1-call1.json").exists()
+        assert (spending.artifacts / "responses" / "T1-agent-call1.json").exists()
     assert str(spending.artifacts) not in json.dumps(result.record)
 
 
@@ -462,7 +464,7 @@ def test_a_second_invocation_is_refused_while_the_first_holds_the_books(spending
     # Admission, reservation and settlement never interleave with another invocation's.
     assert (result.outcome, result.detail) == ("refused", "locked")
     assert second.timeouts == []
-    assert not (spending.artifacts / "requests" / "T2-call1.json").exists()
+    assert not (spending.artifacts / "requests" / "T2-agent-call1.json").exists()
     assert done["result"].outcome == "answer"
     assert [e.get("case") for e in events(spending)] == [None, "T1", "T1"]
 
@@ -754,7 +756,7 @@ def test_two_searches_use_up_the_rounds_and_the_third_call_offers_no_search(spen
     assert third[4]["content"][0]["tool_use_id"] == "toolu_2"
     assert len(result.record["supplied"]) == 10
     assert [(e["event"], e["attempt"]) for e in events(spending)[1:]] == [
-        (event, f"T1-call{n}") for n in (1, 2, 3) for event in ("reserve", "settle")]
+        (event, f"T1-agent-call{n}") for n in (1, 2, 3) for event in ("reserve", "settle")]
     assert generation.committed_usd(spending.ledger) == 0.072  # 3 x 0.024, each once
 
 
@@ -873,7 +875,7 @@ def test_a_reservation_the_deadline_overtakes_is_recorded_as_never_sent_and_rele
     assert (settle["attempt"], settle["sent"], settle["cost_usd"], settle["cost_basis"]) == (
         reserve["attempt"], False, 0.0, "not_sent")
     assert generation.committed_usd(spending.ledger) == 0.0
-    assert (spending.artifacts / "requests" / "T1-call1.json").exists()
+    assert (spending.artifacts / "requests" / "T1-agent-call1.json").exists()
     assert not (spending.artifacts / "responses").exists()
 
 
@@ -890,7 +892,7 @@ def test_a_release_that_cannot_be_saved_leaves_the_reservation_committed(spendin
     assert generation.committed_usd(spending.ledger) == 0.71852  # not released, still committed
     (call,) = result.record["calls"]
     assert "cost_basis" not in call and "cost_usd" not in call  # no release claimed either
-    request = spending.artifacts / "requests" / "T1-call1.json"
+    request = spending.artifacts / "requests" / "T1-agent-call1.json"
     assert _files(spending.artifacts) == {request: request.read_bytes()}
     books_before = spending.ledger.read_bytes()
 
@@ -1003,7 +1005,7 @@ def test_a_sent_call_without_priceable_usage_keeps_its_whole_reservation_as_expo
         True, reserve["reserved_usd"], "reservation_retained", None)
     assert generation.committed_usd(spending.ledger) == 0.71852
     assert result.record["calls"][0]["cost_basis"] == "reservation_retained"
-    response = spending.artifacts / "responses" / "T1-call1.json"
+    response = spending.artifacts / "responses" / "T1-agent-call1.json"
     assert response.exists() == saved
     assert settle["response_sha256"] == (_sha(response.read_bytes()) if saved else None)
 
@@ -1150,7 +1152,7 @@ def test_public_records_carry_codes_and_counts_never_text_the_provider_wrote(
     if outcome != "provider_error" or detail == "model_mismatch":
         assert (call["returned_model"], call["stop_reason"]) in (
             (generation.MODEL, "unknown"), ("other", "end_turn"))
-    raw = (spending.artifacts / "responses" / "T1-call1.json").read_text("utf-8")
+    raw = (spending.artifacts / "responses" / "T1-agent-call1.json").read_text("utf-8")
     assert "Marke" in raw  # kept as it came, in the local artifact only
 
 
@@ -1235,3 +1237,196 @@ def test_the_search_instruction_and_tool_carry_nothing_specific_to_a_case(spendi
         assert not re.search(r"\b[DU]\d\b", text)  # no case label
         assert "2026-" not in text
     assert tool["input_schema"]["properties"]["editions"]["items"]["enum"] == [JUL]
+
+
+
+# The comparison conditions (Phase 3): A, the fixed hybrid top 5 (fixed5), B, the fixed top 10
+# (fixed10), each answered once without any tool, and C, the agent above (agent). July's hybrid
+# order is k c h b a f l d e g i j (worked out in test_evidence_search), so the top 10 ends at g.
+TOP10 = ("jul/k", "jul/c", "jul/h", "jul/b", "jul/a", "jul/f", "jul/l", "jul/d", "jul/e", "jul/g")
+
+
+def test_a_fixed_condition_sends_the_phase_2_request_once_without_any_tool_under_its_own_name(
+        spending):
+    provider = Provider(Clock(), final(("Die Pauschale gilt.", ["jul/k"])))
+    the_task = task(initial=TOP10[:5])
+
+    result, embedder = run(provider, the_task, spending, condition="fixed5")
+
+    assert (result.outcome, result.status) == ("answer", "answered")
+    # Exactly the Phase 2 request of ADR-025: its own system prompt, no tools and no tool choice.
+    phase2 = generation.request({"question": the_task.question, "editions": [JUL],
+                                 "passages": list(the_task.passages)}, generation.Config())
+    assert provider.creates == [phase2]
+    assert provider.counts == [{k: v for k, v in phase2.items() if k != "max_tokens"}]
+    assert embedder.queries == []  # nothing searched
+    assert [(e["event"], e.get("attempt"), e.get("case"), e.get("condition"))
+            for e in events(spending)] == [
+        ("baseline", None, None, None), ("reserve", "T1-fixed5-call1", "T1", "fixed5"),
+        ("settle", "T1-fixed5-call1", "T1", "fixed5")]
+    assert (spending.artifacts / "requests" / "T1-fixed5-call1.json").exists()
+    assert (result.record["case"], result.record["condition"]) == ("T1", "fixed5")
+    # Admitted for its one call at the input cap: 1.4784 USD, not the agent's three calls.
+    assert result.record["spending"]["admission_usd"] == 1.4784
+    assert (result.record["generation_calls"], result.record["searches"]) == (1, [])
+
+
+def _sent(body: dict) -> list[str]:
+    """The passage IDs of a request's first (user) message, in the order given."""
+    return re.findall(r'<passage id="([^"]+)"', body["messages"][0]["content"])
+
+
+def test_the_conditions_of_one_question_share_the_books_and_each_runs_only_once(spending):
+    a, _ = run(Provider(Clock(), final(("A.", ["jul/k"]))), task(initial=TOP10[:5]), spending,
+               condition="fixed5")
+    b_provider = Provider(Clock(), final(("B.", ["jul/g"])))
+
+    b, _ = run(b_provider, task(initial=TOP10), spending, condition="fixed10")
+
+    assert (a.outcome, b.outcome) == ("answer", "answer")
+    (body,) = b_provider.creates
+    assert _sent(body) == list(TOP10)  # the whole top 10 in rank order; its tenth is citable
+    assert b.record["spending"]["committed_before_usd"] == 0.024  # A's cost counts for B
+    assert [(e["event"], e.get("attempt"), e.get("condition")) for e in events(spending)][1:] == [
+        ("reserve", "T1-fixed5-call1", "fixed5"), ("settle", "T1-fixed5-call1", "fixed5"),
+        ("reserve", "T1-fixed10-call1", "fixed10"), ("settle", "T1-fixed10-call1", "fixed10")]
+    before = spending.ledger.read_bytes()
+    again = Provider(Clock(), final(("Nie gesendet.", ["jul/k"])))
+    for name, initial in (("fixed5", TOP10[:5]), ("fixed10", TOP10)):
+        refused, _ = run(again, task(initial=initial), spending, condition=name)
+        assert (refused.outcome, refused.detail) == ("refused", "already_run")
+    assert again.timeouts == []  # nothing counted or sent twice
+    assert spending.ledger.read_bytes() == before
+
+
+ACTIVE_RECORDED = RECORDED.parent / "phase3-ledger.jsonl"
+ACTIVE_RECORDED_SHA256 = "ac0bd49ae8d91cd9716bac9bca78a5c1e211f7684b2ce6f9300b05361cfad12b"
+
+
+@pytest.mark.parametrize(("condition", "outcome"), [
+    ("agent", "refused"), ("fixed5", "answer"), ("fixed10", "answer")])
+def test_the_recorded_books_refuse_d1_under_the_agent_and_admit_its_other_conditions(
+        folder, condition, outcome):
+    # Byte copies of both recorded ledgers: the D1 run's calls have no condition (written before
+    # conditions existed) and are the agent's, so D1 is never sent to the agent again.
+    spending = _recorded_books(folder, RECORDED.read_bytes(), RECORDED_SHA256)
+    spending.ledger.write_bytes(ACTIVE_RECORDED.read_bytes())
+    before = spending.ledger.read_bytes()
+    provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+    initial = TOP10 if condition == "fixed10" else TOP10[:5]
+
+    result, _ = run(provider, dataclasses.replace(task(initial=initial), case_id="D1"), spending,
+                    condition=condition)
+
+    assert result.outcome == outcome
+    if outcome == "refused":
+        assert result.detail == "already_run"
+        assert provider.timeouts == []
+        assert spending.ledger.read_bytes() == before
+    else:  # Phase 2's 1.930804 and the D1 run's 0.560552 USD are committed before it
+        assert result.record["spending"]["committed_before_usd"] == 2.491356
+        assert spending.ledger.read_bytes().startswith(before)  # appended to, nothing rewritten
+        assert [(e["attempt"], e["condition"]) for e in events(spending)[5:]] == [
+            (f"D1-{condition}-call1", condition)] * 2
+    assert _sha(ACTIVE_RECORDED.read_bytes()) == ACTIVE_RECORDED_SHA256  # only ever read
+
+
+def test_case_ids_that_end_like_a_condition_still_name_cells_of_their_own(spending):
+    cells = [("E1", "fixed5"), ("E1-fixed5", "agent"), ("E1-fixed5", "fixed5")]
+    for case, name in cells:
+        provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+        result, _ = run(provider, dataclasses.replace(task(initial=TOP10[:5]), case_id=case),
+                        spending, condition=name)
+        assert result.outcome == "answer"
+
+    assert [(e["attempt"], e["case"], e["condition"]) for e in events(spending)
+            if e["event"] == "reserve"] == [
+        ("E1-fixed5-call1", "E1", "fixed5"), ("E1-fixed5-agent-call1", "E1-fixed5", "agent"),
+        ("E1-fixed5-fixed5-call1", "E1-fixed5", "fixed5")]
+
+
+def test_a_call_id_an_earlier_reservation_holds_is_never_written_twice(spending):
+    # A reservation from before conditions existed, for a case named like a cell: its call ID
+    # is the one case E1 would use under fixed5.
+    earlier(spending, 0.0, {**reservation("E1-fixed5-call1", 0.5), "case": "E1-fixed5"})
+    before = spending.ledger.read_bytes()
+    provider = Provider(Clock(), final(("Nie gesendet.", ["jul/k"])))
+
+    result, _ = run(provider, dataclasses.replace(task(initial=TOP10[:5]), case_id="E1"),
+                    spending, condition="fixed5")
+
+    assert (result.outcome, result.detail) == ("refused", "call_id_taken")
+    assert provider.timeouts == []
+    assert spending.ledger.read_bytes() == before
+
+
+@pytest.mark.parametrize(("condition", "count"), [
+    ("fixed5", 6), ("fixed10", 11), ("agent", 6)])
+def test_a_condition_takes_no_more_initial_passages_than_its_own_bound(
+        spending, condition, count):
+    july = ("jul/k", "jul/c", "jul/h", "jul/b", "jul/a", "jul/f", "jul/l", "jul/d", "jul/e",
+            "jul/g", "jul/i")
+    provider = Provider(Clock(), final(("Nie gesendet.", ["jul/k"])))
+
+    with pytest.raises(ValueError, match="initial passages"):
+        run(provider, task(initial=july[:count]), spending, condition=condition)
+
+    assert provider.timeouts == []
+
+
+def test_an_unknown_condition_is_refused_before_any_request(spending):
+    provider = Provider(Clock(), final(("Nie gesendet.", ["jul/k"])))
+
+    with pytest.raises(ValueError, match="condition"):
+        run(provider, task(), spending, condition="fixed7")
+
+    assert provider.timeouts == []
+    assert not spending.ledger.exists()
+
+
+@pytest.mark.parametrize("condition", ["fixed5", "fixed10"])
+def test_a_fixed_condition_runs_no_search_a_model_asks_for(spending, condition):
+    provider = Provider(Clock(), search_call("Pauschale", "Begründung"),
+                        final(("Nie gesendet.", ["jul/k"])))
+    initial = TOP10 if condition == "fixed10" else TOP10[:5]
+
+    result, embedder = run(provider, task(initial=initial), spending, condition=condition)
+
+    assert (result.outcome, result.detail) == ("protocol_error", "tool_use_not_offered")
+    assert (len(provider.creates), embedder.queries) == (1, [])  # one call, nothing searched
+    assert [e["event"] for e in events(spending)] == ["baseline", "reserve", "settle"]
+
+
+def _cell_reserve(case: str, condition: str, call: int = 1, attempt: str | None = None) -> dict:
+    return {"event": "reserve", "attempt": attempt or f"{case}-{condition}-call{call}",
+            "case": case, "condition": condition, "call": call, "request_sha256": "0" * 64,
+            "counted_input_tokens": 1500, "reserved_usd": 0.5, "at": "2026-11-21T08:00:00+00:00"}
+
+
+def _cell_release(case: str, condition: str, attempt: str) -> dict:
+    return {"event": "settle", "attempt": attempt, "case": case, "condition": condition,
+            "sent": False, "cost_usd": 0.0, "cost_basis": "not_sent", "above_reservation": False,
+            "usage": None, "response_sha256": None, "at": "2026-11-21T08:00:00+00:00"}
+
+
+@pytest.mark.parametrize("rows", [
+    [_cell_reserve("E1", "fixed5"), _cell_release("E1", "agent", "E1-fixed5-call1")],
+    [_cell_reserve("E1", "fixed5"), {**_cell_release("E1", "fixed5", "E1-fixed5-call1"),
+                                     "condition": None}],
+    [_cell_reserve("E1", "fixed7")],
+    [_cell_reserve("E1", "fixed5", call=2)],
+    [_cell_reserve("E1", "fixed5", attempt="E1-call1")],
+    [{**_cell_reserve("E1", "agent"), "condition": None}],
+], ids=["settled_under_another_condition", "settled_without_its_condition", "unknown_condition",
+        "second_call_of_a_one_call_condition", "call_id_without_its_condition",
+        "null_condition"])
+def test_books_whose_conditions_contradict_their_calls_are_refused_as_damaged(spending, rows):
+    earlier(spending, 0.0, *rows)
+    before = spending.ledger.read_bytes()
+    provider = Provider(Clock(), final(("Nie gesendet.", ["jul/k"])))
+
+    result, _ = run(provider, task(), spending)
+
+    assert (result.outcome, result.detail) == ("refused", "ledger_damaged")
+    assert provider.timeouts == []
+    assert spending.ledger.read_bytes() == before

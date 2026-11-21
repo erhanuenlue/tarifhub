@@ -102,7 +102,8 @@ interrupted) and starts when the agent starts, after the corpus and the model ar
 
 # The keys of ``CaseResult.record`` a public record carries: codes, counts, IDs, hashes, usage
 # and amounts (see evidence_agent); question, answer, passage, search and error text stay local.
-PUBLIC_RECORD = ("case", "budget_s", "generation_calls", "calls", "searches", "spending",
+PUBLIC_RECORD = ("case", "condition", "budget_s", "generation_calls", "calls", "searches",
+                 "spending",
                  "outcome", "detail", "elapsed_s", "supplied", "schema_problems",
                  "citations_outside_supplied", "cited")
 NOTES = ("An answer is accepted when it matches the answer schema and cites only passages "
@@ -239,12 +240,20 @@ def _existing(paths: dict[str, Path]) -> list[str]:
     return found
 
 
-def _prepare(args: argparse.Namespace) -> _Prepared:
-    """Build the verified corpus and rank the question afresh in the selected editions."""
+@dataclass(frozen=True)
+class _Loaded:
+    """The verified corpus with the e5 model that counts and ranks its questions."""
+
+    e5: _E5
+    built: corpus.Corpus
+
+
+def _load(manifest: Path) -> _Loaded:
+    """Build the hash-verified corpus with the cached e5 model; every passage within its limit."""
 
     e5 = _e5()
     try:
-        built = corpus.build_corpus(args.manifest,
+        built = corpus.build_corpus(manifest,
                                     count_passage_tokens=lambda text: e5.count(text, "passage"),
                                     token_budget=TOKEN_BUDGET, model_limit=e5.limit)
     except corpus.CorpusError as exc:
@@ -252,24 +261,44 @@ def _prepare(args: argparse.Namespace) -> _Prepared:
     over = [p.passage_id for p in built.passages if p.tokens > e5.limit]
     if over:
         raise _Stop(EXIT_REFUSED, f"refused: passages over the e5 limit {e5.limit}: {over}")
-    unknown = sorted(set(args.editions) - set(built.editions))
+    return _Loaded(e5=e5, built=built)
+
+
+def _checked(loaded: _Loaded, question: str, editions: list[str]) -> int:
+    """The question's e5 tokens, once its editions are in the corpus and it fits the model."""
+
+    unknown = sorted(set(editions) - set(loaded.built.editions))
     if unknown:
         raise _Stop(EXIT_INPUT, f"invalid input: edition(s) {', '.join(unknown)} not in the "
-                    f"verified corpus, which has {', '.join(built.editions)}")
-    tokens = e5.count(args.question, "query")
-    if tokens > e5.limit:  # the model would cut it silently: refused instead
+                    f"verified corpus, which has {', '.join(loaded.built.editions)}")
+    tokens = loaded.e5.count(question, "query")
+    if tokens > loaded.e5.limit:  # the model would cut it silently: refused instead
         raise _Stop(EXIT_INPUT, f"invalid input: the question is {tokens} e5 tokens, over the "
-                    f"model's {e5.limit}; it is never truncated, shorten it")
-    titles = {d.edition: d.title for d in built.documents}
-    passages = {p.passage_id: {
+                    f"model's {loaded.e5.limit}; it is never truncated, shorten it")
+    return tokens
+
+
+def _records(loaded: _Loaded) -> dict[str, dict]:
+    """Every corpus passage as a request takes it, by passage ID."""
+
+    titles = {d.edition: d.title for d in loaded.built.documents}
+    return {p.passage_id: {
         "passage_id": p.passage_id, "edition": p.edition, "page": p.page,
         "page_label": p.page_label, "section": p.section, "section_title": p.section_title,
         "document_title": titles[p.edition], "text": p.text, "context": p.context,
-        "text_sha256": p.text_sha256} for p in built.passages}
-    retriever = retrieval.Retriever(built.passages, e5.embedder)
+        "text_sha256": p.text_sha256} for p in loaded.built.passages}
+
+
+def _prepare(args: argparse.Namespace) -> _Prepared:
+    """Build the verified corpus and rank the question afresh in the selected editions."""
+
+    loaded = _load(args.manifest)
+    tokens = _checked(loaded, args.question, args.editions)
+    retriever = retrieval.Retriever(loaded.built.passages, loaded.e5.embedder)
     ranking = retriever.rank(args.question, method=METHOD, editions=args.editions)[:TOP_K]
-    return _Prepared(retriever=retriever, passages=passages, ranking=ranking, built=built,
-                     query_tokens=tokens, embedder=dict(e5.provenance))
+    return _Prepared(retriever=retriever, passages=_records(loaded), ranking=ranking,
+                     built=loaded.built, query_tokens=tokens,
+                     embedder=dict(loaded.e5.provenance))
 
 
 def _sha256(text: str) -> str:
