@@ -10,9 +10,10 @@ record matches that revision). Python 3.13.12, `anthropic` 0.109.1, `httpx` 0.28
 
 **One development observation, not an evaluation.** D1 is a dev case already used in Phase 2
 and in the first progress report; nothing is held out, nothing was repeated, and no other
-condition (fixed top 5 or top 10) was run. The figures below come from the saved files and
-deterministic checks of them; whether the answer's claims are supported and relevant awaits
-Erhan's review.
+condition (fixed top 5 or top 10) was run. The run figures below come from the saved files and
+deterministic checks of them; whether the answer's claims are supported and relevant is Erhan's
+judgement, confirmed on 2026-11-21 and summarised in
+[Human review](#human-review-confirmed-2026-11-21).
 
 ## Inputs
 
@@ -50,7 +51,8 @@ Erhan's review.
 - **The answer** matches the schema and cites only supplied passages: status `partial`, 17
   claims citing six passages (`p4/s2.4/1`, `p4/s2.4/2`, `p4/s2.4/3`, `p5/s2.4/2`, `p6/s2.5/3`,
   `p6/s2.5/5`), six missing-evidence items, SHA-256 `aa9ea5460028...`. That is a structural
-  check, not a judgement of correctness, support or rubric coverage.
+  check, not a judgement of correctness, support or rubric coverage; those are in the human
+  review below.
 
 ## The books
 
@@ -86,6 +88,40 @@ Untested live: a third call, a second search, a refused or failed search, error 
 timeouts and lost connections, the deadline paths, a reservation kept as exposure, a cost above
 its reservation, failed writes, lock contention, the workspace header and US inference.
 
+## Human review (confirmed 2026-11-21)
+
+Erhan Ünlü reviewed the stored answer of the 2026-11-20 run and confirmed his ratings on
+2026-11-21. He judged each of the 17 claims against the passages and attributes the agent had
+received, the five D1 rubric items against what the answer says, the six reported gaps against all
+ten passages the agent received, and the two overall questions. One reviewer, not blinded: the
+rubric, the Phase 2 result for D1 and this run's outcome were known. An AI assistant presented
+the material and recorded his choices and made no rating. The counts below were checked against
+the completed local worksheet before publication; the ratings, his notes and the answer text stay
+local.
+
+| Review dimension | Confirmed result |
+|---|---|
+| Support for 17 claims | 16 yes, 1 partly, 0 no |
+| Relevance of 17 claims | 9 fully, 4 partly, 4 not relevant |
+| Coverage of 5 rubric items | 3 yes, 1 partly, 1 no |
+| Accuracy of 6 reported gaps | 5 yes, 1 partly, 0 no |
+| Relevance of 6 reported gaps | 3 fully, 1 partly, 2 not relevant |
+| Was `partial` appropriate? | Yes |
+| Was the agent's overall behaviour appropriate? | Partly |
+
+In this one case the answer covered both tariff changes and how they offset each other (rubric
+items R1 to R3). It covered the effective date only partly (R4): the date came from the document
+title, and the answer itself reported that the received passages state no effective date for the
+changes in sections 2.4 and 2.5. It missed the evaluation of the 1368.00 tariff through 30 June
+2028 and its recalculation under transAL-2 (R5), whose passage was not among the ten received.
+The targeted search recovered one of the two previously missing evidence passages
+(`2026-07-01/p6/s2.5/5`, which carries R1 to R3); the other (`2026-07-01/p7/s2.5/1`, which
+carries R4 and R5) was not returned, and the passage budget then left no second search.
+
+These findings describe one answer to one development case, from one run, rated by one person.
+D1 was used before and is not held out, so they are not an accuracy figure for the agent and say
+nothing about other questions; the wider Phase 3 evaluation is separate.
+
 ## Files
 
 - Committed, in `tools/commentary_rag/results/` (outside this site, so named by path; the pilot
@@ -97,5 +133,7 @@ its reservation, failed writes, lock contention, the workspace header and US inf
   observed.
 - Local and git-ignored: the raw requests and responses, the answer and the full result in
   `tools/commentary_rag/local/2026-11-20-question-D1/`, the runner's console output beside it,
-  and the review worksheet `tools/commentary_rag/local/2026-11-20-D1-review-worksheet.md`. No
-  question, answer, passage, search or provider text is in a committed file.
+  the review worksheet as generated (`tools/commentary_rag/local/2026-11-20-D1-review-worksheet.md`,
+  ratings empty) and Erhan's completed copy beside it
+  (`2026-11-20-D1-review-worksheet-erhan.md`, his ratings and notes). No question, answer,
+  passage, search, provider or review-note text is in a committed file.

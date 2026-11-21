@@ -49,8 +49,17 @@ left reserved, USD 2.491356 committed in all), one search, ten passages supplied
 cap left no second search; a structurally accepted `partial` answer that cites one of D1's two
 previously missing passages (`2026-07-01/p6/s2.5/5`; `2026-07-01/p7/s2.5/1` was not retrieved,
 its rank for the agent's query unknown). The live provider contract is verified only for what
-that run exercised; no error, timeout or deadline path has run live, and the answer awaits
-Erhan's review. One development observation, not an evaluation. No earlier record changed.
+that run exercised; no error, timeout or deadline path has run live. One development
+observation, not an evaluation. No earlier record changed.
+
+**Human review of the D1 run (confirmed 2026-11-21):** Erhan Ünlü rated the stored answer in a
+local worksheet (one reviewer, not blinded). Claims: support 16 yes, 1 partly, 0 no; relevance 9
+fully, 4 partly, 4 not. Rubric: 3 of 5 items covered, 1 partly, 1 not. Reported gaps: 5 accurate,
+1 partly; 3 fully relevant, 1 partly, 2 not. `partial` judged appropriate; the agent's overall
+behaviour partly appropriate. The answer covered both tariff changes and how they offset each
+other, the effective date only partly, and missed the evaluation through 30 June 2028 and the
+recalculation under transAL-2, whose passage the agent never received. Scoped to this one dev
+case; details on the evidence page, ratings and notes local.
 
 ## Files
 
@@ -188,8 +197,10 @@ Erhan's review. One development observation, not an evaluation. No earlier recor
   (`TarifHub_RAG_Bewertung_Erhan_2026-11-15.md`) and its structured transfer with every rating,
   excerpt and the input hashes it was checked against (`2026-11-15-human-review.json`); for the
   2026-11-20 D1 run, the runner's folder (`2026-11-20-question-D1/`: raw requests and responses,
-  answer, full result), its console output (`2026-11-20-question-D1-console/`) and the review
-  worksheet (`2026-11-20-D1-review-worksheet.md`, ratings empty).
+  answer, full result), its console output (`2026-11-20-question-D1-console/`), the review
+  worksheet as generated (`2026-11-20-D1-review-worksheet.md`, ratings empty, kept unchanged)
+  and Erhan's completed copy with his ratings and notes (`2026-11-20-D1-review-worksheet-erhan.md`,
+  confirmed 2026-11-21).
 
 ## Passage construction (corrected run)
 
