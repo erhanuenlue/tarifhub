@@ -10,7 +10,7 @@
  "fixed_before_comparison": "Frozen before any retrieval, ranking or generation on E1 to E6 and before any cell of E1 to E6 was in the books (active ledger SHA-256 under books_at_freeze).",
  "provenance": {
   "drafted": "AI-drafted by Claude (claude-opus-5-5) on 2026-11-21 from the pdftotext output of the two hash-verified BAG commentaries, without running retrieval, ranking, embedding or generation on any candidate question.",
-  "drafting_qualifications": "The drafter knew from rubric.json (D1 review_focus) that retrieval at k=5 ranked the D1 evidence pages (2026-07-01 p. 6 and p. 7) at ranks 6 and 7, and E1 reuses D1's evidence passage on 2026-07-01 p. 6. The set is therefore not called held-out or blind.",
+  "drafting_qualifications": "The drafter knew from rubric.json (D1 review_focus) that retrieval at k=5 ranked the D1 evidence pages at ranks 6 and 7, and one case (E1) reuses a passage that is dev case D1's evidence. The set is therefore not called held-out or blind.",
   "verification": "The repo's verifier agent (claude-opus-5-5, fresh context, did not draft the cases) checked every case against the two commentaries without any retrieval or generation: a first pass (1 blocker, brought to Erhan and resolved by his ruling; 9 should-fix; 13 nits) and a re-check after the fixes (1 blocker, 1 should-fix, 6 nits), all resolved; the last changes were checked mechanically, not by the verifier a third time. Reports kept locally with the set."
  },
  "source_documents": [
@@ -156,5 +156,11 @@
  "reproduce": [
   "shasum -a 256 tools/commentary_rag/local/2026-11-21-phase3-E-set/runner/cases.json tools/commentary_rag/local/2026-11-21-phase3-E-set/private/gold-cases.json tools/commentary_rag/local/2026-11-21-phase3-E-set/private/rubric.json",
   "python3 -c \"import json,hashlib,sys; [print(c['id'], hashlib.sha256(c['question'].encode('utf-8')).hexdigest()) for c in json.load(open(sys.argv[1], encoding='utf-8'))['cases']]\" tools/commentary_rag/local/2026-11-21-phase3-E-set/runner/cases.json"
+ ],
+ "amendments": [
+  {
+   "date": "2026-11-21",
+   "note": "After review, this record was made generic before the merge: the first version (commit 9b16cb3, pushed with the branch) described the content of the owner's ruling, named a case in a reporting rule and gave the page of a reused passage. The frozen files and every hash in this record are unchanged; that earlier text stays readable in the branch history, which is never rewritten."
+  }
  ]
 }
