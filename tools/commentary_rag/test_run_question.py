@@ -210,7 +210,7 @@ def test_run_answers_from_the_fresh_top_five_keeps_the_answer_local_and_publishe
     assert record["agent"]["cited"] == [JUL_TOP5[0]]
     assert QUESTION not in public.read_text("utf-8")  # the question is published by hash only
     assert [(e["event"], e.get("attempt")) for e in ledger(isolated)] == [
-        ("baseline", None), ("reserve", "Q1-call1"), ("settle", "Q1-call1")]
+        ("baseline", None), ("reserve", "Q1-agent-call1"), ("settle", "Q1-agent-call1")]
     shown = json.loads(capsys.readouterr().out)
     assert (shown["exit_code"], shown["answer_status"], shown["accounting"]["status"]) == (
         0, "answered", "priced")
@@ -245,7 +245,7 @@ def test_existing_outputs_are_refused_before_the_model_loads_or_anything_is_sent
         public.write_text("recorded\n", encoding="utf-8")
     elif existing == "local":  # an earlier run's request and response artifacts
         (local / "requests").mkdir(parents=True)
-        (local / "requests" / "Q1-call1.json").write_text("{}", encoding="utf-8")
+        (local / "requests" / "Q1-agent-call1.json").write_text("{}", encoding="utf-8")
     else:  # a file where the run's local folder would go
         local.parent.mkdir(parents=True)
         local.write_text("not a folder", encoding="utf-8")
@@ -371,7 +371,7 @@ def test_a_failed_case_ends_once_with_a_nonzero_exit_and_is_kept_as_it_ended(  #
     assert json.loads(public.read_text("utf-8"))["status"] == {
         "execution": outcome, "detail": detail, "answer": None, "accounting": accounting}
     assert not (local / "answer.json").exists()
-    assert (local / "responses" / "Q1-call1.json").exists()
+    assert (local / "responses" / "Q1-agent-call1.json").exists()
 
 
 SENTINEL_QUESTION = "Welche Pauschale gilt? SENTINEL-FRAGE"
@@ -451,7 +451,7 @@ def test_a_public_record_that_cannot_be_written_keeps_the_local_run_and_resends_
     assert len(provider.creates) == 1  # reporting is never repaired by sending again
     _, local = outputs(isolated)
     assert {p.relative_to(local).as_posix() for p in local.rglob("*.json")} == {
-        "requests/Q1-call1.json", "responses/Q1-call1.json", "answer.json", "result.json"}
+        "requests/Q1-agent-call1.json", "responses/Q1-agent-call1.json", "answer.json", "result.json"}
     shown = json.loads(capsys.readouterr().out)
     assert (shown["exit_code"], shown["answer_status"], shown["accounting"]["status"]) == (
         7, "answered", "priced")
