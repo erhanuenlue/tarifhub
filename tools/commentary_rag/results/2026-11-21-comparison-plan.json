@@ -1,0 +1,308 @@
+{
+ "planned": {
+  "at": "2026-11-21T11:12:10+00:00",
+  "git_head": "ce88ce92e09fc87284cf8aae9841b494e2834f67",
+  "offline": "nothing counted, sent or written; the books read without the lock",
+  "historical_ledger_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+  "active_ledger_sha256": "ac0bd49ae8d91cd9716bac9bca78a5c1e211f7684b2ce6f9300b05361cfad12b"
+ },
+ "order": [
+  {
+   "case": "E1",
+   "condition": "fixed5",
+   "label": "A",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E1",
+   "condition": "fixed10",
+   "label": "B",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E1",
+   "condition": "agent",
+   "label": "C",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E2",
+   "condition": "fixed5",
+   "label": "A",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E2",
+   "condition": "fixed10",
+   "label": "B",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E2",
+   "condition": "agent",
+   "label": "C",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E3",
+   "condition": "fixed5",
+   "label": "A",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E3",
+   "condition": "fixed10",
+   "label": "B",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E3",
+   "condition": "agent",
+   "label": "C",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E4",
+   "condition": "fixed5",
+   "label": "A",
+   "editions": [
+    "2026-01-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E4",
+   "condition": "fixed10",
+   "label": "B",
+   "editions": [
+    "2026-01-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E4",
+   "condition": "agent",
+   "label": "C",
+   "editions": [
+    "2026-01-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E5",
+   "condition": "fixed5",
+   "label": "A",
+   "editions": [
+    "2026-01-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E5",
+   "condition": "fixed10",
+   "label": "B",
+   "editions": [
+    "2026-01-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E5",
+   "condition": "agent",
+   "label": "C",
+   "editions": [
+    "2026-01-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E6",
+   "condition": "fixed5",
+   "label": "A",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E6",
+   "condition": "fixed10",
+   "label": "B",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  },
+  {
+   "case": "E6",
+   "condition": "agent",
+   "label": "C",
+   "editions": [
+    "2026-07-01"
+   ],
+   "in_books": false
+  }
+ ],
+ "conditions": {
+  "fixed5": {
+   "label": "A",
+   "initial_passages": 5,
+   "most_passages": 5,
+   "calls": 1,
+   "searches": 0,
+   "search_tool": false,
+   "admission_usd": 1.4784
+  },
+  "fixed10": {
+   "label": "B",
+   "initial_passages": 10,
+   "most_passages": 10,
+   "calls": 1,
+   "searches": 0,
+   "search_tool": false,
+   "admission_usd": 1.4784
+  },
+  "agent": {
+   "label": "C",
+   "initial_passages": 5,
+   "most_passages": 10,
+   "calls": 3,
+   "searches": 2,
+   "search_tool": true,
+   "admission_usd": 4.4352
+  }
+ },
+ "admission": {
+  "label": "BOUND, not an expected cost: every call of every cell still to run at the input cap, beside everything committed, under the aggregate limit",
+  "limit_usd": 100.0,
+  "committed_usd": 2.491356,
+  "historical_committed_usd": 1.930804,
+  "active_committed_usd": 0.560552,
+  "headroom_usd": 97.508644,
+  "call_ceiling_at_input_cap_usd": 1.4784,
+  "worst_case_usd": 44.352,
+  "fits": true,
+  "headroom_after_worst_case_usd": 53.156644
+ },
+ "cases": [
+  {
+   "case": "E1",
+   "editions": [
+    "2026-07-01"
+   ],
+   "booked": [],
+   "pairing": "new"
+  },
+  {
+   "case": "E2",
+   "editions": [
+    "2026-07-01"
+   ],
+   "booked": [],
+   "pairing": "new"
+  },
+  {
+   "case": "E3",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "booked": [],
+   "pairing": "new"
+  },
+  {
+   "case": "E4",
+   "editions": [
+    "2026-01-01"
+   ],
+   "booked": [],
+   "pairing": "new"
+  },
+  {
+   "case": "E5",
+   "editions": [
+    "2026-01-01"
+   ],
+   "booked": [],
+   "pairing": "new"
+  },
+  {
+   "case": "E6",
+   "editions": [
+    "2026-07-01"
+   ],
+   "booked": [],
+   "pairing": "new"
+  }
+ ],
+ "assumptions": {
+  "label": "ASSUMPTIONS of the bounds, fixed in code and pricing.json: each call's ceiling is its counted input with the margin at the dearest input rate, plus every output token, times the US multiplier; prices as recorded, not a billing guarantee",
+  "model": "claude-opus-5-5",
+  "input_cap_tokens": 80000,
+  "input_margin": 1.1,
+  "max_output_tokens": 32000,
+  "us_multiplier": 1.1,
+  "ceiling_input_usd_per_mtok": 8.0,
+  "prices_usd_per_mtok": {
+   "input": 4.0,
+   "output": 20.0,
+   "cache_write_5m": 5.0,
+   "cache_write_1h": 8.0,
+   "cache_read": 0.2
+  },
+  "prices_source": "https://platform.claude.com/docs/en/about-claude/pricing.md (Model pricing table, row Claude Opus 5.5)",
+  "prices_retrieved": "2026-11-14"
+ },
+ "estimates": {
+  "label": "ESTIMATE, not a bound: the mean calculated cost of earlier cells priced from their usage, on development cases with few observations; not an invoice and not a prediction for the cases planned",
+  "per_condition": {
+   "fixed5": {
+    "observed_cells": 8,
+    "usd_per_cell": 0.24135,
+    "basis": "Phase 2's requests (the historical ledger, ADR-025's fixed top 5) and fixed5 cells of the active ledger"
+   },
+   "fixed10": {
+    "observed_cells": 0,
+    "usd_per_cell": 0.24647,
+    "basis": "no observation: the fixed5 estimate plus 1280 input tokens (five more passages at the 256-token passage budget) at 4 USD per million"
+   },
+   "agent": {
+    "observed_cells": 1,
+    "usd_per_cell": 0.560552,
+    "basis": "agent cells of the active ledger (D1 is one)"
+   }
+  },
+  "cells_to_run": 18,
+  "matrix_usd": 6.290232
+ }
+}
