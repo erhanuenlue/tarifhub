@@ -3,7 +3,7 @@
  "decision": {
   "by": "Erhan",
   "date": "2026-11-21",
-  "what": "the case design of E1 to E6 (questions, required and optional elements, expected statuses, reporting rules) and, the same day, a ruling on the one source conflict the verifier raised (E3: a dated KLV article change that the question covers is required)",
+  "what": "the case design of E1 to E6 and, the same day, a ruling on the one source conflict the verifier raised; both are recorded verbatim in the private decision record, hashed under files",
   "applied_by": "Claude (claude-opus-5-5) on 2026-11-21; the final wording applies the decisions and was not approved line by line"
  },
  "frozen_at": "2026-11-21T13:36:37Z",
@@ -138,7 +138,7 @@
   "E1 is reported separately from E2 to E6 (known D1 passage overlap).",
   "E4 and E5 are January-only questions; B (fixed10) receives 10 of the January commentary's 11 passages there.",
   "E2's edition filter excludes the January commentary for every condition (the agent's search accepts only the case's editions), so E2 does not test edition selection.",
-  "E6 has no required evidence items: its Evidence Recall is N/A."
+  "A case without required evidence items has Evidence Recall N/A, never 0."
  ],
  "corpus_at_freeze": {
   "passages": 40,
