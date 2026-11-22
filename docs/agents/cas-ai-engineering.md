@@ -13,8 +13,8 @@ remaining delivery requires. The current milestone is issue
 | Reference point | baseline commit `530f8501a288f8e99cb7480ace326d42bef9a9c8` | squash commits on `main` after the baseline |
 | Requirement set | historical: `docs/criterion-map.md`, `tools/cas_check.py` | the course's Moodle pages (see Delivery requirements) |
 
-**Inherited at the baseline** (present in `530f850`): the ingestion sources of ADR-015 (the AL
-from one file through `bag_eal`, the EPL through `bag_epl`),
+**Inherited at the baseline** (present in `530f850`): AL import from one file (`bag_eal`), the
+EPL source (`bag_epl`, ADR-015),
 pre-freeze `ai_map`, frozen hashed versioned records, REST and FHIR queries, point-in-time and
 per-record version diff, the rule-based `/explain` (no LLM, ADR-017), pgvector semantic search
 with the multilingual-e5 embedder, read-only MCP tools, the `tools/search_eval` harness, the
@@ -52,8 +52,10 @@ new capability and its measured result.
 Per the course, Phase 4 is either variant 1, extend the agentic behaviour (justify, evaluate,
 assess), or variant 2, fine-tune a model (justify, evaluate, assess); both end in a demo and a
 presentation. The lecturer accepts fine-tuning the embedding model compared with the starting
-model (Erhan, 2026-11-22). Zwischenbericht 1 had planned a LoRA Change Extractor instead; the
-feasibility page explains the change.
+model (Erhan, 2026-11-22). The extract also lists fine-tuning among the module's required
+contents beside RAG, agents and evaluation, and an October note left open whether variant 1 alone
+satisfies that; ask the lecturer before choosing variant 1. Zwischenbericht 1 had planned a LoRA
+Change Extractor instead; the feasibility page explains the change.
 
 ## Delivery requirements
 
