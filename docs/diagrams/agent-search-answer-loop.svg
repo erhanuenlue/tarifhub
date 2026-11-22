@@ -1,0 +1,146 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 744 948" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="agent-search-answer-loop-title agent-search-answer-loop-desc" id="agent-search-answer-loop-root">
+      <title id="agent-search-answer-loop-title">One question in the agent loop</title>
+      <desc id="agent-search-answer-loop-desc">Sequence diagram of one question in the evidence-seeking agent (ADR-026): the runner checks its input and ranks a fresh hybrid top 5, the agent is admitted by the books for three calls at the input cap, then makes at most three calls that are each token-counted, reserved, sent once to the Messages API and settled, runs a search only on a tool_use while tool_choice is auto, within two searches and ten passages, checks the deadline before each count and send and after each call and search, checks the answer's schema and citations, and returns the outcome, which the runner writes to local/ and results/.</desc>
+      <defs>
+      <style>#agent-search-answer-loop-root { --color-paper:   #f5f5f5;   
+      --color-ink:     #2d3142;   
+      --color-muted:   #4f5d75;   
+      --color-accent:  #bf4520;   
+      --font-sans:     'Geist', system-ui, sans-serif;
+      --font-serif:    'Instrument Serif', 'Noto Serif', 'Noto Serif KR', serif;
+      --font-mono:     'Geist Mono', ui-monospace, monospace; }
+      #agent-search-answer-loop-root { font-family: var(--font-sans); color: var(--color-ink); }
+      #agent-search-answer-loop-root .diagram-container { width: 100%; overflow-x: auto; }
+      @media print {
+#agent-search-answer-loop-root .diagram-container { overflow-x: visible; }
+}</style>
+      <marker id="agent-search-answer-loop-arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
+      <marker id="agent-search-answer-loop-arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
+      <marker id="agent-search-answer-loop-arrow-link" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#2e5aa8"/></marker>
+      </defs>
+      <rect width="100%" height="100%" fill="#f5f5f5"/>
+      <!-- LOOP fragment -->
+      <rect x="112" y="256" width="556" height="436" rx="4" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.02" stroke-opacity="0.22"/>
+      <rect x="112" y="256" width="40" height="16" rx="2" fill="#f5f5f5" stroke="#2d3142" stroke-width="1" stroke-opacity="0.22"/>
+      <text x="132" y="268" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.12em">LOOP</text>
+      <!-- OPT fragment -->
+      <rect x="124" y="508" width="532" height="168" rx="4" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.02" stroke-opacity="0.22"/>
+      <rect x="124" y="508" width="40" height="16" rx="2" fill="#f5f5f5" stroke="#2d3142" stroke-width="1" stroke-opacity="0.22"/>
+      <text x="144" y="520" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.12em">OPT</text>
+      <text x="124" y="292" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">[≤ 3 calls,</text>
+      <text x="129.28" y="304" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">≤ 2 searches,</text>
+      <text x="129.28" y="316" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">≤ 10 passages]</text>
+      <text x="136" y="544" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">[tool_use,</text>
+      <text x="141.28" y="556" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">tool_choice</text>
+      <text x="141.28" y="568" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.04em">auto]</text>
+      <!-- lifelines -->
+      <line x1="96" y1="96" x2="96" y2="844" stroke="#2d3142" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+      <line x1="232" y1="96" x2="232" y2="844" stroke="#2d3142" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+      <line x1="368" y1="96" x2="368" y2="844" stroke="#2d3142" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+      <line x1="504" y1="96" x2="504" y2="844" stroke="#2d3142" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+      <line x1="644" y1="96" x2="644" y2="844" stroke="#2d3142" stroke-width="1" stroke-dasharray="3,3" stroke-opacity="0.22"/>
+      <!-- activation bars -->
+      <rect x="92" y="132" width="8" height="696" fill="#2d3142" stroke="#4f5d75" stroke-width="0.8" fill-opacity="0.06"/>
+      <rect x="228" y="196" width="8" height="592" fill="#2d3142" stroke="#4f5d75" stroke-width="0.8" fill-opacity="0.06"/>
+      <rect x="500" y="348" width="8" height="24" fill="#2d3142" stroke="#4f5d75" stroke-width="0.8" fill-opacity="0.06"/>
+      <rect x="500" y="428" width="8" height="24" fill="#2d3142" stroke="#4f5d75" stroke-width="0.8" fill-opacity="0.06"/>
+      <rect x="640" y="592" width="8" height="44" fill="#2d3142" stroke="#4f5d75" stroke-width="0.8" fill-opacity="0.06"/>
+      <!-- message arrows -->
+      <path d="M 100 140 H 116 A 8 8 0 0 1 124 148 V 156 A 8 8 0 0 1 116 164 H 100" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <line x1="100" y1="200" x2="228" y2="200" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <line x1="236" y1="232" x2="368" y2="232" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <line x1="236" y1="352" x2="500" y2="352" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow-link)"/>
+      <line x1="236" y1="384" x2="368" y2="384" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <line x1="236" y1="432" x2="500" y2="432" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow-link)"/>
+      <line x1="236" y1="464" x2="368" y2="464" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <line x1="236" y1="596" x2="640" y2="596" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <line x1="640" y1="632" x2="236" y2="632" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <path d="M 236 724 H 252 A 8 8 0 0 1 260 732 V 740 A 8 8 0 0 1 252 748 H 236" fill="none" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <line x1="228" y1="784" x2="100" y2="784" stroke="#bf4520" stroke-width="1.4" marker-end="url(#agent-search-answer-loop-arrow-accent)"/>
+      <line x1="100" y1="820" x2="368" y2="820" stroke="#4f5d75" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <!-- message labels -->
+      <rect x="132" y="146" width="80" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="172" y="155" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">CHECK · TOP 5</text>
+      <rect x="124" y="180" width="80" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="164" y="189" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RUN_CASE ONCE</text>
+      <rect x="260" y="212" width="80" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="300" y="221" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">ADMIT 3 × CAP</text>
+      <rect x="400" y="332" width="76" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="438" y="341" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">COUNT_TOKENS</text>
+      <rect x="256" y="364" width="88" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="300" y="373" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SAVE · RESERVE</text>
+      <rect x="392" y="412" width="92" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="438" y="421" fill="#2e5aa8" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">MESSAGES.CREATE</text>
+      <rect x="260" y="444" width="80" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="300" y="453" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SAVE · SETTLE</text>
+      <rect x="524" y="576" width="104" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="576" y="585" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SEARCH_COMMENTARY</text>
+      <rect x="532" y="612" width="88" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="576" y="621" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RESULT · STATE</text>
+      <rect x="268" y="730" width="88" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="312" y="739" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SCHEMA · CITES</text>
+      <rect x="140" y="764" width="48" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="164" y="773" fill="#bf4520" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">OUTCOME</text>
+      <rect x="260" y="800" width="80" height="12" rx="2" fill="#f5f5f5"/>
+      <text x="300" y="809" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">WRITE OUTPUTS</text>
+      <!-- step badges: filled = first message of a numbered step; outlined 6 = deadline check -->
+      <circle cx="96" cy="140" r="7" fill="#2d3142" stroke="#2d3142" stroke-width="1"/>
+      <text x="96" y="143" fill="#f5f5f5" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">1</text>
+      <circle cx="232" cy="232" r="7" fill="#2d3142" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="235" fill="#f5f5f5" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">2</text>
+      <circle cx="232" cy="352" r="7" fill="#2d3142" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="355" fill="#f5f5f5" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">3</text>
+      <circle cx="232" cy="596" r="7" fill="#2d3142" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="599" fill="#f5f5f5" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">4</text>
+      <circle cx="232" cy="724" r="7" fill="#2d3142" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="727" fill="#f5f5f5" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">5</text>
+      <circle cx="96" cy="820" r="7" fill="#2d3142" stroke="#2d3142" stroke-width="1"/>
+      <text x="96" y="823" fill="#f5f5f5" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">7</text>
+      <circle cx="232" cy="328" r="7" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="331" fill="#2d3142" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">6</text>
+      <circle cx="232" cy="408" r="7" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="411" fill="#2d3142" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">6</text>
+      <circle cx="232" cy="488" r="7" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="491" fill="#2d3142" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">6</text>
+      <circle cx="232" cy="656" r="7" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+      <text x="232" y="659" fill="#2d3142" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">6</text>
+      <!-- actors -->
+      <rect x="40" y="40" width="112" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="40" y="40" width="112" height="56" rx="6" fill="#4f5d75" stroke="#5a6580" stroke-width="1" fill-opacity="0.10"/>
+      <text x="96" y="65" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Runner</text>
+      <text x="96" y="81" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">run_question.py</text>
+      <rect x="176" y="40" width="112" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="176" y="40" width="112" height="56" rx="6" fill="#bf4520" stroke="#bf4520" stroke-width="1" fill-opacity="0.08"/>
+      <text x="232" y="65" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Agent</text>
+      <text x="232" y="81" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">evidence_agent.py</text>
+      <rect x="312" y="40" width="112" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="312" y="40" width="112" height="56" rx="6" fill="#2d3142" stroke="#4f5d75" stroke-width="1" fill-opacity="0.05"/>
+      <text x="368" y="65" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Books</text>
+      <text x="368" y="81" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">results/ · local/</text>
+      <rect x="448" y="40" width="112" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="448" y="40" width="112" height="56" rx="6" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.03" stroke-opacity="0.30"/>
+      <text x="504" y="72" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Messages API</text>
+      <rect x="584" y="40" width="120" height="56" rx="6" fill="#f5f5f5"/>
+      <rect x="584" y="40" width="120" height="56" rx="6" fill="#ffffff" stroke="#2d3142" stroke-width="1"/>
+      <text x="644" y="65" fill="#2d3142" font-size="12" font-weight="600" font-family="'Geist', system-ui, sans-serif" text-anchor="middle">Search tool</text>
+      <text x="644" y="81" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">evidence_search.py</text>
+      <!-- legend -->
+      <line x1="40" y1="884" x2="704" y2="884" stroke="#2d3142" stroke-width="0.8" stroke-opacity="0.10"/>
+      <text x="40" y="904" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" letter-spacing="0.18em">LEGEND</text>
+      <rect x="112" y="895" width="16" height="12" rx="2" fill="#bf4520" stroke="#bf4520" stroke-width="1" fill-opacity="0.08"/>
+      <text x="136" y="904" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Focal: agent, outcome</text>
+      <line x1="268" y1="901" x2="296" y2="901" stroke="#2e5aa8" stroke-width="1.2" marker-end="url(#agent-search-answer-loop-arrow-link)"/>
+      <text x="304" y="904" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">HTTP call</text>
+      <line x1="392" y1="901" x2="420" y2="901" stroke="#4f5d75" stroke-width="1.2" stroke-dasharray="5,4" marker-end="url(#agent-search-answer-loop-arrow)"/>
+      <text x="428" y="904" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Return</text>
+      <rect x="496" y="893" width="32" height="16" rx="2" fill="#2d3142" stroke="#2d3142" stroke-width="1" fill-opacity="0.02" stroke-opacity="0.22"/>
+      <text x="512" y="904" fill="#4f5d75" font-size="8" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.12em">OPT</text>
+      <text x="536" y="904" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Fragment and [guard]</text>
+      <circle cx="119" cy="921" r="7" fill="#2d3142" stroke="#2d3142" stroke-width="1"/>
+      <text x="119" y="924" fill="#f5f5f5" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">n</text>
+      <text x="136" y="924" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Step n of the numbered text</text>
+      <circle cx="315" cy="921" r="7" fill="#f5f5f5" stroke="#2d3142" stroke-width="1"/>
+      <text x="315" y="924" fill="#2d3142" font-size="8" font-weight="600" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle">6</text>
+      <text x="332" y="924" fill="#4f5d75" font-size="9" font-family="'Geist', system-ui, sans-serif">Deadline check (step 6)</text>
+      </svg>
