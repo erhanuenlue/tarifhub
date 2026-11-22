@@ -21,6 +21,7 @@ Project facts, safety boundaries, commands and the definition of done live in AG
 
 ## Agents, Codex, skills
 
+- Lead: `lead-engineer` (`.claude/agents/lead-engineer.md`) owns a milestone end to end; start it with `claude --agent lead-engineer`. Course frame: `docs/agents/cas-ai-engineering.md`.
 - Reviewers: `verifier` (fresh-context diff vs. spec), `determinism-auditor` (services/ value-path changes), `security-reviewer` (secrets, input parsing, de-identification seam, internet-facing code). Workers: `implementer` (one scoped TDD task), `e2e-tester` (runtime evidence, only when a change needs it).
 - Codex is the independent second model family: use the read-only commands in `.claude/agents/codex-reviewer.md`, one run at a time. Running them yourself is not delegation and needs no authorization; going through that agent is delegation. Either way every restriction in that file holds, and a denied run is a skipped review. Its model comes from `~/.codex/config.toml`; cite the model a run reports, never one from a description.
 - Matt Pocock skills (`.claude/skills/`, locked in `skills-lock.json`): use `tdd`, `codebase-design`, `domain-modeling` and `grilling` only when the task calls for them; `grill-with-docs`, `to-tickets` and `setup-matt-pocock-skills` are user-invoked.
