@@ -73,8 +73,9 @@ Before the key was opened, in this order:
    39 required-claim marks, 6 gap marks, 75 listed-error checks (none marked present), 18 status
    and 18 overall verdicts.
 3. The hashes of both packets, the template, the ratings file, the neutral ID listing and the key
-   were committed in `tools/commentary_rag/results/2026-11-22-phase3-E-review-lock.json` as the
-   first commit of this change, before the key was read.
+   were committed in `tools/commentary_rag/results/2026-11-22-phase3-E-review-lock.json` in a
+   commit of their own, before the key's content was opened (its file was only hashed for the
+   lock).
 
 After it: the key named all 18 IDs once each, every case had exactly one `fixed5`, one `fixed10`
 and one `agent` answer, and under every ID the packet shows exactly the answer of the cell the key
@@ -158,9 +159,8 @@ covering E2-R2, and C's answer was `answered` with both required claims covered.
 E6, B and C reached the same overall verdicts and covered the same required claims; their claim
 counts, support and relevance differ (table above), and C's E3 answer carries the one recorded
 error. Against A, C also
-improved E3: A lacked one gold item (rank 6) and left E3-R3 uncovered while answering
-`answered` (status judged not to fit); B had that passage in its top 10, and C's search fetched
-it.
+improved E3: A lacked one gold item and left E3-R3 uncovered while answering `answered` (status
+judged not to fit); B had that item within its top 10, and C's search fetched it.
 
 **Where the simpler baseline sufficed.** On E4, E5 and E6, A's five passages already held every
 gold item (E4, E5) or nothing was required (E6), and all three conditions were rated `yes`
@@ -186,9 +186,9 @@ item, and the text below follows them to Erhan's coverage marks.
 | E2 to E6 | 5 | 25 | 13 | 8 | 6 | 4 | 1 |
 
 Followed to the rubric: of the 25 passages added on E2 to E6, 13 were cited, 8 came from outside
-the fixed top 10, 4 carry a gold item, and 1 does both (E2, `2026-07-01/p4/s2.3/1`, E2-R2). Of the
-four gold-carrying passages, three were also in B's context (E2 ranks 7 and 9, E3 rank 6), so the
-only rubric item that C covered and B did not is E2-R2, through that one passage. Every
+the fixed top 10, 4 carry a gold item, and 1 does both (on E2, for E2-R2). Of the four
+gold-carrying passages, three were also within B's top 10 (two on E2, one on E3), so the only
+rubric item that C covered and B did not is E2-R2, through that one passage. Every
 gold-carrying added passage was cited in the claims Erhan rated as covering its required claim.
 On E2, five of C's claims cite the added passage from outside the fixed top 10 (2 rated fully
 relevant, 1 partly, 2 not), so two of C's three claims rated not relevant rest on it: the same
@@ -205,9 +205,10 @@ needed, or how the same cell would behave on a repeat run.
 E1 reuses the passage that is D1's evidence, and its drafter knew D1's retrieval ranks, so it is
 not part of the primary set. Here C was the only condition rated `yes` overall and the only one
 to cover both required claims. A abstained (`insufficient_evidence`, status judged to fit) with
-neither gold item in context. B covered E1-R2 from rank 9 but answered `answered` without E1-R1,
+neither gold item in context. B covered E1-R2 from a passage in its ranks 6 to 10 but answered `answered` without E1-R1,
 and Erhan judged that status not to fit. C's search added the passage carrying E1-R1 from outside
-the fixed top 10 and the rank-9 passage carrying E1-R2, and cited both in the covering claims. C
+the fixed top 10 and the one within B's top 10 carrying E1-R2, and cited both in the covering
+claims. C
 cost USD 0.344516 against B's 0.218560 here.
 
 ## Costs: what the additional search cost

@@ -923,59 +923,20 @@
      "not": 0
     }
    },
-   "added": [
+   "required_claims_with_evidence_among_added_passages": [
     {
-     "passage_id": "2026-07-01/p4/s2.4/3",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [
-      1
-     ],
-     "required_claims": [
-      {
-       "id": "E1-R1",
-       "agent_covered": "yes",
-       "cited_in_the_claims_rated_as_covering_it": true,
-       "fixed10_covered": "no"
-      }
-     ]
+     "id": "E1-R1",
+     "agent_covered": "yes",
+     "fixed10_covered": "no",
+     "through_an_added_passage_from_outside_fixed_top10": true,
+     "cited_in_the_claims_rated_as_covering_it": true
     },
     {
-     "passage_id": "2026-07-01/p6/s2.5/3",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p6/s2.5/5",
-     "fixed_rank": 9,
-     "cited": true,
-     "gold_items": [
-      2
-     ],
-     "required_claims": [
-      {
-       "id": "E1-R2",
-       "agent_covered": "yes",
-       "cited_in_the_claims_rated_as_covering_it": true,
-       "fixed10_covered": "yes"
-      }
-     ]
-    },
-    {
-     "passage_id": "2026-07-01/p5/s2.4/1",
-     "fixed_rank": null,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p8/s4.2/1",
-     "fixed_rank": 6,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
+     "id": "E1-R2",
+     "agent_covered": "yes",
+     "fixed10_covered": "yes",
+     "through_an_added_passage_from_outside_fixed_top10": false,
+     "cited_in_the_claims_rated_as_covering_it": true
     }
    ]
   },
@@ -1013,70 +974,20 @@
      "not": 2
     }
    },
-   "added": [
+   "required_claims_with_evidence_among_added_passages": [
     {
-     "passage_id": "2026-07-01/p3/s2.2/1",
-     "fixed_rank": 9,
-     "cited": true,
-     "gold_items": [
-      1,
-      2
-     ],
-     "required_claims": [
-      {
-       "id": "E2-R1",
-       "agent_covered": "yes",
-       "cited_in_the_claims_rated_as_covering_it": true,
-       "fixed10_covered": "yes"
-      }
-     ]
+     "id": "E2-R1",
+     "agent_covered": "yes",
+     "fixed10_covered": "yes",
+     "through_an_added_passage_from_outside_fixed_top10": false,
+     "cited_in_the_claims_rated_as_covering_it": true
     },
     {
-     "passage_id": "2026-07-01/p4/s2.3/1",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [
-      3,
-      4
-     ],
-     "required_claims": [
-      {
-       "id": "E2-R2",
-       "agent_covered": "yes",
-       "cited_in_the_claims_rated_as_covering_it": true,
-       "fixed10_covered": "partly"
-      }
-     ]
-    },
-    {
-     "passage_id": "2026-07-01/p3/s1/1",
-     "fixed_rank": null,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p4/s2.3/2",
-     "fixed_rank": 7,
-     "cited": true,
-     "gold_items": [
-      5
-     ],
-     "required_claims": [
-      {
-       "id": "E2-R2",
-       "agent_covered": "yes",
-       "cited_in_the_claims_rated_as_covering_it": true,
-       "fixed10_covered": "partly"
-      }
-     ]
-    },
-    {
-     "passage_id": "2026-07-01/p4/s2.2/1",
-     "fixed_rank": 6,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
+     "id": "E2-R2",
+     "agent_covered": "yes",
+     "fixed10_covered": "partly",
+     "through_an_added_passage_from_outside_fixed_top10": true,
+     "cited_in_the_claims_rated_as_covering_it": true
     }
    ]
   },
@@ -1114,50 +1025,13 @@
      "not": 0
     }
    },
-   "added": [
+   "required_claims_with_evidence_among_added_passages": [
     {
-     "passage_id": "2026-01-01/p3/s2.1/1",
-     "fixed_rank": 6,
-     "cited": true,
-     "gold_items": [
-      5
-     ],
-     "required_claims": [
-      {
-       "id": "E3-R3",
-       "agent_covered": "yes",
-       "cited_in_the_claims_rated_as_covering_it": true,
-       "fixed10_covered": "yes"
-      }
-     ]
-    },
-    {
-     "passage_id": "2026-07-01/p4/s2.2/1",
-     "fixed_rank": 8,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p3/s2.2/1",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p4/s2.3/3",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p7/s2.5/1",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
+     "id": "E3-R3",
+     "agent_covered": "yes",
+     "fixed10_covered": "yes",
+     "through_an_added_passage_from_outside_fixed_top10": false,
+     "cited_in_the_claims_rated_as_covering_it": true
     }
    ]
   },
@@ -1195,43 +1069,7 @@
      "not": 0
     }
    },
-   "added": [
-    {
-     "passage_id": "2026-01-01/p3/s2.3/1",
-     "fixed_rank": 7,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p4/s3.1/1",
-     "fixed_rank": 6,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p3/s2.1/1",
-     "fixed_rank": 8,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p4/s3.1/2",
-     "fixed_rank": 9,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p3/s1/1",
-     "fixed_rank": 10,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    }
-   ]
+   "required_claims_with_evidence_among_added_passages": []
   },
   {
    "case": "E5",
@@ -1267,43 +1105,7 @@
      "not": 0
     }
    },
-   "added": [
-    {
-     "passage_id": "2026-01-01/p3/s1/1",
-     "fixed_rank": 8,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p4/s3.1/1",
-     "fixed_rank": 7,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p4/s2.3/1",
-     "fixed_rank": null,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p3/s2.3/1",
-     "fixed_rank": 9,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-01-01/p4/s2.3/2",
-     "fixed_rank": 6,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    }
-   ]
+   "required_claims_with_evidence_among_added_passages": []
   },
   {
    "case": "E6",
@@ -1339,43 +1141,7 @@
      "not": 0
     }
    },
-   "added": [
-    {
-     "passage_id": "2026-07-01/p5/s2.4/3",
-     "fixed_rank": 7,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p3/s2.2/1",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p4/s2.2/1",
-     "fixed_rank": 6,
-     "cited": false,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p8/s4.1/1",
-     "fixed_rank": 8,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    },
-    {
-     "passage_id": "2026-07-01/p3/s2.1/2",
-     "fixed_rank": null,
-     "cited": true,
-     "gold_items": [],
-     "required_claims": []
-    }
-   ]
+   "required_claims_with_evidence_among_added_passages": []
   }
  ],
  "aggregates": {
@@ -1732,6 +1498,6 @@
  "sources_sha256": {
   "comparison_record": "3d4038bc43a0396dd8498d36999fe3364974e6eff0246d6365b454071804b364",
   "ledger": "ca20af168ba1c5bc1488dc25fc6f290fd8bae66bb7ee301e7d33007b2a6d5d3f",
-  "script": "5e79b77244a2e29306bd641bb5f35ce31feba20bbfba251e74c9d1deccc9510b"
+  "script": "70bc39a34d4ffb58eedff740abc868814ceda4fbec6d3c954ad5f778c962585d"
  }
 }
