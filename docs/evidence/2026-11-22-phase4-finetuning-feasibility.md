@@ -18,7 +18,8 @@ gets that family, the other fewer than 20 passages in five small families, too n
 source or too small a test to show a difference
 ([headroom](#headroom-and-what-a-test-could-detect)). A pilot needs its training data from
 elsewhere and becomes a go once the two offline data steps in
-[Smallest useful data work](#smallest-useful-data-work) meet their thresholds; if they fail, the
+[Smallest useful data work](#smallest-useful-data-work) meet their thresholds and its frozen design
+passes the power gate there (otherwise it runs as exploratory); if the data steps fail, the
 lopsided in-corpus split remains as an exploratory fallback only. Selective evidence
 search ([variant 1](#alternative-selective-evidence-search-variant-1)) needs no training data and
 could start sooner, but its live runs would cost more in API calls than the pilot (cost table
@@ -45,8 +46,9 @@ variants are alternatives and that an evaluated fine-tuning of the embedding mod
 the starting model, is acceptable (the lecturer's forum clarification, relayed by Erhan on
 2026-11-22). The agent recovered evidence missing from its initial hybrid context, so the
 candidate is the dense half of that ranking, `intfloat/multilingual-e5-large` inside the
-commentary retrieval of [ADR-025](../adr/025-commentary-retrieval.md); that tuning it improves the
-hybrid ranking is the hypothesis a pilot would test. The serving embedder and the frozen
+commentary retrieval of [ADR-025](../adr/025-commentary-retrieval.md). The primary hypothesis a
+pilot would test is that tuning improves the dense ranking; whether that carries into the hybrid
+ranking the generator and the agent use is the secondary one. The serving embedder and the frozen
 records are out of scope; a tuned model would live only in `tools/` as a second, separate index.
 
 ## The current pipeline
@@ -93,7 +95,9 @@ is a single passage (July 2.6, the update of the AL handbook).
 
 Unmatched by this rule does not mean never seen during evaluation. The rule sees only gold
 evidence and named position codes: a question can concern a topic without either, and retrieval
-exposes passages to the model whatever their labels, and citations expose them to the reviewer. A
+exposes passages to the model whatever their labels; the reviews saw them as their protocols
+allowed (the Phase 2 and D1 reviews worked from the full supplied contexts, the blinded Phase 3
+review from the cited passages only). A
 private check of the
 recorded runs on 2026-11-22 found the July 2.6 passage in the retrieved context of two Phase 2 dev
 cases, of both calls of the D1 agent run and of 8 of the 18 Phase 3 comparison cells, and seven
@@ -128,12 +132,12 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
   Recall@5 0.75 and MRR 0.708, hybrid 0.833 and 0.722, BM25 0.875 and 0.875. On E2 to E6 the hybrid
   top 5 held 7 of 13 gold items and the top 10 held 11. There is headroom for dense retrieval, but
   it is measured on known questions only.
-- **Chance floor:** with the edition filter, a random top 5 contains a given single gold passage
+- **Random baseline:** with the edition filter, a random top 5 contains a given single gold passage
   with probability 5/11 = 0.455 in January, 5/29 = 0.172 in July and 5/40 = 0.125 over both,
   and a January question with two distinct gold passages hits at least one of them with
   probability 0.727. These are chance baselines of a uniformly random top 5, not floors for any
-  ranking and not the headroom against e5's measured hit rate; with only 11 January passages even
-  chance reaches 0.455 for a single gold passage, so January questions say little about a ranking.
+  ranking and not the headroom against e5's measured hit rate; with only 11 January passages a
+  random top 5 already hits a single gold passage with probability 0.455.
 - **Detectable difference:** for a paired per-question hit at 5, an exact two-sided sign test at
   the 0.05 level needs at least 6 discordant questions, all in the tuned model's favour
   (p = 0.031). The smallest detectable difference is therefore 6/n: 0.60 for 10 held-out
@@ -193,7 +197,15 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
 
 ## Smallest useful data work
 
-Both steps run offline and cost nothing but time; a pilot is a go when both meet their threshold.
+Both steps run offline and cost nothing but time; a pilot is a go when both meet their threshold
+and the frozen design passes the power gate below, and it runs only as exploratory otherwise.
+
+**Power gate, fixed before the freeze:** the inferential unit (the question, or the family where
+questions share evidence, a family's sign being that of its summed per-question differences in hit
+at 5, ties dropped), the effect the pilot should detect and the minimum power Erhan sets for it.
+The design passes when its count of independent units reaches that power under the exact sign test;
+with families as the unit, at least 6 families are needed before any result can reach the 5 %
+level, so the four-family minimum alone does not pass.
 
 1. **Data inventory of earlier commentaries (about 2 to 4 hours):** pin two to four earlier
    public BAG commentaries by SHA-256 in a separate manifest, run the existing corpus builder on
@@ -278,7 +290,7 @@ or the books' ceiling where they apply.
 | Evaluation (two indexes, about 40 questions) | 0 | 0 | local, offline |
 | Jev live calls (optional) | not estimated | not estimated | prices not verified |
 | **Fine-tuning pilot, total (N = 100)** | **about 5** (0.75 if the queries are drafted in a session, assuming no incremental charge for it) | **about 32** (3.00 under the same assumption) | queries by API, training on `a10g-small`, under the conditions of both rows; 0 if both run locally and the queries are drafted in a session (assumed to add no metered charge); the optional Jev calls are not included |
-| Selective evidence search, 10 cases × 3 conditions × 3 repeats | about 23 (if the extended agent costs like the existing one) | 310.464 (30 case runs at the worst case of 10.3488) | Phase 3 calculated means per cell: agent 0.263640, fixed top 10 0.246717 (one run per cell, variance unknown). The worst case exceeds the remaining headroom of USD 92.939448 under the Phase 2 and 3 limit, where the books admit at most 8 case runs per invocation. The figures assume the selective condition is registered in the runner with a cap of three calls, its sufficiency check included. Before the first call Erhan approves a budget for the whole matrix or a smaller complete design: each invocation checks only its own remaining cells, so batches (each repeat under its own case ID, since the books refuse a cell already booked) only schedule an approved design and must not leave a paid but incomplete comparison |
+| Selective evidence search, 10 cases × 3 conditions × 3 repeats | about 23 (if the extended agent costs like the existing one) | 310.464 (30 case runs at the worst case of 10.3488) | Phase 3 calculated means per cell: agent 0.263640, fixed top 10 0.246717 (one run per cell, variance unknown). The worst case exceeds the remaining headroom of USD 92.939448 under the Phase 2 and 3 limit, where the books admit at most 8 case runs per invocation. The figures assume the selective condition is registered in the runner with a cap of three calls, its sufficiency check included. Before the first call Erhan approves a budget for the whole matrix or a smaller complete design, and an offline check confirms that the worst case of every planned batch fits the headroom the code enforces (the books hold the USD 100 aggregate limit in code, so an approval alone does not raise it); otherwise the design shrinks to fit. Each invocation checks only its own remaining cells, so batches (each repeat under its own case ID, since the books refuse a cell already booked) only schedule an approved design and must not leave a paid but incomplete comparison |
 
 The books hold USD 7.060552 of the USD 100 aggregate limit for Phases 2 and 3. Whether Phase 4
 spending counts against that limit, and which provider pays for it, is Erhan's decision.
