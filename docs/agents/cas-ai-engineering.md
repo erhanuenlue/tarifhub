@@ -51,11 +51,13 @@ new capability and its measured result.
 
 Per the course, Phase 4 is either variant 1, extend the agentic behaviour (justify, evaluate,
 assess), or variant 2, fine-tune a model (justify, evaluate, assess); both end in a demo and a
-presentation. The lecturer accepts fine-tuning the embedding model compared with the starting
-model (Erhan, 2026-11-22). The extract also lists fine-tuning among the module's required
-contents beside RAG, agents and evaluation, and an October note left open whether variant 1 alone
-satisfies that; ask the lecturer before choosing variant 1. Zwischenbericht 1 had planned a LoRA
-Change Extractor instead; the feasibility page explains the change.
+presentation. In the module forum the lecturer confirmed that the two variants are alternatives
+and that an evaluated fine-tuning of the embedding model, compared with the starting model, is
+acceptable (the lecturer's forum clarification, relayed by Erhan on 2026-11-22; the post itself is
+not reproduced here). This settles what an October note had left open: the extract lists
+fine-tuning among the module's contents beside RAG, agents and evaluation, but either variant
+completes Phase 4. Zwischenbericht 1 had planned a LoRA Change Extractor instead; the feasibility
+page explains the change.
 
 ## Delivery requirements
 
@@ -75,8 +77,8 @@ check Moodle before relying on a date or a rule.
 - **Every PDF:** a complete list of sources and of AI tools (tool, purpose, affected parts); the
   declaration of independent work is confirmed in Moodle.
 
-Open gaps (planning, not yet decided): this repository lives on GitHub, so the FFHS-Git copy, its
-README declaration and an executed notebook do not exist yet.
+Open gaps (planning, not yet decided): this repository is on GitHub and refers to no FFHS-Git copy,
+README declaration or executed notebook; whether they exist elsewhere was not checked here.
 
 ## Regression check, not requirement set
 
