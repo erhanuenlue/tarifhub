@@ -43,9 +43,10 @@ isolate the dense embedder as the cause. No change record has been labelled, and
 feeds no component that exists. In the module forum the lecturer confirmed that the two Phase 4
 variants are alternatives and that an evaluated fine-tuning of the embedding model, compared with
 the starting model, is acceptable (the lecturer's forum clarification, relayed by Erhan on
-2026-11-22), so the candidate is the component whose misses the agent compensates:
-`intfloat/multilingual-e5-large` inside the commentary retrieval of
-[ADR-025](../adr/025-commentary-retrieval.md). The serving embedder and the frozen
+2026-11-22). The agent recovered evidence missing from its initial hybrid context, so the
+candidate is the dense half of that ranking, `intfloat/multilingual-e5-large` inside the
+commentary retrieval of [ADR-025](../adr/025-commentary-retrieval.md); that tuning it improves the
+hybrid ranking is the hypothesis a pilot would test. The serving embedder and the frozen
 records are out of scope; a tuned model would live only in `tools/` as a second, separate index.
 
 ## The current pipeline
@@ -92,7 +93,8 @@ is a single passage (July 2.6, the update of the AL handbook).
 
 Unmatched by this rule does not mean never seen during evaluation. The rule sees only gold
 evidence and named position codes: a question can concern a topic without either, and retrieval
-puts passages in front of the model and the reviewer whatever their labels. A private check of the
+exposes passages to the model whatever their labels, and citations expose them to the reviewer. A
+private check of the
 recorded runs on 2026-11-22 found the July 2.6 passage in the retrieved context of two Phase 2 dev
 cases, of both calls of the D1 agent run and of 8 of the 18 Phase 3 comparison cells, and seven
 recorded answers cite it (six comparison cells and one Phase 2 dev case). No 2026 family is
@@ -129,8 +131,9 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
 - **Chance floor:** with the edition filter, a random top 5 contains a given single gold passage
   with probability 5/11 = 0.455 in January, 5/29 = 0.172 in July and 5/40 = 0.125 over both,
   and a January question with two distinct gold passages hits at least one of them with
-  probability 0.727. This is a floor for any ranking, not the headroom against e5; January
-  questions leave little room to show anything.
+  probability 0.727. These are chance baselines of a uniformly random top 5, not floors for any
+  ranking and not the headroom against e5's measured hit rate; with only 11 January passages even
+  chance reaches 0.455 for a single gold passage, so January questions say little about a ranking.
 - **Detectable difference:** for a paired per-question hit at 5, an exact two-sided sign test at
   the 0.05 level needs at least 6 discordant questions, all in the tuned model's favour
   (p = 0.031). The smallest detectable difference is therefore 6/n: 0.60 for 10 held-out
@@ -145,11 +148,13 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
 
 1. **Training source outside the test families.** Because the 2026 corpus offers only the
    lopsided family-disjoint split above, training passages come from earlier public BAG
-   commentaries (time-disjoint editions) and the test from the 2026 corpus. The older passages are
-   grouped into families by the same rule (shared position codes or named projects such as
-   transAL-2, across sections) before the split; every older family connected to a 2026 test
-   family is dropped from training as a whole, and the training passages are counted only after
-   that, so related changes stay on one side.
+   commentaries (time-disjoint editions) and the test from the 2026 corpus. One exclusion rule
+   serves this split and the inventory below: older passages are grouped into families by shared
+   position codes or named projects (such as transAL-2), across sections, before anything is
+   counted (older editions have no gold evidence to link them); every older family that shares a
+   position code or a named project with any of the six 2026 families is dropped from training as
+   a whole, and the training passages are counted only after that, so related changes stay on one
+   side.
 2. **Known questions are never test questions.** D1 to D6, U1, U2 and E1 to E6 may serve as a
    development check of the training code, reported apart, never as the result.
 3. **Fresh held-out questions, frozen before tuning.** At least 30 answerable questions plus a few
@@ -173,9 +178,12 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
 - **Separate indexes, identical inputs:** each model embeds the same corpus build (same passage
   IDs and text hashes, token budget 256) into its own index; every question keeps the same edition
   filter for both.
-- **Primary endpoint:** a paired hit at 5 per held-out question (Evidence Recall@5 above 0),
-  tested with the exact sign test above; the inferential unit (the question, or the family where
-  questions share evidence) and the power assumption are fixed before the freeze.
+- **Primary endpoint:** a paired hit at 5 per held-out question with gold evidence (Evidence
+  Recall@5 above 0), tested with the exact sign test above; questions without supporting evidence
+  have no defined hit and are reported apart. The inferential unit (the question, or the family
+  where questions share evidence) and the power assumption are fixed before the freeze; with the
+  family as the unit, four or five families give a smallest possible two-sided p of 0.125 or
+  0.0625, so such a design is exploratory unless it has enough families.
 - **Primary metrics, as paired differences:** Evidence Recall@5 and MRR@5 per held-out question
   from `evaluation.py`, with a bootstrap interval over the inferential unit and each family's
   results shown; both can change without changing the hit at 5.
@@ -189,15 +197,17 @@ Both steps run offline and cost nothing but time; a pilot is a go when both meet
 
 1. **Data inventory of earlier commentaries (about 2 to 4 hours):** pin two to four earlier
    public BAG commentaries by SHA-256 in a separate manifest, run the existing corpus builder on
-   them, and count passages, families and the passages that remain after dropping those related to
-   a 2026 family. Proposed threshold, a design choice of this project rather than a course or
+   them, and count passages, families and the passages that remain under the exclusion rule of
+   step 1 of the [proposed split](#proposed-split-and-freezing-procedure). Proposed threshold, a design choice of this project rather than a course or
    statistical requirement: at least 100 remaining training passages from at least 10 families. Parser fit to older layouts is a risk this step reveals.
 2. **Fresh held-out questions (about 4 to 6 hours with Erhan's decisions):** draft, decide and
    freeze the questions of step 3 above. Proposed threshold, a design choice of this project rather
    than a course requirement: at least 30 answerable questions over at least 4 families. It is
    descriptive, not a power target: 30 is the smallest set on which the sign test above could
    show a difference of 0.20 at all (six wins, no losses), and its power for a true gain of that
-   size is only about 0.57.
+   size is only about 0.57. Both figures take the question as the unit; if the frozen design makes
+   the family the unit, the gate also needs a power check for that design or the pilot counts as
+   exploratory.
 
 If step 1 falls short, the remaining fine-tuning design is the lopsided in-corpus split (train on
 the large family, test fresh questions on the others), whose result would be exploratory: a null
@@ -212,8 +222,10 @@ passages already held all required evidence ([comparison evidence](2026-11-21-ph
 whether it would answer without a search when the first passages suffice is untested. Its
 instruction asks it to search only for what the passages do not state, and its tool is offered
 with `tool_choice` auto, so it may already skip a search. A bounded extension makes that decision
-explicit per question (for example a recorded sufficiency check before the first search), and is
-evaluated against fixed top 10 and the existing agent on fresh cases, half with evidence inside the top 5 and half beyond rank 10 (under the edition filter the
+explicit per question (for example a recorded sufficiency check before the first search). It
+would be a new registered condition of the comparison runner, which today runs only `fixed5`,
+`fixed10` and `agent` and refuses any other, with a call cap that includes the sufficiency check,
+and it is evaluated against fixed top 10 and the existing agent on fresh cases, half with evidence inside the top 5 and half beyond rank 10 (under the edition filter the
 11 January passages leave room for only one beyond rank 10), with at least three repeats per
 cell. It needs no training data and no GPU, only fresh cases, and it runs through the existing
 books of [ADR-026](../adr/026-commentary-evidence-search.md).
@@ -259,14 +271,14 @@ or the books' ceiling where they apply.
 | Item | Expected (USD) | Maximum (USD) | Basis |
 |---|---|---|---|
 | Data inventory and freeze (steps 1, 2) | 0 | 0 | local, offline |
-| Training queries drafted in a Claude Code session and decided by Erhan | 0 API | 0 API | no metered API call |
+| Training queries drafted in a Claude Code session and decided by Erhan | 0 API | 0 API | no metered API call; assumes the session adds no incremental model charge, which is not confirmed |
 | or: training queries generated by `claude-opus-5-5` at effort `max`, 5 passages per call, N = 100 passages (20 calls) | 4.13 (0.206 per call) | 28.93 (0.72336 per call, one retry each) | `pricing.json`: input 4, output 20 per million tokens, global inference. Expected: about 2,000 input tokens and the median 9,922 output tokens (thinking included) of the 26 calls the Phase 3 ledger settled (range 448 to 25,270). Ceiling as in ADR-026: 2,000 input tokens with a 10 % margin at 8 per million plus 32,000 output tokens, times 1.1. The maximum holds only if every request is counted and refused above 2,000 input tokens (instructions and schema included) and capped at 32,000 output tokens before it is sent; otherwise it is a conditional estimate |
 | Training on Hugging Face Jobs, `a10g-small` | 0.75 (3 jobs of about 15 minutes) | 3.00 (3 jobs, 30-minute timeout, one retry each) | 1.00 per hour, billed per minute while starting or running (Hugging Face Jobs pricing, retrieved 2026-11-22). Conditional: the maximum holds only if the 30-minute timeout bounds the whole billed time of an attempt, start-up included; neither the rate nor the runtime has been confirmed by a run |
 | or: training locally on the M1 Pro (32 GB, `mps`) | 0 | 0 | to be confirmed by a one-epoch smoke run |
 | Evaluation (two indexes, about 40 questions) | 0 | 0 | local, offline |
 | Jev live calls (optional) | not estimated | not estimated | prices not verified |
-| **Fine-tuning pilot, total (N = 100)** | **about 5** (0.75 if the queries are drafted in a session) | **about 32** (3.00 if drafted in a session) | queries by API, training on `a10g-small`, under the conditions of both rows; 0 if both run locally and the queries are drafted in a session (assumed to add no metered charge); the optional Jev calls are not included |
-| Selective evidence search, 10 cases × 3 conditions × 3 repeats | about 23 (if the extended agent costs like the existing one) | 310.464 (30 case runs at the worst case of 10.3488) | Phase 3 calculated means per cell: agent 0.263640, fixed top 10 0.246717 (one run per cell, variance unknown). The worst case exceeds the remaining headroom of USD 92.939448 under the Phase 2 and 3 limit, where the books admit at most 8 case runs per invocation: the matrix would run in admitted batches (for example 2 cases with all 3 repeats, each repeat under its own case ID, since the books refuse a cell already booked) or shrink, and any Phase 4 limit is Erhan's decision |
+| **Fine-tuning pilot, total (N = 100)** | **about 5** (0.75 if the queries are drafted in a session, assuming no incremental charge for it) | **about 32** (3.00 under the same assumption) | queries by API, training on `a10g-small`, under the conditions of both rows; 0 if both run locally and the queries are drafted in a session (assumed to add no metered charge); the optional Jev calls are not included |
+| Selective evidence search, 10 cases × 3 conditions × 3 repeats | about 23 (if the extended agent costs like the existing one) | 310.464 (30 case runs at the worst case of 10.3488) | Phase 3 calculated means per cell: agent 0.263640, fixed top 10 0.246717 (one run per cell, variance unknown). The worst case exceeds the remaining headroom of USD 92.939448 under the Phase 2 and 3 limit, where the books admit at most 8 case runs per invocation. The figures assume the selective condition is registered in the runner with a cap of three calls, its sufficiency check included. Before the first call Erhan approves a budget for the whole matrix or a smaller complete design: each invocation checks only its own remaining cells, so batches (each repeat under its own case ID, since the books refuse a cell already booked) only schedule an approved design and must not leave a paid but incomplete comparison |
 
 The books hold USD 7.060552 of the USD 100 aggregate limit for Phases 2 and 3. Whether Phase 4
 spending counts against that limit, and which provider pays for it, is Erhan's decision.
