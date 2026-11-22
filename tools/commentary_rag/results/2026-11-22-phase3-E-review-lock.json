@@ -1,0 +1,25 @@
+{
+ "record": "Lock of Erhan's confirmed blinded review of the Phase 3 comparison E1 to E6, made before the blinding key was opened",
+ "run_date": "2026-11-21",
+ "ratings_confirmed_date": "2026-11-22",
+ "locked_at": "2026-11-22T00:59:03.767Z",
+ "branch_head_at_lock": "5a921fe255146acabad85505409e7aefc284630f",
+ "key_opened_at_lock": false,
+ "sha256": {
+  "blinded_review_packet": "5a175878a8d2c716e3cfaf9d7594fc6bcec4653f6f46f6f8def95991ec3434b7",
+  "completed_review_packet": "66e08087351998a08eb31803ffa09d5a290aebbb817e8dbd6de82fac01a0b45e",
+  "ratings_template": "e302ebddf8d981e505837c6361a50169004e0fceedb65d3e77e9e5be21774ee8",
+  "ratings": "0f253ad3e211aa9a400d41c48485e8e947e462d2957747a61614223c1dca7db8",
+  "answer_ids": "1a7ec6a2452f0d816a4abc465564b2ac97b1c4216746a081fd8c902694cfbd18",
+  "blinding_key": "136ad53398a5a58515d745c6c3627f09cf43a924653008bbc36dd4fddd5f1670"
+ },
+ "ratings_transfer": "the confirmed marks were transferred by a deterministic local parse into a structured ratings file on the template; re-rendering them into the blank packet reproduces the completed packet exactly (2157 of 2157 lines)",
+ "counts": {
+  "answers": 18,
+  "claims_rated": 124,
+  "required_claim_marks": 39,
+  "listed_error_checks": 75,
+  "gap_marks": 6
+ },
+ "local_only": "the packets, the ratings, the neutral IDs and the key are git-ignored under tools/commentary_rag/local/ and are not published; only these hashes are"
+}
