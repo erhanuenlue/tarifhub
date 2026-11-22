@@ -4,7 +4,9 @@ Diagnostic record of 2026-11-22 for the commentary pilot of
 [ADR-025](../adr/025-commentary-retrieval.md): what pdfplumber's character coordinates show about
 two known parsing problems of the pilot's corpus in the July 2026 BAG commentary, set against the
 Poppler text the pilot parses. A standalone probe, `tools/commentary_rag/layout_probe.py`,
-produced every figure on this page; the pilot does not import it. Nothing in the frozen corpus,
+produced the figures on this page; the exceptions are named where they appear (page size,
+tagging and creator from `pdfinfo`, font sizes from `pdftohtml`, the `corpus.py` hash from
+`shasum`). The pilot does not import the probe. Nothing in the frozen corpus,
 its run records or the Phase 3 evidence changed, and no model, key or paid service was used (uv
 fetched pdfplumber and its dependencies from PyPI into a throwaway environment).
 
@@ -39,7 +41,7 @@ edition only.
 - **Input.** The `commentary_pdf` of edition 2026-07-01 in `data/manifests/bag-al.json`, read
   once and checked against the manifest's SHA-256
   `fe1856df9f7d0023aac52e13dc61a0055a7105b4810f18cc8822366625af5105` before use; 8 pages, A4
-  (595.32 by 841.92 pt).
+  (595.32 by 841.92 pt, as `pdfinfo` reports).
 - **Poppler side, as the pilot does it.** The same bytes on stdin to
   `pdftotext -enc UTF-8 - -`, pages split at form feeds, every line NFC-normalised with
   whitespace folded, empty lines dropped. All 29 July passages of the frozen record
@@ -208,7 +210,7 @@ January 2026 commentary is tagged as well, `Acrobat PDFMaker 24 pour Word`). pdf
 the marked content of every character and the document's structure tree:
 
 - every Arial-BoldMT 11.04 character is tagged H2, the in-text references are spans, footnote
-  paragraphs are P and the page footers are artifacts;
+  text is P, or Span and Link where a note holds a link, and the page footers are artifacts;
 - the H2 elements hold the complete headings, for example
   `2.3 ... Positionen1 mittels Hochdurchsatz-Sequenzierung: Aktualisierung des Referenzdokumentes «Bonnes Pratiques»`
   and all 32 words of 2.5, with the hyphens of the line breaks kept;
