@@ -122,8 +122,19 @@ observation on this set, not an accuracy figure.
     passage identities removed, added or changed and the evidence items whose passages moved.
 - `test_corpus.py`, `test_retrieval.py`, `test_evaluation.py`: offline tests with small generated
   PDFs, a stand-in tokenizer and a stand-in embedder.
-- `conftest.py`: stops the suite with a message when the `anthropic` client or `pdftotext` is
-  missing, so no test is skipped for a missing dependency.
+- `conftest.py`: stops the suite with a message when the `anthropic` client, `pytest-socket` or
+  `pdftotext` is missing, so no test is skipped for a missing dependency, and turns pytest-socket
+  on around each test: creating a Python socket other than a Unix socket raises
+  `SocketBlockedError`, so a test that tries to reach the network fails instead of connecting. The
+  block covers Python's `socket` module inside each test only, not subprocesses such as
+  `pdftotext` or sockets opened by C libraries. `test_socket_guard.py` checks it.
+- `layout_probe.py`: a diagnostic outside the pilot (nothing imports it). For one manifest-verified
+  commentary it sets pdfplumber's character geometry and the PDF's tags beside the Poppler text the
+  corpus is cut from, finds the frozen passages by text SHA-256 and reports heading lines,
+  footnotes and their references. It needs pdfplumber, which no environment here installs: run it
+  with `uv run --no-project --with pdfplumber==0.11.11 python tools/commentary_rag/layout_probe.py
+  --edition 2026-07-01 --pages 4,6`; without pdfplumber it exits 2. Evidence:
+  [`docs/evidence/2026-11-22-pdfplumber-layout-probe.md`](../../docs/evidence/2026-11-22-pdfplumber-layout-probe.md).
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the
   answer schema (status, claims with passage citations, missing evidence), local validation
@@ -226,6 +237,13 @@ observation on this set, not an accuracy figure.
   twelve-passage ranking is worked out by hand, the real retriever, loop and `anthropic` client on
   a mocked HTTP transport and temporary books; the repository's `results/` and `local/` are
   checked to stay byte-identical.
+- `trace_demo.py`: one synthetic question through the real agent loop (`evidence_agent.run_case`)
+  with a scripted provider and the real search over the synthetic test corpus, traced to a local
+  Phoenix over OpenTelemetry (OTLP/HTTP, 127.0.0.1:6016). The spans hold IDs, codes, counts, elapsed
+  times and SHA-256 prefixes only: no text and no cost. The books are temporary. Offline, no key
+  (below, "Tracing one synthetic run in a local Phoenix").
+- `phoenix_serve.sh`: starts that Phoenix from an empty environment with TarifHub's own storage in
+  `local/phoenix/`, loopback only, gRPC receiver disabled.
 - [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): the offline
   plan for the cases E1 to E6 (IDs and editions only, made before they were frozen), made against
   the recorded books.
@@ -292,10 +310,11 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 336 (no model, no key, no network): poppler's `pdftotext` and the ingestion
-`ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
-them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
-suite in its own `commentary-rag` job):
+Offline tests, all 339 (no model, no key, no network; pytest-socket blocks Python sockets in each
+test): poppler's `pdftotext`, the ingestion `ai` extra (the locked `anthropic` client) and the
+`dev` extra's `pytest-socket` are required, and the suite refuses to start without them. A
+separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same suite in its
+own `commentary-rag` job):
 
 ```bash
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion \
@@ -647,6 +666,40 @@ keeps the outputs of the cells before it; estimates count only cells whose every
 from usage. They do not show real model behaviour, real token counts or costs, or which condition
 answers better.
 
+## Tracing one synthetic run in a local Phoenix
+
+`trace_demo.py` shows one search decision of the evidence-seeking agent and its elapsed time in a
+local Arize Phoenix, without a key, a provider call or any cost.
+
+- **Run:** one synthetic question passes through the real loop. The pilot's client talks to a
+  scripted provider behind `httpx.MockTransport`: call 1 asks for one `search_commentary` call and
+  call 2 answers. The real search ranks the synthetic corpus of `test_evidence_search`.
+- **Spans:** a transport wrapper and a search wrapper (both outside the loop's modules) record four
+  OpenTelemetry spans. The case span carries outcome, calls and searches; each generation call
+  carries its decision (`search` or `answer`), stop reason and mocked token counts; the search span
+  carries its requested limit and new passage count. Every span carries `elapsed_ms`; the 400 ms per
+  call and 50 ms per query embedding in it are declared synthetic delays.
+- **What they omit:** no question, passage, query or answer text, and no `llm.model_name` or
+  `llm.token_count` attribute, so Phoenix derives no cost. The ledgers remain the only spending
+  record. The books are a temporary copy of the pinned Phase 2 ledger, deleted after the run, and
+  the spans are exported only when no span carries a run text.
+
+Start Phoenix 20.26 (here the one installed with the CAS harness) and run the demo from the
+repository root:
+
+```bash
+PHOENIX_PYTHON=<python of a Phoenix 20.26 installation> tools/commentary_rag/phoenix_serve.sh &
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" env -u ANTHROPIC_API_KEY \
+    uv run --project services/ingestion --frozen --extra ai --extra dev \
+    --with opentelemetry-sdk --with opentelemetry-exporter-otlp-proto-http \
+    python tools/commentary_rag/trace_demo.py
+```
+
+The `--with` packages form an ephemeral overlay: `uv.lock` and the pilot venv stay unchanged, and
+the pilot tests never import the file. The UI is http://127.0.0.1:6016 (project
+`tarifhub-evidence-agent`); the spans read back with `GET /v1/projects` and
+`GET /v1/projects/tarifhub-evidence-agent/spans?trace_id=<id>`.
+
 ## Limitations
 
 - Two short documents: 40 passages in the corrected run (29 July, 11 January; 47 in the
@@ -666,7 +719,12 @@ answers better.
   title, and footnotes join the last section on their page: the footnote list of HDS positions
   belonging to section 2.3 of the July commentary appears as three section 2.4 passages on p. 4.
   A page without a printed footer would get no page label (both documents have one on every
-  content page).
+  content page). Measured on 2026-11-22 with the layout probe: 13 of the 29 July passages carry a
+  section title cut to the heading's first line (2.1, 2.2, 2.3, 2.5; the words stay in the passage
+  text), the 132 position codes of footnote 1 (section 2.3) sit in `p4/s2.4/3` to `/5`, and
+  footnotes 2 to 4 land in the last passage of their page instead of the one that references them.
+  Both commentaries are tagged PDFs; a fix would be a new corpus version, not an edit of the frozen
+  one.
 - Sentences are split by a German heuristic with an abbreviation list.
 - The term check for a required claim works at answer level: its terms may stand in one claim and
   the covering citation in another. Claim-level support is the human review's judgement.
