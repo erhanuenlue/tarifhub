@@ -4,7 +4,8 @@
 # TarifHub's own storage in tools/commentary_rag/local/phoenix (git-ignored). Loopback only: the
 # UI, REST API and OTLP/HTTP listen on 127.0.0.1:6016, and the gRPC receiver, which Phoenix 20.26
 # binds to all interfaces whatever PHOENIX_HOST says, is disabled. Auth is off, so it must stay
-# local. No provider key reaches the process. Stop it with Ctrl-C (or kill its PID).
+# local. It starts from an empty environment (env -i) with an allowlist, so no key or token of the
+# calling shell reaches the process. Stop it with Ctrl-C (or kill its PID).
 set -eu
 : "${PHOENIX_PYTHON:?set PHOENIX_PYTHON to the python of an installed Phoenix 20.26}"
 [ -x "$PHOENIX_PYTHON" ] || { echo "refused: $PHOENIX_PYTHON is not executable" >&2; exit 3; }
@@ -12,7 +13,8 @@ ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STORE="$ROOT/tools/commentary_rag/local/phoenix"
 mkdir -p "$STORE"
 cd "$STORE"
-exec env -u ANTHROPIC_API_KEY -u ANTHROPIC_AUTH_TOKEN -u OPENAI_API_KEY \
+exec env -i HOME="$HOME" TMPDIR="${TMPDIR:-/tmp}" LANG="${LANG:-en_US.UTF-8}" \
+  PATH=/usr/bin:/bin:/usr/sbin:/sbin \
   PHOENIX_WORKING_DIR="$STORE" PHOENIX_SQL_DATABASE_URL="sqlite:///$STORE/phoenix.db" \
   PHOENIX_HOST=127.0.0.1 PHOENIX_PORT=6016 PHOENIX_ENABLE_AUTH=false \
   PHOENIX_ALLOW_EXTERNAL_RESOURCES=false PHOENIX_ENABLE_PROMETHEUS=false \
