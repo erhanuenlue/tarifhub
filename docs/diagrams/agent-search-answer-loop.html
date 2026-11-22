@@ -77,7 +77,7 @@
     <div class="diagram-container">
       <svg viewBox="0 0 560 648" xmlns="http://www.w3.org/2000/svg" role="img" aria-labelledby="agent-search-answer-loop-title agent-search-answer-loop-desc">
       <title id="agent-search-answer-loop-title">One question in the agent loop</title>
-      <desc id="agent-search-answer-loop-desc">Sequence diagram of one question in the evidence-seeking agent (ADR-026): the runner checks its input, ranks a fresh hybrid top 5 and calls the agent once; the books admit three calls at the input cap; each of at most three calls is token-counted, checked against the input cap and the spending limit, reserved, sent once to the Messages API and settled, with the deadline checked before each count and send and after each call and search; one valid search_commentary call while tool_choice is auto runs one search in the agent's own code, within two searches and ten passages; the answer's schema and citations are checked and the outcome goes back to the runner, which writes its outputs when a call was reserved or its reservation is uncertain.</desc>
+      <desc id="agent-search-answer-loop-desc">Sequence diagram of one question in the evidence-seeking agent (ADR-026): the runner checks its input, ranks a fresh hybrid top 5 and calls the agent once; the books admit three calls at the input cap; each of at most three calls is token-counted, checked against the input cap and the spending limit, reserved, sent once to the Messages API and settled, with the deadline checked before each count and send and after each call and search; one valid search_commentary call while tool_choice is auto is dispatched once to the search tool in the agent's own code (a call above its reservation stops before dispatch), and the tool ranks within two searches and ten passages or returns refused arguments as an error result; the answer's schema and citations are checked and the outcome goes back to the runner, which writes its outputs when a call was reserved or its reservation is uncertain.</desc>
       <defs>
       <marker id="arrow" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#4f5d75"/></marker>
       <marker id="arrow-accent" markerWidth="8" markerHeight="6" refX="7" refY="3" orient="auto"><polygon points="0 0, 8 3, 0 6" fill="#bf4520"/></marker>
@@ -138,7 +138,7 @@
       <rect x="238" y="312" width="88" height="14" rx="2" fill="#f5f5f5"/>
       <text x="282" y="322" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SAVE · SETTLE</text>
       <rect x="238" y="395" width="96" height="14" rx="2" fill="#f5f5f5"/>
-      <text x="286" y="405" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">RUN ONE SEARCH</text>
+      <text x="286" y="405" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">DISPATCH TOOL</text>
       <rect x="238" y="487" width="96" height="14" rx="2" fill="#f5f5f5"/>
       <text x="286" y="497" fill="#4f5d75" font-size="9" font-family="'Geist Mono', ui-monospace, monospace" text-anchor="middle" letter-spacing="0.06em">SCHEMA · CITES</text>
       <rect x="124" y="510" width="52" height="14" rx="2" fill="#f5f5f5"/>

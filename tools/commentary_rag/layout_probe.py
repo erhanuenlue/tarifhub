@@ -927,14 +927,20 @@ def probe(args: argparse.Namespace) -> list[str]:
         for p in json.loads(args.record.read_text(encoding="utf-8"))["passages"]
         if p["edition"] == args.edition
     ]
+    if not record:
+        raise ProbeError(f"{args.record.name}: no passage of edition {args.edition}")
     other = sorted({p["document_sha256"] for p in record} - {digest})
     if other:
         raise ProbeError(
             f"{args.record.name}: {args.edition} passages from another PDF ({', '.join(other)})"
         )
-    outside = [p["passage_id"] for p in record if not 1 <= p["page"] <= len(poppler)]
+    outside = [
+        p["passage_id"]
+        for p in record
+        if type(p["page"]) is not int or not 1 <= p["page"] <= len(poppler)
+    ]
     if outside:
-        raise ProbeError(f"{args.record.name}: pages outside 1-{len(poppler)}: {', '.join(outside)}")
+        raise ProbeError(f"{args.record.name}: pages that are not whole numbers in 1-{len(poppler)}: {', '.join(outside)}")
     located = [
         locate(lines, [p for p in record if p["page"] == n])
         for n, lines in enumerate(poppler, 1)

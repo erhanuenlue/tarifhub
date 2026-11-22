@@ -18,8 +18,9 @@ raw request and response artifacts are deleted with the folder. The spans leave 
 when the run is the scripted one, the traced responses are the ones the loop recorded, and no span
 carries any of the run's texts. The export goes over OTLP/HTTP to ``ENDPOINT`` on 127.0.0.1
 without proxies, and a guard refuses every Python socket ``connect`` to a non-loopback address
-until the run ends. Every ``OTEL_`` variable of the caller is dropped for this process first, so
-no header, resource attribute or endpoint configured for another collector reaches Phoenix.
+until the run ends. Every ``OTEL_`` variable of the caller is set aside for the run (and put back
+after it), so no header, resource attribute or endpoint configured for another collector reaches
+Phoenix.
 The latencies are declared synthetic delays (``SYNTHETIC_DELAY_S``), not measurements of a
 provider.
 
@@ -304,13 +305,14 @@ def main() -> int:
               "-u ANTHROPIC_AUTH_TOKEN", file=sys.stderr)
         return 3
     # Headers, resource attributes or an endpoint set for another collector stay out of the trace.
-    for name in [name for name in os.environ if name.startswith("OTEL_")]:
-        del os.environ[name]
+    # They come back afterwards, for a caller that runs main() in its own process.
+    removed = {name: os.environ.pop(name) for name in list(os.environ) if name.startswith("OTEL_")}
     restore = _loopback_only()
     try:
         return _run()
     finally:
         restore()
+        os.environ.update(removed)
 
 
 def _run() -> int:
