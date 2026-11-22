@@ -17,7 +17,9 @@ ledger, which the loop checks against its pinned hash, and a fresh active ledger
 raw request and response artifacts are deleted with the folder. The spans leave the process only
 when the run is the scripted one, the traced responses are the ones the loop recorded, and no span
 carries any of the run's texts. The export goes over OTLP/HTTP to ``ENDPOINT`` on 127.0.0.1
-without proxies, and a guard refuses every Python socket ``connect`` to a non-loopback address.
+without proxies, and a guard refuses every Python socket ``connect`` to a non-loopback address
+until the run ends. Every ``OTEL_`` variable of the caller is dropped for this process first, so
+no header, resource attribute or endpoint configured for another collector reaches Phoenix.
 The latencies are declared synthetic delays (``SYNTHETIC_DELAY_S``), not measurements of a
 provider.
 
@@ -191,8 +193,8 @@ def traced_search(tracer, search):
     return traced
 
 
-def _loopback_only() -> None:
-    """Refuse, for this process, every Python socket ``connect`` to a non-loopback address."""
+def _loopback_only():
+    """Refuse every Python socket ``connect`` to a non-loopback address; return the undo."""
 
     connect = socket.socket.connect
 
@@ -202,6 +204,11 @@ def _loopback_only() -> None:
         connect(sock, address)
 
     socket.socket.connect = guarded
+
+    def restore() -> None:
+        socket.socket.connect = connect
+
+    return restore
 
 
 def _traced_case(tracer, folder: Path) -> tuple[evidence_agent.CaseResult, dict]:
@@ -296,7 +303,17 @@ def main() -> int:
         print("refused: a provider credential is set; run with env -u ANTHROPIC_API_KEY "
               "-u ANTHROPIC_AUTH_TOKEN", file=sys.stderr)
         return 3
-    _loopback_only()
+    # Headers, resource attributes or an endpoint set for another collector stay out of the trace.
+    for name in [name for name in os.environ if name.startswith("OTEL_")]:
+        del os.environ[name]
+    restore = _loopback_only()
+    try:
+        return _run()
+    finally:
+        restore()
+
+
+def _run() -> int:
     memory = InMemorySpanExporter()
     tracing = TracerProvider(resource=Resource.create({
         "service.name": "tarifhub-trace-demo", "openinference.project.name": PROJECT}))

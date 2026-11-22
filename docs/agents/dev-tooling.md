@@ -68,7 +68,9 @@ decisions and the .env rule are not altered by any of them.
   without the permission allowlist stopped at a read prompt during the worker's orientation, so
   the team was relaunched with it. The demo commit stays in the clone. Hashes before and after
   the demo show Erhan's real Codex configuration and hooks, Claude settings, plugins and skills,
-  `~/.agents/skills`, `~/.tmux.conf` and the Herdr Desktop configuration unchanged; the real
+  `~/.agents/skills`, `~/.tmux.conf` and the Herdr Desktop files compared (`keys.json`,
+  `settings.json`, the `layouts` and `mods` folders) unchanged; the demo opened plain tabs, not
+  the Rig view, which adds OpenRig's own files there (below). The real
   `~/.claude.json`, which the running lead session rewrites, names no trial path.
 - **Herdr Desktop:** two routes work from the existing Herdr Desktop window (herdr-app, whose
   terminals run in herdr-core `default`): OpenRig's `herdr-app` provider opens a Rig view in the

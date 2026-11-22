@@ -8,6 +8,7 @@
 # calling shell reaches the process. Stop it with Ctrl-C (or kill its PID).
 set -eu
 : "${PHOENIX_PYTHON:?set PHOENIX_PYTHON to the python of an installed Phoenix 20.26}"
+case "$PHOENIX_PYTHON" in /*) ;; *) PHOENIX_PYTHON="$PWD/$PHOENIX_PYTHON" ;; esac  # before the cd below
 [ -x "$PHOENIX_PYTHON" ] || { echo "refused: $PHOENIX_PYTHON is not executable" >&2; exit 3; }
 ROOT="$(cd "$(dirname "$0")/../.." && pwd)"
 STORE="$ROOT/tools/commentary_rag/local/phoenix"

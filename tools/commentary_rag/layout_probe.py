@@ -927,17 +927,26 @@ def probe(args: argparse.Namespace) -> list[str]:
         for p in json.loads(args.record.read_text(encoding="utf-8"))["passages"]
         if p["edition"] == args.edition
     ]
+    other = sorted({p["document_sha256"] for p in record} - {digest})
+    if other:
+        raise ProbeError(
+            f"{args.record.name}: {args.edition} passages from another PDF ({', '.join(other)})"
+        )
+    outside = [p["passage_id"] for p in record if not 1 <= p["page"] <= len(poppler)]
+    if outside:
+        raise ProbeError(f"{args.record.name}: pages outside 1-{len(poppler)}: {', '.join(outside)}")
     located = [
         locate(lines, [p for p in record if p["page"] == n])
         for n, lines in enumerate(poppler, 1)
     ]
     missing = [pid for page in located for pid in page.missing]
+    found = sum(len(page.spans) for page in located)
     out = [
         f"edition {args.edition}: {path}",
         f"  SHA-256 {digest} matches the manifest; {len(poppler)} pages in pdftotext",
         f"  {versions(executable)}",
         f"  frozen record {args.record.name}: {len(record)} passages of this edition,"
-        f" {len(record) - len(missing)} found by text SHA-256 in the Poppler text,"
+        f" {found} found by text SHA-256 in the Poppler text,"
         f" {len(missing)} not found{': ' + ', '.join(missing) if missing else ''}",
     ]
     with pdfplumber.open(io.BytesIO(content)) as pdf:

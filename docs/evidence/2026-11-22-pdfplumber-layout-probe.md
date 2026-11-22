@@ -250,7 +250,8 @@ page 4 only); the probe does not use them.
 From a checkout that holds the git-ignored BAG PDFs under `data/raw/`, at the repository root:
 
 ```bash
-# The probe on the two cases; it refuses on a hash mismatch. The pins are the versions used here.
+# The probe on the two cases; it refuses on a hash mismatch, and when the frozen record names
+# another PDF or a page outside it. The pins are the versions used here.
 uv run --no-project --with pdfplumber==0.11.11 --with pdfminer.six==20260107 \
   --with pypdfium2==5.15.2 --with pillow==13.0.0 \
   python tools/commentary_rag/layout_probe.py --edition 2026-07-01 --pages 4,6
