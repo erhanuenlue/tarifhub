@@ -16,7 +16,12 @@ holds more than half of the 40 passages (a grouping derived locally with the fro
 sizes stay local). A family-disjoint split inside the corpus is possible but lopsided: one side
 gets that family, the other fewer than 20 passages in five small families, too narrow a training
 source or too small a test to show a difference
-([headroom](#headroom-and-what-a-test-could-detect)). A pilot needs its training data from
+([headroom](#headroom-and-what-a-test-could-detect)). These family counts describe the corpus as the
+pilot's parser built it, which files the 132 position codes of footnote 1 of the July commentary
+under section 2.4. Counted under section 2.3, where the footnote is referenced
+([diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view)), the public groupings change and no public family holds half of the
+passages; the evaluation grouping's counts in that view stay local. In both views every in-corpus
+split stays far below the passages a training source needs, so the verdict holds. A pilot needs its training data from
 elsewhere and becomes a go once the two offline data steps in
 [Smallest useful data work](#smallest-useful-data-work) meet their thresholds and its frozen design
 passes the power gate there (otherwise it runs as exploratory); if the data steps fail, the
@@ -73,25 +78,32 @@ supporting document. Only the two commentaries form the retrieval corpus.
 | 2026-07-01 | 29 | 10 (1) |
 | Both | 40 | 16 (2) |
 
-The passages name 167 distinct position codes, 144 of them in July section 2.4 (tariff cut after
-the round table on cost containment).
+As the pilot's parser built the corpus (the frozen view, which every recorded result uses), the
+passages name 167 distinct position codes, 144 of them in July section 2.4 (tariff cut after the
+round table on cost containment) and none in July section 2.3. 132 of those 144 are the codes of
+footnote 1 of the July commentary, which belongs to section 2.3; counted there (the
+[diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view)), the corpus still names 167 codes, 12 of them in July section 2.4 and
+132 in July section 2.3.
 
 **Change family**, the split unit proposed here: introductions aside, two sections belong to one
 family when they name a common position code or when one question's gold evidence cites both
 (the same change described in two places). Paraphrases of a question belong to its family.
 
 - By shared position codes alone (public PDFs only): 11 families of 13, 6, 4, 4, 3, 2, 2, 1, 1, 1
-  and 1 passages.
+  and 1 passages (diagnostic view: 11 families of 8, 7, 6, 4, 4, 3, 2, 1, 1, 1 and 1 passages).
 - Adding the public dev cases' gold evidence (D6 cites January 2.2, July 2.4 and July 2.5): 9
-  families of 20, 4, 4, 3, 2, 2, 1, 1 and 1 passages.
-- Adding the frozen E cases' gold evidence as well: **6 families**. Their sizes and composition
-  stay local, since they reveal which sections the frozen E cases target.
+  families of 20, 4, 4, 3, 2, 2, 1, 1 and 1 passages (diagnostic view: 9 families of 15, 7, 4, 4,
+  3, 2, 1, 1 and 1 passages).
+- Adding the frozen E cases' gold evidence as well: **6 families**. Their sizes and composition,
+  and this grouping's counts in the diagnostic view, stay local, since they reveal which sections
+  the frozen E cases target.
 
 Counted by one rule (a question matches a family through its gold evidence or, for a question
 without supporting evidence, through a position code it names; U1 names 1034.00, which only July
 section 3.1 mentions), the known questions (D1 to D6, U1, U2, E1 to E6) match 5 of the 6
-families, and 37 of the 38 non-introduction passages sit in matched families. The unmatched family
-is a single passage (July 2.6, the update of the AL handbook).
+families, and 37 of the 38 non-introduction passages sit in matched families (37 of the 38 in the
+[diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view) as well). The unmatched family is a single passage in both views (July 2.6,
+the update of the AL handbook).
 
 Unmatched by this rule does not mean never seen during evaluation. The rule sees only gold
 evidence and named position codes: a question can concern a topic without either, and retrieval
@@ -104,6 +116,80 @@ cases, of both calls of the D1 agent run and of 8 of the 18 Phase 3 comparison c
 recorded answers cite it (six comparison cells and one Phase 2 dev case). No 2026 family is
 therefore free of prior exposure: fresh test questions over any of them are new questions on
 material the evaluation has already seen, not questions on an unseen topic.
+
+### Footnote 1 of the July commentary: frozen and diagnostic view
+
+The layout probe of PR #64 (`docs/evidence/2026-11-22-pdfplumber-layout-probe.md`, from PR #64)
+found that footnote 1 on page 4 of the July commentary lists 132 position codes, 6203.56 to
+6501.60, the HDS positions of section 2.3, and that both of its references stand in section 2.3,
+while the pilot's parser files the footnote text under section 2.4, in the passages
+`2026-07-01/p4/s2.4/3`, `/4` and `/5`. The counts given above as the frozen view are what that
+parser built: they stay true of the frozen corpus and of every recorded result, and nothing in the
+corpus, its passages or the run records was changed.
+
+The diagnostic view was computed offline on 2026-11-22, with no model call, key or paid service
+(pdfplumber 0.11.11, the version the probe pins, in a throwaway environment). It takes footnote 1
+by its geometry (the text below the separator rule of page 4, from footnote number 1 up to
+footnote number 2), finds that text word for word in the three frozen passages (43, 50 and 39 of
+their words), moves it from section 2.4 to section 2.3 and recounts every section from the
+resulting texts with the frozen rule (each code once per section and once in the corpus). The
+rules that link sections into families and match questions to families are unchanged.
+
+- Only the code sets of July 2.3 (0 codes in the frozen view, 132 in the diagnostic view) and
+  July 2.4 (144, then 12) change; the corpus names 167 distinct codes in both views.
+- None of the 132 codes occurs in the rest of section 2.4 (its body and its own footnotes 2 and 3)
+  or in the text of 2.3. Two occur elsewhere and stay there: 6206.60 in January section 3.1 and
+  6500.56 in July section 4.1. In the frozen view these two codes tie January 3.1 and July 4.1,
+  and through 1653.00 also July 2.2, to July 2.4; in the diagnostic view they tie them to July 2.3,
+  and July 2.4 shares no code with another section.
+- Footnotes 2 to 4 of the July commentary and the one footnote of the January commentary name no
+  position code and stand in the section of their references, so no other code moves.
+- No gold evidence of the public dev cases quotes footnote 1, so their links between sections are
+  the same in both views.
+- Family sizes count the frozen passages under their frozen section label in both views, so
+  `p4/s2.4/4`, whose words all belong to footnote 1, counts with section 2.4.
+
+**Passage level.** The three frozen passages still carry the footnote. `p4/s2.4/3` holds the last
+sentence of section 2.4 (with 4707.10 and 4707.20) and then 43 codes of footnote 1; `p4/s2.4/4`
+holds 50 codes of footnote 1 and nothing else; `p4/s2.4/5` holds the last 39 codes, then footnote
+2 of section 2.4, which names no code. In the diagnostic view sections 2.3 and 2.4 belong to
+different public families. A split over the frozen passages that puts the families of 2.3 and 2.4
+on different sides must therefore exclude `p4/s2.4/3`, which carries codes of both and cannot stay
+with both, count `p4/s2.4/4` with the family of 2.3 despite its label, and count `p4/s2.4/5` with
+the family of 2.3 by its codes, or exclude it as well under a stricter rule that also follows its
+footnote-2 text. How the evaluation grouping splits in the diagnostic view is counted locally,
+with the frozen E gold, and not published here.
+
+**What changes.**
+
+- The statements that one family holds more than half of the 40 passages and that a
+  family-disjoint split inside the corpus is lopsided, with fewer than 20 passages in five small
+  families on the other side (verdict, headroom, proposed split, fallback), describe the frozen
+  view. In the diagnostic view no public family holds half of the passages (the largest has 15 of
+  the 40 with the dev gold). The evaluation grouping's counts in that view, and with them how even
+  an in-corpus split would be, stay local: read beside the public groupings, they would show which
+  sections the frozen E cases cite together.
+- Which view defines the families is fixed before the freeze: the frozen view follows the passages
+  a tuned model would be trained and tested on, the diagnostic view the document's structure.
+- The code sets of the affected families: the 132 codes of footnote 1 belong to the family of July
+  2.3, not to that of July 2.4. A question that names one of them is assigned by code lookup to the
+  family of 2.3 (this concerns the code-first rule in Jev's role below), and a fresh question whose
+  gold evidence lies in footnote 1 takes its family from the section by layout, 2.3, not from the
+  `s2.4` label of the frozen passage that holds the quote.
+
+**What survives.**
+
+- The no-go verdict. It rests on 40 passages against the 100 proposed for training alone and on
+  the lack of any held-out question; in both views every side of an in-corpus split stays far
+  below 100 passages.
+- The training-source exclusion rule. It tests older families against all 2026 families together,
+  whose codes are the same 167 in both views, so it drops the same older families; only the 2026
+  family that holds the 132 codes differs.
+- The matching result (37 of the 38 non-introduction passages in matched families, July 2.6 the
+  unmatched single passage) and the prior exposure of every 2026 family.
+- The pilot gate: its thresholds and power statements are unchanged; the families they count are
+  those of the grouping fixed at the freeze. With families as the unit at least 6 are still needed.
+- Every recorded result: all Phase 2 and Phase 3 figures use the frozen corpus.
 
 ## Labelled questions: what exists and what is missing
 
@@ -145,19 +231,21 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
   That is the best case, not a power target: if the tuned model truly turns 20 % of 30 independent
   questions into hits and breaks none, the test reaches significance with a probability of only
   about 0.57, and questions that share evidence are not independent. Inside today's corpus a family-disjoint test would cover fewer than 20 passages in five small
-  families, and 30 independent fresh questions over them are hard to write without
+  families (in the frozen view; see the [diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view)), and 30 independent fresh questions over them are hard to write without
   near-paraphrases, which count as one.
 
 ## Proposed split and freezing procedure
 
 1. **Training source outside the test families.** Because the 2026 corpus offers only the
-   lopsided family-disjoint split above, training passages come from earlier public BAG
+   lopsided family-disjoint split above (a statement about the frozen view; in both views no
+   in-corpus split comes near the passages a training source needs), training passages come from earlier public BAG
    commentaries (time-disjoint editions) and the test from the 2026 corpus. One exclusion rule
    serves this split and the inventory below: older passages are grouped into families by shared
    position codes or named projects (such as transAL-2), across sections, before anything is
    counted (older editions have no gold evidence to link them); every older family that shares a
-   position code or a named project with any of the six 2026 families is dropped from training as
-   a whole, and the training passages are counted only after that, so related changes stay on one
+   position code or a named project with any of the six 2026 families (in the diagnostic view the
+   2026 families hold the same 167 codes between them, so the same older families are dropped) is
+   dropped from training as a whole, and the training passages are counted only after that, so related changes stay on one
    side.
 2. **Known questions are never test questions.** D1 to D6, U1, U2 and E1 to E6 may serve as a
    development check of the training code, reported apart, never as the result.
@@ -222,7 +310,7 @@ level, so the four-family minimum alone does not pass.
    exploratory.
 
 If step 1 falls short, the remaining fine-tuning design is the lopsided in-corpus split (train on
-the large family, test fresh questions on the others), whose result would be exploratory: a null
+the large family, test fresh questions on the others, as counted in the frozen view), whose result would be exploratory: a null
 result from it would be reported as inconclusive, not as evidence that fine-tuning brings no
 benefit. Zwischenbericht 1 already counts a missing advantage of fine-tuning as a usable result. Variant 1
 is the other evaluated option; the lecturer has confirmed that the two variants are alternatives.
@@ -256,7 +344,8 @@ Score) rather than text. It would make exactly one decision, before the freeze i
   dev cases (9 families). Never the six-family grouping, which uses the local E gold, and never
   the E questions, gold evidence, rubric or answers.
 - **Mapping before the freeze:** two public families can belong to one evaluation family, so Erhan
-  maps the nine public families onto the six evaluation families locally before the freeze, and a
+  maps the nine public families onto the six evaluation families locally before the freeze (the
+  diagnostic view composes both groupings differently; the view fixed at the freeze applies), and a
   code outside that mapping goes to his review; coverage is counted in the evaluation grouping.
 - **Code first:** position codes in the question decide by lookup without Jev; Jev is asked only
   when a question names none.
