@@ -202,7 +202,7 @@ Score) rather than text. It would make exactly one decision, before the freeze i
   confidence threshold, 0.6 as a placeholder until calibrated) or `needs_erhan` (codes of two
   families, confidence below the threshold, Jev's `none` option, or Jev unavailable).
 - **Fallback:** Erhan assigns the family by hand.
-- **Offline exercise (2026-11-22, scratch, not committed):** six illustrative candidates through
+- **Offline exercise (2026-11-22, kept locally and git-ignored, not committed):** six illustrative candidates through
   this logic, with Jev's answers hand-written in the response shape of the TypeSafe API
   documentation and **labelled mocked**. Outcomes: one `assign` by code lookup (Jev not called),
   one `assign` from a mocked answer at confidence 0.81, and four `needs_erhan` (two families
