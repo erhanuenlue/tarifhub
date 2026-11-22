@@ -1,0 +1,4 @@
+# False positive: the SHA-256 commitment of the blinding key file (a salted hash committed before the
+# key was opened, Phase 3 review lock), not a secret. Global fingerprint (file:rule:line), so it also
+# holds for the squash-merge commit.
+tools/commentary_rag/results/2026-11-22-phase3-E-review-lock.json:generic-api-key:14
