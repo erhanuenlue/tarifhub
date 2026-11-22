@@ -24,19 +24,52 @@ decisions and the .env rule are not altered by any of them.
   `~/.openrig-tarifhub/npm`, not installed globally. The lockfile integrity matches the registry,
   and `npm audit signatures` verified the registry signatures of all 119 packages (26 with
   attestations). Requires Node.js 22 and tmux.
-- **Isolation:** `~/.openrig-tarifhub/bin/rig-th` runs `rig` with `HOME`, `OPENRIG_HOME`,
-  `CODEX_HOME` and `CLAUDE_CONFIG_DIR` under `~/.openrig-tarifhub/`, so OpenRig's hooks, trust
-  entries and skills go to the isolated homes, never to `~/.claude`, `~/.claude.json`,
-  `~/.codex` or `~/.agents`. The daemon runs on an isolated tmux server, is started with
-  `--no-kernel` (the kernel's operator would get full access), and `rig setup` is used only with
-  `--dry-run` (it would write `~/.tmux.conf`). OpenRig's guidance forbids copying credentials,
-  so the isolated homes need their own logins: `~/.openrig-tarifhub/bin/login-isolated.sh`.
-- **Team:** `~/.openrig-tarifhub/specs/rigs/launch/tarifhub-handoff/rig.yaml`, a Claude Code
-  worker (`claude-opus-5-5`) and a Codex reviewer (`gpt-6.2-sol`, effort `max` in the isolated
-  Codex config, `codex_permissions`: sandbox `read-only`, approval `never`), working only in the
-  disposable clone `~/.openrig-tarifhub/clone/tarifhub` (no remote). OpenRig documents that its
-  tests prove the launch flags, not Codex's enforcement, so a reviewer's permissions count only
-  after a write attempt has been refused in the seat itself.
+- **Isolation:** `~/.openrig-tarifhub/bin/rig-th` starts `rig` from an empty environment with an
+  allowlist, so no token, key or SSH agent of the calling shell reaches the daemon, its tmux server
+  or a seat, and with `HOME`, `OPENRIG_HOME`, `CODEX_HOME` and `CLAUDE_CONFIG_DIR` under
+  `~/.openrig-tarifhub/`, so OpenRig's hooks, trust entries and skills go to the isolated homes,
+  never to `~/.claude`, `~/.claude.json`, `~/.codex` or `~/.agents`. One process is the
+  exception: macOS finds the login keychain only under the normal home, so the Claude worker's
+  `launch_wrapper` gives that process alone the normal macOS home, together with the dedicated
+  `CLAUDE_CONFIG_DIR` (its settings, state and login stay apart from the real ones) and
+  `DISABLE_AUTOUPDATER=1`. The daemon, the seat shells and the Codex seat keep the isolated
+  home. The daemon runs on an isolated tmux server, is started with `--no-kernel` (the kernel's
+  operator would get full access), and `rig setup` is used only with `--dry-run` (it would write
+  `~/.tmux.conf`). OpenRig's guidance forbids copying credentials, so the isolated homes have
+  their own logins (`~/.openrig-tarifhub/bin/login-isolated.sh`, run once by Erhan). The
+  dedicated Claude config also receives the plugins synced to the claude.ai account, whose MCP
+  servers start in the worker seat.
+- **Team:** `~/.openrig-tarifhub/specs/rigs/launch/tarifhub-handoff/rig.yaml`, working only in the
+  disposable clone `~/.openrig-tarifhub/clone/tarifhub` (no remote). A Claude Code worker
+  (`claude-opus-5-5`, effort `max`) whose `claude_permissions` allow only what the bounded task
+  needs (reading the trial tree, editing the one target file, `git add` of that file,
+  `git commit`, read-only git commands and `rig queue`), and a Codex reviewer (`gpt-6.2-sol`,
+  effort `max`) with read-only file access through a Codex permission profile (`:root` read,
+  approval `never`). Network stays on for the reviewer because Codex's plain `read-only`
+  sandbox also blocks the loopback connection `rig queue` needs to reach the daemon (measured: a
+  connection to the daemon's port refused under `read-only` and accepted under the profile; a
+  write in the clone refused under both). Both agent profiles are copies of OpenRig's
+  `implementer` and `qa` without the shared remote MCP servers (exa, context7), and the clone
+  keeps its own npx MCP servers off. OpenRig documents that its tests prove the launch flags, not
+  Codex's enforcement, so a reviewer's permissions count only after a write attempt has been
+  refused in the seat itself.
+- **Demonstrated (2026-11-22):** one handoff through OpenRig's queue, with no message relayed by
+  hand. The lead's Claude Code session queued the bounded task (a two-phrase wording fix in arc42
+  §13) with a return route; the worker claimed it, committed the change in the clone (one file,
+  one line) and handed the exact commit SHA to the reviewer; the reviewer checked that commit
+  read-only against `evidence_agent.py` and handed its finding (no findings) back to the return
+  route, where the lead read it from the queue. Checked in the seats themselves: the worker
+  process ran with the normal home and the dedicated config dir, its own Claude login reported
+  logged in, and none of the calling shell's GitHub or messaging tokens or SSH agent reached it;
+  the reviewer's Codex session recorded `gpt-6.2-sol`, effort `max`, approval `never` and
+  read-only file access, and its `touch` in the clone failed with "Operation not permitted". The
+  lead typed two things into seats: the default answer (browser tools off) to Claude's one-time
+  "Claude in Chrome" notice at the worker's first start, and the write check. A first launch
+  without the permission allowlist stopped at a read prompt during the worker's orientation, so
+  the team was relaunched with it. The demo commit stays in the clone. Hashes before and after
+  the demo show Erhan's real Codex configuration and hooks, Claude settings, plugins and skills,
+  `~/.agents/skills`, `~/.tmux.conf` and the Herdr Desktop configuration unchanged; the real
+  `~/.claude.json`, which the running lead session rewrites, names no trial path.
 - **Herdr Desktop:** two routes work from the existing Herdr Desktop window (herdr-app, whose
   terminals run in herdr-core `default`): OpenRig's `herdr-app` provider opens a Rig view in the
   window the command runs in (`rig-th terminal open <rig> --provider herdr-app --app-home
