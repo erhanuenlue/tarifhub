@@ -1496,6 +1496,7 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.2" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
+    { name = "pytest-socket", marker = "extra == 'dev'", specifier = ">=0.7" },
     { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.4" },
     { name = "sentence-transformers", marker = "extra == 'e5'", specifier = ">=2.7" },
     { name = "tarifhub-ingest", extras = ["e5"], marker = "extra == 'ai'" },
