@@ -128,6 +128,13 @@ observation on this set, not an accuracy figure.
   `SocketBlockedError`, so a test that tries to reach the network fails instead of connecting. The
   block covers Python's `socket` module inside each test only, not subprocesses such as
   `pdftotext` or sockets opened by C libraries. `test_socket_guard.py` checks it.
+- `layout_probe.py`: a diagnostic outside the pilot (nothing imports it). For one manifest-verified
+  commentary it sets pdfplumber's character geometry and the PDF's tags beside the Poppler text the
+  corpus is cut from, finds the frozen passages by text SHA-256 and reports heading lines,
+  footnotes and their references. It needs pdfplumber, which no environment here installs: run it
+  with `uv run --no-project --with pdfplumber==0.11.11 python tools/commentary_rag/layout_probe.py
+  --edition 2026-07-01 --pages 4,6`; without pdfplumber it exits 2. Evidence:
+  [`docs/evidence/2026-11-22-pdfplumber-layout-probe.md`](../../docs/evidence/2026-11-22-pdfplumber-layout-probe.md).
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the
   answer schema (status, claims with passage citations, missing evidence), local validation
@@ -712,7 +719,12 @@ the pilot tests never import the file. The UI is http://127.0.0.1:6016 (project
   title, and footnotes join the last section on their page: the footnote list of HDS positions
   belonging to section 2.3 of the July commentary appears as three section 2.4 passages on p. 4.
   A page without a printed footer would get no page label (both documents have one on every
-  content page).
+  content page). Measured on 2026-11-22 with the layout probe: 13 of the 29 July passages carry a
+  section title cut to the heading's first line (2.1, 2.2, 2.3, 2.5; the words stay in the passage
+  text), the 132 position codes of footnote 1 (section 2.3) sit in `p4/s2.4/3` to `/5`, and
+  footnotes 2 to 4 land in the last passage of their page instead of the one that references them.
+  Both commentaries are tagged PDFs; a fix would be a new corpus version, not an edit of the frozen
+  one.
 - Sentences are split by a German heuristic with an abbreviation list.
 - The term check for a required claim works at answer level: its terms may stand in one claim and
   the covering citation in another. Claim-level support is the human review's judgement.
