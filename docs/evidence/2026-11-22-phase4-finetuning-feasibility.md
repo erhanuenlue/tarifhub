@@ -119,8 +119,7 @@ material the evaluation has already seen, not questions on an unseen topic.
 
 ### Footnote 1 of the July commentary: frozen and diagnostic view
 
-The layout probe of PR #64 (`docs/evidence/2026-11-22-pdfplumber-layout-probe.md`, from PR #64)
-found that footnote 1 on page 4 of the July commentary lists 132 position codes, 6203.56 to
+The [layout probe](2026-11-22-pdfplumber-layout-probe.md) of PR #64 found that footnote 1 on page 4 of the July commentary lists 132 position codes, 6203.56 to
 6501.60, the HDS positions of section 2.3, and that both of its references stand in section 2.3,
 while the pilot's parser files the footnote text under section 2.4, in the passages
 `2026-07-01/p4/s2.4/3`, `/4` and `/5`. The counts given above as the frozen view are what that
