@@ -122,8 +122,12 @@ observation on this set, not an accuracy figure.
     passage identities removed, added or changed and the evidence items whose passages moved.
 - `test_corpus.py`, `test_retrieval.py`, `test_evaluation.py`: offline tests with small generated
   PDFs, a stand-in tokenizer and a stand-in embedder.
-- `conftest.py`: stops the suite with a message when the `anthropic` client or `pdftotext` is
-  missing, so no test is skipped for a missing dependency.
+- `conftest.py`: stops the suite with a message when the `anthropic` client, `pytest-socket` or
+  `pdftotext` is missing, so no test is skipped for a missing dependency, and turns pytest-socket
+  on around each test: creating a Python socket other than a Unix socket raises
+  `SocketBlockedError`, so a test that tries to reach the network fails instead of connecting. The
+  block covers Python's `socket` module inside each test only, not subprocesses such as
+  `pdftotext` or sockets opened by C libraries. `test_socket_guard.py` checks it.
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the
   answer schema (status, claims with passage citations, missing evidence), local validation
@@ -292,10 +296,11 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 336 (no model, no key, no network): poppler's `pdftotext` and the ingestion
-`ai` extra (the locked `anthropic` client) are required, and the suite refuses to start without
-them. A separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same
-suite in its own `commentary-rag` job):
+Offline tests, all 339 (no model, no key, no network; pytest-socket blocks Python sockets in each
+test): poppler's `pdftotext`, the ingestion `ai` extra (the locked `anthropic` client) and the
+`dev` extra's `pytest-socket` are required, and the suite refuses to start without them. A
+separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same suite in its
+own `commentary-rag` job):
 
 ```bash
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion \
