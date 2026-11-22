@@ -77,9 +77,13 @@ Before the key was opened, in this order:
    first commit of this change, before the key was read.
 
 After it: the key named all 18 IDs once each, every case had exactly one `fixed5`, one `fixed10`
-and one `agent` answer, and the claims shown under every ID equal those of the cell the key names.
-A local script repeats every check from the files and stops at the first mismatch; it produced
-the public summary `tools/commentary_rag/results/2026-11-22-phase3-E-review-summary.json` (case
+and one `agent` answer, and under every ID the packet shows exactly the answer of the cell the key
+names.
+A local script repeats every check from the files and stops at the first mismatch: the lock
+hashes, the transfer (including that the recorded errors follow from the error marks), the key
+(under every ID the packet shows the status, the claims with their citations and the named gaps
+of the cell the key names) and the saved run result against the public record (each answer
+hashes to the record's `answer_sha256`). It produced the public summary `tools/commentary_rag/results/2026-11-22-phase3-E-review-summary.json` (case
 and condition only). An independent reimplementation of the join in the session gave the
 same figures. The ratings, the key, the neutral-ID mapping, Erhan's notes and all answer and
 passage text stay local.
@@ -147,11 +151,13 @@ Paired by case, on the overall verdict:
 | C agent against A fixed5 | 2 (E2, E3) | 3 (E4, E5, E6) | 0 |
 | B fixed10 against A fixed5 | 1 (E3) | 4 (E2, E4, E5, E6) | 0 |
 
-**Where C changed answer quality against B: E2 only.** On E2, B returned `partial` with E2-R2
+**Where C changed the outcome against B: E2 only.** On E2, B returned `partial` with E2-R2
 covered partly (3 of 5 gold items in its context); C's one search added a passage from outside
 the fixed top 10 that carries two of E2-R2's gold items, C cited it in the claims Erhan rated as
 covering E2-R2, and C's answer was `answered` with both required claims covered. On E3, E4, E5 and
-E6, B and C reached the same verdicts and covered the same required claims. Against A, C also
+E6, B and C reached the same overall verdicts and covered the same required claims; their claim
+counts, support and relevance differ (table above), and C's E3 answer carries the one recorded
+error. Against A, C also
 improved E3: A lacked one gold item (rank 6) and left E3-R3 uncovered while answering
 `answered` (status judged not to fit); B had that passage in its top 10, and C's search fetched
 it.
@@ -184,8 +190,9 @@ the fixed top 10, 4 carry a gold item, and 1 does both (E2, `2026-07-01/p4/s2.3/
 four gold-carrying passages, three were also in B's context (E2 ranks 7 and 9, E3 rank 6), so the
 only rubric item that C covered and B did not is E2-R2, through that one passage. Every
 gold-carrying added passage was cited in the claims Erhan rated as covering its required claim.
-On E2, two of C's three claims rated not relevant also cite the new passage: the same search added
-both the missing support and peripheral material.
+On E2, five of C's claims cite the added passage from outside the fixed top 10 (2 rated fully
+relevant, 1 partly, 2 not), so two of C's three claims rated not relevant rest on it: the same
+search added both the missing support and peripheral material.
 
 The saved traces establish when C searched (after its first call in all six cells), how many
 passages each search returned and from which ranks, which were already supplied, which C cited,
@@ -216,11 +223,12 @@ Per case, C minus B was +0.091152 (E2), -0.136232 (E3), -0.053172 (E4), +0.02626
 call per case and a larger input: on E2 to E6, C sent 62,861 input tokens against B's 29,886
 (2.1 times; the difference is USD 0.131900 at 4 USD per million). C's first calls, which ended in
 the search request, cost USD 0.220652 together on E2 to E6. Output tokens, thinking included,
-dominate every cell's cost and vary from cell to cell (A alone ranged from USD 0.087524 to
-0.404848 per case), and C produced fewer of them on E2 to E6 (49,294 against 57,110). With one
-run per cell, the data support neither "the agent is cheaper" nor "the agent is dearer" in USD;
-they show the extra call and the doubled input, and a total cost of the same order for all three
-conditions. Summed wall-clock time on E2 to E6 was 408.7 s for C, 460.4 s for B and 488.7 s for A,
+dominate every cell's cost and differ widely between cells (A alone ranged from USD 0.087524 to
+0.404848 per case), and C produced fewer of them on E2 to E6 (49,294 against 57,110). C minus B
+was USD -0.024420 on E2 to E6 and +0.101536 over all six cases. With one run per cell there is no
+measure of how much a cell's cost varies between runs, so the data establish no repeatable cost
+advantage or penalty in USD; they show the extra call and the doubled input, and a total cost of
+the same order for all three conditions. Summed wall-clock time on E2 to E6 was 408.7 s for C, 460.4 s for B and 488.7 s for A,
 with the same caveat.
 
 ## Limits that affect interpretation
@@ -248,8 +256,9 @@ with the same caveat.
    required claims on E2 and E3 (and on E1).
 2. **Use the bounded agent where the needed evidence may lie beyond the fixed top 10**, the
    seeking-missing-evidence use case (UC2) it was built for. That is the only situation in which it
-   changed an outcome here (E2, and E1 apart), and in this run it did so without a measurable cost
-   penalty and without making any of the other four answers worse.
+   changed an outcome here (E2, and E1 apart); in this run its total cost was of the same order as
+   B's, and on the other four primary cases it reached the same overall verdict and required-claim
+   coverage as B.
 3. **Do not add an automatic escalation from B to C keyed on B's status** without testing it: on
    E1, B answered `answered` while missing a required claim, so a status trigger would not have
    caught it.
@@ -264,7 +273,8 @@ with the same caveat.
   README links them): the run record `2026-11-21-phase3-E-comparison.json` and the active ledger
   `phase3-ledger.jsonl` (SHA-256 `ca20af168ba1...`), both as the run wrote them; the review lock
   `2026-11-22-phase3-E-review-lock.json`; the review summary
-  `2026-11-22-phase3-E-review-summary.json` (every figure on this page, by case and condition).
+  `2026-11-22-phase3-E-review-summary.json` (the review, retrieval, search and cost figures on this
+  page, by case and condition; run times and tokens are in the run record).
 - Local and git-ignored: the run's requests, responses and full result, the blinded packet,
   Erhan's completed packet, the blank and filled ratings, the neutral ID listing, the blinding
   key, the unblinded table with neutral IDs, the trace findings sealed before the review, and the

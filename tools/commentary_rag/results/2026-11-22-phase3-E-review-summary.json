@@ -13,7 +13,9 @@
   "lock: 6 of 6 file hashes match",
   "packet manifest: result, rubric and key unchanged",
   "ratings re-rendered into the blank packet reproduce the completed packet: 2157 of 2157 lines identical",
-  "key: 18 IDs, each once; every case has one fixed5, one fixed10 and one agent answer; the packet's claims under every ID equal the claims of the cell the key names",
+  "errors: one listed-error mark per listed error in the packet, none present, and the recorded errors follow from the 'other error' fields",
+  "key: 18 IDs, each once; every case has one fixed5, one fixed10 and one agent answer; under every ID the packet shows the status, the claims with their citations and the named gaps of the cell the key names",
+  "run result: every cell's saved answer hashes to the public record's answer_sha256 and its agent record equals the public one",
   "ledger: 24 comparison calls reserved and settled from usage, every cost equal to the record's, none above its reservation; 0 outstanding"
  ],
  "method": "One reviewer rated the 18 answers in a packet that showed each under a neutral ID, in an order fixed before any answer existed, with the frozen rubric and the text of every passage the answer cites; how an answer was produced, call and search counts, costs and timings were withheld. Per answer: support and relevance of every claim, coverage of every required claim, the gaps a good answer names, listed and other errors, whether the status fits the answer's claims and cited passages, and an overall verdict. The ratings were fixed by hash before the key was opened (lock), then joined to the key by this summary's local script. Retrieval figures are computed deterministically from the saved requests and the frozen gold evidence (edition, page and quote, NFC and whitespace folded); they are not answer quality.",
@@ -36,7 +38,7 @@
   "Partial blinding: answers were shown verbatim, so wording or the number of passages cited can hint at the condition; the reviewer was asked not to use such hints.",
   "E1 overlaps D1 and is reported apart. On the January-only cases E4 and E5, fixed10 receives 10 of the January commentary's 11 passages. E2's edition filter excludes January for every condition, so E2 does not test edition selection.",
   "E6 has no required evidence items: Evidence Recall is N/A there. A required claim of kind gap is scored by the reviewer and adds no evidence item.",
-  "Costs are calculated from reported usage and pricing.json, not invoices; output and thinking tokens, which dominate them, vary from run to run."
+  "Costs are calculated from reported usage and pricing.json, not invoices. Output and thinking tokens dominate each cell's cost and differ widely between cells; with one run per cell no repeatable cost difference between the conditions is established."
  ],
  "cells": [
   {
@@ -908,6 +910,19 @@
    "added_outside_fixed_top10_cited": 2,
    "added_covering_gold": 2,
    "added_outside_fixed_top10_covering_gold": 1,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 3,
+    "supported": {
+     "yes": 3,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 1,
+     "partly": 2,
+     "not": 0
+    }
+   },
    "added": [
     {
      "passage_id": "2026-07-01/p4/s2.4/3",
@@ -985,6 +1000,19 @@
    "added_outside_fixed_top10_cited": 1,
    "added_covering_gold": 3,
    "added_outside_fixed_top10_covering_gold": 1,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 5,
+    "supported": {
+     "yes": 5,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 2,
+     "partly": 1,
+     "not": 2
+    }
+   },
    "added": [
     {
      "passage_id": "2026-07-01/p3/s2.2/1",
@@ -1073,6 +1101,19 @@
    "added_outside_fixed_top10_cited": 3,
    "added_covering_gold": 1,
    "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 1,
+    "supported": {
+     "yes": 0,
+     "partly": 1,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 1,
+     "not": 0
+    }
+   },
    "added": [
     {
      "passage_id": "2026-01-01/p3/s2.1/1",
@@ -1141,6 +1182,19 @@
    "added_outside_fixed_top10_cited": 0,
    "added_covering_gold": 0,
    "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 0,
+    "supported": {
+     "yes": 0,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 0,
+     "not": 0
+    }
+   },
    "added": [
     {
      "passage_id": "2026-01-01/p3/s2.3/1",
@@ -1200,6 +1254,19 @@
    "added_outside_fixed_top10_cited": 0,
    "added_covering_gold": 0,
    "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 0,
+    "supported": {
+     "yes": 0,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 0,
+     "not": 0
+    }
+   },
    "added": [
     {
      "passage_id": "2026-01-01/p3/s1/1",
@@ -1259,6 +1326,19 @@
    "added_outside_fixed_top10_cited": 2,
    "added_covering_gold": 0,
    "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 1,
+    "supported": {
+     "yes": 1,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 1,
+     "not": 0
+    }
+   },
    "added": [
     {
      "passage_id": "2026-07-01/p5/s2.4/3",
@@ -1652,6 +1732,6 @@
  "sources_sha256": {
   "comparison_record": "3d4038bc43a0396dd8498d36999fe3364974e6eff0246d6365b454071804b364",
   "ledger": "ca20af168ba1c5bc1488dc25fc6f290fd8bae66bb7ee301e7d33007b2a6d5d3f",
-  "script": "f8f0d728cb22d681665c9eb51ad1c7c521f96dc058e3617db5c8a01ee60dc60a"
+  "script": "5e79b77244a2e29306bd641bb5f35ce31feba20bbfba251e74c9d1deccc9510b"
  }
 }

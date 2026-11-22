@@ -90,9 +90,10 @@ before the key was opened. Primary set E2 to E6 (E1 apart, D1 overlap): overall 
 3 of 5 cases for A, 4 of 5 for B and 5 of 5 for C; required claims covered 8, 10 (plus 1 partly)
 and 11 of 11; gold evidence items in context 7, 11 and 13 of 13. C changed the verdict against B
 on one case, E2, through the one passage its search added from outside the fixed top 10 that
-carries required evidence; B and C tied on E3 to E6, and on E4 to E6 A already sufficed. Calculated
-cost on E2 to E6: A 1.288300, B 1.261744, C 1.237324 USD; C made one more call per case and sent
-2.1 times B's input, and output tokens, which vary from run to run, dominate every cell's cost.
+carries required evidence; B and C reached the same overall verdict and required-claim coverage on
+E3 to E6, and on E4 to E6 A already sufficed. Calculated cost on E2 to E6: A 1.288300, B 1.261744,
+C 1.237324 USD; C made one more call per case and sent 2.1 times B's input; output tokens dominate
+every cell's cost, and one run per cell establishes no repeatable cost difference.
 On E1, C alone covered both required claims. One run per cell, six cases, one reviewer: an
 observation on this set, not an accuracy figure.
 
@@ -613,8 +614,9 @@ cell made a third call. The review packet showed each answer under a neutral ID 
 rubric and the text of the passages it cites; how it was produced, counts, costs and timings
 were withheld. Erhan's marks were transferred into a structured ratings file that reproduces his
 completed packet line for line, the hashes were committed before the key was opened, and a local
-script repeated every check (18 IDs once each, one answer per condition per case, each packet
-answer equal to its cell) before joining ratings and key. Results by case and condition, the
+script repeated every check (18 IDs once each, one answer per condition per case, under every ID
+the status, claims with citations and named gaps of the cell the key names, each saved answer
+hashing to the public record) before joining ratings and key. Results by case and condition, the
 searches followed from passage to cited claim to covered rubric item, the cost reconciliation,
 the limits and the recommendation are on the
 [evidence page](../../docs/evidence/2026-11-21-phase3-E-comparison.md).
