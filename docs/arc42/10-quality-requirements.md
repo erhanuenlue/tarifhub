@@ -447,7 +447,7 @@ are EAL-corpus-scoped.
 
 ## Commentary RAG pilot: recorded evaluation
 
-The commentary pilot ([ADR-025](../adr/025-commentary-retrieval.md), [§5](05-building-block-view.md#outside-the-services-the-commentary-rag-pilot)) is outside the services and carries no NFR above: these are observed results on **eight AI-drafted dev cases** (six with gold evidence, two unanswerable in the selected commentary), with no held-out test. Full records: [retrieval evidence](../evidence/2026-11-14-commentary-retrieval.md), [generation evidence](../evidence/2026-11-15-commentary-generation.md).
+The commentary pilot ([ADR-025](../adr/025-commentary-retrieval.md), [§5](05-building-block-view.md#outside-the-services-the-commentary-rag-pilot)) is outside the services and carries no NFR above: these are observed results on **eight AI-drafted dev cases** (six with gold evidence, two unanswerable in the selected commentary), with no held-out test, and, for Phase 3, on six frozen cases E1 to E6 (below). Full records: [retrieval evidence](../evidence/2026-11-14-commentary-retrieval.md), [generation evidence](../evidence/2026-11-15-commentary-generation.md).
 
 **Retrieval** (corrected passage construction, 40 passages, top 5, 256-token passages; the corrections were informed by the baseline's misses on these cases). Recall and MRR are means over the six cases with gold evidence; wrong-edition passages are summed over the seven cases that target one edition.
 
@@ -465,6 +465,19 @@ The generator received the hybrid ranking under the edition filter: it misses D1
 **Human review** (Erhan Ünlü, one reviewer, not blinded, confirmed 2026-11-15): 48 of 48 structured claims supported by what they cite, of which 27 fully relevant to their question (14 partly, 7 not); 14 of the 19 required rubric claims covered, the 5 missing all D1's; end to end 5 cases answered, 2 appropriate abstentions and 1 not answered (D1, a retrieval failure that its justified abstention does not repair). Summary: `tools/commentary_rag/results/2026-11-15-human-review-summary.json`.
 
 **Limitations.** Two short documents, eight dev cases, one run of one model, one non-blinded reviewer; a random ranking already reaches an expected Evidence Recall@5 of 0.259 with the edition filter. None of this is an accuracy figure for unseen questions. The run record names the tool files it ran with by hash; later changes to the pilot's code (such as the refusal to overwrite earlier outputs) did not take part in it.
+
+**Phase 3 comparison** (run `2026-11-21-phase3-E`, [evidence](../evidence/2026-11-21-phase3-E-comparison.md); [ADR-026](../adr/026-commentary-evidence-search.md), proposed): six cases E1 to E6, frozen before any run on them, each answered once under three conditions: A fixed top 5 and B fixed top 10 (one call, no tool) and C the evidence-seeking agent (top 5, one search tool, at most three calls and ten passages). 18 of 18 cells answered; 24 calls, a calculated **$4.569196**, $7.060552 committed in all of the $100 limit, nothing outstanding. Erhan rated the 18 answers blinded (neutral IDs, conditions withheld) and the ratings were fixed by hash before the key was opened. E1 overlaps the dev case D1 and is reported apart; on the primary set E2 to E6:
+
+| E2 to E6 | A fixed5 | B fixed10 | C agent |
+|---|---|---|---|
+| Overall verdict `yes` (of 5 cases) | 3 | 4 | 5 |
+| Required claims covered yes / partly / no (of 11) | 8 / 0 / 3 | 10 / 1 / 0 | 11 / 0 / 0 |
+| Gold evidence items in context (4 cases, of 13) | 7 | 11 | 13 |
+| Claims supported yes / partly / no | 28 / 4 / 0 | 32 / 2 / 0 | 33 / 2 / 0 |
+| Generation calls | 5 | 5 | 10 |
+| Calculated cost | $1.288300 | $1.261744 | $1.237324 |
+
+The agent changed the verdict against B on one case (E2), through the one passage its search added from outside the fixed top 10 that carries required evidence; B and C tied on E3 to E6, and A already sufficed on E4 to E6. On E1 the agent alone covered both required claims. The search adds one call and about twice B's input per case; output tokens dominate cost and vary from run to run, so one run per cell shows no cost difference in either direction. One run per cell, one reviewer, partial blinding (answers shown verbatim), and on the January-only cases E4 and E5 B sees 10 of 11 January passages: observations on this set, not accuracy figures. Summary: `tools/commentary_rag/results/2026-11-22-phase3-E-review-summary.json`.
 
 ## Acceptance criteria
 

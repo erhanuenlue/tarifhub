@@ -1302,7 +1302,12 @@ def test_the_conditions_of_one_question_share_the_books_and_each_runs_only_once(
 
 
 ACTIVE_RECORDED = RECORDED.parent / "phase3-ledger.jsonl"
-ACTIVE_RECORDED_SHA256 = "ac0bd49ae8d91cd9716bac9bca78a5c1e211f7684b2ce6f9300b05361cfad12b"
+# The active ledger as the Phase 3 comparison of 2026-11-21 left it (53 lines), and its first five
+# lines (the pin and the D1 run), byte for byte as they stood before that run.
+ACTIVE_RECORDED_SHA256 = "ca20af168ba1c5bc1488dc25fc6f290fd8bae66bb7ee301e7d33007b2a6d5d3f"
+ACTIVE_RECORDED_LINES = 53
+BEFORE_COMPARISON_SHA256 = "ac0bd49ae8d91cd9716bac9bca78a5c1e211f7684b2ce6f9300b05361cfad12b"
+BEFORE_COMPARISON_LINES = 5
 
 
 @pytest.mark.parametrize(("condition", "outcome"), [
@@ -1325,12 +1330,18 @@ def test_the_recorded_books_refuse_d1_under_the_agent_and_admit_its_other_condit
         assert result.detail == "already_run"
         assert provider.timeouts == []
         assert spending.ledger.read_bytes() == before
-    else:  # Phase 2's 1.930804 and the D1 run's 0.560552 USD are committed before it
-        assert result.record["spending"]["committed_before_usd"] == 2.491356
+    else:  # Phase 2's 1.930804, D1's 0.560552 and the comparison's 4.569196 USD come before it
+        assert result.record["spending"]["committed_before_usd"] == 7.060552
         assert spending.ledger.read_bytes().startswith(before)  # appended to, nothing rewritten
-        assert [(e["attempt"], e["condition"]) for e in events(spending)[5:]] == [
+        assert [(e["attempt"], e["condition"])
+                for e in events(spending)[ACTIVE_RECORDED_LINES:]] == [
             (f"D1-{condition}-call1", condition)] * 2
-    assert _sha(ACTIVE_RECORDED.read_bytes()) == ACTIVE_RECORDED_SHA256  # only ever read
+    recorded = ACTIVE_RECORDED.read_bytes()
+    assert _sha(recorded) == ACTIVE_RECORDED_SHA256  # only ever read
+    assert recorded.count(b"\n") == ACTIVE_RECORDED_LINES
+    # The comparison only appended: the lines before it are byte-identical.
+    earlier_lines = recorded.splitlines(keepends=True)[:BEFORE_COMPARISON_LINES]
+    assert _sha(b"".join(earlier_lines)) == BEFORE_COMPARISON_SHA256
 
 
 def test_case_ids_that_end_like_a_condition_still_name_cells_of_their_own(spending):
