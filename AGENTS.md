@@ -84,7 +84,8 @@ UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --proje
   --extra ai --extra dev python -m pytest tools/commentary_rag -q
                                          # the commentary pilot's offline suite (ADR-025, CI job commentary-rag):
                                          # needs poppler's pdftotext; the separate venv keeps the ai extra out of
-                                         # the ingestion venv. It refuses to start without anthropic or pdftotext
+                                         # the ingestion venv. It refuses to start without anthropic, pytest-socket
+                                         # or pdftotext, and blocks Python sockets (Unix ones excepted) in each test
 python3 tools/cas_check.py               # CAS structural floor; CI runs '--ci' as a ratchet vs
                                          # tools/cas_baseline.json: run it before pushing doc changes
 docker compose up -d db                  # dev Postgres+pgvector (named volume), not a test database: the PG

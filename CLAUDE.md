@@ -27,6 +27,7 @@ Project facts, safety boundaries, commands and the definition of done live in AG
 - Matt Pocock skills (`.claude/skills/`, locked in `skills-lock.json`): use `tdd`, `codebase-design`, `domain-modeling` and `grilling` only when the task calls for them; `grill-with-docs`, `to-tickets` and `setup-matt-pocock-skills` are user-invoked.
 - `tdd` points its review stage (where refactoring belongs) to a `code-review` skill that this repo does not install: it is in neither `.claude/skills/` nor `skills-lock.json`, and a same-named skill from outside the repo, such as Claude Code's bundled one, is not it. The local fallback is the repo review procedure, inline: AGENTS.md definition of done step 5 with the applicable checklists in `.claude/agents/`. Report it as the local fallback; never claim that Matt's `code-review` ran.
 - `/ship` means this repo's `.claude/skills/ship/SKILL.md`. A user-global gstack skill has the same name: if the Skill tool resolves that one, read the repo file and follow it.
+- Development tooling (Superpowers, the OpenRig trial, Phoenix, pdfplumber, pytest-socket, diagram-design): `docs/agents/dev-tooling.md`. Every new or revised CAS project diagram is drawn with the `diagram-design` plugin, its editable source kept beside the SVG and checked at A4; delivered reports stay as they are.
 
 ## Agent skills
 

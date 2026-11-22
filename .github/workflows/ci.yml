@@ -115,7 +115,8 @@ jobs:
   # (the locked anthropic client) out of the dev-only service environments. No secret is passed:
   # the provider is a mocked HTTP transport, the embedder a stand-in, and HF_HUB_OFFLINE refuses
   # any model download. The junit check fails the job if a test is skipped or a test file was
-  # not collected (the suite also refuses to start without anthropic or pdftotext).
+  # not collected (the suite also refuses to start without anthropic, pytest-socket or pdftotext,
+  # and blocks every Python socket but Unix sockets during each test).
   commentary-rag:
     runs-on: ubuntu-latest
     env:
