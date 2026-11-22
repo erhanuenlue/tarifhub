@@ -230,6 +230,13 @@ observation on this set, not an accuracy figure.
   twelve-passage ranking is worked out by hand, the real retriever, loop and `anthropic` client on
   a mocked HTTP transport and temporary books; the repository's `results/` and `local/` are
   checked to stay byte-identical.
+- `trace_demo.py`: one synthetic question through the real agent loop (`evidence_agent.run_case`)
+  with a scripted provider and the real search over the synthetic test corpus, traced to a local
+  Phoenix over OpenTelemetry (OTLP/HTTP, 127.0.0.1:6016). The spans hold IDs, codes, counts, elapsed
+  times and SHA-256 prefixes only: no text and no cost. The books are temporary. Offline, no key
+  (below, "Tracing one synthetic run in a local Phoenix").
+- `phoenix_serve.sh`: starts that Phoenix from an empty environment with TarifHub's own storage in
+  `local/phoenix/`, loopback only, gRPC receiver disabled.
 - [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): the offline
   plan for the cases E1 to E6 (IDs and editions only, made before they were frozen), made against
   the recorded books.
@@ -651,6 +658,40 @@ cannot meet among cells, since the matrix stops at the first); an unexpected err
 keeps the outputs of the cells before it; estimates count only cells whose every call was priced
 from usage. They do not show real model behaviour, real token counts or costs, or which condition
 answers better.
+
+## Tracing one synthetic run in a local Phoenix
+
+`trace_demo.py` shows one search decision of the evidence-seeking agent and its elapsed time in a
+local Arize Phoenix, without a key, a provider call or any cost.
+
+- **Run:** one synthetic question passes through the real loop. The pilot's client talks to a
+  scripted provider behind `httpx.MockTransport`: call 1 asks for one `search_commentary` call and
+  call 2 answers. The real search ranks the synthetic corpus of `test_evidence_search`.
+- **Spans:** a transport wrapper and a search wrapper (both outside the loop's modules) record four
+  OpenTelemetry spans. The case span carries outcome, calls and searches; each generation call
+  carries its decision (`search` or `answer`), stop reason and mocked token counts; the search span
+  carries its requested limit and new passage count. Every span carries `elapsed_ms`; the 400 ms per
+  call and 50 ms per query embedding in it are declared synthetic delays.
+- **What they omit:** no question, passage, query or answer text, and no `llm.model_name` or
+  `llm.token_count` attribute, so Phoenix derives no cost. The ledgers remain the only spending
+  record. The books are a temporary copy of the pinned Phase 2 ledger, deleted after the run, and
+  the spans are exported only when no span carries a run text.
+
+Start Phoenix 20.26 (here the one installed with the CAS harness) and run the demo from the
+repository root:
+
+```bash
+PHOENIX_PYTHON=<python of a Phoenix 20.26 installation> tools/commentary_rag/phoenix_serve.sh &
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" env -u ANTHROPIC_API_KEY \
+    uv run --project services/ingestion --frozen --extra ai --extra dev \
+    --with opentelemetry-sdk --with opentelemetry-exporter-otlp-proto-http \
+    python tools/commentary_rag/trace_demo.py
+```
+
+The `--with` packages form an ephemeral overlay: `uv.lock` and the pilot venv stay unchanged, and
+the pilot tests never import the file. The UI is http://127.0.0.1:6016 (project
+`tarifhub-evidence-agent`); the spans read back with `GET /v1/projects` and
+`GET /v1/projects/tarifhub-evidence-agent/spans?trace_id=<id>`.
 
 ## Limitations
 
