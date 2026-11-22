@@ -307,11 +307,13 @@ def main() -> int:
     # Headers, resource attributes or an endpoint set for another collector stay out of the trace.
     # They come back afterwards, for a caller that runs main() in its own process.
     removed = {name: os.environ.pop(name) for name in list(os.environ) if name.startswith("OTEL_")}
-    restore = _loopback_only()
     try:
-        return _run()
+        restore = _loopback_only()
+        try:
+            return _run()
+        finally:
+            restore()
     finally:
-        restore()
         os.environ.update(removed)
 
 
