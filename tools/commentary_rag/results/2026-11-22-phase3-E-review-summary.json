@@ -1,0 +1,1503 @@
+{
+ "schema": 1,
+ "kind": "public summary of Erhan's blinded review of the Phase 3 comparison E1 to E6, by case and condition",
+ "run_tag": "2026-11-21-phase3-E",
+ "run_date": "2026-11-21",
+ "reviewer": "Erhan Ünlü",
+ "review_confirmed_on": "2026-11-22",
+ "lock": {
+  "file": "results/2026-11-22-phase3-E-review-lock.json",
+  "sha256": "d30126de31c829b27457739162c969866d06d48fe89ae1f37adfc2c2649322f7"
+ },
+ "unblinding_checks": [
+  "lock: 6 of 6 file hashes match",
+  "packet manifest: result, rubric and key unchanged",
+  "ratings re-rendered into the blank packet reproduce the completed packet: 2157 of 2157 lines identical",
+  "errors: one listed-error mark per listed error in the packet, none present, and the recorded errors follow from the 'other error' fields",
+  "key: 18 IDs, each once; every case has one fixed5, one fixed10 and one agent answer; under every ID the packet shows the status, the claims with their citations and the named gaps of the cell the key names",
+  "run result: every cell's saved answer hashes to the public record's answer_sha256 and its agent record equals the public one",
+  "ledger: 24 comparison calls reserved and settled from usage, every cost equal to the record's, none above its reservation; 0 outstanding"
+ ],
+ "method": "One reviewer rated the 18 answers in a packet that showed each under a neutral ID, in an order fixed before any answer existed, with the frozen rubric and the text of every passage the answer cites; how an answer was produced, call and search counts, costs and timings were withheld. Per answer: support and relevance of every claim, coverage of every required claim, the gaps a good answer names, listed and other errors, whether the status fits the answer's claims and cited passages, and an overall verdict. The ratings were fixed by hash before the key was opened (lock), then joined to the key by this summary's local script. Retrieval figures are computed deterministically from the saved requests and the frozen gold evidence (edition, page and quote, NFC and whitespace folded); they are not answer quality.",
+ "reporting": {
+  "primary": [
+   "E2",
+   "E3",
+   "E4",
+   "E5",
+   "E6"
+  ],
+  "separate": [
+   "E1"
+  ],
+  "why_separate": "E1 reuses the passage that is dev case D1's evidence (known D1 overlap)."
+ },
+ "limitations": [
+  "One run per case and condition with one model (claude-opus-5-5, effort max, adaptive thinking); no repeat, no variance estimate.",
+  "Six cases (five primary), drafted by Claude and decided by Erhan; one reviewer, who also decided the cases; no second rater, no agreement measure.",
+  "Partial blinding: answers were shown verbatim, so wording or the number of passages cited can hint at the condition; the reviewer was asked not to use such hints.",
+  "E1 overlaps D1 and is reported apart. On the January-only cases E4 and E5, fixed10 receives 10 of the January commentary's 11 passages. E2's edition filter excludes January for every condition, so E2 does not test edition selection.",
+  "E6 has no required evidence items: Evidence Recall is N/A there. A required claim of kind gap is scored by the reviewer and adds no evidence item.",
+  "Costs are calculated from reported usage and pricing.json, not invoices. Output and thinking tokens dominate each cell's cost and differ widely between cells; with one run per cell no repeatable cost difference between the conditions is established."
+ ],
+ "cells": [
+  {
+   "case": "E1",
+   "condition": "fixed5",
+   "label": "A",
+   "answer_status": "insufficient_evidence",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E1-R1": "no",
+    "E1-R2": "no"
+   },
+   "required_claims_covered": {
+    "yes": 0,
+    "partly": 0,
+    "no": 2
+   },
+   "gaps_named": {},
+   "claims": 5,
+   "supported": {
+    "yes": 5,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 0,
+    "partly": 4,
+    "not": 1
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "partly",
+   "retrieval": {
+    "gold_items": 2,
+    "in_context": 0,
+    "cited": 0
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 5,
+   "passages_cited": 4,
+   "input_tokens": 3703,
+   "output_tokens": 10197,
+   "thinking_tokens": 9084,
+   "cost_usd": 0.218752,
+   "first_call_cost_usd": 0.218752,
+   "elapsed_s": 84.4
+  },
+  {
+   "case": "E1",
+   "condition": "fixed10",
+   "label": "B",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "no",
+   "required_claims": {
+    "E1-R1": "no",
+    "E1-R2": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 1,
+    "partly": 0,
+    "no": 1
+   },
+   "gaps_named": {},
+   "claims": 9,
+   "supported": {
+    "yes": 9,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 2,
+    "partly": 6,
+    "not": 1
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "partly",
+   "retrieval": {
+    "gold_items": 2,
+    "in_context": 1,
+    "cited": 1
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 10,
+   "passages_cited": 4,
+   "input_tokens": 5705,
+   "output_tokens": 9787,
+   "thinking_tokens": 8588,
+   "cost_usd": 0.21856,
+   "first_call_cost_usd": 0.21856,
+   "elapsed_s": 78.8
+  },
+  {
+   "case": "E1",
+   "condition": "agent",
+   "label": "C",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E1-R1": "yes",
+    "E1-R2": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 2,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 9,
+   "supported": {
+    "yes": 9,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 2,
+    "partly": 7,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 2,
+    "in_context": 2,
+    "cited": 2
+   },
+   "calls": 2,
+   "searches": 1,
+   "passages_supplied": 10,
+   "passages_cited": 6,
+   "input_tokens": 13729,
+   "output_tokens": 14480,
+   "thinking_tokens": 12528,
+   "cost_usd": 0.344516,
+   "first_call_cost_usd": 0.05666,
+   "elapsed_s": 120.8
+  },
+  {
+   "case": "E2",
+   "condition": "fixed5",
+   "label": "A",
+   "answer_status": "insufficient_evidence",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E2-R1": "no",
+    "E2-R2": "no"
+   },
+   "required_claims_covered": {
+    "yes": 0,
+    "partly": 0,
+    "no": 2
+   },
+   "gaps_named": {},
+   "claims": 4,
+   "supported": {
+    "yes": 3,
+    "partly": 1,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 0,
+    "partly": 2,
+    "not": 2
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "partly",
+   "retrieval": {
+    "gold_items": 5,
+    "in_context": 0,
+    "cited": 0
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 5,
+   "passages_cited": 3,
+   "input_tokens": 3705,
+   "output_tokens": 15770,
+   "thinking_tokens": 14732,
+   "cost_usd": 0.33022,
+   "first_call_cost_usd": 0.33022,
+   "elapsed_s": 129.5
+  },
+  {
+   "case": "E2",
+   "condition": "fixed10",
+   "label": "B",
+   "answer_status": "partial",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E2-R1": "yes",
+    "E2-R2": "partly"
+   },
+   "required_claims_covered": {
+    "yes": 1,
+    "partly": 1,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 6,
+   "supported": {
+    "yes": 6,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 3,
+    "partly": 2,
+    "not": 1
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "partly",
+   "retrieval": {
+    "gold_items": 5,
+    "in_context": 3,
+    "cited": 3
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 10,
+   "passages_cited": 3,
+   "input_tokens": 5779,
+   "output_tokens": 7638,
+   "thinking_tokens": 6494,
+   "cost_usd": 0.175876,
+   "first_call_cost_usd": 0.175876,
+   "elapsed_s": 60.7
+  },
+  {
+   "case": "E2",
+   "condition": "agent",
+   "label": "C",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E2-R1": "yes",
+    "E2-R2": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 2,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 11,
+   "supported": {
+    "yes": 11,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 3,
+    "partly": 5,
+    "not": 3
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 5,
+    "in_context": 5,
+    "cited": 5
+   },
+   "calls": 2,
+   "searches": 1,
+   "passages_supplied": 10,
+   "passages_cited": 5,
+   "input_tokens": 12192,
+   "output_tokens": 10913,
+   "thinking_tokens": 8813,
+   "cost_usd": 0.267028,
+   "first_call_cost_usd": 0.034788,
+   "elapsed_s": 90.0
+  },
+  {
+   "case": "E3",
+   "condition": "fixed5",
+   "label": "A",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "no",
+   "required_claims": {
+    "E3-R1": "yes",
+    "E3-R2": "yes",
+    "E3-R3": "no"
+   },
+   "required_claims_covered": {
+    "yes": 2,
+    "partly": 0,
+    "no": 1
+   },
+   "gaps_named": {},
+   "claims": 9,
+   "supported": {
+    "yes": 6,
+    "partly": 3,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 4,
+    "partly": 5,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "partly",
+   "retrieval": {
+    "gold_items": 5,
+    "in_context": 4,
+    "cited": 4
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 5,
+   "passages_cited": 5,
+   "input_tokens": 3237,
+   "output_tokens": 19595,
+   "thinking_tokens": 17776,
+   "cost_usd": 0.404848,
+   "first_call_cost_usd": 0.404848,
+   "elapsed_s": 148.9
+  },
+  {
+   "case": "E3",
+   "condition": "fixed10",
+   "label": "B",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E3-R1": "yes",
+    "E3-R2": "yes",
+    "E3-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 9,
+   "supported": {
+    "yes": 7,
+    "partly": 2,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 3,
+    "partly": 6,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 5,
+    "in_context": 5,
+    "cited": 5
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 10,
+   "passages_cited": 9,
+   "input_tokens": 5595,
+   "output_tokens": 22046,
+   "thinking_tokens": 20104,
+   "cost_usd": 0.4633,
+   "first_call_cost_usd": 0.4633,
+   "elapsed_s": 171.2
+  },
+  {
+   "case": "E3",
+   "condition": "agent",
+   "label": "C",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E3-R1": "yes",
+    "E3-R2": "yes",
+    "E3-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 10,
+   "supported": {
+    "yes": 8,
+    "partly": 2,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 5,
+    "partly": 5,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 1,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 5,
+    "in_context": 5,
+    "cited": 5
+   },
+   "calls": 2,
+   "searches": 1,
+   "passages_supplied": 10,
+   "passages_cited": 10,
+   "input_tokens": 11762,
+   "output_tokens": 14001,
+   "thinking_tokens": 12000,
+   "cost_usd": 0.327068,
+   "first_call_cost_usd": 0.045168,
+   "elapsed_s": 113.0
+  },
+  {
+   "case": "E4",
+   "condition": "fixed5",
+   "label": "A",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E4-R1": "yes",
+    "E4-R2": "yes",
+    "E4-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 8,
+   "supported": {
+    "yes": 8,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 1,
+    "partly": 6,
+    "not": 1
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 1,
+    "in_context": 1,
+    "cited": 1
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 5,
+   "passages_cited": 3,
+   "input_tokens": 3849,
+   "output_tokens": 10715,
+   "thinking_tokens": 9735,
+   "cost_usd": 0.229696,
+   "first_call_cost_usd": 0.229696,
+   "elapsed_s": 85.3
+  },
+  {
+   "case": "E4",
+   "condition": "fixed10",
+   "label": "B",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E4-R1": "yes",
+    "E4-R2": "yes",
+    "E4-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 9,
+   "supported": {
+    "yes": 9,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 2,
+    "partly": 5,
+    "not": 2
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 1,
+    "in_context": 1,
+    "cited": 1
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 10,
+   "passages_cited": 4,
+   "input_tokens": 6630,
+   "output_tokens": 11724,
+   "thinking_tokens": 10599,
+   "cost_usd": 0.261,
+   "first_call_cost_usd": 0.261,
+   "elapsed_s": 93.6
+  },
+  {
+   "case": "E4",
+   "condition": "agent",
+   "label": "C",
+   "answer_status": "answered",
+   "expected_status": "answered",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E4-R1": "yes",
+    "E4-R2": "yes",
+    "E4-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {},
+   "claims": 5,
+   "supported": {
+    "yes": 5,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 2,
+    "partly": 2,
+    "not": 1
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 1,
+    "in_context": 1,
+    "cited": 1
+   },
+   "calls": 2,
+   "searches": 1,
+   "passages_supplied": 10,
+   "passages_cited": 4,
+   "input_tokens": 15467,
+   "output_tokens": 7298,
+   "thinking_tokens": 6073,
+   "cost_usd": 0.207828,
+   "first_call_cost_usd": 0.086144,
+   "elapsed_s": 63.7
+  },
+  {
+   "case": "E5",
+   "condition": "fixed5",
+   "label": "A",
+   "answer_status": "partial",
+   "expected_status": "partial",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E5-R1": "yes",
+    "E5-R2": "yes",
+    "E5-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {
+    "1": "yes"
+   },
+   "claims": 5,
+   "supported": {
+    "yes": 5,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 2,
+    "partly": 3,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 2,
+    "in_context": 2,
+    "cited": 2
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 5,
+   "passages_cited": 1,
+   "input_tokens": 3706,
+   "output_tokens": 3635,
+   "thinking_tokens": 2881,
+   "cost_usd": 0.087524,
+   "first_call_cost_usd": 0.087524,
+   "elapsed_s": 28.7
+  },
+  {
+   "case": "E5",
+   "condition": "fixed10",
+   "label": "B",
+   "answer_status": "partial",
+   "expected_status": "partial",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E5-R1": "yes",
+    "E5-R2": "yes",
+    "E5-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {
+    "1": "yes"
+   },
+   "claims": 5,
+   "supported": {
+    "yes": 5,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 2,
+    "partly": 3,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 2,
+    "in_context": 2,
+    "cited": 2
+   },
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 10,
+   "passages_cited": 1,
+   "input_tokens": 6349,
+   "output_tokens": 4002,
+   "thinking_tokens": 3261,
+   "cost_usd": 0.105436,
+   "first_call_cost_usd": 0.105436,
+   "elapsed_s": 32.3
+  },
+  {
+   "case": "E5",
+   "condition": "agent",
+   "label": "C",
+   "answer_status": "partial",
+   "expected_status": "partial",
+   "status_consistent": "yes",
+   "required_claims": {
+    "E5-R1": "yes",
+    "E5-R2": "yes",
+    "E5-R3": "yes"
+   },
+   "required_claims_covered": {
+    "yes": 3,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {
+    "1": "yes"
+   },
+   "claims": 5,
+   "supported": {
+    "yes": 5,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 3,
+    "partly": 2,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": {
+    "gold_items": 2,
+    "in_context": 2,
+    "cited": 2
+   },
+   "calls": 2,
+   "searches": 1,
+   "passages_supplied": 10,
+   "passages_cited": 1,
+   "input_tokens": 12499,
+   "output_tokens": 4085,
+   "thinking_tokens": 3017,
+   "cost_usd": 0.131696,
+   "first_call_cost_usd": 0.030072,
+   "elapsed_s": 34.3
+  },
+  {
+   "case": "E6",
+   "condition": "fixed5",
+   "label": "A",
+   "answer_status": "insufficient_evidence",
+   "expected_status": "insufficient_evidence",
+   "status_consistent": "yes",
+   "required_claims": {},
+   "required_claims_covered": {
+    "yes": 0,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {
+    "1": "yes"
+   },
+   "claims": 6,
+   "supported": {
+    "yes": 6,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 0,
+    "partly": 5,
+    "not": 1
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": null,
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 5,
+   "passages_cited": 1,
+   "input_tokens": 3168,
+   "output_tokens": 11167,
+   "thinking_tokens": 10342,
+   "cost_usd": 0.236012,
+   "first_call_cost_usd": 0.236012,
+   "elapsed_s": 96.3
+  },
+  {
+   "case": "E6",
+   "condition": "fixed10",
+   "label": "B",
+   "answer_status": "insufficient_evidence",
+   "expected_status": "insufficient_evidence",
+   "status_consistent": "yes",
+   "required_claims": {},
+   "required_claims_covered": {
+    "yes": 0,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {
+    "1": "yes"
+   },
+   "claims": 5,
+   "supported": {
+    "yes": 5,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 0,
+    "partly": 5,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": null,
+   "calls": 1,
+   "searches": 0,
+   "passages_supplied": 10,
+   "passages_cited": 1,
+   "input_tokens": 5533,
+   "output_tokens": 11700,
+   "thinking_tokens": 11031,
+   "cost_usd": 0.256132,
+   "first_call_cost_usd": 0.256132,
+   "elapsed_s": 102.6
+  },
+  {
+   "case": "E6",
+   "condition": "agent",
+   "label": "C",
+   "answer_status": "insufficient_evidence",
+   "expected_status": "insufficient_evidence",
+   "status_consistent": "yes",
+   "required_claims": {},
+   "required_claims_covered": {
+    "yes": 0,
+    "partly": 0,
+    "no": 0
+   },
+   "gaps_named": {
+    "1": "yes"
+   },
+   "claims": 4,
+   "supported": {
+    "yes": 4,
+    "partly": 0,
+    "no": 0
+   },
+   "relevant": {
+    "fully": 0,
+    "partly": 4,
+    "not": 0
+   },
+   "listed_errors_present": 0,
+   "other_errors": 0,
+   "overall": "yes",
+   "retrieval": null,
+   "calls": 2,
+   "searches": 1,
+   "passages_supplied": 10,
+   "passages_cited": 6,
+   "input_tokens": 10941,
+   "output_tokens": 12997,
+   "thinking_tokens": 11946,
+   "cost_usd": 0.303704,
+   "first_call_cost_usd": 0.02448,
+   "elapsed_s": 107.7
+  }
+ ],
+ "agent_searches": [
+  {
+   "case": "E1",
+   "calls": [
+    {
+     "call": 1,
+     "tool_choice": "auto",
+     "stop_reason": "tool_use"
+    },
+    {
+     "call": 2,
+     "tool_choice": "none",
+     "stop_reason": "end_turn"
+    }
+   ],
+   "searches": 1,
+   "passages_added": 5,
+   "added_cited": 3,
+   "added_outside_fixed_top10": 3,
+   "added_outside_fixed_top10_cited": 2,
+   "added_covering_gold": 2,
+   "added_outside_fixed_top10_covering_gold": 1,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 3,
+    "supported": {
+     "yes": 3,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 1,
+     "partly": 2,
+     "not": 0
+    }
+   },
+   "required_claims_with_evidence_among_added_passages": [
+    {
+     "id": "E1-R1",
+     "agent_covered": "yes",
+     "fixed10_covered": "no",
+     "through_an_added_passage_from_outside_fixed_top10": true,
+     "cited_in_the_claims_rated_as_covering_it": true
+    },
+    {
+     "id": "E1-R2",
+     "agent_covered": "yes",
+     "fixed10_covered": "yes",
+     "through_an_added_passage_from_outside_fixed_top10": false,
+     "cited_in_the_claims_rated_as_covering_it": true
+    }
+   ]
+  },
+  {
+   "case": "E2",
+   "calls": [
+    {
+     "call": 1,
+     "tool_choice": "auto",
+     "stop_reason": "tool_use"
+    },
+    {
+     "call": 2,
+     "tool_choice": "none",
+     "stop_reason": "end_turn"
+    }
+   ],
+   "searches": 1,
+   "passages_added": 5,
+   "added_cited": 4,
+   "added_outside_fixed_top10": 2,
+   "added_outside_fixed_top10_cited": 1,
+   "added_covering_gold": 3,
+   "added_outside_fixed_top10_covering_gold": 1,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 5,
+    "supported": {
+     "yes": 5,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 2,
+     "partly": 1,
+     "not": 2
+    }
+   },
+   "required_claims_with_evidence_among_added_passages": [
+    {
+     "id": "E2-R1",
+     "agent_covered": "yes",
+     "fixed10_covered": "yes",
+     "through_an_added_passage_from_outside_fixed_top10": false,
+     "cited_in_the_claims_rated_as_covering_it": true
+    },
+    {
+     "id": "E2-R2",
+     "agent_covered": "yes",
+     "fixed10_covered": "partly",
+     "through_an_added_passage_from_outside_fixed_top10": true,
+     "cited_in_the_claims_rated_as_covering_it": true
+    }
+   ]
+  },
+  {
+   "case": "E3",
+   "calls": [
+    {
+     "call": 1,
+     "tool_choice": "auto",
+     "stop_reason": "tool_use"
+    },
+    {
+     "call": 2,
+     "tool_choice": "none",
+     "stop_reason": "end_turn"
+    }
+   ],
+   "searches": 1,
+   "passages_added": 5,
+   "added_cited": 5,
+   "added_outside_fixed_top10": 3,
+   "added_outside_fixed_top10_cited": 3,
+   "added_covering_gold": 1,
+   "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 1,
+    "supported": {
+     "yes": 0,
+     "partly": 1,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 1,
+     "not": 0
+    }
+   },
+   "required_claims_with_evidence_among_added_passages": [
+    {
+     "id": "E3-R3",
+     "agent_covered": "yes",
+     "fixed10_covered": "yes",
+     "through_an_added_passage_from_outside_fixed_top10": false,
+     "cited_in_the_claims_rated_as_covering_it": true
+    }
+   ]
+  },
+  {
+   "case": "E4",
+   "calls": [
+    {
+     "call": 1,
+     "tool_choice": "auto",
+     "stop_reason": "tool_use"
+    },
+    {
+     "call": 2,
+     "tool_choice": "none",
+     "stop_reason": "end_turn"
+    }
+   ],
+   "searches": 1,
+   "passages_added": 5,
+   "added_cited": 1,
+   "added_outside_fixed_top10": 0,
+   "added_outside_fixed_top10_cited": 0,
+   "added_covering_gold": 0,
+   "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 0,
+    "supported": {
+     "yes": 0,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 0,
+     "not": 0
+    }
+   },
+   "required_claims_with_evidence_among_added_passages": []
+  },
+  {
+   "case": "E5",
+   "calls": [
+    {
+     "call": 1,
+     "tool_choice": "auto",
+     "stop_reason": "tool_use"
+    },
+    {
+     "call": 2,
+     "tool_choice": "none",
+     "stop_reason": "end_turn"
+    }
+   ],
+   "searches": 1,
+   "passages_added": 5,
+   "added_cited": 0,
+   "added_outside_fixed_top10": 1,
+   "added_outside_fixed_top10_cited": 0,
+   "added_covering_gold": 0,
+   "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 0,
+    "supported": {
+     "yes": 0,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 0,
+     "not": 0
+    }
+   },
+   "required_claims_with_evidence_among_added_passages": []
+  },
+  {
+   "case": "E6",
+   "calls": [
+    {
+     "call": 1,
+     "tool_choice": "auto",
+     "stop_reason": "tool_use"
+    },
+    {
+     "call": 2,
+     "tool_choice": "none",
+     "stop_reason": "end_turn"
+    }
+   ],
+   "searches": 1,
+   "passages_added": 5,
+   "added_cited": 3,
+   "added_outside_fixed_top10": 2,
+   "added_outside_fixed_top10_cited": 2,
+   "added_covering_gold": 0,
+   "added_outside_fixed_top10_covering_gold": 0,
+   "claims_citing_an_added_passage_from_outside_fixed_top10": {
+    "claims": 1,
+    "supported": {
+     "yes": 1,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 1,
+     "not": 0
+    }
+   },
+   "required_claims_with_evidence_among_added_passages": []
+  }
+ ],
+ "aggregates": {
+  "primary": {
+   "fixed5": {
+    "cases": 5,
+    "overall": {
+     "yes": 3,
+     "partly": 2,
+     "no": 0
+    },
+    "status_consistent": {
+     "yes": 4,
+     "no": 1
+    },
+    "status_as_expected": 4,
+    "required_claims_covered": {
+     "yes": 8,
+     "partly": 0,
+     "no": 3
+    },
+    "claims": 32,
+    "supported": {
+     "yes": 28,
+     "partly": 4,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 7,
+     "partly": 21,
+     "not": 4
+    },
+    "errors_recorded": 0,
+    "evidence_in_context": {
+     "items": 7,
+     "of": 13,
+     "cases": 4
+    },
+    "evidence_cited": {
+     "items": 7,
+     "of": 13,
+     "cases": 4
+    },
+    "calls": 5,
+    "input_tokens": 17665,
+    "output_tokens": 60882,
+    "cost_usd": 1.2883,
+    "elapsed_s": 488.7
+   },
+   "fixed10": {
+    "cases": 5,
+    "overall": {
+     "yes": 4,
+     "partly": 1,
+     "no": 0
+    },
+    "status_consistent": {
+     "yes": 5,
+     "no": 0
+    },
+    "status_as_expected": 4,
+    "required_claims_covered": {
+     "yes": 10,
+     "partly": 1,
+     "no": 0
+    },
+    "claims": 34,
+    "supported": {
+     "yes": 32,
+     "partly": 2,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 10,
+     "partly": 21,
+     "not": 3
+    },
+    "errors_recorded": 0,
+    "evidence_in_context": {
+     "items": 11,
+     "of": 13,
+     "cases": 4
+    },
+    "evidence_cited": {
+     "items": 11,
+     "of": 13,
+     "cases": 4
+    },
+    "calls": 5,
+    "input_tokens": 29886,
+    "output_tokens": 57110,
+    "cost_usd": 1.261744,
+    "elapsed_s": 460.4
+   },
+   "agent": {
+    "cases": 5,
+    "overall": {
+     "yes": 5,
+     "partly": 0,
+     "no": 0
+    },
+    "status_consistent": {
+     "yes": 5,
+     "no": 0
+    },
+    "status_as_expected": 5,
+    "required_claims_covered": {
+     "yes": 11,
+     "partly": 0,
+     "no": 0
+    },
+    "claims": 35,
+    "supported": {
+     "yes": 33,
+     "partly": 2,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 13,
+     "partly": 18,
+     "not": 4
+    },
+    "errors_recorded": 1,
+    "evidence_in_context": {
+     "items": 13,
+     "of": 13,
+     "cases": 4
+    },
+    "evidence_cited": {
+     "items": 13,
+     "of": 13,
+     "cases": 4
+    },
+    "calls": 10,
+    "input_tokens": 62861,
+    "output_tokens": 49294,
+    "cost_usd": 1.237324,
+    "elapsed_s": 408.7
+   }
+  },
+  "E1": {
+   "fixed5": {
+    "cases": 1,
+    "overall": {
+     "yes": 0,
+     "partly": 1,
+     "no": 0
+    },
+    "status_consistent": {
+     "yes": 1,
+     "no": 0
+    },
+    "status_as_expected": 0,
+    "required_claims_covered": {
+     "yes": 0,
+     "partly": 0,
+     "no": 2
+    },
+    "claims": 5,
+    "supported": {
+     "yes": 5,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 0,
+     "partly": 4,
+     "not": 1
+    },
+    "errors_recorded": 0,
+    "evidence_in_context": {
+     "items": 0,
+     "of": 2,
+     "cases": 1
+    },
+    "evidence_cited": {
+     "items": 0,
+     "of": 2,
+     "cases": 1
+    },
+    "calls": 1,
+    "input_tokens": 3703,
+    "output_tokens": 10197,
+    "cost_usd": 0.218752,
+    "elapsed_s": 84.4
+   },
+   "fixed10": {
+    "cases": 1,
+    "overall": {
+     "yes": 0,
+     "partly": 1,
+     "no": 0
+    },
+    "status_consistent": {
+     "yes": 0,
+     "no": 1
+    },
+    "status_as_expected": 1,
+    "required_claims_covered": {
+     "yes": 1,
+     "partly": 0,
+     "no": 1
+    },
+    "claims": 9,
+    "supported": {
+     "yes": 9,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 2,
+     "partly": 6,
+     "not": 1
+    },
+    "errors_recorded": 0,
+    "evidence_in_context": {
+     "items": 1,
+     "of": 2,
+     "cases": 1
+    },
+    "evidence_cited": {
+     "items": 1,
+     "of": 2,
+     "cases": 1
+    },
+    "calls": 1,
+    "input_tokens": 5705,
+    "output_tokens": 9787,
+    "cost_usd": 0.21856,
+    "elapsed_s": 78.8
+   },
+   "agent": {
+    "cases": 1,
+    "overall": {
+     "yes": 1,
+     "partly": 0,
+     "no": 0
+    },
+    "status_consistent": {
+     "yes": 1,
+     "no": 0
+    },
+    "status_as_expected": 1,
+    "required_claims_covered": {
+     "yes": 2,
+     "partly": 0,
+     "no": 0
+    },
+    "claims": 9,
+    "supported": {
+     "yes": 9,
+     "partly": 0,
+     "no": 0
+    },
+    "relevant": {
+     "fully": 2,
+     "partly": 7,
+     "not": 0
+    },
+    "errors_recorded": 0,
+    "evidence_in_context": {
+     "items": 2,
+     "of": 2,
+     "cases": 1
+    },
+    "evidence_cited": {
+     "items": 2,
+     "of": 2,
+     "cases": 1
+    },
+    "calls": 2,
+    "input_tokens": 13729,
+    "output_tokens": 14480,
+    "cost_usd": 0.344516,
+    "elapsed_s": 120.8
+   }
+  }
+ },
+ "paired_overall": {
+  "primary": {
+   "agent_vs_fixed10": {
+    "better": [
+     "E2"
+    ],
+    "same": [
+     "E3",
+     "E4",
+     "E5",
+     "E6"
+    ],
+    "worse": []
+   },
+   "agent_vs_fixed5": {
+    "better": [
+     "E2",
+     "E3"
+    ],
+    "same": [
+     "E4",
+     "E5",
+     "E6"
+    ],
+    "worse": []
+   },
+   "fixed10_vs_fixed5": {
+    "better": [
+     "E3"
+    ],
+    "same": [
+     "E2",
+     "E4",
+     "E5",
+     "E6"
+    ],
+    "worse": []
+   }
+  },
+  "E1": {
+   "agent_vs_fixed10": {
+    "better": [
+     "E1"
+    ],
+    "same": [],
+    "worse": []
+   },
+   "agent_vs_fixed5": {
+    "better": [
+     "E1"
+    ],
+    "same": [],
+    "worse": []
+   },
+   "fixed10_vs_fixed5": {
+    "better": [],
+    "same": [
+     "E1"
+    ],
+    "worse": []
+   }
+  }
+ },
+ "books": {
+  "comparison_calls": 24,
+  "comparison_usd": 4.569196,
+  "committed_usd": 7.060552,
+  "historical_phase2_usd": 1.930804,
+  "limit_usd": 100.0,
+  "outstanding_reservations": 0,
+  "cost_basis": [
+   "usage"
+  ],
+  "above_reservation": 0
+ },
+ "sources_sha256": {
+  "comparison_record": "3d4038bc43a0396dd8498d36999fe3364974e6eff0246d6365b454071804b364",
+  "ledger": "ca20af168ba1c5bc1488dc25fc6f290fd8bae66bb7ee301e7d33007b2a6d5d3f",
+  "script": "70bc39a34d4ffb58eedff740abc868814ceda4fbec6d3c954ad5f778c962585d"
+ }
+}

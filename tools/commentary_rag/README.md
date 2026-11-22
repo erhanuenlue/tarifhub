@@ -37,8 +37,9 @@ counts with all it committed (USD 1.930804, SHA-256
 `e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa`), and all later spending goes
 to one active ledger beside it, [`results/phase3-ledger.jsonl`](results/phase3-ledger.jsonl). The
 hash is pinned in the agent's code, not chosen by a caller. The comparison with fixed top-5 and
-top-10 contexts is built and tested offline since 2026-11-21 (below): all three conditions use
-the agent's accounting path, and the Phase 2 runner must not be used during Phase 3 to bypass it.
+top-10 contexts is built and tested offline since 2026-11-21 and ran live once that day (below):
+all three conditions use the agent's accounting path, and the Phase 2 runner must not be used
+during Phase 3 to bypass it.
 
 **First live run (2026-11-20, dev case D1, code of `main` at `df5d20d`):** one authorised
 invocation of `run_question.py run` (evidence:
@@ -66,14 +67,35 @@ under three conditions through the agent's one accounting path: A (`fixed5`), th
 with the hybrid top 5; B (`fixed10`), the same request with the top 10; C (`agent`), the
 evidence-seeking agent from the top 5. Each cell (case and condition) is its own identity in the
 books, and one case ID names one question over one edition selection. Built and tested offline
-only (mocked provider, temporary ledgers); no comparison has run
-live and the recorded ledgers are unchanged. Its evaluation set is six cases, E1 to E6, AI-drafted,
+(mocked provider, temporary ledgers), then run live once on 2026-11-21 (next paragraph). Its
+evaluation set is six cases, E1 to E6, AI-drafted,
 decided by Erhan and frozen on 2026-11-21 before any retrieval or generation on them (hashes in
 [`results/2026-11-21-phase3-E-freeze.json`](results/2026-11-21-phase3-E-freeze.json); questions,
 gold evidence and rubric kept local). Its offline plan for these cases is
 [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): 18 cells,
 a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about USD 6.29 estimated
 (from development cases, not a bound). Details under "Comparing the three conditions" below.
+
+**Phase 3 comparison, live run and blinded review (run 2026-11-21, ratings confirmed
+2026-11-22):** one authorised invocation of `run_comparison.py run` on E1 to E6 with the code of
+`main` at `861994b` (evidence:
+[`docs/evidence/2026-11-21-phase3-E-comparison.md`](../../docs/evidence/2026-11-21-phase3-E-comparison.md),
+public record [`results/2026-11-21-phase3-E-comparison.json`](results/2026-11-21-phase3-E-comparison.json),
+review summary [`results/2026-11-22-phase3-E-review-summary.json`](results/2026-11-22-phase3-E-review-summary.json)).
+18 of 18 cells answered; 24 calls, each reserved and settled from usage within its reservation,
+USD 4.569196 calculated, USD 7.060552 committed in all, nothing outstanding. Erhan rated the 18
+answers blinded (neutral IDs, conditions withheld); his ratings were fixed by hash
+([`results/2026-11-22-phase3-E-review-lock.json`](results/2026-11-22-phase3-E-review-lock.json))
+before the key was opened. Primary set E2 to E6 (E1 apart, D1 overlap): overall verdict `yes` on
+3 of 5 cases for A, 4 of 5 for B and 5 of 5 for C; required claims covered 8, 10 (plus 1 partly)
+and 11 of 11; gold evidence items in context 7, 11 and 13 of 13. C changed the verdict against B
+on one case, E2, through the one passage its search added from outside the fixed top 10 that
+carries required evidence; B and C reached the same overall verdict and required-claim coverage on
+E3 to E6, and on E4 to E6 A already sufficed. Calculated cost on E2 to E6: A 1.288300, B 1.261744,
+C 1.237324 USD; C made one more call per case and sent 2.1 times B's input; output tokens dominate
+every cell's cost, and one run per cell establishes no repeatable cost difference.
+On E1, C alone covered both required claims. One run per cell, six cases, one reviewer: an
+observation on this set, not an accuracy figure.
 
 ## Files
 
@@ -134,13 +156,14 @@ a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about
   theirs). It returns the next state, the tool result as escaped passage data, a publishable
   `record` (IDs, ranks, scores, hashes, counts, outcome) and a `local` part with the raw
   arguments and error text; the tool result carries passage text and stays local too. Only the
-  agent loop below calls it: in the tests against a mocked provider, and once live, for the one
-  search of the D1 run (2026-11-20).
+  agent loop below calls it: in the tests against a mocked provider, and live for the one search
+  of the D1 run (2026-11-20) and the one search of each of the comparison's six agent cells
+  (2026-11-21).
 - `test_evidence_search.py`: offline tests of the search on a synthetic two-edition corpus with
   hand-worked rankings, the real retriever and a stand-in e5 embedder.
 - `evidence_agent.py`: the evidence-seeking agent's loop for one question, tested offline and run
-  live once (**live provider contract verified only in part**, by the D1 run above; its
-  callers are `run_question.py` and `run_comparison.py`). `run_case(task, *, client, retriever,
+  live in two invocations (**live provider contract verified only in part**, by the D1 run and
+  the comparison above; its callers are `run_question.py` and `run_comparison.py`). `run_case(task, *, client, retriever,
   passages, clock, budget_s, spending, condition="agent")` runs one question under one condition
   of `CONDITIONS` (fixed in code, chosen by name): `fixed5` and `fixed10` send the Phase 2
   request itself with at most 5 or 10 passages, once, without any tool, admitted at one call's
@@ -186,7 +209,8 @@ a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about
 - `test_evidence_agent.py`: offline tests of the loop with the real `anthropic` client on a
   mocked HTTP transport, a fake key, the real search, a stand-in monotonic clock and temporary
   ledgers and artifact folders; two tests read byte copies of the recorded Phase 2 ledger, one
-  of them altered.
+  of them altered, and one reads byte copies of both recorded ledgers, pinning the active ledger
+  as the comparison left it (53 lines) and its first five lines as they stood before it.
 - `run_question.py`: the one-question runner of the agent (below, "One question with the
   evidence-seeking agent"): `prepare` (offline: input checks, verified corpus, fresh top 5) and
   `run` (the live step: one `run_case` call, local and public outputs, exit codes).
@@ -221,9 +245,21 @@ a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about
   (method, limitations, aggregate counts, fields the review leaves unsettled, source hashes; no
   answer text and no review comments).
 - [`results/phase3-ledger.jsonl`](results/phase3-ledger.jsonl) (the active ledger: its baseline
-  pin, then the D1 run's two reservations and two usage settlements) and
-  [`results/2026-11-20-question-D1.json`](results/2026-11-20-question-D1.json) (that run's public
-  record), both as the runner wrote them on 2026-11-20.
+  pin, the D1 run's two reservations and two usage settlements, then the comparison's 24
+  reservations and 24 usage settlements) and
+  [`results/2026-11-20-question-D1.json`](results/2026-11-20-question-D1.json) (the D1 run's public
+  record), each as the runners wrote them on 2026-11-20 and 2026-11-21.
+- [`results/2026-11-21-phase3-E-comparison.json`](results/2026-11-21-phase3-E-comparison.json): the
+  comparison run's public record (provenance, every case's ranking by ID, score and hash, per cell
+  its statuses, calls, usage, costs, searches by passage ID and rank, supplied and cited passages;
+  no question, answer, passage, query or provider text), as the runner wrote it.
+- [`results/2026-11-22-phase3-E-review-lock.json`](results/2026-11-22-phase3-E-review-lock.json):
+  the SHA-256 of both review packets, the ratings template, the transferred ratings, the neutral ID
+  listing and the blinding key, committed before the key was opened.
+- [`results/2026-11-22-phase3-E-review-summary.json`](results/2026-11-22-phase3-E-review-summary.json):
+  the public summary of the blinded review by case and condition (method, unblinding checks,
+  limitations, every rating count, retrieval figures, what the agent's searches added, paired
+  verdicts, costs and the books; no neutral ID, note, question, answer or passage text).
 - `local/` (git-ignored): contexts with passage text (`2026-11-14-contexts.json`), raw requests
   and responses and the run result (`2026-11-15-generation/`), the human-review sheet as generated
   (`2026-11-15-review-sheet.md`, ratings empty, kept unchanged), Erhan's approved review
@@ -233,7 +269,13 @@ a worst case of USD 44.352 against USD 97.508644 of headroom (a bound) and about
   answer, full result), its console output (`2026-11-20-question-D1-console/`), the review
   worksheet as generated (`2026-11-20-D1-review-worksheet.md`, ratings empty, kept unchanged)
   and Erhan's completed copy with his ratings and notes (`2026-11-20-D1-review-worksheet-erhan.md`,
-  confirmed 2026-11-21).
+  confirmed 2026-11-21); for the comparison of 2026-11-21, the frozen set with its blinding
+  listing (`2026-11-21-phase3-E-set/`), the key (`2026-11-21-phase3-E-blinding-key/`), the run's
+  requests, responses and full result (`2026-11-21-phase3-E-comparison/`), its console output, the
+  trace findings sealed until the ratings were fixed (`2026-11-21-phase3-E-sealed/`), the packaging
+  and unblinding scripts (`2026-11-21-phase3-E-packaging/`) and the review folder
+  (`2026-11-21-phase3-E-review/`: both packets, the blank and the transferred ratings, the local
+  lock copies and the unblinded table with neutral IDs).
 
 ## Passage construction (corrected run)
 
@@ -437,8 +479,8 @@ answer, not a correct one: its claims need human review against the cited passag
 `run_comparison.py` runs a set of questions under three conditions, each cell (one case under one
 condition) through `evidence_agent.run_case` and therefore through the same books, ceiling,
 admission, reservations, settlements, persistence, lock and answer checks. Built and tested
-offline on 2026-11-21; **no comparison has run live**, and a live run needs its own explicit
-authorisation.
+offline on 2026-11-21 and **run live once**, the same day, on E1 to E6 ("Live run and blinded
+review" below); every further live run needs its own explicit authorisation.
 
 | | A `fixed5` | B `fixed10` | C `agent` |
 |---|---|---|---|
@@ -533,7 +575,7 @@ allowance at 20 USD per million, the 1.1 US multiplier and the prices of `pricin
 
 | Figure | USD | Kind |
 |---|---|---|
-| Committed now (Phase 2 1.930804 + D1 0.560552) | 2.491356 | recorded |
+| Committed when planned (Phase 2 1.930804 + D1 0.560552) | 2.491356 | recorded |
 | Headroom under the limit of 100 | 97.508644 | recorded |
 | One call at the 80,000-token input cap | 1.4784 | bound |
 | One case (A + B + C admissions) | 7.392 | bound |
@@ -564,6 +606,20 @@ checked by a person, since coverage matches edition, page and quote. Reporting: 
 E6 (D1 overlap); for E4 and E5, single-edition January questions, B receives 10 of the January
 commentary's 11 passages; E2's edition filter keeps January out of every condition, so E2 does not
 test edition selection.
+
+**Live run and blinded review (2026-11-21, ratings confirmed 2026-11-22):** the run matched the
+plan's order and bounds; the estimate (about 6.29) was above the calculated USD 4.569196. Every C
+cell searched once, after its first call, and that search filled the ten-passage budget, so no C
+cell made a third call. The review packet showed each answer under a neutral ID with the frozen
+rubric and the text of the passages it cites; how it was produced, counts, costs and timings
+were withheld. Erhan's marks were transferred into a structured ratings file that reproduces his
+completed packet line for line, the hashes were committed before the key was opened, and a local
+script repeated every check (18 IDs once each, one answer per condition per case, under every ID
+the status, claims with citations and named gaps of the cell the key names, each saved answer
+hashing to the public record) before joining ratings and key. Results by case and condition, the
+searches followed from passage to cited claim to covered rubric item, the cost reconciliation,
+the limits and the recommendation are on the
+[evidence page](../../docs/evidence/2026-11-21-phase3-E-comparison.md).
 
 What the offline tests show (`test_evidence_agent.py`, `test_run_comparison.py`, mocked provider,
 temporary books): A and B receive exactly the top 5 and top 10 of one ranking in rank order (rank 11
@@ -598,6 +654,10 @@ answers better.
   Recall@5 of 0.259 with the edition filter (0.219 for the baseline corpus).
 - Eight dev cases, written by an AI and reviewed by one person (Erhan, not blinded, 2026-11-15); no
   held-out test. The corrected run is a development-set-informed correction, not validation.
+- The Phase 3 comparison is six frozen cases (E1 overlapping D1), one run per case and condition,
+  one reviewer who also decided the cases, partially blinded (answers shown verbatim); on the
+  January-only cases B sees 10 of 11 January passages. Its differences are observations on these
+  cases, not estimates for other questions.
 - Table detection is specific to the commentaries' position tables (a code line and a value
   line per row, introduced by a line ending in ':'); it takes the first row's description to be
   one line. The only table in the corpus fits the budget whole, so the split-table context is

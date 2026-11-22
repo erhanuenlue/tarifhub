@@ -1,0 +1,3110 @@
+{
+ "run": {
+  "tag": "2026-11-21-phase3-E",
+  "time_budget_s_per_cell": 600.0,
+  "cases": [
+   {
+    "case": "E1",
+    "editions": [
+     "2026-07-01"
+    ],
+    "question_sha256": "d0eb0e111ddaf1025f273d44213036b84e5708858b17e59967cf6d72ba9f3f7d"
+   },
+   {
+    "case": "E2",
+    "editions": [
+     "2026-07-01"
+    ],
+    "question_sha256": "0bdbc3328e0c64e8a0eb0a01052a518123c96250d59406d06c9bb355290fa0fc"
+   },
+   {
+    "case": "E3",
+    "editions": [
+     "2026-01-01",
+     "2026-07-01"
+    ],
+    "question_sha256": "ffe757140f44c14a42f30dfbdcea3dd2406c8092db59502caee2b952e3eba625"
+   },
+   {
+    "case": "E4",
+    "editions": [
+     "2026-01-01"
+    ],
+    "question_sha256": "bef1e0952b5fac29fcc2c381f61dbadebdde5e9d0b5910b1ca5679edb99ad5d9"
+   },
+   {
+    "case": "E5",
+    "editions": [
+     "2026-01-01"
+    ],
+    "question_sha256": "27e212463d154df23eee0810b6269271053ea524db1e18d5d1abac73ce873b22"
+   },
+   {
+    "case": "E6",
+    "editions": [
+     "2026-07-01"
+    ],
+    "question_sha256": "68a7cbd623cd00e03a396dab9b19b0ec8cc290b31031474df79de9f6097c730d"
+   }
+  ],
+  "configuration": {
+   "model": "claude-opus-5-5",
+   "effort": "max",
+   "thinking": {
+    "type": "adaptive"
+   },
+   "max_tokens": 32000,
+   "timeout_s": 1200.0,
+   "client_max_retries": 0,
+   "budget_usd": 100.0,
+   "input_margin": 1.1,
+   "max_input_tokens": 80000,
+   "search_limits": {
+    "max_rounds": 2,
+    "max_passages": 10,
+    "per_search": 5,
+    "window": 10,
+    "max_query_chars": 200,
+    "max_seeking_chars": 300
+   },
+   "answer_schema_sha256": "31f86409999f8e88212d79079edf199437d133db9bc9d0c977c2b6d288452d4c",
+   "conditions": {
+    "fixed5": {
+     "label": "A",
+     "initial_passages": 5,
+     "calls": 1,
+     "search_tool": false,
+     "system_prompt_sha256": "f8698c98e3742f40ad329b1f2d4df40e4eebf482d1990ec36fc8c8ca93945e40"
+    },
+    "fixed10": {
+     "label": "B",
+     "initial_passages": 10,
+     "calls": 1,
+     "search_tool": false,
+     "system_prompt_sha256": "f8698c98e3742f40ad329b1f2d4df40e4eebf482d1990ec36fc8c8ca93945e40"
+    },
+    "agent": {
+     "label": "C",
+     "initial_passages": 5,
+     "calls": 3,
+     "search_tool": true,
+     "system_prompt_sha256": "9d066f4966a56f8d53a8a3899262a5e64f1f0a5ccc151bbdc98e275faa92db83"
+    }
+   }
+  },
+  "ranking": {
+   "method": "hybrid",
+   "mode": "edition_filter",
+   "k": 10,
+   "token_budget": 256,
+   "embedder": {
+    "model": "intfloat/multilingual-e5-large",
+    "device": "mps:0",
+    "cache_revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+    "max_seq_length": 512,
+    "packages": {
+     "sentence-transformers": "5.6.1",
+     "transformers": "5.11.0",
+     "tokenizers": "0.22.2",
+     "torch": "2.12.0"
+    }
+   }
+  },
+  "corpus": {
+   "manifest": {
+    "path": "data/manifests/bag-al.json",
+    "sha256": "3a3c98567a51dacaae6eef2abe976d789179f297fc3a612a82c6a51622e986b9"
+   },
+   "documents": [
+    {
+     "edition": "2026-01-01",
+     "sha256": "0d335bd46adec0254a91e260cebe976f86fd0cfb54bb97ea8ecf98cadfd7e4fc",
+     "source_url": "https://www.bag.admin.ch/dam/de/sd-web/0qHwQnPwQLSf/Kommentar%20zu%20den%20%C3%84nderungen%20des%20Anh.%203%20KLV%20per%2001.01.26.pdf",
+     "page_count": 5
+    },
+    {
+     "edition": "2026-07-01",
+     "sha256": "fe1856df9f7d0023aac52e13dc61a0055a7105b4810f18cc8822366625af5105",
+     "source_url": "https://www.bag.admin.ch/dam/de/sd-web/4UyRNXXha5kI/Kommentar%20zu%20den%20%C3%84nderungen%20des%20Anh.%203%20KLV%20per%2001.07.26_final.pdf",
+     "page_count": 8
+    }
+   ],
+   "passages": 40
+  },
+  "books": {
+   "historical_ledger": "generation-ledger.jsonl",
+   "historical_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+   "active_ledger": "phase3-ledger.jsonl"
+  },
+  "environment": {
+   "python": "3.13.12",
+   "packages": {
+    "anthropic": "0.109.1",
+    "httpx": "0.28.1"
+   },
+   "git_head": "861994bc843ed07fb73225c5652d7ee93d382390",
+   "tool_files_uncommitted": false,
+   "tool_files_sha256": {
+    "run_question.py": "00b9d988b4a793d55e4ad846be05c2f0b7b0a221868f763da45941f7053d11df",
+    "evidence_agent.py": "8f764df5b9cea83588898ab22e45244e872502c51d6d702db94a873da105643d",
+    "evidence_search.py": "439e4c856bbcb62056eadd7672c22444eafdcbeed1bd7855012c813cf28710ef",
+    "generation.py": "4ee8822cae96985a5a9e0ec62bda34c9b12574625524913b16530ff54e416e3a",
+    "retrieval.py": "7803c83d4f0a3a9e4bcdb94450587878b64d715fd6d77e8176fc50b9f3cf0d5a",
+    "corpus.py": "38a1572daf525e9a2356a29f7eb53d0769127e7afa05826925be5170ce701e5f",
+    "run_eval.py": "ada4ccf0e23a8f93e5793947a77a42e8ffd3752fddb8c58cf3402bb68de3701b",
+    "pricing.json": "f3d8bb8e65c5bbecb1dfd2f5c7f2b6c65b70934a1de1df3f500d96d02e31538e",
+    "run_comparison.py": "536d9244ac9421e113ba9f7a82a5d0d3ca4f0a49dc08884d355cdbd655fc9380"
+   }
+  },
+  "started_at": "2026-11-21T15:56:07+00:00",
+  "finished_at": "2026-11-21T16:23:29+00:00"
+ },
+ "plan": {
+  "order": [
+   {
+    "case": "E1",
+    "condition": "fixed5",
+    "label": "A",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E1",
+    "condition": "fixed10",
+    "label": "B",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E1",
+    "condition": "agent",
+    "label": "C",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E2",
+    "condition": "fixed5",
+    "label": "A",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E2",
+    "condition": "fixed10",
+    "label": "B",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E2",
+    "condition": "agent",
+    "label": "C",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E3",
+    "condition": "fixed5",
+    "label": "A",
+    "editions": [
+     "2026-01-01",
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E3",
+    "condition": "fixed10",
+    "label": "B",
+    "editions": [
+     "2026-01-01",
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E3",
+    "condition": "agent",
+    "label": "C",
+    "editions": [
+     "2026-01-01",
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E4",
+    "condition": "fixed5",
+    "label": "A",
+    "editions": [
+     "2026-01-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E4",
+    "condition": "fixed10",
+    "label": "B",
+    "editions": [
+     "2026-01-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E4",
+    "condition": "agent",
+    "label": "C",
+    "editions": [
+     "2026-01-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E5",
+    "condition": "fixed5",
+    "label": "A",
+    "editions": [
+     "2026-01-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E5",
+    "condition": "fixed10",
+    "label": "B",
+    "editions": [
+     "2026-01-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E5",
+    "condition": "agent",
+    "label": "C",
+    "editions": [
+     "2026-01-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E6",
+    "condition": "fixed5",
+    "label": "A",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E6",
+    "condition": "fixed10",
+    "label": "B",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   },
+   {
+    "case": "E6",
+    "condition": "agent",
+    "label": "C",
+    "editions": [
+     "2026-07-01"
+    ],
+    "in_books": false
+   }
+  ],
+  "conditions": {
+   "fixed5": {
+    "label": "A",
+    "initial_passages": 5,
+    "most_passages": 5,
+    "calls": 1,
+    "searches": 0,
+    "search_tool": false,
+    "admission_usd": 1.4784
+   },
+   "fixed10": {
+    "label": "B",
+    "initial_passages": 10,
+    "most_passages": 10,
+    "calls": 1,
+    "searches": 0,
+    "search_tool": false,
+    "admission_usd": 1.4784
+   },
+   "agent": {
+    "label": "C",
+    "initial_passages": 5,
+    "most_passages": 10,
+    "calls": 3,
+    "searches": 2,
+    "search_tool": true,
+    "admission_usd": 4.4352
+   }
+  },
+  "admission": {
+   "label": "BOUND, not an expected cost: every call of every cell still to run at the input cap, beside everything committed, under the aggregate limit",
+   "limit_usd": 100.0,
+   "committed_usd": 2.491356,
+   "historical_committed_usd": 1.930804,
+   "active_committed_usd": 0.560552,
+   "headroom_usd": 97.508644,
+   "call_ceiling_at_input_cap_usd": 1.4784,
+   "worst_case_usd": 44.352,
+   "fits": true,
+   "headroom_after_worst_case_usd": 53.156644
+  },
+  "cases": [
+   {
+    "case": "E1",
+    "editions": [
+     "2026-07-01"
+    ],
+    "booked": [],
+    "pairing": "new"
+   },
+   {
+    "case": "E2",
+    "editions": [
+     "2026-07-01"
+    ],
+    "booked": [],
+    "pairing": "new"
+   },
+   {
+    "case": "E3",
+    "editions": [
+     "2026-01-01",
+     "2026-07-01"
+    ],
+    "booked": [],
+    "pairing": "new"
+   },
+   {
+    "case": "E4",
+    "editions": [
+     "2026-01-01"
+    ],
+    "booked": [],
+    "pairing": "new"
+   },
+   {
+    "case": "E5",
+    "editions": [
+     "2026-01-01"
+    ],
+    "booked": [],
+    "pairing": "new"
+   },
+   {
+    "case": "E6",
+    "editions": [
+     "2026-07-01"
+    ],
+    "booked": [],
+    "pairing": "new"
+   }
+  ],
+  "assumptions": {
+   "label": "ASSUMPTIONS of the bounds, fixed in code and pricing.json: each call's ceiling is its counted input with the margin at the dearest input rate, plus every output token, times the US multiplier; prices as recorded, not a billing guarantee",
+   "model": "claude-opus-5-5",
+   "input_cap_tokens": 80000,
+   "input_margin": 1.1,
+   "max_output_tokens": 32000,
+   "us_multiplier": 1.1,
+   "ceiling_input_usd_per_mtok": 8.0,
+   "prices_usd_per_mtok": {
+    "input": 4.0,
+    "output": 20.0,
+    "cache_write_5m": 5.0,
+    "cache_write_1h": 8.0,
+    "cache_read": 0.2
+   },
+   "prices_source": "https://platform.claude.com/docs/en/about-claude/pricing.md (Model pricing table, row Claude Opus 5.5)",
+   "prices_retrieved": "2026-11-14"
+  },
+  "estimates": {
+   "label": "ESTIMATE, not a bound: the mean calculated cost of earlier cells priced from their usage, on development cases with few observations; not an invoice and not a prediction for the cases planned",
+   "per_condition": {
+    "fixed5": {
+     "observed_cells": 8,
+     "usd_per_cell": 0.24135,
+     "basis": "Phase 2's requests (the historical ledger, ADR-025's fixed top 5) and fixed5 cells of the active ledger"
+    },
+    "fixed10": {
+     "observed_cells": 0,
+     "usd_per_cell": 0.24647,
+     "basis": "no observation: the fixed5 estimate plus 1280 input tokens (five more passages at the 256-token passage budget) at 4 USD per million"
+    },
+    "agent": {
+     "observed_cells": 1,
+     "usd_per_cell": 0.560552,
+     "basis": "agent cells of the active ledger (D1 is one)"
+    }
+   },
+   "cells_to_run": 18,
+   "matrix_usd": 6.290232
+  }
+ },
+ "stopped_after": null,
+ "cases": [
+  {
+   "case": "E1",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "d0eb0e111ddaf1025f273d44213036b84e5708858b17e59967cf6d72ba9f3f7d",
+   "ranking": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p4/s2.4/1",
+     "score": 0.032266458495966696,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "3ae9bf00ad38b7c79556a05035ec624dab99ebe4f0adfe6cd55ca0c81bf633af"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p5/s2.4/3",
+     "score": 0.032018442622950824,
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "311c1f48d394f146b5f497c498a58c75ebe2d5c4d09ab30035ef58485af0d193"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p4/s2.4/2",
+     "score": 0.03057889822595705,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "338fbc959434f1a9250d2a427fb50b6fffd91d8e5ca36f729ee2e36021b69790"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p4/s2.3/2",
+     "score": 0.03021353930031804,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "09d683f81609a11fba0ef4d34f39ca42a2a33ef10510e90825831624df6308f6"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p5/s2.4/2",
+     "score": 0.03021353930031804,
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "e4f096c19c880759bfe9475f3c24fde088c6a00f053d7d3cc7171b747e474e5e"
+    },
+    {
+     "rank": 6,
+     "passage_id": "2026-07-01/p8/s4.2/1",
+     "score": 0.029910714285714284,
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.2",
+     "text_sha256": "fc8070ca8d3bd671ebccf5488b3a1973a1a4de0d4d704854ed99b31afe0a2563"
+    },
+    {
+     "rank": 7,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "score": 0.028850145288501453,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    },
+    {
+     "rank": 8,
+     "passage_id": "2026-07-01/p7/s2.5/1",
+     "score": 0.02871794871794872,
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.5",
+     "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+    },
+    {
+     "rank": 9,
+     "passage_id": "2026-07-01/p6/s2.5/5",
+     "score": 0.028594771241830064,
+     "edition": "2026-07-01",
+     "page": 6,
+     "section": "2.5",
+     "text_sha256": "30f04e754d8e5c3872ef3b3f391563f1c0e4098f622b4ff1ba101369e5f75ab2"
+    },
+    {
+     "rank": 10,
+     "passage_id": "2026-07-01/p7/s2.6/1",
+     "score": 0.028309409888357256,
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.6",
+     "text_sha256": "d46226a41ed261caa27f030d271cd2678b95dc8ca62404f9f620b13e0ba0cc73"
+    }
+   ],
+   "cells": [
+    {
+     "condition": "fixed5",
+     "label": "A",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "insufficient_evidence",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E1",
+      "condition": "fixed5",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E1-fixed5-call1",
+        "tool_choice": null,
+        "request_sha256": "65e150082fe610d9271525b18577022576adb45d5c55c5805319aa55033fc704",
+        "counted_input_tokens": 3703,
+        "reserved_usd": 0.739852,
+        "response_sha256": "e180af64796465fd517d7f65b39a393a60dc7f95e78a4dba58ac2a227709a440",
+        "usage": {
+         "input_tokens": 3703,
+         "output_tokens": 10197,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 9084,
+         "us_inference": false
+        },
+        "cost_usd": 0.218752,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 2.491356,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 84.42612774999998,
+      "supplied": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p5/s2.4/2"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p5/s2.4/2",
+       "2026-07-01/p5/s2.4/3"
+      ]
+     },
+     "answer": {
+      "status": "insufficient_evidence",
+      "claims": 5,
+      "cited_passages": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p5/s2.4/2",
+       "2026-07-01/p5/s2.4/3"
+      ],
+      "missing_evidence_items": 3,
+      "answer_sha256": "6e396b57c7eace4c096600a48a4e42d6ae5e521a99223b38808e9bbc50b3cf16"
+     }
+    },
+    {
+     "condition": "fixed10",
+     "label": "B",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E1",
+      "condition": "fixed10",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E1-fixed10-call1",
+        "tool_choice": null,
+        "request_sha256": "4bd720f56ac1389f30b9987a82074854c2f1c51203e7a695817485c7b4ffe56b",
+        "counted_input_tokens": 5705,
+        "reserved_usd": 0.759229,
+        "response_sha256": "25d39d3160d11299e1e65ca912a1e15ac249e881183454f60a01c2781ac42e0b",
+        "usage": {
+         "input_tokens": 5705,
+         "output_tokens": 9787,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 8588,
+         "us_inference": false
+        },
+        "cost_usd": 0.21856,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 2.710108,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 78.77064274999998,
+      "supplied": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p5/s2.4/2",
+       "2026-07-01/p8/s4.2/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p6/s2.5/5",
+       "2026-07-01/p7/s2.6/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p5/s2.4/2",
+       "2026-07-01/p6/s2.5/5",
+       "2026-07-01/p7/s2.5/1"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 9,
+      "cited_passages": [
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p5/s2.4/2",
+       "2026-07-01/p6/s2.5/5",
+       "2026-07-01/p7/s2.5/1"
+      ],
+      "missing_evidence_items": 1,
+      "answer_sha256": "0b7a303ca63da00f18bda0f3fbb83f800b74532500a0ef3a5f315748f279fefd"
+     }
+    },
+    {
+     "condition": "agent",
+     "label": "C",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E1",
+      "condition": "agent",
+      "budget_s": 600.0,
+      "generation_calls": 2,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E1-agent-call1",
+        "tool_choice": "auto",
+        "request_sha256": "f55f1e7ef29c42001b47cf127929602d70662a06f0c3fffc4fec2f05c131b307",
+        "counted_input_tokens": 4415,
+        "reserved_usd": 0.746742,
+        "response_sha256": "73de97411d5a99c0d26a1e74870ff10c6848a0a61afbc038ee326efb562e6f75",
+        "usage": {
+         "input_tokens": 4415,
+         "output_tokens": 1950,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 1708,
+         "us_inference": false
+        },
+        "cost_usd": 0.05666,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "tool_use"
+       },
+       {
+        "call": 2,
+        "attempt": "E1-agent-call2",
+        "tool_choice": "none",
+        "request_sha256": "4baa0473dee9a1877a4bcc2ca512be556b0b335fcf72f12c45dd6cdd91513273",
+        "counted_input_tokens": 9314,
+        "reserved_usd": 0.794165,
+        "response_sha256": "51bdb0ead66fd75e68bdf534cd1b9100a07ef1a1f323c928862cf74a9513ae49",
+        "usage": {
+         "input_tokens": 9314,
+         "output_tokens": 12530,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 10820,
+         "us_inference": false
+        },
+        "cost_usd": 0.287856,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [
+       {
+        "round": 1,
+        "outcome": "passages",
+        "method": "hybrid",
+        "editions": [
+         "2026-07-01"
+        ],
+        "window": 10,
+        "returned": [
+         {
+          "passage_id": "2026-07-01/p4/s2.4/3",
+          "rank": 2,
+          "score": 0.03252247488101534,
+          "edition": "2026-07-01",
+          "page": 4,
+          "section": "2.4",
+          "text_sha256": "949eb415d1f8514f2f425380fc93029395215c376d3c2fbad24b121e9ab2d801"
+         },
+         {
+          "passage_id": "2026-07-01/p6/s2.5/3",
+          "rank": 4,
+          "score": 0.03055037313432836,
+          "edition": "2026-07-01",
+          "page": 6,
+          "section": "2.5",
+          "text_sha256": "99c21eabedf347c4147fdb9a39bddca632aa365fa7194c50e15fe9b0977ab453"
+         },
+         {
+          "passage_id": "2026-07-01/p6/s2.5/5",
+          "rank": 6,
+          "score": 0.030090497737556562,
+          "edition": "2026-07-01",
+          "page": 6,
+          "section": "2.5",
+          "text_sha256": "30f04e754d8e5c3872ef3b3f391563f1c0e4098f622b4ff1ba101369e5f75ab2"
+         },
+         {
+          "passage_id": "2026-07-01/p5/s2.4/1",
+          "rank": 7,
+          "score": 0.029631255487269532,
+          "edition": "2026-07-01",
+          "page": 5,
+          "section": "2.4",
+          "text_sha256": "d0c0f2c141585e2d1495be97f96b77c8af59d8944ffef4966f1ff85befc9bb2b"
+         },
+         {
+          "passage_id": "2026-07-01/p8/s4.2/1",
+          "rank": 10,
+          "score": 0.027242401779095628,
+          "edition": "2026-07-01",
+          "page": 8,
+          "section": "4.2",
+          "text_sha256": "fc8070ca8d3bd671ebccf5488b3a1973a1a4de0d4d704854ed99b31afe0a2563"
+         }
+        ],
+        "already_supplied": [
+         "2026-07-01/p4/s2.4/2",
+         "2026-07-01/p5/s2.4/2",
+         "2026-07-01/p4/s2.4/1",
+         "2026-07-01/p5/s2.4/3",
+         "2026-07-01/p4/s2.3/2"
+        ],
+        "rounds_left": 1,
+        "passages_left": 0
+       }
+      ],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 2.928668,
+       "admission_usd": 4.4352
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 120.8105533339999,
+      "supplied": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p5/s2.4/2",
+       "2026-07-01/p4/s2.4/3",
+       "2026-07-01/p6/s2.5/3",
+       "2026-07-01/p6/s2.5/5",
+       "2026-07-01/p5/s2.4/1",
+       "2026-07-01/p8/s4.2/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p4/s2.4/3",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p6/s2.5/3",
+       "2026-07-01/p6/s2.5/5"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 9,
+      "cited_passages": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p4/s2.4/2",
+       "2026-07-01/p4/s2.4/3",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p6/s2.5/3",
+       "2026-07-01/p6/s2.5/5"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "d3dca8e01ee45978679b3e4bb0cdfd5b99bd8c844b9a387b4f0ec963b84b2455"
+     }
+    }
+   ]
+  },
+  {
+   "case": "E2",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "0bdbc3328e0c64e8a0eb0a01052a518123c96250d59406d06c9bb355290fa0fc",
+   "ranking": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p4/s2.4/1",
+     "score": 0.03200204813108039,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "3ae9bf00ad38b7c79556a05035ec624dab99ebe4f0adfe6cd55ca0c81bf633af"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p7/s2.5/1",
+     "score": 0.031754032258064516,
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.5",
+     "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p7/s2.6/1",
+     "score": 0.031544957774465976,
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.6",
+     "text_sha256": "d46226a41ed261caa27f030d271cd2678b95dc8ca62404f9f620b13e0ba0cc73"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p8/s4.1/1",
+     "score": 0.03028233151183971,
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.1",
+     "text_sha256": "cead34d19658d64b7d28d6b0ed21064f3b67d73707e72187aefa23b05b6dfaeb"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p5/s2.4/3",
+     "score": 0.029850746268656716,
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "311c1f48d394f146b5f497c498a58c75ebe2d5c4d09ab30035ef58485af0d193"
+    },
+    {
+     "rank": 6,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "score": 0.029138513513513514,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    },
+    {
+     "rank": 7,
+     "passage_id": "2026-07-01/p4/s2.3/2",
+     "score": 0.029083245521601686,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "09d683f81609a11fba0ef4d34f39ca42a2a33ef10510e90825831624df6308f6"
+    },
+    {
+     "rank": 8,
+     "passage_id": "2026-07-01/p8/s4.2/1",
+     "score": 0.028594771241830064,
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.2",
+     "text_sha256": "fc8070ca8d3bd671ebccf5488b3a1973a1a4de0d4d704854ed99b31afe0a2563"
+    },
+    {
+     "rank": 9,
+     "passage_id": "2026-07-01/p3/s2.2/1",
+     "score": 0.028484848484848488,
+     "edition": "2026-07-01",
+     "page": 3,
+     "section": "2.2",
+     "text_sha256": "edec94068ba948c52510fe28aa6ae5f8b98c7df8745bc985038dd6cf08dbe211"
+    },
+    {
+     "rank": 10,
+     "passage_id": "2026-07-01/p3/s2.1/2",
+     "score": 0.027984344422700584,
+     "edition": "2026-07-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "d117ae8d98df017f732d7bc4bf5da7c161a50d2f667126aeec5f1ec9cd42c643"
+    }
+   ],
+   "cells": [
+    {
+     "condition": "fixed5",
+     "label": "A",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "insufficient_evidence",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E2",
+      "condition": "fixed5",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E2-fixed5-call1",
+        "tool_choice": null,
+        "request_sha256": "5c34a0e42e44b8c984a1a7609231beb4a6a65b59e15d26405c1cfd628aca7f3d",
+        "counted_input_tokens": 3705,
+        "reserved_usd": 0.739869,
+        "response_sha256": "cd7cf4c1b278e92f651c8ab2848f45418fc0879990a9acd052e477065bbe6807",
+        "usage": {
+         "input_tokens": 3705,
+         "output_tokens": 15770,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 14732,
+         "us_inference": false
+        },
+        "cost_usd": 0.33022,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 3.273184,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 129.47347587499985,
+      "supplied": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p5/s2.4/3"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1"
+      ]
+     },
+     "answer": {
+      "status": "insufficient_evidence",
+      "claims": 4,
+      "cited_passages": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1"
+      ],
+      "missing_evidence_items": 3,
+      "answer_sha256": "1ca43a68c459f59cc0ee191fcd5cf2402eea3566c6fc725bdf1963d8f52ec0a6"
+     }
+    },
+    {
+     "condition": "fixed10",
+     "label": "B",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "partial",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E2",
+      "condition": "fixed10",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E2-fixed10-call1",
+        "tool_choice": null,
+        "request_sha256": "72b3a4e99923f4ef7d5c2c8643bec714254159a095e07985725db241e3b0570c",
+        "counted_input_tokens": 5779,
+        "reserved_usd": 0.759942,
+        "response_sha256": "14b6a93cef9c0de6801cb8efe956203f584326cc8869fbf0471d29061eee3ab0",
+        "usage": {
+         "input_tokens": 5779,
+         "output_tokens": 7638,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 6494,
+         "us_inference": false
+        },
+        "cost_usd": 0.175876,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 3.603404,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 60.67219229200009,
+      "supplied": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p8/s4.2/1",
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p3/s2.1/2"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/2"
+      ]
+     },
+     "answer": {
+      "status": "partial",
+      "claims": 6,
+      "cited_passages": [
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/2"
+      ],
+      "missing_evidence_items": 4,
+      "answer_sha256": "6883ed452b36a32ec7b4dec09fa3392ed20bbe8b2bb1ce7447c91d00bdda6e16"
+     }
+    },
+    {
+     "condition": "agent",
+     "label": "C",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E2",
+      "condition": "agent",
+      "budget_s": 600.0,
+      "generation_calls": 2,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E2-agent-call1",
+        "tool_choice": "auto",
+        "request_sha256": "cc7823376bb17c172639176382b1774b4ff8b468c935b28f563db2adb3179601",
+        "counted_input_tokens": 4417,
+        "reserved_usd": 0.74676,
+        "response_sha256": "bb0179751bc7be98d2aa24ccdab96f4fafedc99663e025dae3ff8581ae1f1a26",
+        "usage": {
+         "input_tokens": 4417,
+         "output_tokens": 856,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 629,
+         "us_inference": false
+        },
+        "cost_usd": 0.034788,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "tool_use"
+       },
+       {
+        "call": 2,
+        "attempt": "E2-agent-call2",
+        "tool_choice": "none",
+        "request_sha256": "685c0fc1964029a02eb1547876da692720eac984806e98964f4685ad38c37a06",
+        "counted_input_tokens": 7775,
+        "reserved_usd": 0.779267,
+        "response_sha256": "0a83b82b2865bd40d606a0376d28410c0ec60324226d2b6b550456f409d289ae",
+        "usage": {
+         "input_tokens": 7775,
+         "output_tokens": 10057,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 8184,
+         "us_inference": false
+        },
+        "cost_usd": 0.23224,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [
+       {
+        "round": 1,
+        "outcome": "passages",
+        "method": "hybrid",
+        "editions": [
+         "2026-07-01"
+        ],
+        "window": 10,
+        "returned": [
+         {
+          "passage_id": "2026-07-01/p3/s2.2/1",
+          "rank": 1,
+          "score": 0.03252247488101534,
+          "edition": "2026-07-01",
+          "page": 3,
+          "section": "2.2",
+          "text_sha256": "edec94068ba948c52510fe28aa6ae5f8b98c7df8745bc985038dd6cf08dbe211"
+         },
+         {
+          "passage_id": "2026-07-01/p4/s2.3/1",
+          "rank": 3,
+          "score": 0.03125763125763126,
+          "edition": "2026-07-01",
+          "page": 4,
+          "section": "2.3",
+          "text_sha256": "cf81411daf55619b90ad1269a6604407ef1399a20eba42ae5efb7e5800cbc947"
+         },
+         {
+          "passage_id": "2026-07-01/p3/s1/1",
+          "rank": 4,
+          "score": 0.03055037313432836,
+          "edition": "2026-07-01",
+          "page": 3,
+          "section": "1",
+          "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f"
+         },
+         {
+          "passage_id": "2026-07-01/p4/s2.3/2",
+          "rank": 8,
+          "score": 0.02854251012145749,
+          "edition": "2026-07-01",
+          "page": 4,
+          "section": "2.3",
+          "text_sha256": "09d683f81609a11fba0ef4d34f39ca42a2a33ef10510e90825831624df6308f6"
+         },
+         {
+          "passage_id": "2026-07-01/p4/s2.2/1",
+          "rank": 9,
+          "score": 0.028258706467661692,
+          "edition": "2026-07-01",
+          "page": 4,
+          "section": "2.2",
+          "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+         }
+        ],
+        "already_supplied": [
+         "2026-07-01/p7/s2.6/1",
+         "2026-07-01/p8/s4.1/1",
+         "2026-07-01/p7/s2.5/1",
+         "2026-07-01/p4/s2.4/1",
+         "2026-07-01/p5/s2.4/3"
+        ],
+        "rounds_left": 1,
+        "passages_left": 0
+       }
+      ],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 3.77928,
+       "admission_usd": 4.4352
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 89.96006320799984,
+      "supplied": [
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.3/1",
+       "2026-07-01/p3/s1/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p4/s2.2/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.6/1"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 11,
+      "cited_passages": [
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.6/1"
+      ],
+      "missing_evidence_items": 4,
+      "answer_sha256": "f908810b6572e51a98974d8b4bd9c0f8adf9ba506bec717e53eb624cf830e924"
+     }
+    }
+   ]
+  },
+  {
+   "case": "E3",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "question_sha256": "ffe757140f44c14a42f30dfbdcea3dd2406c8092db59502caee2b952e3eba625",
+   "ranking": [
+    {
+     "rank": 1,
+     "passage_id": "2026-01-01/p5/s3.2/2",
+     "score": 0.03225806451612903,
+     "edition": "2026-01-01",
+     "page": 5,
+     "section": "3.2",
+     "text_sha256": "fae32cb9d750df1d6e8a838f11eb49446a08dd0400540f326594023354692278"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p4/s2.3/2",
+     "score": 0.031746031746031744,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "09d683f81609a11fba0ef4d34f39ca42a2a33ef10510e90825831624df6308f6"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p8/s4.1/1",
+     "score": 0.030886196246139225,
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.1",
+     "text_sha256": "cead34d19658d64b7d28d6b0ed21064f3b67d73707e72187aefa23b05b6dfaeb"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p8/s4.2/1",
+     "score": 0.03047794966520434,
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.2",
+     "text_sha256": "fc8070ca8d3bd671ebccf5488b3a1973a1a4de0d4d704854ed99b31afe0a2563"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-01-01/p5/s3.2/1",
+     "score": 0.030309988518943745,
+     "edition": "2026-01-01",
+     "page": 5,
+     "section": "3.2",
+     "text_sha256": "d7db4a825fcb2a0ac3221a549f5b0a848df40fc3eeb14878653d97a6a0b93442"
+    },
+    {
+     "rank": 6,
+     "passage_id": "2026-01-01/p3/s2.1/1",
+     "score": 0.029910714285714284,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "49e6a692616d91c446acb9e62648cf585720080e3bdb76dd8fccef5547db0081"
+    },
+    {
+     "rank": 7,
+     "passage_id": "2026-07-01/p7/s2.6/1",
+     "score": 0.029437229437229435,
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.6",
+     "text_sha256": "d46226a41ed261caa27f030d271cd2678b95dc8ca62404f9f620b13e0ba0cc73"
+    },
+    {
+     "rank": 8,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "score": 0.029138513513513514,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    },
+    {
+     "rank": 9,
+     "passage_id": "2026-01-01/p4/s3.1/2",
+     "score": 0.0288981288981289,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "3.1",
+     "text_sha256": "4b936a30dd80bb9981dafe81e685ebcc7a73dbd129d89d2e496a18730a7bc9c3"
+    },
+    {
+     "rank": 10,
+     "passage_id": "2026-01-01/p3/s1/1",
+     "score": 0.028814262023217248,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "1",
+     "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f"
+    }
+   ],
+   "cells": [
+    {
+     "condition": "fixed5",
+     "label": "A",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E3",
+      "condition": "fixed5",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E3-fixed5-call1",
+        "tool_choice": null,
+        "request_sha256": "1620255aea0ac05a918d5ae40020bab09a8dc95866275a13532b95f16270e7c3",
+        "counted_input_tokens": 3237,
+        "reserved_usd": 0.735337,
+        "response_sha256": "4fc73a01bf94f2b23d4bd0a991225c8ec30517e4cfbfa34024afa359acf63d00",
+        "usage": {
+         "input_tokens": 3237,
+         "output_tokens": 19595,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 17776,
+         "us_inference": false
+        },
+        "cost_usd": 0.404848,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 4.046308,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 148.941637958,
+      "supplied": [
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1",
+       "2026-01-01/p5/s3.2/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 9,
+      "cited_passages": [
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ],
+      "missing_evidence_items": 0,
+      "answer_sha256": "ee12c8b85ef698b8af11b5b2052455fc6d1bab81632fed6a641afd70978821dc"
+     }
+    },
+    {
+     "condition": "fixed10",
+     "label": "B",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E3",
+      "condition": "fixed10",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E3-fixed10-call1",
+        "tool_choice": null,
+        "request_sha256": "537aa9304afd5602703568bc419c5750f6ba5746e4bb3fad230625a9b8d6619b",
+        "counted_input_tokens": 5595,
+        "reserved_usd": 0.758164,
+        "response_sha256": "ccf8fd35418e45475e5b2b54a041ecc7ac0604aa3ea4c69c884bb9362a0b8aa2",
+        "usage": {
+         "input_tokens": 5595,
+         "output_tokens": 22046,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 20104,
+         "us_inference": false
+        },
+        "cost_usd": 0.4633,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 4.451156,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 171.1682175829999,
+      "supplied": [
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p3/s2.1/1",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p3/s1/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 9,
+      "cited_passages": [
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "314142e47a1a8c625cc0cc5757f8e4c177d64a1853b27f4cb0a09907e85486f2"
+     }
+    },
+    {
+     "condition": "agent",
+     "label": "C",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E3",
+      "condition": "agent",
+      "budget_s": 600.0,
+      "generation_calls": 2,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E3-agent-call1",
+        "tool_choice": "auto",
+        "request_sha256": "313522fd0fdb452bdd4fe7641442fd569fa18d5ed464b26e6a197ea91988852e",
+        "counted_input_tokens": 3957,
+        "reserved_usd": 0.742307,
+        "response_sha256": "d18e712930879f3d642e587ddd0bed013b995e7c1c7d948aa05bfad691c322c4",
+        "usage": {
+         "input_tokens": 3957,
+         "output_tokens": 1467,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 1256,
+         "us_inference": false
+        },
+        "cost_usd": 0.045168,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "tool_use"
+       },
+       {
+        "call": 2,
+        "attempt": "E3-agent-call2",
+        "tool_choice": "none",
+        "request_sha256": "8ff65f9a6774974467badd842a821e69c3e0965a4360c32b8cac3cb15f5cdcad",
+        "counted_input_tokens": 7805,
+        "reserved_usd": 0.779557,
+        "response_sha256": "928e8d7186d0760dd9321626cf484736aafe1f1b34c56133a43f429c00911a2e",
+        "usage": {
+         "input_tokens": 7805,
+         "output_tokens": 12534,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 10744,
+         "us_inference": false
+        },
+        "cost_usd": 0.2819,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [
+       {
+        "round": 1,
+        "outcome": "passages",
+        "method": "hybrid",
+        "editions": [
+         "2026-01-01",
+         "2026-07-01"
+        ],
+        "window": 10,
+        "returned": [
+         {
+          "passage_id": "2026-01-01/p3/s2.1/1",
+          "rank": 4,
+          "score": 0.03128054740957967,
+          "edition": "2026-01-01",
+          "page": 3,
+          "section": "2.1",
+          "text_sha256": "49e6a692616d91c446acb9e62648cf585720080e3bdb76dd8fccef5547db0081"
+         },
+         {
+          "passage_id": "2026-07-01/p4/s2.2/1",
+          "rank": 5,
+          "score": 0.030117753623188408,
+          "edition": "2026-07-01",
+          "page": 4,
+          "section": "2.2",
+          "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+         },
+         {
+          "passage_id": "2026-01-01/p3/s2.2/1",
+          "rank": 7,
+          "score": 0.029437229437229435,
+          "edition": "2026-01-01",
+          "page": 3,
+          "section": "2.2",
+          "text_sha256": "898c246fb6deb4acbc6e217c8dbe5af70cf6508b2984a5952eec2c1b60498f9c"
+         },
+         {
+          "passage_id": "2026-01-01/p4/s2.3/3",
+          "rank": 8,
+          "score": 0.029418126757516764,
+          "edition": "2026-01-01",
+          "page": 4,
+          "section": "2.3",
+          "text_sha256": "132f4e5c5db87dc1b7bec2a9294d4b5bb12117f0a986e935be1bd5f24b979f38"
+         },
+         {
+          "passage_id": "2026-07-01/p7/s2.5/1",
+          "rank": 9,
+          "score": 0.02854251012145749,
+          "edition": "2026-07-01",
+          "page": 7,
+          "section": "2.5",
+          "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+         }
+        ],
+        "already_supplied": [
+         "2026-07-01/p8/s4.2/1",
+         "2026-01-01/p5/s3.2/2",
+         "2026-01-01/p5/s3.2/1",
+         "2026-07-01/p4/s2.3/2"
+        ],
+        "rounds_left": 1,
+        "passages_left": 0
+       }
+      ],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 4.914456,
+       "admission_usd": 4.4352
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 113.009615209,
+      "supplied": [
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p3/s2.1/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p4/s2.3/3",
+       "2026-07-01/p7/s2.5/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 10,
+      "cited_passages": [
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p5/s3.2/2",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ],
+      "missing_evidence_items": 1,
+      "answer_sha256": "5918d841a44993df1377023df4ba901c8552d162ebd617962d7e750682278338"
+     }
+    }
+   ]
+  },
+  {
+   "case": "E4",
+   "editions": [
+    "2026-01-01"
+   ],
+   "question_sha256": "bef1e0952b5fac29fcc2c381f61dbadebdde5e9d0b5910b1ca5679edb99ad5d9",
+   "ranking": [
+    {
+     "rank": 1,
+     "passage_id": "2026-01-01/p4/s2.3/2",
+     "score": 0.03278688524590164,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "6ee283e1541e054212f66a74cb7d456f4765e5ec819da7d4e24b7b4c3b88f0ca"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-01-01/p4/s2.3/1",
+     "score": 0.03200204813108039,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "f62b8cb23154f05585c14c5727423406f10621674b195f28cecb406f750a167d"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-01-01/p3/s2.2/1",
+     "score": 0.03125,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.2",
+     "text_sha256": "898c246fb6deb4acbc6e217c8dbe5af70cf6508b2984a5952eec2c1b60498f9c"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-01-01/p4/s2.3/3",
+     "score": 0.031054405392392875,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "132f4e5c5db87dc1b7bec2a9294d4b5bb12117f0a986e935be1bd5f24b979f38"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-01-01/p5/s3.2/1",
+     "score": 0.03057889822595705,
+     "edition": "2026-01-01",
+     "page": 5,
+     "section": "3.2",
+     "text_sha256": "d7db4a825fcb2a0ac3221a549f5b0a848df40fc3eeb14878653d97a6a0b93442"
+    },
+    {
+     "rank": 6,
+     "passage_id": "2026-01-01/p4/s3.1/1",
+     "score": 0.030309988518943745,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "3.1",
+     "text_sha256": "79a588246b0a1161c945417d897e39c879f32e267fff30959898d46156365a5d"
+    },
+    {
+     "rank": 7,
+     "passage_id": "2026-01-01/p3/s2.3/1",
+     "score": 0.030303030303030304,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.3",
+     "text_sha256": "ea72ac9281c59245ed8680eef7473d1d2b7f2f717ffc1f43bbf8a1dbfd12df58"
+    },
+    {
+     "rank": 8,
+     "passage_id": "2026-01-01/p3/s2.1/1",
+     "score": 0.02967032967032967,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "49e6a692616d91c446acb9e62648cf585720080e3bdb76dd8fccef5547db0081"
+    },
+    {
+     "rank": 9,
+     "passage_id": "2026-01-01/p4/s3.1/2",
+     "score": 0.028790389395194696,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "3.1",
+     "text_sha256": "4b936a30dd80bb9981dafe81e685ebcc7a73dbd129d89d2e496a18730a7bc9c3"
+    },
+    {
+     "rank": 10,
+     "passage_id": "2026-01-01/p3/s1/1",
+     "score": 0.02877846790890269,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "1",
+     "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f"
+    }
+   ],
+   "cells": [
+    {
+     "condition": "fixed5",
+     "label": "A",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E4",
+      "condition": "fixed5",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E4-fixed5-call1",
+        "tool_choice": null,
+        "request_sha256": "64338a88cf0ca42cc459d0c2bcc99691e233f7c46499fbdbc17693fe2909bf45",
+        "counted_input_tokens": 3849,
+        "reserved_usd": 0.74126,
+        "response_sha256": "ab854b6b72bc668aae37e2aa59ec0577ea32300c85c1d55798d6638cabc309d9",
+        "usage": {
+         "input_tokens": 3849,
+         "output_tokens": 10715,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 9735,
+         "us_inference": false
+        },
+        "cost_usd": 0.229696,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 5.241524,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 85.3101188329997,
+      "supplied": [
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p5/s3.2/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/3"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 8,
+      "cited_passages": [
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/3"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "d6fd1b265ea9a998b4be409233f36a2e74eb5a6a3c7b9af2a9c05f2a68864d7c"
+     }
+    },
+    {
+     "condition": "fixed10",
+     "label": "B",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E4",
+      "condition": "fixed10",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E4-fixed10-call1",
+        "tool_choice": null,
+        "request_sha256": "b50eda4175989f155bb43ad3645301c8728873bec2d3446612979f880f184230",
+        "counted_input_tokens": 6630,
+        "reserved_usd": 0.768179,
+        "response_sha256": "8db1355ee98a6d30c24edcd7dd188e16e7e6c2c45bd532c8af99a1063568b1cd",
+        "usage": {
+         "input_tokens": 6630,
+         "output_tokens": 11724,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 10599,
+         "us_inference": false
+        },
+        "cost_usd": 0.261,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 5.47122,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 93.5689337079998,
+      "supplied": [
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p4/s3.1/1",
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p3/s1/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/3"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 9,
+      "cited_passages": [
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/3"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "38c54d07c0a04eb2ba709e6b1ef7d9630b5149cbe407541c38b2fc7eab76b0ff"
+     }
+    },
+    {
+     "condition": "agent",
+     "label": "C",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "answered",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E4",
+      "condition": "agent",
+      "budget_s": 600.0,
+      "generation_calls": 2,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E4-agent-call1",
+        "tool_choice": "auto",
+        "request_sha256": "25d5ea247e3963c6d1da3b6a13d4ec5aca0d56a23122e651c3715d3222c01c84",
+        "counted_input_tokens": 4561,
+        "reserved_usd": 0.748159,
+        "response_sha256": "855e320b85f9581b8ee150dffbdf86c36352345d14f0dbf1bb35429be8eeb8f9",
+        "usage": {
+         "input_tokens": 4561,
+         "output_tokens": 3395,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 3140,
+         "us_inference": false
+        },
+        "cost_usd": 0.086144,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "tool_use"
+       },
+       {
+        "call": 2,
+        "attempt": "E4-agent-call2",
+        "tool_choice": "none",
+        "request_sha256": "cee0ebad3a52549c20aaea2e6707dbddbff856ed9c2a704c3daf2c8f5cd1ce78",
+        "counted_input_tokens": 10906,
+        "reserved_usd": 0.809574,
+        "response_sha256": "1d96e56dcd8ff70f23513d59c3eeea3a326abd81ee69d5935753b5babb4f122d",
+        "usage": {
+         "input_tokens": 10906,
+         "output_tokens": 3903,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 2933,
+         "us_inference": false
+        },
+        "cost_usd": 0.121684,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [
+       {
+        "round": 1,
+        "outcome": "passages",
+        "method": "hybrid",
+        "editions": [
+         "2026-01-01"
+        ],
+        "window": 10,
+        "returned": [
+         {
+          "passage_id": "2026-01-01/p3/s2.3/1",
+          "rank": 1,
+          "score": 0.03278688524590164,
+          "edition": "2026-01-01",
+          "page": 3,
+          "section": "2.3",
+          "text_sha256": "ea72ac9281c59245ed8680eef7473d1d2b7f2f717ffc1f43bbf8a1dbfd12df58"
+         },
+         {
+          "passage_id": "2026-01-01/p4/s3.1/1",
+          "rank": 6,
+          "score": 0.030309988518943745,
+          "edition": "2026-01-01",
+          "page": 4,
+          "section": "3.1",
+          "text_sha256": "79a588246b0a1161c945417d897e39c879f32e267fff30959898d46156365a5d"
+         },
+         {
+          "passage_id": "2026-01-01/p3/s2.1/1",
+          "rank": 7,
+          "score": 0.03007688828584351,
+          "edition": "2026-01-01",
+          "page": 3,
+          "section": "2.1",
+          "text_sha256": "49e6a692616d91c446acb9e62648cf585720080e3bdb76dd8fccef5547db0081"
+         },
+         {
+          "passage_id": "2026-01-01/p4/s3.1/2",
+          "rank": 8,
+          "score": 0.02919863597612958,
+          "edition": "2026-01-01",
+          "page": 4,
+          "section": "3.1",
+          "text_sha256": "4b936a30dd80bb9981dafe81e685ebcc7a73dbd129d89d2e496a18730a7bc9c3"
+         },
+         {
+          "passage_id": "2026-01-01/p3/s1/1",
+          "rank": 9,
+          "score": 0.028991596638655463,
+          "edition": "2026-01-01",
+          "page": 3,
+          "section": "1",
+          "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f"
+         }
+        ],
+        "already_supplied": [
+         "2026-01-01/p4/s2.3/1",
+         "2026-01-01/p4/s2.3/3",
+         "2026-01-01/p4/s2.3/2",
+         "2026-01-01/p3/s2.2/1",
+         "2026-01-01/p5/s3.2/1"
+        ],
+        "rounds_left": 1,
+        "passages_left": 0
+       }
+      ],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 5.73222,
+       "admission_usd": 4.4352
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 63.68226562500013,
+      "supplied": [
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p4/s3.1/1",
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p3/s1/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/3"
+      ]
+     },
+     "answer": {
+      "status": "answered",
+      "claims": 5,
+      "cited_passages": [
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s2.3/3"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "4bade895c68cc3e12a07e91c34dbacc3da448bc94fe30d381f69fad969449e45"
+     }
+    }
+   ]
+  },
+  {
+   "case": "E5",
+   "editions": [
+    "2026-01-01"
+   ],
+   "question_sha256": "27e212463d154df23eee0810b6269271053ea524db1e18d5d1abac73ce873b22",
+   "ranking": [
+    {
+     "rank": 1,
+     "passage_id": "2026-01-01/p3/s2.1/1",
+     "score": 0.03278688524590164,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "49e6a692616d91c446acb9e62648cf585720080e3bdb76dd8fccef5547db0081"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-01-01/p4/s3.1/2",
+     "score": 0.03225806451612903,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "3.1",
+     "text_sha256": "4b936a30dd80bb9981dafe81e685ebcc7a73dbd129d89d2e496a18730a7bc9c3"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-01-01/p4/s2.3/3",
+     "score": 0.03125,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "132f4e5c5db87dc1b7bec2a9294d4b5bb12117f0a986e935be1bd5f24b979f38"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-01-01/p3/s2.2/1",
+     "score": 0.031024531024531024,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.2",
+     "text_sha256": "898c246fb6deb4acbc6e217c8dbe5af70cf6508b2984a5952eec2c1b60498f9c"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-01-01/p5/s3.2/1",
+     "score": 0.03076923076923077,
+     "edition": "2026-01-01",
+     "page": 5,
+     "section": "3.2",
+     "text_sha256": "d7db4a825fcb2a0ac3221a549f5b0a848df40fc3eeb14878653d97a6a0b93442"
+    },
+    {
+     "rank": 6,
+     "passage_id": "2026-01-01/p4/s2.3/2",
+     "score": 0.030158730158730156,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "6ee283e1541e054212f66a74cb7d456f4765e5ec819da7d4e24b7b4c3b88f0ca"
+    },
+    {
+     "rank": 7,
+     "passage_id": "2026-01-01/p4/s3.1/1",
+     "score": 0.02964426877470356,
+     "edition": "2026-01-01",
+     "page": 4,
+     "section": "3.1",
+     "text_sha256": "79a588246b0a1161c945417d897e39c879f32e267fff30959898d46156365a5d"
+    },
+    {
+     "rank": 8,
+     "passage_id": "2026-01-01/p3/s1/1",
+     "score": 0.029411764705882353,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "1",
+     "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f"
+    },
+    {
+     "rank": 9,
+     "passage_id": "2026-01-01/p3/s2.3/1",
+     "score": 0.02900988017658188,
+     "edition": "2026-01-01",
+     "page": 3,
+     "section": "2.3",
+     "text_sha256": "ea72ac9281c59245ed8680eef7473d1d2b7f2f717ffc1f43bbf8a1dbfd12df58"
+    },
+    {
+     "rank": 10,
+     "passage_id": "2026-01-01/p5/s3.2/2",
+     "score": 0.02900988017658188,
+     "edition": "2026-01-01",
+     "page": 5,
+     "section": "3.2",
+     "text_sha256": "fae32cb9d750df1d6e8a838f11eb49446a08dd0400540f326594023354692278"
+    }
+   ],
+   "cells": [
+    {
+     "condition": "fixed5",
+     "label": "A",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "partial",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E5",
+      "condition": "fixed5",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E5-fixed5-call1",
+        "tool_choice": null,
+        "request_sha256": "ba821feba0187d9be565a4e27769d51223329a2bd814577f5ef81c2629aee4e2",
+        "counted_input_tokens": 3706,
+        "reserved_usd": 0.739878,
+        "response_sha256": "5f2e84a0370a34eb3bd9e395237e3a41f10c3fbf84cb1ac86eafbb5d9adb8597",
+        "usage": {
+         "input_tokens": 3706,
+         "output_tokens": 3635,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 2881,
+         "us_inference": false
+        },
+        "cost_usd": 0.087524,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 5.940048,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 28.69273770899963,
+      "supplied": [
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p5/s3.2/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p3/s2.1/1"
+      ]
+     },
+     "answer": {
+      "status": "partial",
+      "claims": 5,
+      "cited_passages": [
+       "2026-01-01/p3/s2.1/1"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "edf99b204350a7fb78b1fbb94e6ea96e0bfb5364606ec6536ec0ca51405c5c73"
+     }
+    },
+    {
+     "condition": "fixed10",
+     "label": "B",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "partial",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E5",
+      "condition": "fixed10",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E5-fixed10-call1",
+        "tool_choice": null,
+        "request_sha256": "25be6345423de25901e21f52908a46825726b9ed50c41e2b5c7e263515dd89ea",
+        "counted_input_tokens": 6349,
+        "reserved_usd": 0.76546,
+        "response_sha256": "329f9737049d368fcaf5f29955fe10c2f64dc829bd8f7614c566aaafc9747235",
+        "usage": {
+         "input_tokens": 6349,
+         "output_tokens": 4002,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 3261,
+         "us_inference": false
+        },
+        "cost_usd": 0.105436,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 6.027572,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 32.32609537500002,
+      "supplied": [
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p4/s2.3/2",
+       "2026-01-01/p4/s3.1/1",
+       "2026-01-01/p3/s1/1",
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p5/s3.2/2"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p3/s2.1/1"
+      ]
+     },
+     "answer": {
+      "status": "partial",
+      "claims": 5,
+      "cited_passages": [
+       "2026-01-01/p3/s2.1/1"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "e0433197dc1a26ac693b60a57400e04732a541444c08582e6261ae9161a57d66"
+     }
+    },
+    {
+     "condition": "agent",
+     "label": "C",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "partial",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E5",
+      "condition": "agent",
+      "budget_s": 600.0,
+      "generation_calls": 2,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E5-agent-call1",
+        "tool_choice": "auto",
+        "request_sha256": "905afad3972d942cb623b9834f0d798cb02a03417e1a89405e2f44a3a032fc68",
+        "counted_input_tokens": 4418,
+        "reserved_usd": 0.746768,
+        "response_sha256": "89b2dc50b22d6cceacc8f79f5fb51ceca0b69e63c7bdb4bdfc1b694f6f178701",
+        "usage": {
+         "input_tokens": 4418,
+         "output_tokens": 620,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 381,
+         "us_inference": false
+        },
+        "cost_usd": 0.030072,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "tool_use"
+       },
+       {
+        "call": 2,
+        "attempt": "E5-agent-call2",
+        "tool_choice": "none",
+        "request_sha256": "f74987cf6e58af5296aba40c85e0288893edf86896c787ada3ecf64f36d455da",
+        "counted_input_tokens": 8081,
+        "reserved_usd": 0.782232,
+        "response_sha256": "62f043878c8de8965f2cc72c28aba55c3b603bef0336e2fc2ab2932f1f9cd411",
+        "usage": {
+         "input_tokens": 8081,
+         "output_tokens": 3465,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 2636,
+         "us_inference": false
+        },
+        "cost_usd": 0.101624,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [
+       {
+        "round": 1,
+        "outcome": "passages",
+        "method": "hybrid",
+        "editions": [
+         "2026-01-01"
+        ],
+        "window": 10,
+        "returned": [
+         {
+          "passage_id": "2026-01-01/p3/s1/1",
+          "rank": 4,
+          "score": 0.030798389007344232,
+          "edition": "2026-01-01",
+          "page": 3,
+          "section": "1",
+          "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f"
+         },
+         {
+          "passage_id": "2026-01-01/p4/s3.1/1",
+          "rank": 5,
+          "score": 0.030117753623188408,
+          "edition": "2026-01-01",
+          "page": 4,
+          "section": "3.1",
+          "text_sha256": "79a588246b0a1161c945417d897e39c879f32e267fff30959898d46156365a5d"
+         },
+         {
+          "passage_id": "2026-01-01/p4/s2.3/1",
+          "rank": 7,
+          "score": 0.029857397504456328,
+          "edition": "2026-01-01",
+          "page": 4,
+          "section": "2.3",
+          "text_sha256": "f62b8cb23154f05585c14c5727423406f10621674b195f28cecb406f750a167d"
+         },
+         {
+          "passage_id": "2026-01-01/p3/s2.3/1",
+          "rank": 8,
+          "score": 0.02946912242686891,
+          "edition": "2026-01-01",
+          "page": 3,
+          "section": "2.3",
+          "text_sha256": "ea72ac9281c59245ed8680eef7473d1d2b7f2f717ffc1f43bbf8a1dbfd12df58"
+         },
+         {
+          "passage_id": "2026-01-01/p4/s2.3/2",
+          "rank": 10,
+          "score": 0.029211087420042643,
+          "edition": "2026-01-01",
+          "page": 4,
+          "section": "2.3",
+          "text_sha256": "6ee283e1541e054212f66a74cb7d456f4765e5ec819da7d4e24b7b4c3b88f0ca"
+         }
+        ],
+        "already_supplied": [
+         "2026-01-01/p3/s2.1/1",
+         "2026-01-01/p4/s3.1/2",
+         "2026-01-01/p3/s2.2/1",
+         "2026-01-01/p4/s2.3/3",
+         "2026-01-01/p5/s3.2/1"
+        ],
+        "rounds_left": 1,
+        "passages_left": 0
+       }
+      ],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 6.133008,
+       "admission_usd": 4.4352
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 34.3012551249999,
+      "supplied": [
+       "2026-01-01/p3/s2.1/1",
+       "2026-01-01/p4/s3.1/2",
+       "2026-01-01/p4/s2.3/3",
+       "2026-01-01/p3/s2.2/1",
+       "2026-01-01/p5/s3.2/1",
+       "2026-01-01/p3/s1/1",
+       "2026-01-01/p4/s3.1/1",
+       "2026-01-01/p4/s2.3/1",
+       "2026-01-01/p3/s2.3/1",
+       "2026-01-01/p4/s2.3/2"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-01-01/p3/s2.1/1"
+      ]
+     },
+     "answer": {
+      "status": "partial",
+      "claims": 5,
+      "cited_passages": [
+       "2026-01-01/p3/s2.1/1"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "e6a3f5dfe4b71d523ebcedcd357b858014f33b625c0bb24e4470ca322493528c"
+     }
+    }
+   ]
+  },
+  {
+   "case": "E6",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "68a7cbd623cd00e03a396dab9b19b0ec8cc290b31031474df79de9f6097c730d",
+   "ranking": [
+    {
+     "rank": 1,
+     "passage_id": "2026-07-01/p7/s2.6/1",
+     "score": 0.03252247488101534,
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.6",
+     "text_sha256": "d46226a41ed261caa27f030d271cd2678b95dc8ca62404f9f620b13e0ba0cc73"
+    },
+    {
+     "rank": 2,
+     "passage_id": "2026-07-01/p4/s2.3/2",
+     "score": 0.03149801587301587,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.3",
+     "text_sha256": "09d683f81609a11fba0ef4d34f39ca42a2a33ef10510e90825831624df6308f6"
+    },
+    {
+     "rank": 3,
+     "passage_id": "2026-07-01/p4/s2.4/1",
+     "score": 0.03131881575727918,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.4",
+     "text_sha256": "3ae9bf00ad38b7c79556a05035ec624dab99ebe4f0adfe6cd55ca0c81bf633af"
+    },
+    {
+     "rank": 4,
+     "passage_id": "2026-07-01/p8/s4.2/1",
+     "score": 0.030776515151515152,
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.2",
+     "text_sha256": "fc8070ca8d3bd671ebccf5488b3a1973a1a4de0d4d704854ed99b31afe0a2563"
+    },
+    {
+     "rank": 5,
+     "passage_id": "2026-07-01/p7/s2.5/1",
+     "score": 0.03076923076923077,
+     "edition": "2026-07-01",
+     "page": 7,
+     "section": "2.5",
+     "text_sha256": "dda2b1644192df5f0f6956d2f15d6d679eb2222e60e3474a706b0f3feaf1d60a"
+    },
+    {
+     "rank": 6,
+     "passage_id": "2026-07-01/p4/s2.2/1",
+     "score": 0.030621785881252923,
+     "edition": "2026-07-01",
+     "page": 4,
+     "section": "2.2",
+     "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+    },
+    {
+     "rank": 7,
+     "passage_id": "2026-07-01/p5/s2.4/3",
+     "score": 0.03057889822595705,
+     "edition": "2026-07-01",
+     "page": 5,
+     "section": "2.4",
+     "text_sha256": "311c1f48d394f146b5f497c498a58c75ebe2d5c4d09ab30035ef58485af0d193"
+    },
+    {
+     "rank": 8,
+     "passage_id": "2026-07-01/p8/s4.1/1",
+     "score": 0.029437229437229435,
+     "edition": "2026-07-01",
+     "page": 8,
+     "section": "4.1",
+     "text_sha256": "cead34d19658d64b7d28d6b0ed21064f3b67d73707e72187aefa23b05b6dfaeb"
+    },
+    {
+     "rank": 9,
+     "passage_id": "2026-07-01/p3/s2.1/3",
+     "score": 0.029418126757516764,
+     "edition": "2026-07-01",
+     "page": 3,
+     "section": "2.1",
+     "text_sha256": "2011d615c546749d6ca552230ce5eb28b7ee6ba6ec34537ef33781dfb1e4c76c"
+    },
+    {
+     "rank": 10,
+     "passage_id": "2026-07-01/p6/s2.5/5",
+     "score": 0.02817460317460317,
+     "edition": "2026-07-01",
+     "page": 6,
+     "section": "2.5",
+     "text_sha256": "30f04e754d8e5c3872ef3b3f391563f1c0e4098f622b4ff1ba101369e5f75ab2"
+    }
+   ],
+   "cells": [
+    {
+     "condition": "fixed5",
+     "label": "A",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "insufficient_evidence",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E6",
+      "condition": "fixed5",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E6-fixed5-call1",
+        "tool_choice": null,
+        "request_sha256": "6d6548b59cc37a3d05d0ba746221795a8f28743e45d9a643aed7352a7f6a5b93",
+        "counted_input_tokens": 3168,
+        "reserved_usd": 0.734668,
+        "response_sha256": "8f56c2b3564ac6298075e59e0ad2ce3b3ce99cab94f90edf51d3268148ae689e",
+        "usage": {
+         "input_tokens": 3168,
+         "output_tokens": 11167,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 10342,
+         "us_inference": false
+        },
+        "cost_usd": 0.236012,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 6.264704,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 96.32245558300019,
+      "supplied": [
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p8/s4.2/1",
+       "2026-07-01/p7/s2.5/1"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p7/s2.6/1"
+      ]
+     },
+     "answer": {
+      "status": "insufficient_evidence",
+      "claims": 6,
+      "cited_passages": [
+       "2026-07-01/p7/s2.6/1"
+      ],
+      "missing_evidence_items": 3,
+      "answer_sha256": "a8bb0443a7de62ebf399e28ea23a7c3e7b18a640aea47e2550eb39114d7398a8"
+     }
+    },
+    {
+     "condition": "fixed10",
+     "label": "B",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "insufficient_evidence",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E6",
+      "condition": "fixed10",
+      "budget_s": 600.0,
+      "generation_calls": 1,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E6-fixed10-call1",
+        "tool_choice": null,
+        "request_sha256": "fe8b080d97eab929490759d668dbedb09c2a499d0c9f6bf0b93cbea4fdb7b9ff",
+        "counted_input_tokens": 5533,
+        "reserved_usd": 0.757566,
+        "response_sha256": "ac199701c9d1f9d707ff38bd6e998b3ec96dc094061dfff83898f90b3d803afa",
+        "usage": {
+         "input_tokens": 5533,
+         "output_tokens": 11700,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 11031,
+         "us_inference": false
+        },
+        "cost_usd": 0.256132,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 6.500716,
+       "admission_usd": 1.4784
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 102.61390066700005,
+      "supplied": [
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p8/s4.2/1",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p3/s2.1/3",
+       "2026-07-01/p6/s2.5/5"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p7/s2.6/1"
+      ]
+     },
+     "answer": {
+      "status": "insufficient_evidence",
+      "claims": 5,
+      "cited_passages": [
+       "2026-07-01/p7/s2.6/1"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "de58550358192ae6503e294a62aaaf24864316933184b7a6313764d7b3a760e5"
+     }
+    },
+    {
+     "condition": "agent",
+     "label": "C",
+     "status": {
+      "execution": "answer",
+      "detail": null,
+      "answer": "insufficient_evidence",
+      "accounting": "priced"
+     },
+     "exit_code": 0,
+     "agent": {
+      "case": "E6",
+      "condition": "agent",
+      "budget_s": 600.0,
+      "generation_calls": 2,
+      "calls": [
+       {
+        "call": 1,
+        "attempt": "E6-agent-call1",
+        "tool_choice": "auto",
+        "request_sha256": "0ea63b0bd13e31123672ac6880342f383e0f64bab0f0ffbf7efad3e6ff756fcf",
+        "counted_input_tokens": 3880,
+        "reserved_usd": 0.741559,
+        "response_sha256": "523b26ad13bad539ebcacdffbfd22632a1b7b485d8ae500f8d323f8a0096063c",
+        "usage": {
+         "input_tokens": 3880,
+         "output_tokens": 448,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 239,
+         "us_inference": false
+        },
+        "cost_usd": 0.02448,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "tool_use"
+       },
+       {
+        "call": 2,
+        "attempt": "E6-agent-call2",
+        "tool_choice": "none",
+        "request_sha256": "c47e3a50e7efcd28e0937980eed50fb02968d000b51f2f109b025c3c13fef6a2",
+        "counted_input_tokens": 7061,
+        "reserved_usd": 0.772359,
+        "response_sha256": "cd33ca9ad7230a87d7c5f1ef1a2fc37063b863cc29f1d18a5c009c97d99c8fe4",
+        "usage": {
+         "input_tokens": 7061,
+         "output_tokens": 12549,
+         "cache_creation_input_tokens": 0,
+         "cache_read_input_tokens": 0,
+         "cache_creation_1h_input_tokens": 0,
+         "thinking_tokens": 11707,
+         "us_inference": false
+        },
+        "cost_usd": 0.279224,
+        "cost_basis": "usage",
+        "above_reservation": false,
+        "returned_model": "claude-opus-5-5",
+        "stop_reason": "end_turn"
+       }
+      ],
+      "searches": [
+       {
+        "round": 1,
+        "outcome": "passages",
+        "method": "hybrid",
+        "editions": [
+         "2026-07-01"
+        ],
+        "window": 10,
+        "returned": [
+         {
+          "passage_id": "2026-07-01/p5/s2.4/3",
+          "rank": 2,
+          "score": 0.03200204813108039,
+          "edition": "2026-07-01",
+          "page": 5,
+          "section": "2.4",
+          "text_sha256": "311c1f48d394f146b5f497c498a58c75ebe2d5c4d09ab30035ef58485af0d193"
+         },
+         {
+          "passage_id": "2026-07-01/p3/s2.2/1",
+          "rank": 3,
+          "score": 0.03149801587301587,
+          "edition": "2026-07-01",
+          "page": 3,
+          "section": "2.2",
+          "text_sha256": "edec94068ba948c52510fe28aa6ae5f8b98c7df8745bc985038dd6cf08dbe211"
+         },
+         {
+          "passage_id": "2026-07-01/p4/s2.2/1",
+          "rank": 6,
+          "score": 0.029857397504456328,
+          "edition": "2026-07-01",
+          "page": 4,
+          "section": "2.2",
+          "text_sha256": "4fed621c00b719799270958edd57f2992eb9c2b1d79df964cb13fcee1776804b"
+         },
+         {
+          "passage_id": "2026-07-01/p8/s4.1/1",
+          "rank": 7,
+          "score": 0.029418126757516764,
+          "edition": "2026-07-01",
+          "page": 8,
+          "section": "4.1",
+          "text_sha256": "cead34d19658d64b7d28d6b0ed21064f3b67d73707e72187aefa23b05b6dfaeb"
+         },
+         {
+          "passage_id": "2026-07-01/p3/s2.1/2",
+          "rank": 8,
+          "score": 0.028782894736842105,
+          "edition": "2026-07-01",
+          "page": 3,
+          "section": "2.1",
+          "text_sha256": "d117ae8d98df017f732d7bc4bf5da7c161a50d2f667126aeec5f1ec9cd42c643"
+         }
+        ],
+        "already_supplied": [
+         "2026-07-01/p7/s2.6/1",
+         "2026-07-01/p4/s2.4/1",
+         "2026-07-01/p7/s2.5/1",
+         "2026-07-01/p4/s2.3/2"
+        ],
+        "rounds_left": 1,
+        "passages_left": 0
+       }
+      ],
+      "spending": {
+       "budget_usd": 100.0,
+       "baseline_sha256": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+       "baseline_committed_usd": 1.930804,
+       "committed_before_usd": 6.756848,
+       "admission_usd": 4.4352
+      },
+      "outcome": "answer",
+      "detail": null,
+      "elapsed_s": 107.70702233299971,
+      "supplied": [
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p4/s2.4/1",
+       "2026-07-01/p8/s4.2/1",
+       "2026-07-01/p7/s2.5/1",
+       "2026-07-01/p5/s2.4/3",
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.2/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p3/s2.1/2"
+      ],
+      "schema_problems": 0,
+      "citations_outside_supplied": 0,
+      "cited": [
+       "2026-07-01/p3/s2.1/2",
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ]
+     },
+     "answer": {
+      "status": "insufficient_evidence",
+      "claims": 4,
+      "cited_passages": [
+       "2026-07-01/p3/s2.1/2",
+       "2026-07-01/p3/s2.2/1",
+       "2026-07-01/p4/s2.3/2",
+       "2026-07-01/p7/s2.6/1",
+       "2026-07-01/p8/s4.1/1",
+       "2026-07-01/p8/s4.2/1"
+      ],
+      "missing_evidence_items": 2,
+      "answer_sha256": "9a3ff8a4103deca4566090dc4c7e9acec0d0f9e040c103a5f881b54fed387088"
+     }
+    }
+   ]
+  }
+ ],
+ "notes": [
+  "An answer is accepted when it matches the answer schema and cites only passages supplied to the model; that is a deterministic check, not evidence that its claims are correct or supported, which needs human review against the cited passages.",
+  "Costs are calculated from reported usage and pricing.json, or kept at the reservation where nothing could be priced; they are not an invoice.",
+  "The conditions differ by design: A and B send the Phase 2 request with its own system prompt and no tool, once; C appends the search instruction to that system prompt, offers its one search tool and may make three calls, sharing one per-cell time budget across them and its searches. Model, settings, question, editions, initial ranking and answer checks are shared.",
+  "Admission figures are bounds (every call at the input cap), not expected costs; estimates come from earlier usage settlements of development cases."
+ ]
+}
