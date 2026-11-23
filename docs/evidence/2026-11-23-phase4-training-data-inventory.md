@@ -43,11 +43,14 @@ non-introduction sections name the same 167 position codes as in the feasibility
 Written and committed on 2026-11-23, after the parse and the page inspection and before any
 family, overlap or eligibility count was computed. One observation came first: three of the four introductions
 repeat the 2026 introductions word for word and the fourth nearly, which prompted rule 10; rule 2
-excludes them anyway. Rule 7 was reworded on review without the evaluation grouping's family count;
-no rule changed in substance. They make the exclusion rule of the
+excludes them anyway. Rule 7 was reworded on review without the evaluation grouping's family count,
+and the last sentence of this paragraph was corrected (it had said that the primary count always
+takes the stricter option); no rule changed in substance. They make the exclusion rule of the
 [feasibility assessment](2026-11-22-phase4-finetuning-feasibility.md#proposed-split-and-freezing-procedure)
-operational; where a choice is open, the primary count takes the stricter option and a
-sensitivity count the other.
+operational; where a choice is open, the primary count takes the option each rule names first and
+a sensitivity count the other. The sensitivity is the stricter option for misfiled text, range
+expressions and the AL handbook, and the more lenient one for the phases of transAL; the strictest
+combination is reported as well.
 
 1. **Material.** The four commentaries pinned in `data/manifests/bag-al-2024-2025.json`, parsed
    by the pilot's corpus builder unchanged (`corpus.build_corpus`), with the e5 tokenizer and the
