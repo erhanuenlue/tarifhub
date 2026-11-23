@@ -11,10 +11,11 @@ Erhan's.
 **Verdict: no-go for an embedding fine-tuning pilot on the current corpus alone.** The corpus
 fails the pilot criteria proposed below: its 40 passages are fewer than the 100 proposed for
 training alone, and none of its 14 labelled questions can serve as a held-out test. Grouped so
-that related changes stay together, the two 2026 commentaries form 6 change families, one of which
-holds more than half of the 40 passages (a grouping derived locally with the frozen E gold, so its
-sizes stay local). A family-disjoint split inside the corpus is possible but lopsided: one side
-gets that family, the other fewer than 20 passages in five small families, too narrow a training
+that related changes stay together, the public material alone (shared position codes and the
+public dev cases' gold evidence) puts 20 of the 38 non-introduction passages into one change
+family; the evaluation grouping, which also links the frozen E cases' gold evidence, can only merge
+families further, and its counts stay local. A family-disjoint split inside the corpus is possible
+but lopsided: one side gets that family, the other at most 18 passages, too narrow a training
 source or too small a test to show a difference
 ([headroom](#headroom-and-what-a-test-could-detect)). These family counts describe the corpus as the
 pilot's parser built it, which files the 132 position codes of footnote 1 of the July commentary
@@ -35,6 +36,12 @@ either one completes Phase 4.
 30 eligible training passages in 14 families under the exclusion rule below, 70 short of the
 proposed 100, and the power assessment finds the evaluation design exploratory only
 ([training-data inventory](2026-11-23-phase4-training-data-inventory.md)). This page is otherwise
+unchanged, apart from the correction below.
+
+**Correction of 2026-11-23.** Statements that described the evaluation grouping, which also uses
+the frozen E cases' gold evidence, by its counts were replaced by bounds that follow from the
+public groupings alone, and the prior exposure of the families that no public dev case matches is
+now shown from the public dev cases' recorded rankings. The verdict and the other conclusions are
 unchanged.
 
 ## Why embedding fine-tuning, and what changed since Zwischenbericht 1
@@ -100,28 +107,31 @@ family when they name a common position code or when one question's gold evidenc
 - Adding the public dev cases' gold evidence (D6 cites January 2.2, July 2.4 and July 2.5): 9
   families of 20, 4, 4, 3, 2, 2, 1, 1 and 1 passages (diagnostic view: 9 families of 15, 7, 4, 4,
   3, 2, 1, 1 and 1 passages).
-- Adding the frozen E cases' gold evidence as well: **6 families**. Their sizes and composition,
-  and this grouping's counts in the diagnostic view, stay local, since they reveal which sections
-  the frozen E cases target.
+- Adding the frozen E cases' gold evidence as well gives the **evaluation grouping**. It can only
+  merge the families above, so it has at most 9 families in either view, and its largest family
+  holds at least 20 passages (15 in the diagnostic view). Its family count, sizes and composition
+  stay local in both views: read beside the public groupings, they would show which sections the
+  frozen E cases cite together.
 
 Counted by one rule (a question matches a family through its gold evidence or, for a question
 without supporting evidence, through a position code it names; U1 names 1034.00, which only July
-section 3.1 mentions), the known questions (D1 to D6, U1, U2, E1 to E6) match 5 of the 6
-families, and 37 of the 38 non-introduction passages sit in matched families (37 of the 38 in the
-[diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view) as well). In the frozen view the unmatched family is a single passage
-(July 2.6, the update of the AL handbook).
+section 3.1 mentions), the public dev cases (D1 to D6, U1, U2) match 4 of the 9 public families,
+which hold 31 of the 38 non-introduction passages (in the
+[diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view), 4 of 9 holding 26 of the 38). The frozen E
+cases can only add matches; the evaluation grouping's matching counts stay local with its other
+counts.
 
 Unmatched by this rule does not mean never seen during evaluation. The rule sees only gold
 evidence and named position codes: a question can concern a topic without either, and retrieval
 exposes passages to the model whatever their labels; the reviews saw them as their protocols
 allowed (the Phase 2 and D1 reviews worked from the full supplied contexts, the blinded Phase 3
-review from the cited passages only). A
-private check of the
-recorded runs on 2026-11-22 found the July 2.6 passage in the retrieved context of two Phase 2 dev
-cases, of both calls of the D1 agent run and of 8 of the 18 Phase 3 comparison cells, and seven
-recorded answers cite it (six comparison cells and one Phase 2 dev case). No 2026 family is
-therefore free of prior exposure: fresh test questions over any of them are new questions on
-material the evaluation has already seen, not questions on an unseen topic.
+review from the cited passages only). Every public family that no public dev case matches
+(January 2.1, January 3.2, July 2.3, July 2.6 and July 4.2 in the frozen view; in the diagnostic
+view July 2.3 forms one family with January 3.1, July 2.2 and July 4.1) has a passage in the
+recorded top 5 of at least one public dev case (`results/2026-11-14-retrieval-corrected.json`,
+any method and mode). No 2026 family, in either view and under any grouping that merges public
+families, is therefore free of prior exposure: fresh test questions over any of them are new
+questions on material the evaluation has already seen, not questions on an unseen topic.
 
 ### Footnote 1 of the July commentary: frozen and diagnostic view
 
@@ -171,13 +181,13 @@ are combined into one inference unit, or the overlap is excluded.
 
 **What changes.**
 
-- The statements that one family holds more than half of the 40 passages and that a
-  family-disjoint split inside the corpus is lopsided, with fewer than 20 passages in five small
-  families on the other side (verdict, headroom, proposed split, fallback), describe the frozen
-  view. In the diagnostic view no public family holds half of the passages (the largest has 15 of
-  the 40 with the dev gold). The evaluation grouping's counts in that view, and with them how even
-  an in-corpus split would be, stay local: read beside the public groupings, they would show which
-  sections the frozen E cases cite together.
+- The statements that one public family holds 20 of the 38 non-introduction passages and that a
+  family-disjoint split inside the corpus is lopsided, with at most 18 passages on the other side
+  (verdict, headroom, proposed split, fallback), describe the frozen view. In the diagnostic view
+  no public family holds half of the passages (the largest has 15 of the 40 with the dev gold).
+  The evaluation grouping's counts, and with them how even an in-corpus split would be, stay
+  local in both views: read beside the public groupings, they would show which sections the
+  frozen E cases cite together.
 - Which view defines the families is fixed before the freeze: the frozen view follows the passages
   a tuned model would be trained and tested on, the diagnostic view the document's structure.
 - The code sets of the affected families: the 132 codes of footnote 1 belong to the family of July
@@ -196,8 +206,7 @@ are combined into one inference unit, or the overlap is excluded.
 - The training-source exclusion rule. It tests older families against the union of all 2026
   position codes and named projects, which is the same in both views (167 codes) whatever their
   grouping, so it drops the same older families.
-- The matching coverage (37 of the 38 non-introduction passages in matched families, in both
-  views) and the prior exposure of every 2026 family.
+- The matching rule and the prior exposure of every 2026 family, in both views.
 - The pilot gate: its thresholds and power statements are unchanged; the families they count are
   those of the grouping fixed at the freeze. With families as the unit at least 6 are still needed.
 - Every recorded result: all Phase 2 and Phase 3 figures use the frozen corpus.
@@ -241,8 +250,8 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
   questions, 0.30 for 20, 0.20 for 30 and 0.15 for 40, and more as soon as any question gets worse.
   That is the best case, not a power target: if the tuned model truly turns 20 % of 30 independent
   questions into hits and breaks none, the test reaches significance with a probability of only
-  about 0.57, and questions that share evidence are not independent. Inside today's corpus a family-disjoint test would cover fewer than 20 passages in five small
-  families (in the frozen view; see the [diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view)), and 30 independent fresh questions over them are hard to write without
+  about 0.57, and questions that share evidence are not independent. Inside today's corpus a family-disjoint test outside the largest family would cover at most 18
+  passages (in the frozen view; see the [diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view)), and 30 independent fresh questions over them are hard to write without
   near-paraphrases, which count as one.
 
 ## Proposed split and freezing procedure
@@ -254,8 +263,8 @@ held-out test of a tuned model. Examples of existing labels (public dev cases):
    serves this split and the inventory below: older passages are grouped into families by shared
    position codes or named projects (such as transAL-2), across sections, before anything is
    counted (older editions have no gold evidence to link them); every older family that shares a
-   position code or a named project with any of the six 2026 families (in the diagnostic view the
-   2026 families hold the same 167 codes between them, so the same older families are dropped) is
+   position code or a named project with the 2026 material (the union of all 2026 families, which
+   holds the same 167 codes in both views, so the same older families are dropped) is
    dropped from training as a whole, and the training passages are counted only after that, so related changes stay on one
    side.
 2. **Known questions are never test questions.** D1 to D6, U1, U2 and E1 to E6 may serve as a
@@ -352,11 +361,11 @@ Score) rather than text. It would make exactly one decision, before the freeze i
   paraphrases and related changes land in one family. Erhan still decides admission at the freeze.
 - **Minimal inputs:** the candidate question and one description per family built from public
   material only: its sections' titles and position codes, grouped by shared codes and the public
-  dev cases (9 families). Never the six-family grouping, which uses the local E gold, and never
+  dev cases (9 families). Never the evaluation grouping, which uses the local E gold, and never
   the E questions, gold evidence, rubric or answers.
 - **Mapping before the freeze:** two public families can belong to one evaluation family, so Erhan
   maps the nine public families of the view fixed at the freeze onto that view's evaluation
-  families, which are computed locally (six in the frozen view), before the freeze, and a
+  families, which are computed locally, before the freeze, and a
   code outside that mapping goes to his review; coverage is counted in the evaluation grouping.
 - **Code first:** position codes in the question decide by lookup without Jev; Jev is asked only
   when a question names none.
@@ -369,7 +378,7 @@ Score) rather than text. It would make exactly one decision, before the freeze i
   documentation and **labelled mocked**. Outcomes: one `assign` by code lookup (Jev not called),
   one `assign` from a mocked answer at confidence 0.81, and four `needs_erhan` (two families
   named by codes, mocked confidence 0.42, mocked `none`, simulated outage). This shows the
-  control flow only and says nothing about Jev's accuracy. The exercise used the six-family
+  control flow only and says nothing about Jev's accuracy. The exercise used the evaluation
   grouping locally; a real run would use the nine public descriptions.
 - **Before any live call:** a live run would send candidate held-out questions to an external
   provider before they are frozen, and add a provider seam outside the services. Both need Erhan's
