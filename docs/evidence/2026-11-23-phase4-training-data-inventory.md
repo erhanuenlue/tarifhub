@@ -263,7 +263,7 @@ decision, not a decided gate.
   win or lose together. For a claim about changes in general, the family is the defensible unit.
 - The 2026 material has few families: 11 by shared position codes alone and 9 with the public dev
   cases' gold evidence (frozen view, feasibility assessment); the evaluation grouping, which also
-  links the private cases' gold evidence, can only have fewer. With families as units and no family
+  links the private cases' gold evidence, can have no more. With families as units and no family
   losing, the test rejects only once at least 6 families differ, all in the tuned model's favour:
   with exactly 6 families power is 0.26 at a family win probability of 0.8 and 0.53 at 0.9; 4 or 5 families
   can never reach 5 %; with 9 families power is 0.66 at 0.67 and 0.91 at 0.8, with 11 families 0.50
