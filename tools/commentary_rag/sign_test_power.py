@@ -23,8 +23,9 @@ and the n from which the target holds for every larger n up to n_max.
 Standard library only, no network, nothing read from disk. The CLI writes a deterministic JSON
 report (sorted keys, floats rounded to 4 decimal places, no timestamps, no paths):
 
-    python3 tools/commentary_rag/sign_test_power.py \\
-        --out tools/commentary_rag/results/2026-11-23-sign-test-power.json
+    python3 tools/commentary_rag/sign_test_power.py --out <a new file>
+
+An existing file is never replaced.
 """
 
 from __future__ import annotations

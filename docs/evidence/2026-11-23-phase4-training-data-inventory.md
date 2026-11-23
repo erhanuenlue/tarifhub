@@ -173,8 +173,9 @@ it would have meant training on test text.
 
 **Duplicate check.** Apart from that passage (in F03), only the introductions match: those of
 January 2024, July 2024 and January 2025 are identical to both 2026 introductions (same text hash),
-and that of July 2025 shares 83 % of its word 8-grams with them. Introductions are never eligible
-(rule 2), so the check changes no count.
+and that of July 2025 shares 83 % of its word 8-grams with them. That copy lies in a dropped family and
+introductions are never eligible (rule 2), so the check leaves the primary count unchanged; it
+lowers only the bound with no family excluded, from 52 to 51.
 
 **What remains.** The 30 eligible passages are 13 from content changes (section 2) in 6 families, 8
 from refused applications (section 3) in 2 families and 9 from editorial adjustments and
@@ -283,7 +284,7 @@ S7 is the best case at the measured rate, a tuned model that fixes every base mi
 nothing.
 
 The table shows what a question-level test would need **if the questions were independent**, which
-they are not shown to be; it bounds the design from above.
+they are not shown to be: its figures are conditional on that assumption, not a formal bound.
 
 | Scenario | Win w | Loss l | Power, 30 units | Power, 38 units | Units for 0.80, two-sided | Units for 0.80, one-sided |
 |---|---|---|---|---|---|---|
