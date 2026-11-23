@@ -31,6 +31,12 @@ could start sooner, but its live runs would cost more in API calls than the pilo
 below). The lecturer has confirmed in the module forum that the two variants are alternatives, so
 either one completes Phase 4.
 
+**Update of 2026-11-23.** Data step 1 has run: the four public commentaries of 2024 and 2025 give
+30 eligible training passages in 14 families under the exclusion rule below, 70 short of the
+proposed 100, and the power assessment finds the evaluation design exploratory only
+([training-data inventory](2026-11-23-phase4-training-data-inventory.md)). This page is otherwise
+unchanged.
+
 ## Why embedding fine-tuning, and what changed since Zwischenbericht 1
 
 Zwischenbericht 1 (6 October 2026) planned fine-tuning as a **Change Extractor**: a QLoRA adapter

@@ -1,0 +1,647 @@
+{
+ "family_units": {
+  "l_f": 0.0,
+  "min_wins_to_reject": [
+   {
+    "d": 1,
+    "one_sided": null,
+    "two_sided": null
+   },
+   {
+    "d": 2,
+    "one_sided": null,
+    "two_sided": null
+   },
+   {
+    "d": 3,
+    "one_sided": null,
+    "two_sided": null
+   },
+   {
+    "d": 4,
+    "one_sided": null,
+    "two_sided": null
+   },
+   {
+    "d": 5,
+    "one_sided": 5,
+    "two_sided": null
+   },
+   {
+    "d": 6,
+    "one_sided": 6,
+    "two_sided": 6
+   },
+   {
+    "d": 7,
+    "one_sided": 7,
+    "two_sided": 7
+   },
+   {
+    "d": 8,
+    "one_sided": 7,
+    "two_sided": 8
+   },
+   {
+    "d": 9,
+    "one_sided": 8,
+    "two_sided": 8
+   },
+   {
+    "d": 10,
+    "one_sided": 9,
+    "two_sided": 9
+   },
+   {
+    "d": 11,
+    "one_sided": 9,
+    "two_sided": 10
+   },
+   {
+    "d": 12,
+    "one_sided": 10,
+    "two_sided": 10
+   }
+  ],
+  "power": [
+   {
+    "n": 4,
+    "power": 0.0,
+    "w_f": 0.5
+   },
+   {
+    "n": 5,
+    "power": 0.0,
+    "w_f": 0.5
+   },
+   {
+    "n": 6,
+    "power": 0.0156,
+    "w_f": 0.5
+   },
+   {
+    "n": 9,
+    "power": 0.2539,
+    "w_f": 0.5
+   },
+   {
+    "n": 11,
+    "power": 0.5,
+    "w_f": 0.5
+   },
+   {
+    "n": 4,
+    "power": 0.0,
+    "w_f": 0.67
+   },
+   {
+    "n": 5,
+    "power": 0.0,
+    "w_f": 0.67
+   },
+   {
+    "n": 6,
+    "power": 0.0905,
+    "w_f": 0.67
+   },
+   {
+    "n": 9,
+    "power": 0.6585,
+    "w_f": 0.67
+   },
+   {
+    "n": 11,
+    "power": 0.8829,
+    "w_f": 0.67
+   },
+   {
+    "n": 4,
+    "power": 0.0,
+    "w_f": 0.8
+   },
+   {
+    "n": 5,
+    "power": 0.0,
+    "w_f": 0.8
+   },
+   {
+    "n": 6,
+    "power": 0.2621,
+    "w_f": 0.8
+   },
+   {
+    "n": 9,
+    "power": 0.9144,
+    "w_f": 0.8
+   },
+   {
+    "n": 11,
+    "power": 0.9883,
+    "w_f": 0.8
+   },
+   {
+    "n": 4,
+    "power": 0.0,
+    "w_f": 0.9
+   },
+   {
+    "n": 5,
+    "power": 0.0,
+    "w_f": 0.9
+   },
+   {
+    "n": 6,
+    "power": 0.5314,
+    "w_f": 0.9
+   },
+   {
+    "n": 9,
+    "power": 0.9917,
+    "w_f": 0.9
+   },
+   {
+    "n": 11,
+    "power": 0.9997,
+    "w_f": 0.9
+   },
+   {
+    "n": 4,
+    "power": 0.0,
+    "w_f": 1.0
+   },
+   {
+    "n": 5,
+    "power": 0.0,
+    "w_f": 1.0
+   },
+   {
+    "n": 6,
+    "power": 1.0,
+    "w_f": 1.0
+   },
+   {
+    "n": 9,
+    "power": 1.0,
+    "w_f": 1.0
+   },
+   {
+    "n": 11,
+    "power": 1.0,
+    "w_f": 1.0
+   }
+  ],
+  "sides": 2
+ },
+ "min_w_at_n": [
+  {
+   "loss_ratio": "0",
+   "n": 30,
+   "one_sided": 0.22,
+   "two_sided": 0.26
+  },
+  {
+   "loss_ratio": "0",
+   "n": 38,
+   "one_sided": 0.18,
+   "two_sided": 0.21
+  },
+  {
+   "loss_ratio": "0",
+   "n": 40,
+   "one_sided": 0.17,
+   "two_sided": 0.2
+  },
+  {
+   "loss_ratio": "1/3",
+   "n": 30,
+   "one_sided": 0.66,
+   "two_sided": 0.75
+  },
+  {
+   "loss_ratio": "1/3",
+   "n": 38,
+   "one_sided": 0.52,
+   "two_sided": 0.66
+  },
+  {
+   "loss_ratio": "1/3",
+   "n": 40,
+   "one_sided": 0.5,
+   "two_sided": 0.63
+  }
+ ],
+ "model": {
+  "alpha": 0.05,
+  "description": "n independent units (held-out questions, or families). Each unit is a win (the tuned model hits at 5, the base model misses) with probability w, a loss (the tuned model misses, the base model hits) with probability l, or a tie with probability t = 1 - w - l. The exact sign test drops the ties; with d discordant units of which k are wins and X ~ Binomial(d, 1/2), the two-sided p-value is min(1, 2 * min(P(X <= k), P(X >= k))) and the one-sided p-value is P(X >= k), both exact fractions, and the test rejects when p <= alpha. Power is the exact multinomial probability of a rejection in the tuned model's favour (k > d - k).",
+  "n_max": 400,
+  "notes": {
+   "family_units": "units are families, a family's sign being that of its summed per-question differences in hit at 5 (ties dropped); w_f is the family-level win probability, l_f = 0",
+   "min_w_at_n": "the smallest w on the grid 0.01, 0.02, ... (l = loss_ratio * w, w + l <= 1) whose power at n reaches target_power; null if none does",
+   "n_for_power": "first_n: the smallest n whose power reaches target_power; stable_n: the smallest n from which the power stays at or above it for every n up to n_max; null when not reached. Exact power is saw-toothed in n, so the two can differ"
+  },
+  "rounding": "floats rounded to 4 decimal places",
+  "target_power": 0.8,
+  "w_grid_step": 0.01
+ },
+ "scenarios": {
+  "S1": {
+   "l": 0.0,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 33,
+     "stable_n": 33
+    },
+    "two_sided": {
+     "first_n": 39,
+     "stable_n": 39
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0016,
+     "two_sided": 0.0001
+    },
+    {
+     "n": 10,
+     "one_sided": 0.0328,
+     "two_sided": 0.0064
+    },
+    {
+     "n": 20,
+     "one_sided": 0.3704,
+     "two_sided": 0.1958
+    },
+    {
+     "n": 30,
+     "one_sided": 0.7448,
+     "two_sided": 0.5725
+    },
+    {
+     "n": 38,
+     "one_sided": 0.9014,
+     "two_sided": 0.7996
+    },
+    {
+     "n": 40,
+     "one_sided": 0.9241,
+     "two_sided": 0.8387
+    },
+    {
+     "n": 50,
+     "one_sided": 0.9815,
+     "two_sided": 0.952
+    },
+    {
+     "n": 60,
+     "one_sided": 0.9961,
+     "two_sided": 0.9879
+    }
+   ],
+   "t": 0.8,
+   "w": 0.2
+  },
+  "S2": {
+   "l": 0.1,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 67,
+     "stable_n": 67
+    },
+    "two_sided": {
+     "first_n": 84,
+     "stable_n": 84
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0095,
+     "two_sided": 0.0007
+    },
+    {
+     "n": 10,
+     "one_sided": 0.0775,
+     "two_sided": 0.0271
+    },
+    {
+     "n": 20,
+     "one_sided": 0.2625,
+     "two_sided": 0.1736
+    },
+    {
+     "n": 30,
+     "one_sided": 0.4331,
+     "two_sided": 0.3071
+    },
+    {
+     "n": 38,
+     "one_sided": 0.5491,
+     "two_sided": 0.4142
+    },
+    {
+     "n": 40,
+     "one_sided": 0.574,
+     "two_sided": 0.4397
+    },
+    {
+     "n": 50,
+     "one_sided": 0.6785,
+     "two_sided": 0.5467
+    },
+    {
+     "n": 60,
+     "one_sided": 0.7583,
+     "two_sided": 0.6349
+    }
+   ],
+   "t": 0.6,
+   "w": 0.3
+  },
+  "S3": {
+   "l": 0.0,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 66,
+     "stable_n": 66
+    },
+    "two_sided": {
+     "first_n": 78,
+     "stable_n": 78
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0001,
+     "two_sided": 0.0
+    },
+    {
+     "n": 10,
+     "one_sided": 0.0016,
+     "two_sided": 0.0001
+    },
+    {
+     "n": 20,
+     "one_sided": 0.0432,
+     "two_sided": 0.0113
+    },
+    {
+     "n": 30,
+     "one_sided": 0.1755,
+     "two_sided": 0.0732
+    },
+    {
+     "n": 38,
+     "one_sided": 0.3299,
+     "two_sided": 0.1747
+    },
+    {
+     "n": 40,
+     "one_sided": 0.371,
+     "two_sided": 0.2063
+    },
+    {
+     "n": 50,
+     "one_sided": 0.5688,
+     "two_sided": 0.3839
+    },
+    {
+     "n": 60,
+     "one_sided": 0.729,
+     "two_sided": 0.5628
+    }
+   ],
+   "t": 0.9,
+   "w": 0.1
+  },
+  "S4": {
+   "l": 0.0,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 21,
+     "stable_n": 21
+    },
+    "two_sided": {
+     "first_n": 25,
+     "stable_n": 25
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0109,
+     "two_sided": 0.0007
+    },
+    {
+     "n": 10,
+     "one_sided": 0.1503,
+     "two_sided": 0.0473
+    },
+    {
+     "n": 20,
+     "one_sided": 0.7625,
+     "two_sided": 0.5836
+    },
+    {
+     "n": 30,
+     "one_sided": 0.9698,
+     "two_sided": 0.9234
+    },
+    {
+     "n": 38,
+     "one_sided": 0.9957,
+     "two_sided": 0.9863
+    },
+    {
+     "n": 40,
+     "one_sided": 0.9974,
+     "two_sided": 0.9914
+    },
+    {
+     "n": 50,
+     "one_sided": 0.9998,
+     "two_sided": 0.9993
+    },
+    {
+     "n": 60,
+     "one_sided": 1.0,
+     "two_sided": 0.9999
+    }
+   ],
+   "t": 0.7,
+   "w": 0.3
+  },
+  "S5": {
+   "l": 0.05,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 74,
+     "stable_n": 74
+    },
+    "two_sided": {
+     "first_n": 92,
+     "stable_n": 92
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0015,
+     "two_sided": 0.0001
+    },
+    {
+     "n": 10,
+     "one_sided": 0.0242,
+     "two_sided": 0.005
+    },
+    {
+     "n": 20,
+     "one_sided": 0.1827,
+     "two_sided": 0.095
+    },
+    {
+     "n": 30,
+     "one_sided": 0.3442,
+     "two_sided": 0.2354
+    },
+    {
+     "n": 38,
+     "one_sided": 0.4583,
+     "two_sided": 0.3395
+    },
+    {
+     "n": 40,
+     "one_sided": 0.4854,
+     "two_sided": 0.3637
+    },
+    {
+     "n": 50,
+     "one_sided": 0.6088,
+     "two_sided": 0.4775
+    },
+    {
+     "n": 60,
+     "one_sided": 0.7068,
+     "two_sided": 0.5809
+    }
+   ],
+   "t": 0.75,
+   "w": 0.2
+  },
+  "S6": {
+   "l": 0.1,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 37,
+     "stable_n": 37
+    },
+    "two_sided": {
+     "first_n": 46,
+     "stable_n": 46
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0348,
+     "two_sided": 0.0041
+    },
+    {
+     "n": 10,
+     "one_sided": 0.1857,
+     "two_sided": 0.0903
+    },
+    {
+     "n": 20,
+     "one_sided": 0.4879,
+     "two_sided": 0.3671
+    },
+    {
+     "n": 30,
+     "one_sided": 0.7142,
+     "two_sided": 0.5859
+    },
+    {
+     "n": 38,
+     "one_sided": 0.8218,
+     "two_sided": 0.7178
+    },
+    {
+     "n": 40,
+     "one_sided": 0.8416,
+     "two_sided": 0.7423
+    },
+    {
+     "n": 50,
+     "one_sided": 0.913,
+     "two_sided": 0.8408
+    },
+    {
+     "n": 60,
+     "one_sided": 0.955,
+     "two_sided": 0.9072
+    }
+   ],
+   "t": 0.5,
+   "w": 0.4
+  },
+  "S7": {
+   "l": 0.0,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 39,
+     "stable_n": 39
+    },
+    "two_sided": {
+     "first_n": 46,
+     "stable_n": 46
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0007,
+     "two_sided": 0.0
+    },
+    {
+     "n": 10,
+     "one_sided": 0.0155,
+     "two_sided": 0.0024
+    },
+    {
+     "n": 20,
+     "one_sided": 0.2313,
+     "two_sided": 0.1018
+    },
+    {
+     "n": 30,
+     "one_sided": 0.5757,
+     "two_sided": 0.3836
+    },
+    {
+     "n": 38,
+     "one_sided": 0.7822,
+     "two_sided": 0.6248
+    },
+    {
+     "n": 40,
+     "one_sided": 0.8194,
+     "two_sided": 0.6761
+    },
+    {
+     "n": 50,
+     "one_sided": 0.9357,
+     "two_sided": 0.8612
+    },
+    {
+     "n": 60,
+     "one_sided": 0.9798,
+     "two_sided": 0.9488
+    }
+   ],
+   "t": 0.8333,
+   "w": 0.1667
+  }
+ }
+}
