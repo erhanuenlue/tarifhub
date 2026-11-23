@@ -1,0 +1,108 @@
+{
+  "manifest_version": 1,
+  "kind": "commentary_sources",
+  "tariff_system": "EAL",
+  "sources": [
+    {
+      "source_id": "2021-02-01",
+      "effective_dates": [
+        "2021-02-01"
+      ],
+      "title": "Erläuterungen zu den zusätzlichen Änderungen des Anhangs 3 der Krankenpflege-Leistungsverordnung (KLV) per 1. Februar 2021 (AS 2021 44, Nr. 11 vom 26. Januar 2021)",
+      "path": "data/raw/bag/al/2021-02-01/KLV-Aenderungen_Anh_3_Erlaeuterungen_01.02.2021_Publikation_DE_DEF.pdf",
+      "sha256": "a7c96207da387cb0ce640c72c4042d7a55d18cb8e8ac2405b60e2f4c6bfc5891",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/wSAkNxpS90s5/KLV-Aenderungen_Anh_3_Erlaeuterungen_01.02.2021_Publikation_DE_DEF.pdf"
+    },
+    {
+      "source_id": "2021-07-01",
+      "effective_dates": [
+        "2021-07-01"
+      ],
+      "title": "Erläuterungen zu den Änderungen des Anhangs 3 per 1. Juli 2021 (AS 2021 392 vom 25 Juni 2021)",
+      "path": "data/raw/bag/al/2021-07-01/kommentar-zu-den-aenderungen-per-01.07.2021-des-anhangs-3-der-klv.pdf",
+      "sha256": "c76525fc43e0c66778f053ace314941c6ef0cb7cb6c67fe9579046f0557ac62f",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/M7xIXAXqhTFl/kommentar-zu-den-aenderungen-per-01.07.2021-des-anhangs-3-der-klv.pdf"
+    },
+    {
+      "source_id": "2022-01-01",
+      "effective_dates": [
+        "2022-01-01",
+        "2022-02-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhang 3 (Analysenliste, AL) der Krankenpflege-Leistungsverordnung (KLV) vom 1. Dezember 2021 per 1. Januar 2022 und 1. Februar 2022 (AS 2021 885 und 886, Nr. 203 vom 17. Dezember 2021)",
+      "path": "data/raw/bag/al/2022-01-01/kommentarzudenaenderungenanhang3per01012022.pdf",
+      "sha256": "b78ec10853644c8f513e0dc0eef0aa4e7241c12bda7b281e4b8678192d52598e",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/e5D8kW3qmfPg/kommentarzudenaenderungenanhang3per01012022.pdf"
+    },
+    {
+      "source_id": "2022-07-01",
+      "effective_dates": [
+        "2022-07-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhang 3 KLV vom 2. Juni 2022 per 1. Juli 2022 (AS 2022 369 vom 23. Juni 2022)",
+      "path": "data/raw/bag/al/2022-07-01/kommentar-aenderungen-al-01072022.PDF",
+      "sha256": "2e659780506876cde7bcf2265f4b15089d6ba6239b98ab8ffc197e236c40d0a6",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/eGN04VvYS3vy/kommentar-aenderungen-al-01072022.PDF"
+    },
+    {
+      "source_id": "2022-08-01",
+      "effective_dates": [
+        "2022-08-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhangs 3 KLV vom 2. Juni 2022 per 1. August 2022 (AS 2022 371 vom 23. Juni 2022)",
+      "path": "data/raw/bag/al/2022-08-01/kommentar_aenderungen_al_010822.pdf",
+      "sha256": "54035bcea99d3b345f2de8727e5b4d6a402ec8bcf607d67bc1e3a10348e7bbc3",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/RlJy7aAqUU6f/kommentar_aenderungen_al_010822.pdf"
+    },
+    {
+      "source_id": "2023-01-01",
+      "effective_dates": [
+        "2023-01-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhang 3 KLV vom 28. November 2022 per 1. Januar 2023 (AS 2022 840 vom 22 Dezember 2022)",
+      "path": "data/raw/bag/al/2023-01-01/alkommentaraenderungenper01012023.pdf",
+      "sha256": "84e9faeba5210a9e40552f22b1049b66de6f75add5c18e81a162c47a7f1548e4",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/w7OsaUM9LIwQ/alkommentaraenderungenper01012023.pdf"
+    },
+    {
+      "source_id": "2023-01-01-urgent",
+      "effective_dates": [
+        "2023-01-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhang 3 KLV vom 21. Dezember 2022 per 1. Januar 2023 (AS 2022 858 vom 27. Dezember 2022)",
+      "path": "data/raw/bag/al/2023-01-01-urgent/alkommentardringendeaenderungenper01012023.pdf",
+      "sha256": "cea4474d4e305fe0cde0e2f5186a5dbdf251679ba7a5c343c2d56b6183defacf",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/1nkLkL726ycP/alkommentardringendeaenderungenper01012023.pdf"
+    },
+    {
+      "source_id": "2023-03-01",
+      "effective_dates": [
+        "2023-03-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhang 3 KLV vom 27. Januar 2023 per 1. März 2023 (AS 2023 75, Nr. 27 vom 17. Februar 2023)",
+      "path": "data/raw/bag/al/2023-03-01/klv_anh3_kommentar_aenderungen_010323.pdf",
+      "sha256": "46df5eae462b28e4352f2694cf9fe5b5c1b75deaa290eec23a50648872e240e7",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/GGUmWtf3tYik/klv_anh3_kommentar_aenderungen_010323.pdf"
+    },
+    {
+      "source_id": "2023-07-01",
+      "effective_dates": [
+        "2023-07-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhang 3 KLV vom 16. Juni 2023 per 1. Juli 2023 (AS 2023 313 vom 23. Juni 2023)",
+      "path": "data/raw/bag/al/2023-07-01/kommentar_aenderungen_anh3_010723.pdf",
+      "sha256": "3757f895997a631b7d342d0c8e276054acb0eb8331fa9eacf1b05d20da91c0dd",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/kTgiv8VUDAIm/kommentar_aenderungen_anh3_010723.pdf"
+    },
+    {
+      "source_id": "2023-11-01",
+      "effective_dates": [
+        "2023-11-01"
+      ],
+      "title": "Kommentar zu den Änderungen des Anhang 3 KLV vom 17. Oktober 2023 per 1. November 2023 (AS 2023 603 vom 25. Oktober 2023)",
+      "path": "data/raw/bag/al/2023-11-01/kommentar-aenderungen-al-01112023.pdf",
+      "sha256": "23247baa8e6ec00a339945913eb79aa33239a2a5a97954ecaf59f6fb67ad33b0",
+      "source_url": "https://www.bag.admin.ch/dam/de/sd-web/ugLbCOyBn6Rt/kommentar-aenderungen-al-01112023.pdf"
+    }
+  ]
+}

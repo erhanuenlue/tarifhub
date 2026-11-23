@@ -346,3 +346,295 @@ def test_refuses_a_commentary_whose_bytes_do_not_match_the_manifest_hash(tmp_pat
 
     assert "sha256 mismatch" in str(refused.value)
     assert f"Kommentar {JUL}.pdf" in str(refused.value)
+
+
+
+# A commentary-source manifest keys each PDF by a source ID, so that commentaries sharing an
+# effective date, or covering two, stay apart (corpus.build_commentaries).
+
+
+def source_entries(
+    tmp_path: Path, sources: list[tuple[str, list[str], list[list[str]]]]
+) -> list[dict]:
+    """Write each source's PDF under ``tmp_path``; return the manifest entries in order.
+
+    A source is ``(source_id, effective_dates, pages)``. Its declared title is the text of its
+    page 1, and its path is unique even when two entries repeat a source ID.
+    """
+
+    entries = []
+    for n, (source_id, dates, pages) in enumerate(sources):
+        data = make_pdf(pages)
+        relative = f"data/raw/{n:02d}/Kommentar {source_id}.pdf"
+        (tmp_path / relative).parent.mkdir(parents=True, exist_ok=True)
+        (tmp_path / relative).write_bytes(data)
+        entries.append(
+            {
+                "source_id": source_id,
+                "effective_dates": dates,
+                "title": " ".join(pages[0]),
+                "path": relative,
+                "sha256": hashlib.sha256(data).hexdigest(),
+                "source_url": f"https://www.bag.admin.ch/dam/{source_id}.pdf",
+            }
+        )
+    return entries
+
+
+def write_sources(
+    tmp_path: Path, entries: list[dict], *, drop: tuple[str, ...] = (), **top: object
+) -> Path:
+    """Write the commentary-source manifest of ``entries`` under ``tmp_path``; ``top`` replaces
+    and ``drop`` removes top-level keys. Returns the manifest path."""
+
+    body = {
+        "manifest_version": 1,
+        "kind": "commentary_sources",
+        "tariff_system": "EAL",
+        "sources": entries,
+        **top,
+    }
+    manifest = tmp_path / "data" / "manifests" / "sources.json"
+    manifest.parent.mkdir(parents=True, exist_ok=True)
+    manifest.write_text(
+        json.dumps({k: v for k, v in body.items() if k not in drop}), encoding="utf-8"
+    )
+    return manifest
+
+
+def make_sources(
+    tmp_path: Path, sources: list[tuple[str, list[str], list[list[str]]]]
+) -> Path:
+    """The PDFs and the commentary-source manifest of ``sources``; returns the manifest path."""
+
+    return write_sources(tmp_path, source_entries(tmp_path, sources))
+
+
+def build_sources(manifest: Path, *, budget: int = 400, limit: int = 512) -> corpus.Corpus:
+    return corpus.build_commentaries(
+        manifest, count_passage_tokens=words, token_budget=budget, model_limit=limit
+    )
+
+
+REGULAR = [
+    ["Kommentar zu den Änderungen per 1. Januar 2023"],
+    ["2.1 Position 1111.00 Neu", "Die Position 1111.00 ist neu.", "Seite 2 von 2"],
+]
+URGENT = [
+    ["Kommentar zu den dringenden Änderungen per 1. Januar 2023"],
+    ["2.1 Position 2222.00 Dringend", "Die Position 2222.00 wird angepasst.", "Seite 2 von 2"],
+]
+JOINT = [
+    ["Kommentar zu den Änderungen des Anhangs 3 KLV", "per 1. Januar 2022 und 1. Februar 2022"],
+    ["2.1 Position 3333.00 Zwei Daten", "Die Position 3333.00 gilt ab Februar.", "Seite 2 von 2"],
+]
+EXPLAINED = [
+    ["Erläuterungen zu den Änderungen per 1. Juli 2021"],
+    ["2.1 Position 4444.00 Erläutert", "Die Position 4444.00 wird erläutert.", "Seite 2 von 2"],
+]
+ONE_DATE = [
+    ("2023-01-01", ["2023-01-01"], REGULAR),
+    ("2023-01-01-urgent", ["2023-01-01"], URGENT),
+]
+
+
+def test_sources_of_one_date_keep_their_ids_and_a_joint_source_is_one_document(tmp_path):
+    manifest = make_sources(
+        tmp_path,
+        [
+            ("2023-01-01-urgent", ["2023-01-01"], URGENT),
+            ("2022-01-01", ["2022-01-01", "2022-02-01"], JOINT),
+            ("2023-01-01", ["2023-01-01"], REGULAR),
+            ("2021-07-01", ["2021-07-01"], EXPLAINED),
+        ],
+    )
+
+    built = build_sources(manifest)
+
+    # Read in (first effective date, source ID) order, whatever the manifest's order.
+    assert [(d.edition, d.effective_dates, d.page_count) for d in built.documents] == [
+        ("2021-07-01", ("2021-07-01",), 2),
+        ("2022-01-01", ("2022-01-01", "2022-02-01"), 2),
+        ("2023-01-01", ("2023-01-01",), 2),
+        ("2023-01-01-urgent", ("2023-01-01",), 2),
+    ]
+    # The source ID stands where build_corpus puts the edition date.
+    assert [(p.passage_id, p.edition, p.section, p.text) for p in built.passages] == [
+        ("2021-07-01/p2/s2.1/1", "2021-07-01", "2.1",
+         "2.1 Position 4444.00 Erläutert Die Position 4444.00 wird erläutert."),
+        ("2022-01-01/p2/s2.1/1", "2022-01-01", "2.1",
+         "2.1 Position 3333.00 Zwei Daten Die Position 3333.00 gilt ab Februar."),
+        ("2023-01-01/p2/s2.1/1", "2023-01-01", "2.1",
+         "2.1 Position 1111.00 Neu Die Position 1111.00 ist neu."),
+        ("2023-01-01-urgent/p2/s2.1/1", "2023-01-01-urgent", "2.1",
+         "2.1 Position 2222.00 Dringend Die Position 2222.00 wird angepasst."),
+    ]
+    # The parser's own title detection is unchanged: none for a document of "Erläuterungen".
+    joint = "Kommentar zu den Änderungen des Anhangs 3 KLV per 1. Januar 2022 und 1. Februar 2022"
+    assert [(d.title, d.declared_title) for d in built.documents] == [
+        (None, "Erläuterungen zu den Änderungen per 1. Juli 2021"),
+        (joint, joint),
+        ("Kommentar zu den Änderungen per 1. Januar 2023",
+         "Kommentar zu den Änderungen per 1. Januar 2023"),
+        ("Kommentar zu den dringenden Änderungen per 1. Januar 2023",
+         "Kommentar zu den dringenden Änderungen per 1. Januar 2023"),
+    ]
+    assert [(e.edition, e.page, e.reason) for e in built.excluded_pages] == [
+        (source, 1, corpus.FRONT_MATTER)
+        for source in ("2021-07-01", "2022-01-01", "2023-01-01", "2023-01-01-urgent")
+    ]
+    urgent = built.documents[3]
+    assert (urgent.path, urgent.sha256, urgent.source_url) == (
+        "data/raw/00/Kommentar 2023-01-01-urgent.pdf",
+        hashlib.sha256(make_pdf(URGENT)).hexdigest(),
+        "https://www.bag.admin.ch/dam/2023-01-01-urgent.pdf",
+    )
+    assert built.editions == ("2021-07-01", "2022-01-01", "2023-01-01", "2023-01-01-urgent")
+
+
+def test_build_corpus_leaves_the_new_document_fields_at_their_defaults(tmp_path):
+    built = build(make_repo(tmp_path, {JUL: SIMPLE}))
+
+    assert [(d.edition, d.effective_dates, d.declared_title) for d in built.documents] == [
+        (JUL, (), None)
+    ]
+
+
+def _set(index: int, **values: object):
+    return lambda entries: entries[index].update(values)
+
+
+@pytest.mark.parametrize(
+    ("change", "problem"),
+    [
+        pytest.param(_set(1, source_id="2023-01-01"),
+                     "source_id 2023-01-01 appears more than once", id="duplicate-source-id"),
+        pytest.param(_set(1, source_id="2023-01-02-urgent"),
+                     "source_id 2023-01-02-urgent must start with its first effective date "
+                     "2023-01-01", id="id-not-starting-with-first-date"),
+        pytest.param(_set(0, effective_dates=["2023-01-01", "2023-01-01"]),
+                     "sources.0.effective_dates: Value error, must be strictly increasing",
+                     id="repeated-date"),
+        pytest.param(_set(0, effective_dates=["2023-01-01", "2022-12-01"]),
+                     "sources.0.effective_dates: Value error, must be strictly increasing",
+                     id="decreasing-dates"),
+        pytest.param(_set(0, effective_dates=[]),
+                     "sources.0.effective_dates: Value error, must list at least one date",
+                     id="no-date"),
+        pytest.param(_set(0, effective_dates=["2023-02-30"]),
+                     "sources.0.effective_dates: Value error, 2023-02-30 is not a valid date",
+                     id="impossible-date"),
+        pytest.param(_set(0, effective_dates=["1.1.2023"]),
+                     "sources.0.effective_dates.0: String should match pattern", id="not-iso"),
+        pytest.param(_set(0, source_id="2023-01-01_regular"),
+                     "sources.0.source_id: String should match pattern", id="malformed-id"),
+        pytest.param(_set(0, note="x"), "sources.0.note: Extra inputs are not permitted",
+                     id="unknown-key"),
+        pytest.param(lambda entries: entries[0].pop("source_url"),
+                     "sources.0.source_url: Field required", id="missing-key"),
+        pytest.param(_set(0, source_url=None), "sources.0.source_url: Input should be a valid",
+                     id="null-url"),
+        pytest.param(_set(0, source_url="https://example.org/k.pdf"), "bag.admin.ch",
+                     id="url-off-bag"),
+        pytest.param(_set(0, sha256="A" * 64), "sources.0.sha256: String should match pattern",
+                     id="uppercase-hash"),
+        pytest.param(_set(0, path="../Kommentar.pdf"), "repository-relative POSIX path",
+                     id="parent-path"),
+        pytest.param(_set(0, path="/tmp/Kommentar.pdf"), "repository-relative POSIX path",
+                     id="absolute-path"),
+        pytest.param(_set(0, title=" "), "sources.0.title: Value error, must not be empty",
+                     id="empty-title"),
+        pytest.param(lambda entries: entries[1].update(path=entries[0]["path"].upper()),
+                     "appears more than once", id="duplicate-path"),
+        pytest.param(lambda entries: entries[1].update(sha256=entries[0]["sha256"]),
+                     "appears more than once", id="duplicate-hash"),
+    ],
+)
+def test_refuses_a_source_entry_that_breaks_the_schema(tmp_path, change, problem):
+    entries = source_entries(tmp_path, ONE_DATE)
+    change(entries)
+
+    with pytest.raises(corpus.CorpusError) as refused:
+        build_sources(write_sources(tmp_path, entries))
+
+    assert problem in str(refused.value)
+
+
+@pytest.mark.parametrize(
+    ("top", "drop", "problem"),
+    [
+        ({"manifest_version": True}, (), "manifest_version: Value error, must be the integer 1"),
+        ({"manifest_version": 2}, (), "manifest_version: Input should be 1"),
+        ({"kind": "editions"}, (), "kind: Input should be 'commentary_sources'"),
+        ({"tariff_system": "TARDOC"}, (), "tariff_system: Input should be 'EAL'"),
+        ({"sources": []}, (), "sources is empty"),
+        ({"editions": []}, (), "editions: Extra inputs are not permitted"),
+        ({}, ("kind",), "kind: Field required"),
+    ],
+)
+def test_refuses_a_manifest_that_is_not_a_commentary_source_manifest(tmp_path, top, drop, problem):
+    entries = source_entries(tmp_path, ONE_DATE)
+
+    with pytest.raises(corpus.CorpusError) as refused:
+        build_sources(write_sources(tmp_path, entries, drop=drop, **top))
+
+    assert problem in str(refused.value)
+
+
+def test_one_refusal_lists_the_problems_of_every_source(tmp_path):
+    entries = source_entries(tmp_path, ONE_DATE)
+    entries[0]["note"] = "x"
+    del entries[1]["title"]
+
+    with pytest.raises(corpus.CorpusError) as refused:
+        build_sources(write_sources(tmp_path, entries))
+
+    assert refused.value.problems == (
+        "sources.0.note: Extra inputs are not permitted",
+        "sources.1.title: Field required",
+    )
+
+
+def test_refuses_a_repeated_key_and_a_manifest_outside_data_manifests(tmp_path):
+    entries = source_entries(tmp_path, ONE_DATE)
+    manifest = write_sources(tmp_path, entries)
+    text = manifest.read_text(encoding="utf-8")
+    manifest.write_text(text.replace('"kind"', '"kind": "x", "kind"', 1), encoding="utf-8")
+
+    with pytest.raises(corpus.CorpusError, match="duplicate key 'kind'"):
+        build_sources(manifest)
+
+    elsewhere = tmp_path / "sources.json"
+    elsewhere.write_text(text, encoding="utf-8")
+    with pytest.raises(corpus.CorpusError, match="must live in <repository>/data/manifests/"):
+        build_sources(elsewhere)
+
+
+def test_refuses_a_hash_mismatch_and_a_file_outside_the_root_in_one_refusal(tmp_path):
+    repo = tmp_path / "repo"
+    entries = source_entries(repo, [*ONE_DATE, ("2022-01-01", ["2022-01-01", "2022-02-01"], JOINT)])
+    entries[0]["sha256"] = hashlib.sha256(b"other bytes").hexdigest()
+    outside = tmp_path / "outside.pdf"
+    outside.write_bytes(make_pdf(URGENT))
+    link = repo / entries[1]["path"]
+    link.unlink()
+    link.symlink_to(outside)  # the manifest hash matches, but the file is not the repository's
+
+    with pytest.raises(corpus.CorpusError) as refused:
+        build_sources(write_sources(repo, entries))
+
+    first, second = refused.value.problems
+    assert first.startswith(f"{entries[0]['path']}: sha256 mismatch")
+    assert second == f"{entries[1]['path']}: resolves outside the repository root"
+
+
+def test_refuses_a_declared_title_that_is_not_on_page_1(tmp_path):
+    entries = source_entries(tmp_path, [("2022-01-01", ["2022-01-01", "2022-02-01"], JOINT)])
+    entries[0]["title"] = "2.1 Position 3333.00 Zwei Daten"  # the heading on page 2
+
+    with pytest.raises(corpus.CorpusError) as refused:
+        build_sources(write_sources(tmp_path, entries))
+
+    assert refused.value.problems == (
+        f"{entries[0]['path']}: the declared title of 2022-01-01 is not in the text of page 1",
+    )
