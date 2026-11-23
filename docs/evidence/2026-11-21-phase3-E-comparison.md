@@ -142,7 +142,7 @@ than its cited passage, which is one of the initial five passages that A and B a
 | Generation calls | 5 | 5 | 10 |
 | Input / output tokens | 17,665 / 60,882 | 29,886 / 57,110 | 62,861 / 49,294 |
 | Calculated cost, USD | 1.288300 | 1.261744 | 1.237324 |
-| Wall-clock seconds, summed | 488.7 | 460.4 | 408.7 |
+| Wall-clock seconds, summed | 488.7 | 460.3 | 408.7 |
 
 Paired by case, on the overall verdict:
 
@@ -220,16 +220,18 @@ cost USD 0.344516 against B's 0.218560 here.
 | All six | 1.507052 | 1.480304 | 1.581840 |
 
 Per case, C minus B was +0.091152 (E2), -0.136232 (E3), -0.053172 (E4), +0.026260 (E5),
-+0.047572 (E6) and +0.125956 (E1). What the search adds by construction is one more generation
-call per case and a larger input: on E2 to E6, C sent 62,861 input tokens against B's 29,886
-(2.1 times; the difference is USD 0.131900 at 4 USD per million). C's first calls, which ended in
++0.047572 (E6) and +0.125956 (E1). In this run C searched once per case, so each of its cells made
+one more generation call than B, and on E2 to E6, C sent 62,861 input tokens against B's 29,886
+(2.1 times; the difference is USD 0.131900 at 4 USD per million). The agent can also answer
+without searching: its first call offers the search tool without requiring it, so a cell that
+answers directly makes a single call. C's first calls, which ended in
 the search request, cost USD 0.220652 together on E2 to E6. Output tokens, thinking included,
 dominate every cell's cost and differ widely between cells (A alone ranged from USD 0.087524 to
 0.404848 per case), and C produced fewer of them on E2 to E6 (49,294 against 57,110). C minus B
 was USD -0.024420 on E2 to E6 and +0.101536 over all six cases. With one run per cell there is no
 measure of how much a cell's cost varies between runs, so the data establish no repeatable cost
-advantage or penalty in USD; they show the extra call and the doubled input, and a total cost of
-the same order for all three conditions. Summed wall-clock time on E2 to E6 was 408.7 s for C, 460.4 s for B and 488.7 s for A,
+advantage or penalty in USD; they show this run's extra call and doubled input, and a total cost of
+the same order for all three conditions. Summed wall-clock time on E2 to E6 was 408.7 s for C, 460.3 s for B and 488.7 s for A,
 with the same caveat.
 
 ## Limits that affect interpretation
@@ -267,6 +269,20 @@ with the same caveat.
    whose evidence lies beyond rank 10, and test C starting from the top 10 instead of the top 5. C
    searched in every cell, including the three where its first five already held all the required
    evidence, so whether it can tell when not to search is open.
+
+## Correction of 2026-11-23
+
+B's summed wall-clock time on E2 to E6 was first given as 460.4 s, the sum of the per-cell times
+after rounding each to one decimal. The page now sums the unrounded per-cell times of the run
+record (`elapsed_s`) and rounds once, which gives 460.3 s (460.349 s); A (488.7 s) and C (408.7 s)
+are the same under both methods. The per-cell times in the Seconds column stay rounded to one
+decimal, so they need not add up exactly to the sums. The cost paragraph had presented one more
+generation call per case and a larger input as a property of the design; it now states what
+happened in this run (one search per C cell), since the agent may also answer without searching.
+The run record, the ledger, the review lock and summary, the ratings and every other figure are
+unchanged, so the committed review summary still gives 460.4 s for B on E2 to E6 (the sum of its
+rounded per-cell times); the page as first published remains in the repository history (squash
+commit `05aba9b`).
 
 ## Files
 
