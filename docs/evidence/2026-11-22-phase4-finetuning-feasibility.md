@@ -14,7 +14,7 @@ training alone, and none of its 14 labelled questions can serve as a held-out te
 that related changes stay together, the public material alone (shared position codes and the
 public dev cases' gold evidence) puts 20 of the 38 non-introduction passages into one change
 family; the evaluation grouping, which also links the frozen E cases' gold evidence, can only merge
-families further, and its counts are not published here. A family-disjoint split inside the corpus is possible
+families further, and its counts are not reported on this page. A family-disjoint split inside the corpus is possible
 but lopsided: one side gets that family, the other at most 18 passages, too narrow a training
 source and too few passages for the 30 independent test questions the design below proposes, each
 of which needs a passage of its own
@@ -22,7 +22,7 @@ of which needs a passage of its own
 pilot's parser built it, which files the 132 position codes of footnote 1 of the July commentary
 under section 2.4. Counted under section 2.3, where the footnote is referenced
 ([diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view)), the public groupings change and no public family holds half of the
-passages; the evaluation grouping's counts in that view stay local. In both views every in-corpus
+passages; the evaluation grouping's counts in that view are not reported on this page. In both views every in-corpus
 split stays far below the passages a training source needs, so the verdict holds. A pilot needs its training data from
 elsewhere and becomes a go once the two offline data steps in
 [Smallest useful data work](#smallest-useful-data-work) meet their thresholds and its frozen design
@@ -111,7 +111,7 @@ family when they name a common position code or when one question's gold evidenc
 - Adding the frozen E cases' gold evidence as well gives the **evaluation grouping**. It can only
   merge the families above, so it has at most 9 families in either view, and its largest family
   holds at least 20 passages (15 in the diagnostic view). Its family count, sizes and composition
-  are not published, in either view: read beside the public groupings, they would show which sections the
+  are not reported on this page, in either view: read beside the public groupings, they would show which sections the
   frozen E cases cite together.
 
 Counted by one rule (a question matches a family through its gold evidence or, for a question
@@ -119,8 +119,8 @@ without supporting evidence, through a position code it names; U1 names 1034.00,
 section 3.1 mentions), the public dev cases (D1 to D6, U1, U2) match 4 of the 9 public families,
 which hold 31 of the 38 non-introduction passages (in the
 [diagnostic view](#footnote-1-of-the-july-commentary-frozen-and-diagnostic-view), 4 of 9 holding 26 of the 38). The frozen E
-cases can only add covered passages; the evaluation grouping's matching counts are not published,
-like its other counts.
+cases can only add covered passages; the evaluation grouping's matching counts are not reported on this
+page, like its other counts.
 
 Unmatched by this rule does not mean never seen during evaluation. The rule sees only gold
 evidence and named position codes: a question can concern a topic without either, and retrieval
@@ -186,8 +186,8 @@ are combined into one inference unit, or the overlap is excluded.
   family-disjoint split inside the corpus is lopsided, with at most 18 passages on the other side
   (verdict, headroom, proposed split, fallback), describe the frozen view. In the diagnostic view
   no public family holds half of the passages (the largest has 15 of the 40 with the dev gold).
-  The evaluation grouping's counts, and with them how even an in-corpus split would be, stay
-  local in both views: read beside the public groupings, they would show which sections the
+  The evaluation grouping's counts, and with them how even an in-corpus split would be, are not
+  reported on this page, in either view: read beside the public groupings, they would show which sections the
   frozen E cases cite together.
 - Which view defines the families is fixed before the freeze: the frozen view follows the passages
   a tuned model would be trained and tested on, the diagnostic view the document's structure.
