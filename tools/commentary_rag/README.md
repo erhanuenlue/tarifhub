@@ -255,6 +255,15 @@ observation on this set, not an accuracy figure.
   hashes, codes, projects, families and counts, no passage text); evidence:
   [`docs/evidence/2026-11-23-phase4-training-data-inventory.md`](../../docs/evidence/2026-11-23-phase4-training-data-inventory.md).
   It reads the e5 model from the local cache only and never replaces an existing record.
+  With `--older-commentaries` it reads the ten 2021 to 2023 commentaries of
+  `data/manifests/bag-al-commentaries-2021-2023.json` (a commentary-only manifest read by
+  `corpus.build_commentaries`, which gives each PDF a source ID: two commentaries share 1 January 2023
+  and one covers 1 January and 1 February 2022) and records three views, the four commentaries above,
+  the ten alone and all fourteen with the families rebuilt across them, with every baseline passage
+  whose eligibility changes. Record:
+  [`results/2026-11-23-training-inventory-2021-2025.json`](results/2026-11-23-training-inventory-2021-2025.json);
+  evidence:
+  [`docs/evidence/2026-11-23-phase4-older-commentaries-inventory.md`](../../docs/evidence/2026-11-23-phase4-older-commentaries-inventory.md).
   `test_training_inventory.py` tests it on synthetic passages and tiny generated PDFs.
 - `sign_test_power.py`: the exact power of the paired sign test planned for the Phase 4 comparison
   (standard library only; p-values as fractions). Its record
@@ -367,7 +376,8 @@ or `query: ` prefix, any table context, special tokens) and are checked against
 SentenceTransformer's own preprocessing.
 
 Phase 4 data feasibility (offline; the inventory needs the four commentaries and workbooks of
-`data/manifests/bag-al-2024-2025.json` downloaded from their source URLs and the e5 model already in
+`data/manifests/bag-al-2024-2025.json`, and for its three views also the ten PDFs of
+`data/manifests/bag-al-commentaries-2021-2023.json`, downloaded from their source URLs and the e5 model already in
 the local cache, which it reads with Hugging Face offline mode forced; neither command replaces an
 existing file, so give each a new name):
 
@@ -375,6 +385,10 @@ existing file, so give each a new name):
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion \
   --frozen --offline --extra ai --extra dev python tools/commentary_rag/training_inventory.py \
   --out tools/commentary_rag/results/<new inventory record>.json
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion \
+  --frozen --offline --extra ai --extra dev python tools/commentary_rag/training_inventory.py \
+  --older-commentaries data/manifests/bag-al-commentaries-2021-2023.json \
+  --out tools/commentary_rag/results/<new three-view record>.json
 python3 tools/commentary_rag/sign_test_power.py --out tools/commentary_rag/results/<new power report>.json
 ```
 

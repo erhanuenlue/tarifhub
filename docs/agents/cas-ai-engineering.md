@@ -49,7 +49,10 @@ new capability and its measured result.
   [training-data inventory](../evidence/2026-11-23-phase4-training-data-inventory.md) of 2026-11-23
   (variant 2, chosen by Erhan for the data-feasibility stage: 30 eligible passages in 14 families
   from the 2024 and 2025 commentaries, 70 short of the proposed 100; the evaluation design supports
-  only an exploratory comparison; next decision in issue #62).
+  only an exploratory comparison), extended the same day to all fourteen commentaries of 2021 to 2025
+  in the [older commentaries inventory](../evidence/2026-11-23-phase4-older-commentaries-inventory.md)
+  (44 eligible passages in 22 families, 56 short; two 2021 commentaries unresolved; the evaluation
+  limitation unchanged; next decision in issue #62).
 - Books: USD 7.060552 committed of the USD 100 aggregate limit for Phases 2 and 3.
 
 ## Phase 4 options
