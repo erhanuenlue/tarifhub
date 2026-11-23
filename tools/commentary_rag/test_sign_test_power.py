@@ -5,7 +5,7 @@ are either worked by hand (noted at the test) or taken from exact_power below, w
 definition out as a double sum in fractions and shares no code with the module.
 
     uv run --project services/ingestion --frozen --offline --extra ai --extra dev \\
-        python -m pytest tools/commentary_rag/test_power_sign_test.py -q
+        python -m pytest tools/commentary_rag/test_sign_test_power.py -q
 """
 
 from __future__ import annotations
@@ -21,9 +21,9 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-import power_sign_test as pst
+import sign_test_power as pst
 
-SCRIPT = Path(__file__).resolve().parent / "power_sign_test.py"
+SCRIPT = Path(__file__).resolve().parent / "sign_test_power.py"
 ALPHA = Fraction(1, 20)
 
 

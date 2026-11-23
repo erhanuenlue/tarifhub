@@ -1,0 +1,1574 @@
+{
+ "documents": [
+  {
+   "edition": "2024-01-01",
+   "excluded_pages": [
+    {
+     "page": 1,
+     "reason": "front matter before the first section heading"
+    },
+    {
+     "page": 2,
+     "reason": "table of contents"
+    }
+   ],
+   "pages": 6,
+   "path": "data/raw/bag/al/2024-01-01/kommentar_al_01012024.pdf",
+   "sha256": "b0517c510d68db3231d1832f075e8b64097d97c9721ebec8fa12ad065901f74c",
+   "source_url": "https://www.bag.admin.ch/dam/de/sd-web/M10rHsjTEvKJ/kommentar_al_01012024.pdf",
+   "title": "Kommentar zu den Änderungen des Anhang 3 KLV vom 29. November 2023 per 1. Januar 2024 (AS 2023 807 vom 19. Dezember 2023)"
+  },
+  {
+   "edition": "2024-07-01",
+   "excluded_pages": [
+    {
+     "page": 1,
+     "reason": "front matter before the first section heading"
+    },
+    {
+     "page": 2,
+     "reason": "table of contents"
+    }
+   ],
+   "pages": 6,
+   "path": "data/raw/bag/al/2024-07-01/al-kommentar-01072024.pdf",
+   "sha256": "3e3e9017c4ae6459656d4c5a799d196918d5a1a8e66d54047ac49b33076454cc",
+   "source_url": "https://www.bag.admin.ch/dam/de/sd-web/ZgI8A0wqAPPC/al-kommentar-01072024.pdf",
+   "title": "Kommentar zu den Änderungen des Anhangs 3 KLV vom 17. Juni 2024 per 1. Juli 2024 (AS 2024 303 vom 24. Juni 2024)"
+  },
+  {
+   "edition": "2025-01-01",
+   "excluded_pages": [
+    {
+     "page": 1,
+     "reason": "front matter before the first section heading"
+    },
+    {
+     "page": 2,
+     "reason": "table of contents"
+    }
+   ],
+   "pages": 4,
+   "path": "data/raw/bag/al/2025-01-01/kommentar-aenderungen-al-01012025.pdf",
+   "sha256": "aa16093c7b5b38d63107064891b966c30e9389285300e8309fdd45da18bab276",
+   "source_url": "https://www.bag.admin.ch/dam/de/sd-web/wNImkldiaydS/kommentar-aenderungen-al-01012025.pdf",
+   "title": "Kommentar zu den Änderungen des Anhangs 3 KLV vom 29. November 2024 per 1. Januar 2025 (AS 2024 788 vom 23. Dezember 2024)"
+  },
+  {
+   "edition": "2025-07-01",
+   "excluded_pages": [
+    {
+     "page": 1,
+     "reason": "front matter before the first section heading"
+    },
+    {
+     "page": 2,
+     "reason": "table of contents"
+    }
+   ],
+   "pages": 5,
+   "path": "data/raw/bag/al/2025-07-01/Kommentar zu den Änderungen des Anh. 3 KLV per 1.7.2025.pdf",
+   "sha256": "ae9e480c177c6e81605bb946320be91a7944c7fb189a09a91edcccce5c5c5a0c",
+   "source_url": "https://www.bag.admin.ch/dam/de/sd-web/8dMJK4PMfF-t/Kommentar%20zu%20den%20%C3%84nderungen%20des%20Anh.%203%20KLV%20per%201.7.2025.pdf",
+   "title": "Kommentar zu den Änderungen des Anhangs 3 KLV vom 04. Juni 2025 per 1. Juli 2025 (AS 2025 419 vom 25. Juni 2025)"
+  }
+ ],
+ "duplicates": [
+  {
+   "passage_id": "2024-01-01/p3/s1/1",
+   "reference_passage_id": "2026-01-01/p3/s1/1",
+   "same_text": true,
+   "share_of_8grams": 1.0
+  },
+  {
+   "passage_id": "2024-01-01/p3/s1/1",
+   "reference_passage_id": "2026-07-01/p3/s1/1",
+   "same_text": true,
+   "share_of_8grams": 1.0
+  },
+  {
+   "passage_id": "2024-07-01/p3/s1/1",
+   "reference_passage_id": "2026-01-01/p3/s1/1",
+   "same_text": true,
+   "share_of_8grams": 1.0
+  },
+  {
+   "passage_id": "2024-07-01/p3/s1/1",
+   "reference_passage_id": "2026-07-01/p3/s1/1",
+   "same_text": true,
+   "share_of_8grams": 1.0
+  },
+  {
+   "passage_id": "2025-01-01/p3/s1/1",
+   "reference_passage_id": "2026-01-01/p3/s1/1",
+   "same_text": true,
+   "share_of_8grams": 1.0
+  },
+  {
+   "passage_id": "2025-01-01/p3/s1/1",
+   "reference_passage_id": "2026-07-01/p3/s1/1",
+   "same_text": true,
+   "share_of_8grams": 1.0
+  },
+  {
+   "passage_id": "2025-07-01/p3/s1/1",
+   "reference_passage_id": "2026-01-01/p3/s1/1",
+   "same_text": false,
+   "share_of_8grams": 0.8298
+  },
+  {
+   "passage_id": "2025-07-01/p3/s1/1",
+   "reference_passage_id": "2026-07-01/p3/s1/1",
+   "same_text": false,
+   "share_of_8grams": 0.8298
+  },
+  {
+   "passage_id": "2025-07-01/p3/s2.1/1",
+   "reference_passage_id": "2026-07-01/p6/s2.5/1",
+   "same_text": false,
+   "share_of_8grams": 0.7294
+  }
+ ],
+ "environment": {
+  "git_head": "ffd8ba29aef231c75bf7c2cefc78e7d6a7048879",
+  "model": {
+   "cache_revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
+   "id": "intfloat/multilingual-e5-large",
+   "max_seq_length": 512
+  },
+  "packages": {
+   "huggingface-hub": "1.19.0",
+   "sentence-transformers": "5.6.1",
+   "tokenizers": "0.22.2",
+   "torch": "2.12.0",
+   "transformers": "5.11.0"
+  },
+  "pdftotext": "pdftotext version 26.02.0",
+  "python": "3.13.12",
+  "tool_files_sha256": {
+   "corpus.py": "38a1572daf525e9a2356a29f7eb53d0769127e7afa05826925be5170ce701e5f",
+   "training_inventory.py": "6059ca2a033e7576b680d5a81475b3139fd56b35eec7a3c3293b36ef212471a8"
+  },
+  "tool_files_uncommitted": false
+ },
+ "inputs": {
+  "frozen_record": {
+   "path": "tools/commentary_rag/results/2026-11-14-retrieval-corrected.json",
+   "sha256": "764c45ee0841e74827f17ccc51a0bdbe0934a9d6ec85ce7434801ec2cb962e3d"
+  },
+  "manifest": {
+   "path": "data/manifests/bag-al-2024-2025.json",
+   "sha256": "134bdb61e5f845f067930f98840e64d01ff20c4d5f1ea7aa59606501a56a86ab"
+  },
+  "model_limit": 512,
+  "reference_manifest": {
+   "path": "data/manifests/bag-al.json",
+   "sha256": "3a3c98567a51dacaae6eef2abe976d789179f297fc3a612a82c6a51622e986b9"
+  },
+  "token_budget": 256
+ },
+ "misfiled": [
+  {
+   "belongs_to": "2.1",
+   "found": "footnote 1 of page 3, referenced in section 2.1, follows section 2.3 in the text",
+   "names_codes": [],
+   "names_projects": [],
+   "passage_id": "2025-01-01/p3/s2.3/1"
+  }
+ ],
+ "primary": {
+  "counts": {
+   "by_edition": {
+    "2024-01-01": {
+     "eligible_families": 5,
+     "eligible_passages": 11,
+     "excluded_families": 2,
+     "excluded_passages": 4,
+     "families": 7,
+     "introduction_passages": 1,
+     "misfiled_passages": 0,
+     "passages": 16,
+     "usable_passages": 15
+    },
+    "2024-07-01": {
+     "eligible_families": 3,
+     "eligible_passages": 9,
+     "excluded_families": 2,
+     "excluded_passages": 10,
+     "families": 5,
+     "introduction_passages": 1,
+     "misfiled_passages": 0,
+     "passages": 20,
+     "usable_passages": 19
+    },
+    "2025-01-01": {
+     "eligible_families": 4,
+     "eligible_passages": 8,
+     "excluded_families": 1,
+     "excluded_passages": 1,
+     "families": 5,
+     "introduction_passages": 1,
+     "misfiled_passages": 1,
+     "passages": 10,
+     "usable_passages": 9
+    },
+    "2025-07-01": {
+     "eligible_families": 2,
+     "eligible_passages": 2,
+     "excluded_families": 2,
+     "excluded_passages": 7,
+     "families": 4,
+     "introduction_passages": 1,
+     "misfiled_passages": 0,
+     "passages": 10,
+     "usable_passages": 9
+    }
+   },
+   "overall": {
+    "eligible_families": 14,
+    "eligible_passages": 30,
+    "excluded_families": 4,
+    "excluded_passages": 22,
+    "families": 18,
+    "introduction_passages": 4,
+    "misfiled_passages": 1,
+    "passages": 56,
+    "usable_passages": 52
+   }
+  },
+  "families": [
+   {
+    "codes": [
+     "3188.00",
+     "3189.00"
+    ],
+    "editions": [
+     "2024-01-01"
+    ],
+    "excluded": false,
+    "id": "F01",
+    "passages": 2,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-01-01/2.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 2
+   },
+   {
+    "codes": [],
+    "editions": [
+     "2024-01-01"
+    ],
+    "excluded": false,
+    "id": "F02",
+    "passages": 3,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-01-01/2.2"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 3
+   },
+   {
+    "codes": [
+     "1368.00",
+     "6002.04"
+    ],
+    "editions": [
+     "2024-01-01",
+     "2024-07-01",
+     "2025-01-01",
+     "2025-07-01"
+    ],
+    "excluded": true,
+    "id": "F03",
+    "passages": 12,
+    "projects": [
+     "transAL"
+    ],
+    "range_codes": [],
+    "reference_sections": [
+     "2026-01-01/2.2",
+     "2026-07-01/2.4",
+     "2026-07-01/2.5"
+    ],
+    "sections": [
+     "2024-01-01/2.3",
+     "2024-07-01/2.1",
+     "2024-07-01/2.2",
+     "2024-07-01/3.2",
+     "2025-01-01/3.1",
+     "2025-07-01/2.1"
+    ],
+    "shared_codes": [
+     "1368.00"
+    ],
+    "shared_projects": [
+     "transAL"
+    ],
+    "usable_passages": 12
+   },
+   {
+    "codes": [
+     "1034.00",
+     "1207.00",
+     "1314.00",
+     "1359.00",
+     "1425.00",
+     "3054.00",
+     "3057.00",
+     "3094.00",
+     "3102.10",
+     "3330.00",
+     "3332.00",
+     "3333.00",
+     "3334.00",
+     "3335.00",
+     "3478.00",
+     "3482.00"
+    ],
+    "editions": [
+     "2024-01-01"
+    ],
+    "excluded": true,
+    "id": "F04",
+    "passages": 3,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [
+     "2026-07-01/2.4",
+     "2026-07-01/3.1"
+    ],
+    "sections": [
+     "2024-01-01/2.4"
+    ],
+    "shared_codes": [
+     "1034.00",
+     "1314.00",
+     "3333.00"
+    ],
+    "shared_projects": [],
+    "usable_passages": 3
+   },
+   {
+    "codes": [],
+    "editions": [
+     "2024-01-01"
+    ],
+    "excluded": false,
+    "id": "F05",
+    "passages": 2,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-01-01/3.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 2
+   },
+   {
+    "codes": [
+     "1900.00",
+     "6206.55",
+     "6603.50",
+     "6702.63"
+    ],
+    "editions": [
+     "2024-01-01"
+    ],
+    "excluded": false,
+    "id": "F06",
+    "passages": 3,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-01-01/4.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 3
+   },
+   {
+    "codes": [],
+    "editions": [
+     "2024-01-01"
+    ],
+    "excluded": false,
+    "id": "F07",
+    "passages": 1,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-01-01/4.2"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 1
+   },
+   {
+    "codes": [
+     "1648.00",
+     "1649.00"
+    ],
+    "editions": [
+     "2024-07-01"
+    ],
+    "excluded": false,
+    "id": "F08",
+    "passages": 2,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-07-01/2.3"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 2
+   },
+   {
+    "codes": [
+     "6241.55",
+     "6241.56",
+     "6241.60"
+    ],
+    "editions": [
+     "2024-07-01"
+    ],
+    "excluded": true,
+    "id": "F09",
+    "passages": 3,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [
+     "2026-07-01/2.4"
+    ],
+    "sections": [
+     "2024-07-01/2.4"
+    ],
+    "shared_codes": [
+     "6241.56",
+     "6241.60"
+    ],
+    "shared_projects": [],
+    "usable_passages": 3
+   },
+   {
+    "codes": [],
+    "editions": [
+     "2024-07-01"
+    ],
+    "excluded": false,
+    "id": "F10",
+    "passages": 6,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-07-01/3.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 6
+   },
+   {
+    "codes": [
+     "6700.90",
+     "6701.90"
+    ],
+    "editions": [
+     "2024-07-01"
+    ],
+    "excluded": false,
+    "id": "F11",
+    "passages": 1,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2024-07-01/4.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 1
+   },
+   {
+    "codes": [
+     "1019.00",
+     "1320.00",
+     "1699.00",
+     "1700.00"
+    ],
+    "editions": [
+     "2025-01-01"
+    ],
+    "excluded": false,
+    "id": "F12",
+    "passages": 3,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2025-01-01/2.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 3
+   },
+   {
+    "codes": [
+     "1734.01"
+    ],
+    "editions": [
+     "2025-01-01"
+    ],
+    "excluded": false,
+    "id": "F13",
+    "passages": 1,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2025-01-01/2.2"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 1
+   },
+   {
+    "codes": [
+     "2346.06",
+     "6402.54"
+    ],
+    "editions": [
+     "2025-01-01"
+    ],
+    "excluded": false,
+    "id": "F14",
+    "passages": 2,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2025-01-01/2.3"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 2
+   },
+   {
+    "codes": [
+     "6003.02",
+     "6010.08",
+     "6011.08",
+     "6012.08"
+    ],
+    "editions": [
+     "2025-01-01"
+    ],
+    "excluded": false,
+    "id": "F15",
+    "passages": 2,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2025-01-01/4.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 2
+   },
+   {
+    "codes": [
+     "1245.00",
+     "1245.01",
+     "1619.00"
+    ],
+    "editions": [
+     "2025-07-01"
+    ],
+    "excluded": true,
+    "id": "F16",
+    "passages": 4,
+    "projects": [
+     "StAR"
+    ],
+    "range_codes": [],
+    "reference_sections": [
+     "2026-01-01/2.2",
+     "2026-07-01/2.4"
+    ],
+    "sections": [
+     "2025-07-01/2.2",
+     "2025-07-01/3.1"
+    ],
+    "shared_codes": [
+     "1245.00",
+     "1619.00"
+    ],
+    "shared_projects": [],
+    "usable_passages": 4
+   },
+   {
+    "codes": [
+     "3340.00",
+     "3341.00"
+    ],
+    "editions": [
+     "2025-07-01"
+    ],
+    "excluded": false,
+    "id": "F17",
+    "passages": 1,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2025-07-01/4.1"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 1
+   },
+   {
+    "codes": [
+     "1690.00"
+    ],
+    "editions": [
+     "2025-07-01"
+    ],
+    "excluded": false,
+    "id": "F18",
+    "passages": 1,
+    "projects": [],
+    "range_codes": [],
+    "reference_sections": [],
+    "sections": [
+     "2025-07-01/4.2"
+    ],
+    "shared_codes": [],
+    "shared_projects": [],
+    "usable_passages": 1
+   }
+  ],
+  "options": {
+   "handbook": false,
+   "no_exclusion": false,
+   "phases_apart": false,
+   "ranges": false,
+   "strict_misfiled": false
+  },
+  "passages": [
+   {
+    "edition": "2024-01-01",
+    "eligible": false,
+    "family": null,
+    "introduction": true,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-01-01/p3/s1/1",
+    "section": "1",
+    "split": "whole",
+    "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f",
+    "tokens": 216,
+    "usable": false
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F01",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-01-01/p3/s2.1/1",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "41087e888e94150b8eb43d07e0d69fa261ce66bea02381ec255286fa7f79824f",
+    "tokens": 233,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F01",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-01-01/p3/s2.1/2",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "244a7383849b7a21712b3af184e15fc64d4ae0ae96326575742eeed6c4e3b9ae",
+    "tokens": 88,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F02",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-01-01/p3/s2.2/1",
+    "section": "2.2",
+    "split": "sentence",
+    "text_sha256": "380f3f40a459777f7519524e24f9adfcbc952d2f6b3ccdf3b1d6518fdf24f803",
+    "tokens": 202,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F02",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-01-01/p3/s2.2/2",
+    "section": "2.2",
+    "split": "sentence",
+    "text_sha256": "165b2b845b1e6e3a7c001e9a33c9a4de47cdeaed7112179c7e79cd8f40bd853c",
+    "tokens": 121,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F02",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-01-01/p4/s2.2/1",
+    "section": "2.2",
+    "split": "whole",
+    "text_sha256": "926aa01f05ace01b82761a8a6c32b92514104bd42808aa0997970391a08eac1a",
+    "tokens": 184,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-01-01/p4/s2.3/1",
+    "section": "2.3",
+    "split": "whole",
+    "text_sha256": "3173935770875fb0414221814933a18878f48fcd3bf3c9956539ad0663f9060b",
+    "tokens": 212,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": false,
+    "family": "F04",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-01-01/p4/s2.4/1",
+    "section": "2.4",
+    "split": "sentence",
+    "text_sha256": "b4340716386e22fc8d7769cfd36e864802d3f51be7391d1476312a338c920a34",
+    "tokens": 234,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": false,
+    "family": "F04",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-01-01/p4/s2.4/2",
+    "section": "2.4",
+    "split": "sentence",
+    "text_sha256": "2d4f50da899c4e16252d003f4ac39e20443c7879cfe3e32914eeb69bfc51a18a",
+    "tokens": 167,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": false,
+    "family": "F04",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-01-01/p5/s2.4/1",
+    "section": "2.4",
+    "split": "whole",
+    "text_sha256": "f595604ac26f5a8cdea66bf549f2c0f29e7e05d543ed0dbe6f2c630fbd24d80f",
+    "tokens": 199,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F05",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-01-01/p5/s3.1/1",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "c468626acef863cf48dbd40fe24a88242bbd4e68601843d05acc376878354dc1",
+    "tokens": 241,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F05",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-01-01/p5/s3.1/2",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "cc7295581d5fab9fdab8fca6b27c6919408f029dd505154f34cd4f777b992f55",
+    "tokens": 48,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F06",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-01-01/p5/s4.1/1",
+    "section": "4.1",
+    "split": "sentence",
+    "text_sha256": "00dd41222560c0186fbdee37135e98a1a6397a40704ae44b22c6297e7e094b95",
+    "tokens": 208,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F06",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-01-01/p5/s4.1/2",
+    "section": "4.1",
+    "split": "sentence",
+    "text_sha256": "f9619f77059b8f93d176a9a3e092929e1cf30d836a3d3971bc77ba9f79daa468",
+    "tokens": 69,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F06",
+    "introduction": false,
+    "misfiled": null,
+    "page": 6,
+    "passage_id": "2024-01-01/p6/s4.1/1",
+    "section": "4.1",
+    "split": "whole",
+    "text_sha256": "6e2ff126eb619f0ee29a836ea701227b3e6859052edaa586828f61a6b16d7135",
+    "tokens": 104,
+    "usable": true
+   },
+   {
+    "edition": "2024-01-01",
+    "eligible": true,
+    "family": "F07",
+    "introduction": false,
+    "misfiled": null,
+    "page": 6,
+    "passage_id": "2024-01-01/p6/s4.2/1",
+    "section": "4.2",
+    "split": "whole",
+    "text_sha256": "286ffca3f7231206f2a5ca1898ac4eda7a2817db6b06ef800619b1797fec4abd",
+    "tokens": 82,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": null,
+    "introduction": true,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-07-01/p3/s1/1",
+    "section": "1",
+    "split": "whole",
+    "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f",
+    "tokens": 216,
+    "usable": false
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-07-01/p3/s2.1/1",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "1c2642ac9ba1596ded3c0c6e6d87b61415a9b388a61eaaafeb62aa939b5efe05",
+    "tokens": 244,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-07-01/p3/s2.1/2",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "de4e21b12578ebad8032fb0fe7bc395ddfc593815003b5a7445c1c92b883d8f2",
+    "tokens": 177,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-07-01/p3/s2.2/1",
+    "section": "2.2",
+    "split": "sentence",
+    "text_sha256": "edf114ceb08771917a89c493b7c29a0aa126ec43fd262823a79893ef05da5acf",
+    "tokens": 230,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2024-07-01/p3/s2.2/2",
+    "section": "2.2",
+    "split": "sentence",
+    "text_sha256": "cf5fab6951ca73ccff87c5a8fe26f56eb8573b5413ac8bbf70f3143257002f0b",
+    "tokens": 90,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-07-01/p4/s2.2/1",
+    "section": "2.2",
+    "split": "whole",
+    "text_sha256": "e03f8e51f5cdc91bf063720526bff85f35ec0218f1ab5da6192693e69ea48ffc",
+    "tokens": 113,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F08",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-07-01/p4/s2.3/1",
+    "section": "2.3",
+    "split": "sentence",
+    "text_sha256": "ba56dac7596d4f6c57ad58917bbf15bf521f04d6a06ad74c57bbf5fffc37bb5b",
+    "tokens": 254,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F08",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-07-01/p4/s2.3/2",
+    "section": "2.3",
+    "split": "sentence",
+    "text_sha256": "35ee7d634d8b0dd7041f33ca4ce925b341899e62790649a016d0fa93fda4d982",
+    "tokens": 48,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F09",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-07-01/p4/s2.4/1",
+    "section": "2.4",
+    "split": "sentence",
+    "text_sha256": "51524200c87ab371cdd0030d02bdbfc7225988305373bfb441fb58a5d36fccd5",
+    "tokens": 223,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F09",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-07-01/p4/s2.4/2",
+    "section": "2.4",
+    "split": "sentence",
+    "text_sha256": "523027f178c7873bbf7a6d2fd721209e1530c201ee57513735e4d7312451ae81",
+    "tokens": 218,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F09",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2024-07-01/p4/s2.4/3",
+    "section": "2.4",
+    "split": "sentence",
+    "text_sha256": "700132f8a78c92e8fa8747a7ab721b7c344ed92e78364b219d8cc3e9e4f6543e",
+    "tokens": 66,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F10",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-07-01/p5/s3.1/1",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "b18f067d390a44b9f8144e45fc6dd27cffdc9da7e8d7af4aa5bc192997af8989",
+    "tokens": 251,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F10",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-07-01/p5/s3.1/2",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "12bb4ab38fdef6ba67f4c83caa53e66303c86826d56c63771731eafec952144f",
+    "tokens": 175,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F10",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-07-01/p5/s3.1/3",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "02b500592d6ec343b17a34bd0d07217f6e01a0a2a64f949c5fac3666702630d2",
+    "tokens": 215,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F10",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-07-01/p5/s3.1/4",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "17b61d6f0fe2a9aad3b498d928eb88151407893880ece93e56b8258c66c06cb7",
+    "tokens": 239,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F10",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2024-07-01/p5/s3.1/5",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "d66d6e9f9f980dbacf59e6970a0f43ac36ea8c942d7f6c4b2a949e05919b3149",
+    "tokens": 105,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F10",
+    "introduction": false,
+    "misfiled": null,
+    "page": 6,
+    "passage_id": "2024-07-01/p6/s3.1/1",
+    "section": "3.1",
+    "split": "whole",
+    "text_sha256": "ce2372d34f7f6bf9096d30e22010d938589ad9c84eecd15ccb6577e9ab378c1c",
+    "tokens": 114,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 6,
+    "passage_id": "2024-07-01/p6/s3.2/1",
+    "section": "3.2",
+    "split": "sentence",
+    "text_sha256": "e55065f01879c06e1b9cb19ee15da0535d2e097a6697bcdbd2c446fb8b3553c4",
+    "tokens": 245,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 6,
+    "passage_id": "2024-07-01/p6/s3.2/2",
+    "section": "3.2",
+    "split": "sentence",
+    "text_sha256": "0738f62ee1cdfb3f2b10e3496ac69847278742f0c504cc833c85e84d6f0d7345",
+    "tokens": 97,
+    "usable": true
+   },
+   {
+    "edition": "2024-07-01",
+    "eligible": true,
+    "family": "F11",
+    "introduction": false,
+    "misfiled": null,
+    "page": 6,
+    "passage_id": "2024-07-01/p6/s4.1/1",
+    "section": "4.1",
+    "split": "whole",
+    "text_sha256": "00364397dbe8c877250eb8bd14618374b823f6307f594065ced544ff90c44f84",
+    "tokens": 119,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": false,
+    "family": null,
+    "introduction": true,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-01-01/p3/s1/1",
+    "section": "1",
+    "split": "whole",
+    "text_sha256": "d0843066acef521c9b9638e32fb8deb558f9186553c342f8a01d19ea29a2c42f",
+    "tokens": 216,
+    "usable": false
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F12",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-01-01/p3/s2.1/1",
+    "section": "2.1",
+    "split": "word",
+    "text_sha256": "9dc6dbf6c976867d0b8c16b24e0c736e12b19c6143ba6bc5029529cf6765916e",
+    "tokens": 255,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F12",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-01-01/p3/s2.1/2",
+    "section": "2.1",
+    "split": "word",
+    "text_sha256": "4f8691cc6113bdd58f85fceb638411bca9306de81735a1916adc319c5a5af565",
+    "tokens": 48,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F12",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-01-01/p3/s2.1/3",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "87d8147131757c1eaf0070a5b64155a229b12dc2a0e5a978857749a74ea66360",
+    "tokens": 49,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F13",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-01-01/p3/s2.2/1",
+    "section": "2.2",
+    "split": "whole",
+    "text_sha256": "08e8551fe36dc3a83c314792fc7605b366157530f4c131416853a0062df2ab13",
+    "tokens": 162,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F14",
+    "introduction": false,
+    "misfiled": "2.1",
+    "page": 3,
+    "passage_id": "2025-01-01/p3/s2.3/1",
+    "section": "2.3",
+    "split": "whole",
+    "text_sha256": "7c421556cef7f105b08e7ff06a6dda1aeb05000aaf926584d89f62a1ba3fde9d",
+    "tokens": 196,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F14",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2025-01-01/p4/s2.3/1",
+    "section": "2.3",
+    "split": "whole",
+    "text_sha256": "cb80a1ec098b72fb5ea71109b1550f5ffe5b98d2ef754c3587598741b31584c8",
+    "tokens": 142,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2025-01-01/p4/s3.1/1",
+    "section": "3.1",
+    "split": "whole",
+    "text_sha256": "e2e870024541e53f99dcfab4f441a08a608fb75e0e11bcef297ccc48bbdd931a",
+    "tokens": 249,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F15",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2025-01-01/p4/s4.1/1",
+    "section": "4.1",
+    "split": "sentence",
+    "text_sha256": "a42e81a91d69b2977e5aebd4dd47c5ea0db2c6295cb2428005d144023de153b0",
+    "tokens": 220,
+    "usable": true
+   },
+   {
+    "edition": "2025-01-01",
+    "eligible": true,
+    "family": "F15",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2025-01-01/p4/s4.1/2",
+    "section": "4.1",
+    "split": "sentence",
+    "text_sha256": "82852bce3cb5ef45674bd37687b34ff2d3726552afa754a458448215a77b12a0",
+    "tokens": 140,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": null,
+    "introduction": true,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-07-01/p3/s1/1",
+    "section": "1",
+    "split": "whole",
+    "text_sha256": "38cec1cea545c062a147f9428fe675a069456ad5779f292ab87daa85bce9eb31",
+    "tokens": 216,
+    "usable": false
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-07-01/p3/s2.1/1",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "abbedfb4c8fc451aa1b98b2f68244a122fa5d991524c63e9ac58b44bb510ceec",
+    "tokens": 226,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-07-01/p3/s2.1/2",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "f31e6bc2ca0bc959567b17669dcdd7e578637502e0879f838011b4b18cce82ef",
+    "tokens": 240,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": "F03",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-07-01/p3/s2.1/3",
+    "section": "2.1",
+    "split": "sentence",
+    "text_sha256": "7930adcc58c192f80868c85092d06b7411433eb1fd78a0055d3f2d36e2c594e0",
+    "tokens": 117,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": "F16",
+    "introduction": false,
+    "misfiled": null,
+    "page": 3,
+    "passage_id": "2025-07-01/p3/s2.2/1",
+    "section": "2.2",
+    "split": "whole",
+    "text_sha256": "60dc4125284af1d0589a8e935e1d3aa384d981ebc2e8acc6522529ee9db262e5",
+    "tokens": 142,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": "F16",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2025-07-01/p4/s3.1/1",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "14f40a33b76fb23cd4a23c7619227c0adabe2cb36fef2d4fe0b9118ed2806e07",
+    "tokens": 239,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": "F16",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2025-07-01/p4/s3.1/2",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "465987f2f168ea145c2d0d3cc9384243ccb1c673b36c97f96df0cfdd71fab972",
+    "tokens": 255,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": false,
+    "family": "F16",
+    "introduction": false,
+    "misfiled": null,
+    "page": 4,
+    "passage_id": "2025-07-01/p4/s3.1/3",
+    "section": "3.1",
+    "split": "sentence",
+    "text_sha256": "ee40d317c5a5c66afba78932ce81d13d2e73389135849775c3a0ee14b044c3cc",
+    "tokens": 234,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": true,
+    "family": "F17",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2025-07-01/p5/s4.1/1",
+    "section": "4.1",
+    "split": "whole",
+    "text_sha256": "d0b9ab354b378f4ac952c5a11d3bb211dd9933fbd38eb0a6f6de6dcfc8971af1",
+    "tokens": 100,
+    "usable": true
+   },
+   {
+    "edition": "2025-07-01",
+    "eligible": true,
+    "family": "F18",
+    "introduction": false,
+    "misfiled": null,
+    "page": 5,
+    "passage_id": "2025-07-01/p5/s4.2/1",
+    "section": "4.2",
+    "split": "whole",
+    "text_sha256": "6bba523b1d340d12e959211d03d6567d07018694a5704366ed431037d6d513e0",
+    "tokens": 79,
+    "usable": true
+   }
+  ],
+  "reference_codes": 167,
+  "reference_projects": [
+   "Runder Tisch",
+   "transAL"
+  ],
+  "threshold": {
+   "met": false,
+   "min_families": 10,
+   "min_passages": 100,
+   "shortfall_families": 0,
+   "shortfall_passages": 70
+  }
+ },
+ "reference": {
+  "editions": [
+   "2026-01-01",
+   "2026-07-01"
+  ],
+  "matches_record": true,
+  "passages": 40
+ },
+ "rules": "docs/evidence/2026-11-23-phase4-training-data-inventory.md#rules-fixed-before-counting",
+ "sensitivities": {
+  "handbook_named": {
+   "eligible_families": 13,
+   "eligible_passages": 28,
+   "excluded_families": 5,
+   "met": false,
+   "options": {
+    "handbook": true,
+    "no_exclusion": false,
+    "phases_apart": false,
+    "ranges": false,
+    "strict_misfiled": false
+   }
+  },
+  "misfiled_strict": {
+   "eligible_families": 14,
+   "eligible_passages": 29,
+   "excluded_families": 4,
+   "met": false,
+   "options": {
+    "handbook": false,
+    "no_exclusion": false,
+    "phases_apart": false,
+    "ranges": false,
+    "strict_misfiled": true
+   }
+  },
+  "no_exclusion": {
+   "eligible_families": 18,
+   "eligible_passages": 52,
+   "excluded_families": 0,
+   "met": false,
+   "options": {
+    "handbook": false,
+    "no_exclusion": true,
+    "phases_apart": false,
+    "ranges": false,
+    "strict_misfiled": false
+   }
+  },
+  "primary": {
+   "eligible_families": 14,
+   "eligible_passages": 30,
+   "excluded_families": 4,
+   "met": false,
+   "options": {
+    "handbook": false,
+    "no_exclusion": false,
+    "phases_apart": false,
+    "ranges": false,
+    "strict_misfiled": false
+   }
+  },
+  "ranges": {
+   "eligible_families": 13,
+   "eligible_passages": 27,
+   "excluded_families": 5,
+   "met": false,
+   "options": {
+    "handbook": false,
+    "no_exclusion": false,
+    "phases_apart": false,
+    "ranges": true,
+    "strict_misfiled": false
+   }
+  },
+  "strictest": {
+   "eligible_families": 12,
+   "eligible_passages": 24,
+   "excluded_families": 6,
+   "met": false,
+   "options": {
+    "handbook": true,
+    "no_exclusion": false,
+    "phases_apart": false,
+    "ranges": true,
+    "strict_misfiled": true
+   }
+  },
+  "transal_phases_apart": {
+   "eligible_families": 15,
+   "eligible_passages": 31,
+   "excluded_families": 4,
+   "met": false,
+   "options": {
+    "handbook": false,
+    "no_exclusion": false,
+    "phases_apart": true,
+    "ranges": false,
+    "strict_misfiled": false
+   }
+  }
+ }
+}
