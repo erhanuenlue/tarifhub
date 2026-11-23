@@ -241,3 +241,11 @@ def test_cli_writes_the_same_complete_report_twice(tmp_path):
     at_30 = next(row for row in s1["power"] if row["n"] == 30)
     assert at_30["two_sided"] == round(pst.power(30, 0.2, 0.0), 4)
     assert str(tmp_path) not in text
+
+
+def test_cli_never_replaces_an_existing_report(tmp_path, capsys):
+    out = tmp_path / "report.json"
+    out.write_text("kept", encoding="utf-8")
+    assert pst.main(["--out", str(out)]) == 1
+    assert "already exists" in capsys.readouterr().err
+    assert out.read_text(encoding="utf-8") == "kept"

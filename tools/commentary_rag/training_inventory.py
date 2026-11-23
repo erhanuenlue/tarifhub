@@ -13,10 +13,12 @@ recorded result stay unchanged. Only public material is read (the BAG commentari
 2026 record): no evaluation case, gold evidence or answer. The result record holds IDs, hashes,
 codes, projects and counts, never passage text.
 
+The e5 model is read from the local Hugging Face cache only (offline mode is forced and checked),
+and an existing output file is never replaced:
+
     UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run \\
-        --project services/ingestion --frozen --extra ai --extra dev \\
-        python tools/commentary_rag/training_inventory.py \\
-        --out tools/commentary_rag/results/2026-11-23-training-inventory.json
+        --project services/ingestion --frozen --offline --extra ai --extra dev \\
+        python tools/commentary_rag/training_inventory.py --out <a new file>
 """
 
 from __future__ import annotations
@@ -24,6 +26,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 from collections import defaultdict
@@ -69,7 +72,17 @@ class Misfiled:
     found: str
 
 
-# Found by the page inspection of 2026-11-23 (pdfplumber layout probe and renders of all 21 pages).
+@dataclass(frozen=True)
+class Unusable:
+    """A passage whose text the page inspection found lost or garbled (rule 3)."""
+
+    passage_id: str
+    reason: str
+
+
+# Found by the page inspection of 2026-11-23 (pdfplumber layout probe and renders of all 21
+# pages): one misfiled footnote, no text lost or garbled.
+UNUSABLE: tuple[Unusable, ...] = ()
 MISFILED = (
     Misfiled(
         passage_id="2025-01-01/p3/s2.3/1",
@@ -225,18 +238,30 @@ def count(
     options: Options | None = None,
     *,
     misfiled: Iterable[Misfiled] = MISFILED,
+    unusable: Iterable[Unusable] = UNUSABLE,
 ) -> dict:
-    """Apply rules 2 to 9 once: families, exclusion, usable and eligible passages, counts."""
+    """Apply rules 2 to 10 once: families, exclusion, usable and eligible passages, counts."""
 
     options = options or Options()
     by_id = {p.passage_id: p for p in older.passages}
-    flagged = {}
+    flagged: dict[str, list[Misfiled]] = defaultdict(list)
     for item in misfiled:
         if item.passage_id not in by_id or item.text not in by_id[item.passage_id].text:
             raise ValueError(
                 f"misfiled text of {item.passage_id} not found in that passage"
             )
-        flagged[item.passage_id] = item
+        flagged[item.passage_id].append(item)
+    lost: dict[str, str] = {}
+    for item in unusable:
+        if item.passage_id not in by_id:
+            raise ValueError(
+                f"unusable passage {item.passage_id} not found in the corpus"
+            )
+        lost[item.passage_id] = item.reason
+    copies = {
+        found["passage_id"]: found["reference_passage_id"]
+        for found in duplicates(older.passages, reference.passages)
+    }
 
     ref_codes: set[str] = set()
     ref_projects: set[str] = set()
@@ -271,16 +296,14 @@ def count(
     )
 
     def usable(p: corpus.Passage) -> bool:
-        if _introduction(p):
+        """Rule 3: no introduction, no lost or garbled text, and misfiled text only when it
+        names no code or project (none in the strict count)."""
+        if _introduction(p) or p.passage_id in lost:
             return False
-        item = flagged.get(p.passage_id)
-        if item is None:
-            return True
-        return (
-            not options.strict_misfiled
-            and not codes(item.text)
-            and not projects(item.text, options)
-        )
+        items = flagged.get(p.passage_id, [])
+        if items and options.strict_misfiled:
+            return False
+        return not any(codes(i.text) or projects(i.text, options) for i in items)
 
     family_of: dict[str, str] = {}
     rows = []
@@ -338,14 +361,17 @@ def count(
                 "split": p.split,
                 "text_sha256": p.text_sha256,
                 "introduction": _introduction(p),
-                "misfiled": flagged[p.passage_id].belongs_to
-                if p.passage_id in flagged
-                else None,
+                "misfiled": sorted(
+                    {i.belongs_to for i in flagged.get(p.passage_id, [])}
+                ),
+                "unusable": lost.get(p.passage_id),
+                "duplicate_of": copies.get(p.passage_id),
                 "family": family,
                 "usable": ok,
-                "eligible": ok
+                "eligible": ok  # rule 8, and rule 10: a copy of 2026 text is never eligible
                 and family is not None
-                and family not in excluded_families,
+                and family not in excluded_families
+                and p.passage_id not in copies,
             }
         )
 
@@ -356,7 +382,10 @@ def count(
             "passages": len(rows_in),
             "introduction_passages": sum(r["introduction"] for r in rows_in),
             "usable_passages": sum(r["usable"] for r in rows_in),
-            "misfiled_passages": sum(r["misfiled"] is not None for r in rows_in),
+            "misfiled_passages": sum(bool(r["misfiled"]) for r in rows_in),
+            "duplicate_passages": sum(
+                r["usable"] and r["duplicate_of"] is not None for r in rows_in
+            ),
             "families": len(fams),
             "eligible_families": len({r["family"] for r in eligible}),
             "eligible_passages": len(eligible),
@@ -394,17 +423,18 @@ def report(
     reference: corpus.Corpus,
     *,
     misfiled: Iterable[Misfiled] = MISFILED,
+    unusable: Iterable[Unusable] = UNUSABLE,
 ) -> dict:
     """The primary count in full, every sensitivity in summary, and the duplicate check."""
 
-    misfiled = tuple(misfiled)
-    primary = count(older, reference, misfiled=misfiled)
+    misfiled, unusable = tuple(misfiled), tuple(unusable)
+    primary = count(older, reference, misfiled=misfiled, unusable=unusable)
     summary = {}
     for name, options in SENSITIVITIES.items():
         result = (
             primary
             if name == "primary"
-            else count(older, reference, options, misfiled=misfiled)
+            else count(older, reference, options, misfiled=misfiled, unusable=unusable)
         )
         overall = result["counts"]["overall"]
         summary[name] = {
@@ -431,6 +461,9 @@ def report(
                 ],
             }
             for d in older.documents
+        ],
+        "unusable": [
+            {"passage_id": u.passage_id, "reason": u.reason} for u in unusable
         ],
         "misfiled": [
             {
@@ -461,6 +494,7 @@ def run(  # noqa: PLR0913 - the two manifests, the frozen record and the tokeniz
     pdftotext: str = "pdftotext",
     *,
     misfiled: Iterable[Misfiled] = MISFILED,
+    unusable: Iterable[Unusable] = UNUSABLE,
 ) -> dict:
     """Build both corpora, check the 2026 rebuild against its frozen record, then report."""
 
@@ -485,7 +519,7 @@ def run(  # noqa: PLR0913 - the two manifests, the frozen record and the tokeniz
             f"refused: the 2026 rebuild differs from the frozen record {record.name} "
             f"({len(rebuilt)} passages rebuilt, {len(recorded)} recorded)"
         )
-    out = report(older, reference, misfiled=misfiled)
+    out = report(older, reference, misfiled=misfiled, unusable=unusable)
     out["reference"] = {
         "passages": len(reference.passages),
         "matches_record": True,
@@ -516,17 +550,52 @@ def _relative(path: Path) -> str:
     )
 
 
+def _e5_model():
+    """The e5 model behind the passage-token counter, from the local Hugging Face cache only.
+
+    Offline mode is forced before ``huggingface_hub`` is imported here and checked to hold, so a
+    missing model is refused, never downloaded; so is the 16-dimensional stub fallback.
+    """
+
+    os.environ["HF_HUB_OFFLINE"] = "1"
+    os.environ["TRANSFORMERS_OFFLINE"] = "1"
+    try:
+        from huggingface_hub import constants  # noqa: PLC0415
+        import run_eval  # noqa: PLC0415 - the pilot's e5 loader and exact token counter
+    except ImportError as exc:
+        raise SystemExit(
+            f"refused: {exc.name} is not installed; run with the ingestion ai extra"
+        )
+    if not constants.HF_HUB_OFFLINE:  # imported earlier, before offline mode was set
+        raise SystemExit(
+            "refused: Hugging Face offline mode is not in effect; set HF_HUB_OFFLINE=1 so that "
+            "no model can be downloaded"
+        )
+    try:
+        _, model = run_eval._e5()  # refuses the stub fallback
+    except SystemExit:
+        raise
+    except Exception as exc:  # noqa: BLE001 - a model file or package missing, however it fails
+        raise SystemExit(
+            f"refused: the cached e5 model could not be loaded ({type(exc).__name__}: {exc}); "
+            "nothing is downloaded"
+        ) from None
+    return run_eval, model
+
+
 def main(argv: list[str] | None = None) -> int:
-    """Run the inventory with the e5 tokenizer and write the record (no text, no model call)."""
+    """Run the inventory with the e5 tokenizer and write a new record (no text, no model call)."""
 
     parser = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     parser.add_argument(
-        "--out", type=Path, required=True, help="the JSON record to write"
+        "--out", type=Path, required=True, help="the new JSON record to write"
     )
     args = parser.parse_args(argv)
-    import run_eval  # noqa: PLC0415 - loads the e5 tokenizer through the ingestion embedder
-
-    _, model = run_eval._e5()
+    if args.out.exists():  # recorded inventories are evidence, never replaced
+        raise SystemExit(
+            f"refused: {args.out} already exists; write a new record instead"
+        )
+    run_eval, model = _e5_model()
     out = run(
         OLDER,
         REFERENCE,
@@ -564,10 +633,12 @@ def main(argv: list[str] | None = None) -> int:
             for name in ("training_inventory.py", "corpus.py")
         },
     }
-    args.out.write_text(
-        json.dumps(out, ensure_ascii=False, indent=1, sort_keys=True) + "\n",
-        encoding="utf-8",
-    )
+    with open(
+        args.out, "x", encoding="utf-8"
+    ) as handle:  # never replaces an existing file
+        handle.write(
+            json.dumps(out, ensure_ascii=False, indent=1, sort_keys=True) + "\n"
+        )
     overall = out["primary"]["counts"]["overall"]
     print(
         f"eligible: {overall['eligible_passages']} passages in {overall['eligible_families']} "

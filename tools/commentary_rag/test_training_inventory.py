@@ -11,7 +11,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import sys
+import types
 from pathlib import Path
 
 import pytest
@@ -163,6 +165,7 @@ def test_count_drops_whole_families_before_counting():
         "introduction_passages": 1,
         "usable_passages": 7,
         "misfiled_passages": 0,
+        "duplicate_passages": 0,
         "families": 5,
         "eligible_families": 3,
         "eligible_passages": 4,
@@ -208,7 +211,7 @@ def test_misfiled_text_keeps_a_passage_only_when_it_names_nothing():
     harmless = ti.Misfiled("2024-07-01/p6/s4.3/1", "4.2", note, "footnote 1")
     primary = ti.count(older(extra), REFERENCE, misfiled=(harmless,))
     row = next(p for p in primary["passages"] if p["passage_id"] == extra.passage_id)
-    assert row["misfiled"] == "4.2" and row["usable"] and row["eligible"]
+    assert row["misfiled"] == ["4.2"] and row["usable"] and row["eligible"]
     strict = ti.count(
         older(extra), REFERENCE, ti.Options(strict_misfiled=True), misfiled=(harmless,)
     )
@@ -331,3 +334,108 @@ def test_run_builds_both_corpora_and_refuses_a_changed_reference(tmp_path):
     )
     with pytest.raises(SystemExit, match="frozen record"):
         ti.run(older_manifest, reference_manifest, record, words, 512, misfiled=())
+
+
+def test_a_copy_of_2026_text_is_never_eligible_even_in_a_family_that_stays():
+    copied = "Der Tarif der Position wird bis zum Abschluss des Projekts erhöht und neu geprüft"
+    reference = build(*REFERENCE.passages, passage("2026-07-01/p8/s4.1/1", copied))
+    extra = passage("2024-07-01/p6/s4.3/1", "Position 3333.00. " + copied)
+    result = ti.count(older(extra), reference, misfiled=())
+    row = next(p for p in result["passages"] if p["passage_id"] == extra.passage_id)
+    assert row["usable"] and not row["eligible"]
+    assert row["duplicate_of"] == "2026-07-01/p8/s4.1/1"
+    family = next(f for f in result["families"] if "2024-07-01/4.3" in f["sections"])
+    assert not family["excluded"]  # the copy alone keeps it out
+    assert result["counts"]["overall"]["duplicate_passages"] == 1
+    assert result["counts"]["overall"]["eligible_passages"] == 4
+
+
+def test_every_inspection_finding_counts_and_lost_text_is_never_usable():
+    text = "Position 3333.00 neu. 1 Vgl. das Faktenblatt. 2 Vgl. Position 7777.00."
+    extra = passage("2024-07-01/p6/s4.3/1", text)
+    harmless = ti.Misfiled(
+        extra.passage_id, "4.2", "1 Vgl. das Faktenblatt.", "footnote 1"
+    )
+    naming = ti.Misfiled(
+        extra.passage_id, "4.1", "2 Vgl. Position 7777.00.", "footnote 2"
+    )
+    for order in ((harmless, naming), (naming, harmless)):
+        result = ti.count(older(extra), REFERENCE, misfiled=order)
+        row = next(p for p in result["passages"] if p["passage_id"] == extra.passage_id)
+        assert row["misfiled"] == ["4.1", "4.2"] and not row["usable"]
+    lost = ti.Unusable("2024-01-01/p4/s2.3/1", "text garbled")
+    result = ti.count(older(), REFERENCE, misfiled=(), unusable=(lost,))
+    row = next(p for p in result["passages"] if p["passage_id"] == lost.passage_id)
+    assert (
+        row["unusable"] == "text garbled" and not row["usable"] and not row["eligible"]
+    )
+    with pytest.raises(ValueError, match="not found"):
+        ti.count(
+            older(), REFERENCE, misfiled=(), unusable=(ti.Unusable("x/p1/s1/1", "?"),)
+        )
+
+
+def test_main_never_replaces_an_existing_record(tmp_path):
+    out = tmp_path / "record.json"
+    out.write_text("kept", encoding="utf-8")
+    with pytest.raises(SystemExit, match="already exists"):
+        ti.main(["--out", str(out)])
+    assert out.read_text(encoding="utf-8") == "kept"
+
+
+class MissingModel:
+    """The sentence_transformers boundary when the model is not in the cache: with Hugging Face
+    offline, loading raises an OSError instead of downloading."""
+
+    attempts: list[str] = []
+
+    def __init__(self, name: str) -> None:
+        MissingModel.attempts.append(
+            f"{name} offline={os.environ.get('HF_HUB_OFFLINE')}"
+        )
+        raise OSError(
+            f"couldn't find {name} in the cached files (offline mode is enabled)"
+        )
+
+
+@pytest.mark.parametrize(
+    ("boundary", "reason"),
+    [
+        ("model_files_missing", "the cached e5 model could not be loaded (OSError"),
+        ("package_missing", "fell back to the 16-dim stub"),
+    ],
+)
+def test_main_refuses_without_the_cached_model_and_downloads_nothing(
+    tmp_path, monkeypatch, boundary, reason
+):
+    from huggingface_hub import constants  # noqa: PLC0415 - as the documented command sets it
+    from tarifhub_ingest.embeddings import embedder  # noqa: PLC0415
+
+    monkeypatch.setattr(constants, "HF_HUB_OFFLINE", True)
+    for name in (
+        "HF_HUB_OFFLINE",
+        "TRANSFORMERS_OFFLINE",
+    ):  # set here, so teardown restores
+        monkeypatch.setenv(name, "0")  # them; main must turn offline mode on itself
+    MissingModel.attempts = []
+    fake = types.ModuleType("sentence_transformers")
+    fake.SentenceTransformer = MissingModel
+    monkeypatch.setitem(
+        sys.modules,
+        "sentence_transformers",
+        fake if boundary == "model_files_missing" else None,
+    )
+    embedder._cached_embedder.cache_clear()
+    out = tmp_path / "record.json"
+    try:
+        with pytest.raises(SystemExit, match="refused") as refused:
+            ti.main(["--out", str(out)])
+    finally:
+        embedder._cached_embedder.cache_clear()
+    assert reason in str(refused.value)
+    assert MissingModel.attempts == (
+        ["intfloat/multilingual-e5-large offline=1"]
+        if boundary == "model_files_missing"
+        else []
+    )
+    assert not out.exists()

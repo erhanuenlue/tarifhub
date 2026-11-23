@@ -254,6 +254,7 @@ observation on this set, not an accuracy figure.
   [`results/2026-11-23-training-inventory.json`](results/2026-11-23-training-inventory.json) (IDs,
   hashes, codes, projects, families and counts, no passage text); evidence:
   [`docs/evidence/2026-11-23-phase4-training-data-inventory.md`](../../docs/evidence/2026-11-23-phase4-training-data-inventory.md).
+  It reads the e5 model from the local cache only and never replaces an existing record.
   `test_training_inventory.py` tests it on synthetic passages and tiny generated PDFs.
 - `sign_test_power.py`: the exact power of the paired sign test planned for the Phase 4 comparison
   (standard library only; p-values as fractions). Its record
@@ -326,7 +327,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 408 (no model, no key, no network; pytest-socket blocks Python sockets in each
+Offline tests, all 414 (no model, no key, no network; pytest-socket blocks Python sockets in each
 test): poppler's `pdftotext`, the ingestion `ai` extra (the locked `anthropic` client) and the
 `dev` extra's `pytest-socket` are required, and the suite refuses to start without them. A
 separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same suite in its
@@ -366,14 +367,15 @@ or `query: ` prefix, any table context, special tokens) and are checked against
 SentenceTransformer's own preprocessing.
 
 Phase 4 data feasibility (offline; the inventory needs the four commentaries and workbooks of
-`data/manifests/bag-al-2024-2025.json` downloaded from their source URLs, and the e5 model in the
-cache for its tokenizer):
+`data/manifests/bag-al-2024-2025.json` downloaded from their source URLs and the e5 model already in
+the local cache, which it reads with Hugging Face offline mode forced; neither command replaces an
+existing file, so give each a new name):
 
 ```bash
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion \
-  --frozen --extra ai --extra dev python tools/commentary_rag/training_inventory.py \
-  --out tools/commentary_rag/results/<name>.json
-python3 tools/commentary_rag/sign_test_power.py --out tools/commentary_rag/results/<name>.json
+  --frozen --offline --extra ai --extra dev python tools/commentary_rag/training_inventory.py \
+  --out tools/commentary_rag/results/<new inventory record>.json
+python3 tools/commentary_rag/sign_test_power.py --out tools/commentary_rag/results/<new power report>.json
 ```
 
 ## Generation

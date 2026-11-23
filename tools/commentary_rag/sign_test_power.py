@@ -32,11 +32,14 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
+import sys
 from fractions import Fraction
 
-# Binomial coefficients of more than about 1030 units overflow a float; the planned comparisons
-# need well under a hundred units.
-MAX_UNITS = 1000
+# Up to 400 units a binomial term is computed as comb * s**j * f**(m - j) without overflow, and a
+# factor that underflows can only lose terms below about 1e-189, which no power figure can notice;
+# the planned comparisons need well under a hundred units.
+MAX_UNITS = 400
 
 ALPHA = 0.05
 TARGET = 0.8
@@ -363,8 +366,11 @@ def main(argv: list[str] | None = None) -> int:
         description="Write the exact sign-test power report for the Phase 4 comparison (JSON).")
     parser.add_argument("--out", required=True, help="path of the JSON report to write")
     args = parser.parse_args(argv)
+    if os.path.exists(args.out):  # recorded reports are evidence, never replaced
+        print(f"refused: {args.out} already exists; write a new report instead", file=sys.stderr)
+        return 1
     text = json.dumps(build_report(), ensure_ascii=False, indent=1, sort_keys=True) + "\n"
-    with open(args.out, "w", encoding="utf-8", newline="\n") as handle:
+    with open(args.out, "x", encoding="utf-8", newline="\n") as handle:
         handle.write(text)
     print(f"wrote {args.out}")
     return 0
