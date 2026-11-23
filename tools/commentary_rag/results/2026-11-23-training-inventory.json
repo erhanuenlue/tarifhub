@@ -130,7 +130,7 @@
   }
  ],
  "environment": {
-  "git_head": "ffd8ba29aef231c75bf7c2cefc78e7d6a7048879",
+  "git_head": "c12274be95f1b3b8007bdece9746bed813f45379",
   "model": {
    "cache_revision": "3d7cfbdacd47fdda877c5cd8a79fbcc4f2a574f3",
    "id": "intfloat/multilingual-e5-large",
