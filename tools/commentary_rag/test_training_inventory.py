@@ -53,7 +53,8 @@ def passage(pid: str, text: str, title: str = "Titel") -> corpus.Passage:
 def build(*passages: corpus.Passage) -> corpus.Corpus:
     editions = sorted({p.edition for p in passages})
     documents = tuple(
-        corpus.Document(e, f"{e}.pdf", "0" * 64, None, None, 4) for e in editions
+        corpus.Document(e, f"{e}.pdf", hashlib.sha256(e.encode()).hexdigest(), None, None, 4)
+        for e in editions
     )
     excluded = tuple(
         corpus.ExcludedPage(e, 2, corpus.TABLE_OF_CONTENTS) for e in editions
@@ -496,25 +497,25 @@ def test_a_family_eligible_alone_is_dropped_when_older_sections_link_it_to_2026(
         "2024-07-01/2.1",
     ]
     assert merged["excluded"] and merged["shared_codes"] == ["5555.20"]
-    assert out["eligibility_changes"] == {
+    assert out["eligibility_changes"]["baseline"] == {
         "passages": [
             {
                 "passage_id": pid,
-                "baseline_family": alone["id"],
+                "alone_family": alone["id"],
                 "combined_family": merged["id"],
-                "baseline_eligible": True,
+                "alone_eligible": True,
                 "combined_eligible": False,
             }
             for pid in ("2024-01-01/p4/s2.3/1", "2024-07-01/p3/s2.1/1")
         ],
         "families": [
             {
-                "baseline_family": alone["id"],
-                "baseline_sections": alone["sections"],
+                "alone_family": alone["id"],
+                "alone_sections": alone["sections"],
                 "combined_family": merged["id"],
                 "combined_sections": merged["sections"],
                 "added_sections": ["2022-07-01/2.1", "2022-07-01/2.2"],
-                "baseline_excluded": False,
+                "alone_excluded": False,
                 "combined_excluded": True,
                 "excluding_codes": ["5555.20"],
                 "excluding_projects": [],
@@ -621,7 +622,7 @@ def test_an_unresolved_source_is_left_out_of_every_count_and_grouping_and_listed
     )
     extra = build(*SAME_DATE, unclear)
     counted = combine(extra=extra)  # counted, it would link the 4444.00 family to 2026
-    assert [p["passage_id"] for p in counted["eligibility_changes"]["passages"]] == [
+    assert [p["passage_id"] for p in counted["eligibility_changes"]["baseline"]["passages"]] == [
         "2024-01-01/p4/s2.3/1",
         "2024-07-01/p3/s2.1/1",
     ]
@@ -647,7 +648,9 @@ def test_an_unresolved_source_is_left_out_of_every_count_and_grouping_and_listed
     assert [
         out["views"][n]["primary"]["counts"]["overall"]["passages"] for n in ("older", "combined")
     ] == [2, 10]
-    assert out["eligibility_changes"] == {"passages": [], "families": []}
+    assert out["eligibility_changes"] == {
+        name: {"passages": [], "families": []} for name in ("baseline", "older")
+    }
 
 
 def test_merge_orders_sources_by_first_date_and_refuses_collisions():
@@ -1221,3 +1224,84 @@ def test_a_passage_whose_parts_lie_in_one_family_belongs_to_it_and_counts_once()
     assert rows[with_rest.passage_id]["eligible"] and with_section["passages"] == 1
     overall = printed["counts"]["overall"]
     assert (overall["eligible_passages"], overall["eligible_families"]) == (2, 2)
+
+
+def test_an_older_passage_eligible_alone_that_joins_a_dropped_baseline_family_is_listed():
+    late = passage("2022-07-01/p4/s3.1/1", "Position 9999.00 wird redaktionell angepasst.")
+    out = combine(extra=older_sources(late))
+
+    alone = rows_of(out["views"]["older"]["primary"])
+    merged = rows_of(out["views"]["combined"]["primary"])
+    assert alone[late.passage_id]["eligible"] and not merged[late.passage_id]["eligible"]
+    changed = out["eligibility_changes"]["older"]["passages"]
+    assert [(c["passage_id"], c["alone_eligible"], c["combined_eligible"]) for c in changed] == [
+        (late.passage_id, True, False)
+    ]
+    family = alone[late.passage_id]["family"]
+    joined = next(
+        g for g in out["eligibility_changes"]["older"]["families"] if g["alone_family"] == family
+    )
+    assert joined["combined_excluded"] and joined["excluding_codes"] == ["1368.00"]
+    assert "9999.00" in joined["linking_codes"]
+
+
+def test_merge_refuses_the_same_document_under_two_source_ids():
+    baseline = older()
+    copy = baseline.documents[1]
+    twin = corpus.Corpus(
+        documents=(corpus.Document("2023-05-01", copy.path, copy.sha256, None, None, 4),),
+        passages=(passage("2023-05-01/p3/s2.1/1", "Position 1234.00 neu."),),
+        excluded_pages=(),
+        token_budget=256,
+        model_limit=512,
+    )
+
+    with pytest.raises(ValueError, match="document SHA-256 .* occurs more than once"):
+        ti.merge(baseline, twin)
+
+
+def test_a_source_that_yields_no_passage_must_be_listed_as_unresolved():
+    blank = corpus.Document("2021-02-01", "2021-02-01.pdf", "f" * 64, None, None, 3)
+    sources = older_sources()
+    extra = corpus.Corpus(
+        (*sources.documents, blank), sources.passages, sources.excluded_pages, 256, 512
+    )
+
+    with pytest.raises(ValueError, match="source 2021-02-01 yields no passage"):
+        combine(extra=extra)
+    out = combine(extra=extra, unresolved=(ti.Unresolved("2021-02-01", "no heading"),))
+    assert out["unresolved"] == [{"source_id": "2021-02-01", "reason": "no heading"}]
+
+
+def straddle(second: str) -> tuple[corpus.Corpus, tuple, corpus.Passage, corpus.Passage]:
+    """A passage holding code-free 2.1 text and coded 2.2 text, beside one coded 2.1 passage."""
+
+    title = "Inhaltliche Änderungen"
+    first = passage("2023-07-01/p3/s2/1", "2.1 Neuaufnahme der Position 3565.00.", title)
+    both = passage("2023-07-01/p3/s2/3", f"Die neuen Positionen gelten. {second}", title)
+    marks = (
+        ti.Subsection(first.passage_id, "2.1", "2.1 Neuaufnahme der Position 3565.00.", "h"),
+        ti.Subsection(both.passage_id, "2.1", "Die neuen Positionen gelten.", "h"),
+        ti.Subsection(both.passage_id, "2.2", second, "h"),
+    )
+    return build(first, both), marks, first, both
+
+
+def test_a_code_free_subsection_fragment_decides_the_family_too():
+    old, marks, first, both = straddle("2.2 Position 6605.64 wird befristet.")
+
+    printed = ti.count(old, REFERENCE, PRINTED_ONLY, misfiled=(), subsections=marks)
+
+    rows = rows_of(printed)
+    assert rows[first.passage_id]["eligible"]
+    assert rows[both.passage_id]["family"] is None and not rows[both.passage_id]["eligible"]
+
+
+def test_overall_families_count_a_family_whose_only_passage_is_split():
+    old, marks, first, both = straddle("2.2 Position 1368.00 wird befristet.")
+
+    printed = ti.count(old, REFERENCE, PRINTED_ONLY, misfiled=(), subsections=marks)
+
+    overall = printed["counts"]["overall"]
+    assert (overall["families"], overall["excluded_families"]) == (2, 1)
+    assert (overall["eligible_passages"], overall["eligible_families"]) == (1, 1)

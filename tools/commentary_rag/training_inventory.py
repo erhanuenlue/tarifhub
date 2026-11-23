@@ -24,7 +24,7 @@ With ``--older-commentaries <commentary-source manifest>`` (read by ``corpus.bui
 the record holds three views instead, each a full report keyed by source ID: the four
 commentaries above (baseline), the older commentaries alone, and both combined, their families
 rebuilt across every source and excluded against the same 2026 reference. It also lists each
-baseline passage whose eligibility the combination changes, and why. These views add two
+passage of the baseline and of the older view whose eligibility the combination changes, and why. These views add two
 sensitivities on the printed subsections that the parser files under their parent section
 (``OLDER_SENSITIVITIES``); the four-document record keeps its seven.
 """
@@ -894,12 +894,11 @@ def count(  # noqa: PLR0913 - two corpora, the options and three kinds of inspec
     family_of = {s: f"F{n:02d}" for n, sections in enumerate(grouped, 1) for s in sections}
 
     def belongs(p: corpus.Passage) -> str | None:
-        """The family of a passage: that of its deciding parts (those that name a code or a
-        project, or all its parts when none does) if they lie in one family; None for an
-        introduction and for a passage split across families, which is never eligible."""
-        pieces = parts(p)
-        deciding = [k for k, text in pieces if _names(text, options)] or [k for k, _ in pieces]
-        found = {family_of.get(k) for k in deciding}
+        """The family of a passage: that of all its parts if they lie in one family (rule 13:
+        every Subsection fragment is a part, a remainder only when it names a code or a
+        project); None for an introduction and for a passage split across families, which is
+        never eligible."""
+        found = {family_of.get(k) for k, _ in parts(p)}
         return found.pop() if len(found) == 1 else None
 
     assigned = {p.passage_id: belongs(p) for p in older.passages}
@@ -1011,6 +1010,10 @@ def count(  # noqa: PLR0913 - two corpora, the options and three kinds of inspec
         for d in older.documents
     }
     overall = tally(passages_out)
+    # Overall, the families are the grouped ones: in the printed_sections reading a family can
+    # hold only split passages, so that no passage row names it.
+    overall["families"] = len(rows)
+    overall["excluded_families"] = len(excluded_families)
     return {
         "options": _switches(options),
         "reference_codes": len(ref_codes),
@@ -1099,7 +1102,9 @@ SOURCE_NOTE = (
     "Every view counts commentary sources, not editions: the keys of counts.by_edition, the "
     "edition of a passage row, the editions and the section keys (<source ID>/<section>) of a "
     "family and the passage IDs are source IDs. A source ID begins with the source's first "
-    "effective date; effective_dates lists every date the source covers."
+    "effective date; effective_dates lists every date the source covers. eligibility_changes "
+    "compares the baseline and the older view, each alone (the alone_* fields), with the "
+    "combined view."
 )
 
 
@@ -1117,8 +1122,9 @@ def merge(a: corpus.Corpus, b: corpus.Corpus) -> corpus.Corpus:
     """Both corpora as one: documents, passages and excluded pages in (first effective date,
     source ID) order, each source's own order kept.
 
-    Refuses (ValueError) a source ID or a passage ID that occurs more than once, passages or
-    excluded pages without their document, and different token budgets or model limits.
+    Refuses (ValueError) a source ID, a document (by SHA-256) or a passage ID that occurs more
+    than once, passages or excluded pages without their document, and different token budgets
+    or model limits.
     """
 
     problems = []
@@ -1132,6 +1138,7 @@ def merge(a: corpus.Corpus, b: corpus.Corpus) -> corpus.Corpus:
     excluded = (*a.excluded_pages, *b.excluded_pages)
     for label, values in (
         ("source ID", [d.edition for d in documents]),
+        ("document SHA-256", [d.sha256 for d in documents]),
         ("passage ID", [p.passage_id for p in passages]),
     ):
         repeated = sorted(v for v, n in Counter(values).items() if n > 1)
@@ -1182,8 +1189,9 @@ def _check_findings(
     subsections: tuple[Subsection, ...],
     unresolved: tuple[Unresolved, ...],
 ) -> None:
-    """Refuse a finding whose source is in no view, or whose passage or text is missing, and a
-    Subsection that does not fit its passage."""
+    """Refuse a finding whose source is in no view, or whose passage or text is missing, a
+    Subsection that does not fit its passage, and a source that yields no passage but is not
+    listed as unresolved (rule 12)."""
 
     sources = {d.edition for d in combined.documents}
     by_id = {p.passage_id: p for p in combined.passages}
@@ -1212,6 +1220,12 @@ def _check_findings(
             problems.append(f"unresolved source {source_id} is in none of the views")
         if n > 1:
             problems.append(f"unresolved source {source_id} is listed {n} times")
+    held = {p.edition for p in combined.passages}
+    for source_id in sorted(sources - held - {u.source_id for u in unresolved}):
+        problems.append(
+            f"source {source_id} yields no passage: list it in UNRESOLVED after the page "
+            "inspection"
+        )
     if problems:
         raise ValueError("inspection findings refused: " + "; ".join(problems))
 
@@ -1277,10 +1291,11 @@ def _section_items(passages: Iterable[corpus.Passage]) -> dict[str, set[tuple[st
 def eligibility_changes(
     baseline: corpus.Corpus, combined: corpus.Corpus, before: dict, after: dict
 ) -> dict:
-    """What adding the older sources does to the baseline passages, from two primary counts.
+    """What the merge does to the passages of one view alone, from two primary counts.
 
-    ``before`` and ``after`` are the primary counts (:func:`count`) of ``baseline`` and of
-    ``combined``, the baseline merged with the older sources. Adding sections can only join
+    ``before`` and ``after`` are the primary counts (:func:`count`) of ``baseline``, a view
+    alone (the four baseline commentaries or the older ones), and of ``combined``, that view
+    merged with the other sources. Adding sections can only join
     families, so a baseline passage keeps its usability and every section of its family, and
     its eligibility can only fall, and only where its family grew into an excluded one. Each of
     these is checked, not assumed: counts that break one are refused (ValueError).
@@ -1318,9 +1333,9 @@ def eligibility_changes(
         changed.append(
             {
                 "passage_id": pid,
-                "baseline_family": row["family"],
+                "alone_family": row["family"],
                 "combined_family": new["family"],
-                "baseline_eligible": row["eligible"],
+                "alone_eligible": row["eligible"],
                 "combined_eligible": new["eligible"],
             }
         )
@@ -1343,12 +1358,12 @@ def eligibility_changes(
         }
         grown.append(
             {
-                "baseline_family": family["id"],
-                "baseline_sections": family["sections"],
+                "alone_family": family["id"],
+                "alone_sections": family["sections"],
                 "combined_family": joined["id"],
                 "combined_sections": joined["sections"],
                 "added_sections": [s for s in joined["sections"] if s not in family["sections"]],
-                "baseline_excluded": family["excluded"],
+                "alone_excluded": family["excluded"],
                 "combined_excluded": joined["excluded"],
                 "excluding_codes": joined["shared_codes"],
                 "excluding_projects": joined["shared_projects"],
@@ -1395,12 +1410,15 @@ def views(  # noqa: PLR0913 - three corpora and the three kinds of inspection fi
         "rules": RULES,
         "note": SOURCE_NOTE,
         "views": reports,
-        "eligibility_changes": eligibility_changes(
-            counted["baseline"],
-            counted["combined"],
-            reports["baseline"]["primary"],
-            reports["combined"]["primary"],
-        ),
+        "eligibility_changes": {
+            name: eligibility_changes(
+                counted[name],
+                counted["combined"],
+                reports[name]["primary"],
+                reports["combined"]["primary"],
+            )
+            for name in ("baseline", "older")
+        },
         "unresolved": [{"source_id": u.source_id, "reason": u.reason} for u in unresolved],
     }
 
