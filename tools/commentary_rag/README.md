@@ -259,8 +259,8 @@ observation on this set, not an accuracy figure.
   `data/manifests/bag-al-commentaries-2021-2023.json` (a commentary-only manifest read by
   `corpus.build_commentaries`, which gives each PDF a source ID: two commentaries share 1 January 2023
   and one covers 1 January and 1 February 2022) and records three views, the four commentaries above,
-  the ten alone and all fourteen with the families rebuilt across them, with every baseline passage
-  whose eligibility changes. Record:
+  the ten alone and all fourteen with the families rebuilt across them, with every passage of the
+  baseline and of the older view whose eligibility changes. Record:
   [`results/2026-11-23-training-inventory-2021-2025.json`](results/2026-11-23-training-inventory-2021-2025.json);
   evidence:
   [`docs/evidence/2026-11-23-phase4-older-commentaries-inventory.md`](../../docs/evidence/2026-11-23-phase4-older-commentaries-inventory.md).

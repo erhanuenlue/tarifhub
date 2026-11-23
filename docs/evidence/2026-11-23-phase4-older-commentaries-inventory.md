@@ -23,7 +23,8 @@ family requirement (at least 10) is met with 12 to spare. The figure of about 87
 forecast at the 2024 and 2025 yield; the measured count is 43 lower. Six of the 30 passages counted
 there no longer count, because older sections link their families to the 2026 material, and one older
 passage drops the same way. Every rule variant stays between 41 and 54 eligible passages, the two
-unresolved commentaries might add about 15 at the busiest page yield seen, and only with no family excluded at all would the
+unresolved commentaries are not counted (in a scenario at the busiest page yields seen, they would add
+15 to 18), and only with no family excluded at all would the
 fourteen reach 108. **The evaluation limitation is unchanged:** training material adds no independent
 2026 evaluation family, so a comparison stays exploratory, with question-level results descriptive
 only ([What the evaluation could establish](#what-the-evaluation-could-establish)).
@@ -301,10 +302,11 @@ training data apart from the 2026 test material.
 2021-02-01 and 2021-07-01 are left out (rule 12): the unchanged parser yields no passage from them. Their
 body covers three pages with one and seven changes. The one change of February 2021 names the order fee
 4700.00, a 2026 code, so it would be dropped; in July 2021 the HLA genotyping (6605.64), troponin
-(1734.00, 1734.01) and SARS-CoV-2 (3186.00) changes name codes of the dropped combined family. At the
-highest yield any page of the parsed sources shows (5 passages), their three body pages would give
-about 15 passages at most, an estimate rather than a count: even if every one of them were eligible,
-the combined count would stay below 60 (about 69 with printed subsections).
+(1734.00, 1734.01) and SARS-CoV-2 (3186.00) changes name codes of the dropped combined family. In a
+scenario, not a bound: at the highest yield of any page of the eight parsed older sources (5 passages)
+their three body pages would give about 15 passages, and at that of the 2024 and 2025 commentaries (6)
+about 18; even if every one of them were eligible, the combined count would stay at about 62 (72 with
+printed subsections).
 
 ## Threshold
 
@@ -318,9 +320,9 @@ about 57 eligible passages from these 40 pages, about 87 in total, at the 2024 a
 page; it said so and called it an extrapolation, not a count. Measured, the ten yield 21 eligible
 passages alone (0.53 per page), and combined they add 20 while 6 of the 30 earlier ones drop, a net
 gain of 14: 44 in total, 43 below the forecast. The measured shortfall of 56 is the verdict. Every rule
-variant stays at or below 54; the two unresolved commentaries are not counted, and even if their three
-body pages yielded as much as the busiest parsed page (an assumption, not a bound), the total would stay
-below about 69. The BAG publishes no change commentary before 2021. Other material (the BAG Bulletin before 2021, the
+variant stays at or below 54; the two unresolved commentaries are not counted, and even in the scenario
+above, in which their three body pages yield as much as the busiest parsed page and every passage is
+eligible, the total would reach about 62 (72 with printed subsections). The BAG publishes no change commentary before 2021. Other material (the BAG Bulletin before 2021, the
 position texts of the AL full lists) is of another kind and would first need a decision that it counts
 as the same training material.
 
