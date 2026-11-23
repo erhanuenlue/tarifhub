@@ -20,6 +20,12 @@ eligible passages, and even with no family excluded the four commentaries would 
 case. **Verdict on the evaluation design: exploratory only**, see
 [What the evaluation could establish](#what-the-evaluation-could-establish).
 
+**Update of 2026-11-23.** The ten commentaries of 2021 to 2023 have since been measured under the same
+rules ([older commentaries inventory](2026-11-23-phase4-older-commentaries-inventory.md)): all fourteen
+commentaries give 44 eligible passages in 22 families, so the "about 87" below was a forecast that the
+count did not reach, and six of the 30 passages counted here drop once the families are rebuilt across
+all fourteen. This page is otherwise unchanged.
+
 ## Sources
 
 The four commentaries, as the BAG lists them on its page of the Analysenliste (retrieved

@@ -36,8 +36,10 @@ either one completes Phase 4.
 **Update of 2026-11-23.** Data step 1 has run: the four public commentaries of 2024 and 2025 give
 30 eligible training passages in 14 families under the exclusion rule below, 70 short of the
 proposed 100, and the power assessment finds the evaluation design exploratory only
-([training-data inventory](2026-11-23-phase4-training-data-inventory.md)). This page is otherwise
-unchanged, apart from the correction below.
+([training-data inventory](2026-11-23-phase4-training-data-inventory.md)). Extended to all fourteen
+commentaries of 2021 to 2025, the count is 44 eligible passages in 22 families, 56 short
+([older commentaries inventory](2026-11-23-phase4-older-commentaries-inventory.md)). This page is
+otherwise unchanged, apart from the correction below.
 
 **Correction of 2026-11-23.** Statements that described the evaluation grouping, which also uses
 the frozen E cases' gold evidence, by its counts were replaced by bounds that follow from the

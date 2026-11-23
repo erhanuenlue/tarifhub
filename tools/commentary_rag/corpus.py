@@ -13,19 +13,38 @@ instead of duplicated. A change to their signatures breaks the tests in this fol
 A passage never crosses a page. Its section is the last numbered heading seen in the document
 (``2.5 ...`` or ``1.`` followed by a title line), so a section continuing on the next page keeps
 its number. The printed footer ``Seite N von M`` must equal the PDF page index and page count.
+
+:func:`build_commentaries` reads a commentary-source manifest instead (``kind``
+``commentary_sources``), for commentaries that an edition date cannot key: two that share an
+effective date, or one that covers two. Each PDF has a source ID, which stands where
+:func:`build_corpus` puts the edition date; it is verified by the same ``_verify`` and parsed by
+the same parser.
 """
 
 from __future__ import annotations
 
 import hashlib
+import itertools
+import json
 import re
 import shutil
 import subprocess
 import unicodedata
+from collections import Counter
 from collections.abc import Callable
 from dataclasses import dataclass
+from datetime import date
 from pathlib import Path
+from typing import Annotated, Literal
 
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    StringConstraints,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
 from tarifhub_ingest.ingestion import manifest as manifest_io
 
 COMMENTARY_KIND = "commentary_pdf"
@@ -52,7 +71,12 @@ class CorpusError(ValueError):
 
 @dataclass(frozen=True)
 class Document:
-    """One verified commentary PDF of one AL edition."""
+    """One verified commentary PDF of one AL edition.
+
+    From :func:`build_commentaries`, one commentary source: ``edition`` is its source ID,
+    ``effective_dates`` every date it covers and ``declared_title`` the title its manifest
+    declares (``title`` stays the parser's). :func:`build_corpus` leaves both at their defaults.
+    """
 
     edition: str
     path: str
@@ -60,6 +84,8 @@ class Document:
     source_url: str | None
     title: str | None
     page_count: int
+    effective_dates: tuple[str, ...] = ()
+    declared_title: str | None = None
 
 
 @dataclass(frozen=True)
@@ -207,6 +233,256 @@ def build_corpus(
         token_budget=token_budget,
         model_limit=model_limit,
     )
+
+
+SOURCES_KIND = "commentary_sources"
+_MAX_SOURCES_BYTES = 1024 * 1024  # as the ingestion loader: a manifest is a few KB
+_STRICT = ConfigDict(extra="forbid", frozen=True, strict=True)
+_SourceId = Annotated[str, StringConstraints(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}(-[a-z]+)*$")]
+_IsoDate = Annotated[str, StringConstraints(pattern=r"^[0-9]{4}-[0-9]{2}-[0-9]{2}$")]
+_Sha256 = Annotated[str, StringConstraints(pattern=r"^[0-9a-f]{64}$")]
+
+
+class CommentarySource(BaseModel):
+    """One commentary PDF of a commentary-source manifest, under its own source ID.
+
+    The source ID begins with the first of the strictly increasing ``effective_dates``, so two
+    sources may share a date (``2023-01-01`` and ``2023-01-01-urgent``) and one source may cover
+    two. ``title`` is the title printed on its page 1. Path, hash and URL must also pass the
+    ingestion loader's checks of a manifest document.
+    """
+
+    model_config = _STRICT
+
+    source_id: _SourceId
+    effective_dates: tuple[_IsoDate, ...]
+    title: str
+    path: str
+    sha256: _Sha256
+    source_url: str
+
+    @field_validator("effective_dates")
+    @classmethod
+    def _dates(cls, value: tuple[str, ...]) -> tuple[str, ...]:
+        """At least one calendar date, strictly increasing."""
+
+        if not value:
+            raise ValueError("must list at least one date")
+        for item in value:
+            try:
+                date.fromisoformat(item)
+            except ValueError:
+                raise ValueError(f"{item} is not a valid date") from None
+        if any(a >= b for a, b in itertools.pairwise(value)):
+            raise ValueError("must be strictly increasing")
+        return value
+
+    @field_validator("title")
+    @classmethod
+    def _title(cls, value: str) -> str:
+        if not normalize(value):
+            raise ValueError("must not be empty")
+        return value
+
+    @model_validator(mode="after")
+    def _identity(self) -> CommentarySource:
+        """The source ID starts with the first date; path, hash and URL pass as a document."""
+
+        problems = []
+        if not self.source_id.startswith(self.effective_dates[0]):
+            problems.append(
+                f"source_id {self.source_id} must start with its first effective date "
+                f"{self.effective_dates[0]}"
+            )
+        try:
+            _ = self.document
+        except ValidationError as exc:
+            problems += [
+                f"{'.'.join(str(part) for part in err['loc'])}: "
+                f"{err['msg'].removeprefix('Value error, ')}"
+                for err in exc.errors()
+            ]
+        if problems:
+            raise ValueError("; ".join(problems))
+        return self
+
+    @property
+    def document(self) -> manifest_io.ManifestDocument:
+        """The source as the ingestion loader's manifest document, for its verified read."""
+
+        return manifest_io.ManifestDocument(
+            kind=COMMENTARY_KIND, path=self.path, sha256=self.sha256, source_url=self.source_url
+        )
+
+
+class CommentarySources(BaseModel):
+    """A commentary-source manifest: exactly these keys, version 1, at least one source."""
+
+    model_config = _STRICT
+
+    manifest_version: Literal[1]
+    kind: Literal["commentary_sources"]
+    tariff_system: Literal["EAL"]
+    sources: tuple[CommentarySource, ...]
+
+    @field_validator("manifest_version", mode="before")
+    @classmethod
+    def _integer_version(cls, value: object) -> object:
+        """JSON ``true`` and ``1.0`` equal 1 in Python but are not version 1."""
+
+        if type(value) is not int:
+            raise ValueError("must be the integer 1")
+        return value
+
+    @model_validator(mode="after")
+    def _distinct(self) -> CommentarySources:
+        """Each source ID, path (case-folded, as the loader compares them) and hash once."""
+
+        problems = [] if self.sources else ["sources is empty; the manifest lists at least one"]
+        for label, values in (
+            ("source_id", [s.source_id for s in self.sources]),
+            ("path", [s.path.casefold() for s in self.sources]),
+            ("sha256", [s.sha256 for s in self.sources]),
+        ):
+            repeated = sorted(v for v, n in Counter(values).items() if n > 1)
+            if repeated:
+                problems.append(f"{label} {', '.join(repeated)} appears more than once")
+        if problems:
+            raise ValueError("; ".join(problems))
+        return self
+
+
+def build_commentaries(
+    manifest_path: Path,
+    *,
+    count_passage_tokens: Callable[[str], int],
+    token_budget: int,
+    model_limit: int,
+    pdftotext: str = "pdftotext",
+) -> Corpus:
+    """Read every commentary of a commentary-source manifest, verified, into passages.
+
+    As :func:`build_corpus`, with the source ID in place of the edition date: passage IDs are
+    ``<source_id>/p<page>/s<section>/<n>`` and ``Passage.edition``, ``Document.edition`` and
+    ``ExcludedPage.edition`` hold the source ID. Sources are read in (first effective date,
+    source ID) order. Refuses (:class:`CorpusError`, listing every problem) what
+    :func:`build_corpus` refuses, a manifest that breaks the schema of
+    :class:`CommentarySources`, and a source whose declared title is not in the text of its
+    page 1.
+    """
+
+    if not 0 < token_budget <= model_limit:
+        raise CorpusError(
+            [f"token budget {token_budget} exceeds the model limit {model_limit}"
+             if token_budget > model_limit else f"token budget {token_budget} must be positive"]
+        )
+    sources, root = _load_sources(manifest_path)
+    problems: list[str] = []
+    verified: list[tuple[CommentarySource, manifest_io.ManifestDocument, bytes]] = []
+    for source in sources:
+        document = source.document
+        data, found = manifest_io._verify(root, document, keep=True)
+        problems += found
+        if data is not None:
+            verified.append((source, document, data))
+    if problems:
+        raise CorpusError(problems)
+
+    executable = shutil.which(pdftotext)
+    if executable is None:
+        raise CorpusError([f"{pdftotext} not found: install poppler to read the commentary PDFs"])
+    documents: list[Document] = []
+    passages: list[Passage] = []
+    excluded: list[ExcludedPage] = []
+    for source, document, data in verified:
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != document.sha256:  # the bytes parsed below are the bytes verified
+            problems.append(f"{document.path}: parsed bytes differ from the verified hash")
+            continue
+        pages, problem = _extract_pages(executable, data)
+        if problem:
+            problems.append(f"{document.path}: {problem}")
+            continue
+        first_page = normalize(" ".join(pages[0].splitlines())) if pages else ""
+        if normalize(source.title) not in first_page:
+            problems.append(
+                f"{document.path}: the declared title of {source.source_id} is not in the text "
+                "of page 1"
+            )
+        parsed = _parse(
+            source.source_id, document, digest, pages, count_passage_tokens, token_budget
+        )
+        problems += parsed.problems
+        documents.append(
+            Document(
+                edition=source.source_id,
+                path=document.path,
+                sha256=digest,
+                source_url=document.source_url,
+                title=parsed.title,
+                page_count=len(pages),
+                effective_dates=source.effective_dates,
+                declared_title=source.title,
+            )
+        )
+        passages += parsed.passages
+        excluded += parsed.excluded
+    if problems:
+        raise CorpusError(problems)
+    return Corpus(
+        documents=tuple(documents),
+        passages=tuple(passages),
+        excluded_pages=tuple(excluded),
+        token_budget=token_budget,
+        model_limit=model_limit,
+    )
+
+
+def _load_sources(manifest_path: Path) -> tuple[tuple[CommentarySource, ...], Path]:
+    """Parse a commentary-source manifest strictly: its sources in reading order and the root.
+
+    The root is derived as the ingestion loader derives it: the manifest must sit in
+    ``<repository>/data/manifests/``, and the root is two levels above that folder.
+    """
+
+    try:
+        path = manifest_path.resolve()
+        if path.parent.name != "manifests" or path.parent.parent.name != "data":
+            raise CorpusError(
+                [f"{manifest_path}: a manifest must live in <repository>/data/manifests/"]
+            )
+        if not path.is_file():
+            raise CorpusError([f"{manifest_path}: manifest not found"])
+        with open(path, "rb") as handle:
+            data = handle.read(_MAX_SOURCES_BYTES + 1)
+    except (OSError, RuntimeError) as exc:  # a symlink loop, an unreadable file
+        raise CorpusError([f"{manifest_path}: {type(exc).__name__}"]) from None
+    if len(data) > _MAX_SOURCES_BYTES:
+        raise CorpusError([f"{manifest_path}: larger than the {_MAX_SOURCES_BYTES}-byte limit"])
+    try:  # the schema keeps the last of two equal keys, so refuse duplicates first
+        json.loads(data, object_pairs_hook=_unique_keys)
+    except (ValueError, RecursionError) as exc:
+        raise CorpusError([f"manifest: {str(exc)[:200]}"]) from None
+    try:
+        manifest = CommentarySources.model_validate_json(data)
+    except ValidationError as exc:
+        raise CorpusError(
+            [
+                f"{'.'.join(str(part)[:80] for part in err['loc']) or 'manifest'}: "
+                f"{err['msg'][:300]}"
+                for err in exc.errors()
+            ]
+        ) from None
+    ordered = sorted(manifest.sources, key=lambda s: (s.effective_dates[0], s.source_id))
+    return tuple(ordered), path.parents[2]
+
+
+def _unique_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    keys = [key for key, _ in pairs]
+    repeated = sorted({key for key in keys if keys.count(key) > 1})
+    if repeated:
+        raise ValueError(f"duplicate key {', '.join(repr(key[:80]) for key in repeated)}")
+    return dict(pairs)
 
 
 def _extract_pages(executable: str, data: bytes) -> tuple[list[str], str | None]:
