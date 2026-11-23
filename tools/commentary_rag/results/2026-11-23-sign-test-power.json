@@ -585,6 +585,63 @@
    ],
    "t": 0.5,
    "w": 0.4
+  },
+  "S7": {
+   "l": 0.0,
+   "n_for_power": {
+    "one_sided": {
+     "first_n": 39,
+     "stable_n": 39
+    },
+    "two_sided": {
+     "first_n": 46,
+     "stable_n": 46
+    }
+   },
+   "power": [
+    {
+     "n": 6,
+     "one_sided": 0.0007,
+     "two_sided": 0.0
+    },
+    {
+     "n": 10,
+     "one_sided": 0.0155,
+     "two_sided": 0.0024
+    },
+    {
+     "n": 20,
+     "one_sided": 0.2313,
+     "two_sided": 0.1018
+    },
+    {
+     "n": 30,
+     "one_sided": 0.5757,
+     "two_sided": 0.3836
+    },
+    {
+     "n": 38,
+     "one_sided": 0.7822,
+     "two_sided": 0.6248
+    },
+    {
+     "n": 40,
+     "one_sided": 0.8194,
+     "two_sided": 0.6761
+    },
+    {
+     "n": 50,
+     "one_sided": 0.9357,
+     "two_sided": 0.8612
+    },
+    {
+     "n": 60,
+     "one_sided": 0.9798,
+     "two_sided": 0.9488
+    }
+   ],
+   "t": 0.8333,
+   "w": 0.1667
   }
  }
 }

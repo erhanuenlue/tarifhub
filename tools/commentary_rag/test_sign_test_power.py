@@ -235,7 +235,7 @@ def test_cli_writes_the_same_complete_report_twice(tmp_path):
     report = json.loads(text)
     assert set(report) == {"model", "scenarios", "family_units", "min_w_at_n"}
     assert report["model"]["alpha"] == 0.05
-    assert sorted(report["scenarios"]) == ["S1", "S2", "S3", "S4", "S5", "S6"]
+    assert sorted(report["scenarios"]) == ["S1", "S2", "S3", "S4", "S5", "S6", "S7"]
     s1 = report["scenarios"]["S1"]
     assert [row["n"] for row in s1["power"]] == [6, 10, 20, 30, 38, 40, 50, 60]
     at_30 = next(row for row in s1["power"] if row["n"] == 30)

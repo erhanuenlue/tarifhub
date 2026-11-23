@@ -3,7 +3,8 @@
 Read by `lead-engineer` and any worker that touches course deliverables. It records which
 course a piece of work belongs to, what counts as this course's contribution, and what the
 remaining delivery requires. The current milestone is issue
-[#60](https://github.com/erhanuenlue/tarifhub/issues/60); its sub-issues hold the open decisions.
+[#62](https://github.com/erhanuenlue/tarifhub/issues/62) (Phase 4, variant 2 through data feasibility); the
+earlier milestone [#60](https://github.com/erhanuenlue/tarifhub/issues/60) is closed.
 
 ## Two courses, one repository
 
@@ -44,7 +45,11 @@ new capability and its measured result.
   verdict was `yes` for the agent on 5 of 5 cases, for fixed top 10 on 4 and for fixed top 5 on
   3; E1 reported apart; one run per cell, one reviewer, partial blinding.
 - Phase 4: [feasibility of embedding fine-tuning](../evidence/2026-11-22-phase4-finetuning-feasibility.md)
-  (no-go on the current corpus, data work first; decision in issue #62).
+  (no-go on the current corpus, data work first) and the
+  [training-data inventory](../evidence/2026-11-23-phase4-training-data-inventory.md) of 2026-11-23
+  (variant 2, chosen by Erhan for the data-feasibility stage: 30 eligible passages in 14 families
+  from the 2024 and 2025 commentaries, 70 short of the proposed 100; the evaluation design supports
+  only an exploratory comparison; next decision in issue #62).
 - Books: USD 7.060552 committed of the USD 100 aggregate limit for Phases 2 and 3.
 
 ## Phase 4 options

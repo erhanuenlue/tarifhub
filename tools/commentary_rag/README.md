@@ -244,6 +244,22 @@ observation on this set, not an accuracy figure.
   (below, "Tracing one synthetic run in a local Phoenix").
 - `phoenix_serve.sh`: starts that Phoenix from an empty environment with TarifHub's own storage in
   `local/phoenix/`, loopback only, gRPC receiver disabled.
+- `training_inventory.py`: the Phase 4 training-data inventory, offline (the e5 tokenizer counts
+  tokens, nothing is embedded or sent). It parses the earlier commentaries pinned in
+  `data/manifests/bag-al-2024-2025.json` with `corpus.py`, rebuilds the frozen 2026 corpus and checks
+  it against `results/2026-11-14-retrieval-corrected.json`, groups the earlier sections into change
+  families by shared position codes or named projects, drops every family that shares a code or a
+  project with the 2026 material, and counts usable and eligible passages with the sensitivities of
+  its rules. It reads no evaluation case. Record:
+  [`results/2026-11-23-training-inventory.json`](results/2026-11-23-training-inventory.json) (IDs,
+  hashes, codes, projects, families and counts, no passage text); evidence:
+  [`docs/evidence/2026-11-23-phase4-training-data-inventory.md`](../../docs/evidence/2026-11-23-phase4-training-data-inventory.md).
+  `test_training_inventory.py` tests it on synthetic passages and tiny generated PDFs.
+- `sign_test_power.py`: the exact power of the paired sign test planned for the Phase 4 comparison
+  (standard library only; p-values as fractions). Its record
+  [`results/2026-11-23-sign-test-power.json`](results/2026-11-23-sign-test-power.json) holds the
+  scenarios of the evidence page; `test_sign_test_power.py` checks it against an exact-fraction
+  recomputation of the same sums.
 - [`results/2026-11-21-comparison-plan.json`](results/2026-11-21-comparison-plan.json): the offline
   plan for the cases E1 to E6 (IDs and editions only, made before they were frozen), made against
   the recorded books.
@@ -310,7 +326,7 @@ The corrections followed the baseline's D2 and D6 misses, so they are informed b
 
 ## Commands (from the repository root)
 
-Offline tests, all 339 (no model, no key, no network; pytest-socket blocks Python sockets in each
+Offline tests, all 408 (no model, no key, no network; pytest-socket blocks Python sockets in each
 test): poppler's `pdftotext`, the ingestion `ai` extra (the locked `anthropic` client) and the
 `dev` extra's `pytest-socket` are required, and the suite refuses to start without them. A
 separate environment keeps the `ai` extra out of the ingestion venv (CI runs the same suite in its
@@ -348,6 +364,17 @@ the 16-dimensional stub, or when a passage or query would exceed the model's 512
 Token counts come from the loaded model's tokenizer on the exact embedded string (`passage: `
 or `query: ` prefix, any table context, special tokens) and are checked against
 SentenceTransformer's own preprocessing.
+
+Phase 4 data feasibility (offline; the inventory needs the four commentaries and workbooks of
+`data/manifests/bag-al-2024-2025.json` downloaded from their source URLs, and the e5 model in the
+cache for its tokenizer):
+
+```bash
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run --project services/ingestion \
+  --frozen --extra ai --extra dev python tools/commentary_rag/training_inventory.py \
+  --out tools/commentary_rag/results/<name>.json
+python3 tools/commentary_rag/sign_test_power.py --out tools/commentary_rag/results/<name>.json
+```
 
 ## Generation
 

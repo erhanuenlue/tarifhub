@@ -50,6 +50,7 @@ SCENARIOS = {  # per-unit win and loss probabilities (w, l)
     "S4": (0.30, 0.00),
     "S5": (0.20, 0.05),
     "S6": (0.40, 0.10),
+    "S7": (1 / 6, 0.00),  # base miss rate on dev cases D1 to D6 (5 of 6 hit), every miss fixed
 }
 SCENARIO_N = (6, 10, 20, 30, 38, 40, 50, 60)
 FAMILY_W = (0.5, 0.67, 0.8, 0.9, 1.0)
