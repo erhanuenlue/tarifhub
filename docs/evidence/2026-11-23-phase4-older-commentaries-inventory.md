@@ -22,8 +22,8 @@ family requirement (at least 10) is met with 12 to spare. The figure of about 87
 [earlier page](2026-11-23-phase4-training-data-inventory.md#shortfall-and-the-next-sources) was a
 forecast at the 2024 and 2025 yield; the measured count is 43 lower. Six of the 30 passages counted
 there no longer count, because older sections link their families to the 2026 material, and one older
-passage drops the same way. Every rule variant stays between 41 and 56 eligible passages, the two
-unresolved commentaries could add at most about 15, and only with no family excluded at all would the
+passage drops the same way. Every rule variant stays between 41 and 54 eligible passages, the two
+unresolved commentaries might add about 15 at the busiest page yield seen, and only with no family excluded at all would the
 fourteen reach 108. **The evaluation limitation is unchanged:** training material adds no independent
 2026 evaluation family, so a comparison stays exploratory, with question-level results descriptive
 only ([What the evaluation could establish](#what-the-evaluation-could-establish)).
@@ -75,7 +75,10 @@ Written after the parse, the page inspection and the named-project scan, and com
 count of the record named under [Files](#files). One disclosure: a smoke run of the new tool on the
 real PDFs, made before these rules and before the inspection annotations existed, printed a
 provisional total per view; the lead saw those totals and nothing else of it. The rules below follow
-from the inspection and the scan; none was changed after the count.
+from the inspection and the scan; none was changed after the count. After the independent review,
+the printed-sections reading of rule 13 was corrected to follow the rule as written (every subsection
+fragment of a passage decides its family) and the record was regenerated; the primary counts did not
+change.
 
 Rules 1 to 10 of the [training-data inventory](2026-11-23-phase4-training-data-inventory.md#rules-fixed-before-counting)
 apply unchanged: the frozen 2026 reference, the 256-token chunking with the e5 tokenizer, the
@@ -222,7 +225,7 @@ in 27 families, are what the two sets would give if they did not share families.
 | F04 | 2022-07-01/2.2 | 1 | amyloid beta and tau proteins in cerebrospinal fluid (positions written 1774 to 1776, without decimals) | none | eligible |
 | F05 | 2022-07-01/2.3 | 3 | methoxytyramine added to the metanephrines | none | eligible |
 | F06 | 2022-07-01/2.4; 2023-01-01/2.2 | 4 | genetic positions: breast-cancer screening extended to preventive analyses, and the new reference document for rare genetic diseases | 22 codes, 6206.56 to 6299.62 | dropped |
-| F07 | 2022-07-01/2.5 | 2 | the clinical immunology laboratory added to nine positions (1326.00 to 6701.90) | none | eligible |
+| F07 | 2022-07-01/2.5 | 2 | the clinical immunology laboratory added to four positions (1530.00, 1531.00, 1636.00, 1637.00) and removed from five (1326.00, 1369.00, 1422.00, 6700.90, 6701.90) | none | eligible |
 | F08 | 2022-07-01/2.6 | 1 | analysis material of 1901.00 to 1901.40 (rare metabolic diseases) | none | eligible |
 | F09 | 2022-07-01/2.7 | 2 | limitations for vitamin D (1006.00) | 1006.00 | dropped |
 | F10 | 2022-07-01/3.1 | 1 | poliovirus Ig (3147.00), editorial | none | eligible |
@@ -233,7 +236,7 @@ in 27 families, are what the two sets would give if they did not share families.
 | F15 | 2023-01-01/2.3 | 3 | new high-throughput sequencing positions for haematological neoplasms | none | eligible |
 | F16 | 2023-01-01/2.4 | 2 | evaluation of limitations for vitamin B12 (1749.00) | 1749.00 | dropped |
 | F17 | 2023-01-01/3.1 | 2 | pancreatic stone protein (PSP) | none | eligible |
-| F18 | 2023-01-01/4.1 | 3 | limitation of hereditary breast and ovarian cancer positions (6241.60 and others) | 6241.60, 6242.60, 6245.60, 6246.60 | dropped |
+| F18 | 2023-01-01/4.1 | 3 | a limitation added to four genetic positions: hereditary breast and ovarian cancer (6241.60), Lynch syndrome (6242.60), polyposis coli (6245.60) and retinoblastoma (6246.60), editorial | 6241.60, 6242.60, 6245.60, 6246.60 | dropped |
 | F19 | 2023-03-01/2 | 2 | new positions 3191.00 and 3191.10 for the mpox virus | none | eligible |
 
 F01 holds the two combined sections and the urgent commentary's section 2, which names the SARS-CoV-2
@@ -246,7 +249,7 @@ retrieval questions, as in the earlier inventory.
 Families are rebuilt transitively across all fourteen sources and the exclusion is applied again
 (rule 15). Against the 51 passages in 27 families of the two separate views, the combined view loses 7
 passages and 5 families; the tool checks each change and lists it in the record
-(`eligibility_changes`):
+(`eligibility_changes`, once for the baseline and once for the older view):
 
 - **Six passages counted on the earlier page.** The SARS-CoV-2 family of January 2024 (2024-01-01
   section 2.1, 2 passages), its editorial family after the revised law on genetic testing (section
@@ -282,14 +285,14 @@ Eligible passages and families per rule variant (rules 3 to 5 of the earlier pag
 | transAL phases counted apart | 31 / 15 | 21 / 13 | 44 / 22 |
 | AL handbook counted as a named item | 28 / 13 | 21 / 13 | 42 / 21 |
 | Strictest (misfiled, ranges and handbook) | 24 / 12 | 21 / 13 | 41 / 21 |
-| Printed subsections (rule 13) | 30 / 14 | 32 / 17 | 56 / 26 |
+| Printed subsections (rule 13) | 30 / 14 | 30 / 17 | 54 / 26 |
 | Subsection text read as misfiled (rule 13) | 30 / 14 | 20 / 13 | 43 / 22 |
 | No family excluded (upper bound) | 51 / 18 | 57 / 19 | 108 / 28 |
 
 The baseline column repeats the earlier inventory's seven variants exactly; the two rule-13 variants do
-not touch it. Read by its printed subsections, the combined view gains 12 passages in 4 families: the
+not touch it. Read by its printed subsections, the combined view gains 10 passages in 4 families: the
 parser's combination of subsections in 2022-01-01 and 2023-07-01 is the largest extraction effect on
-the count, and the most favourable reading still gives 56. The upper bound of 108 counts every usable
+the count, and the most favourable reading still gives 54. The upper bound of 108 counts every usable
 passage except the one duplicate, with no family excluded; the exclusion rule is what keeps the
 training data apart from the 2026 test material.
 
@@ -301,7 +304,7 @@ body covers three pages with one and seven changes. The one change of February 2
 (1734.00, 1734.01) and SARS-CoV-2 (3186.00) changes name codes of the dropped combined family. At the
 highest yield any page of the parsed sources shows (5 passages), their three body pages would give
 about 15 passages at most, an estimate rather than a count: even if every one of them were eligible,
-the combined count would stay below 60 (about 71 with printed subsections).
+the combined count would stay below 60 (about 69 with printed subsections).
 
 ## Threshold
 
@@ -314,9 +317,10 @@ The [earlier page](2026-11-23-phase4-training-data-inventory.md#shortfall-and-th
 about 57 eligible passages from these 40 pages, about 87 in total, at the 2024 and 2025 yield of 1.4 per
 page; it said so and called it an extrapolation, not a count. Measured, the ten yield 21 eligible
 passages alone (0.53 per page), and combined they add 20 while 6 of the 30 earlier ones drop, a net
-gain of 14: 44 in total, 43 below the forecast. Every rule variant stays at or below 56, and with the
-unresolved two bounded, below about 71. The BAG publishes no change commentary before 2021, so the
-change commentaries cannot supply the proposed 100. Other material (the BAG Bulletin before 2021, the
+gain of 14: 44 in total, 43 below the forecast. The measured shortfall of 56 is the verdict. Every rule
+variant stays at or below 54; the two unresolved commentaries are not counted, and even if their three
+body pages yielded as much as the busiest parsed page (an assumption, not a bound), the total would stay
+below about 69. The BAG publishes no change commentary before 2021. Other material (the BAG Bulletin before 2021, the
 position texts of the AL full lists) is of another kind and would first need a decision that it counts
 as the same training material.
 
@@ -333,7 +337,7 @@ test, test questions frozen before any training) stays as it is; this page chang
 ## Feasibility recommendation
 
 The BAG change commentaries, all fourteen published from 2021 to 2025, do not hold the proposed training
-material: 44 eligible passages against 100, about half even in the most favourable reading, while the
+material: 44 eligible passages against 100, about half even in the most favourable reading (54), while the
 family requirement is met. A pilot of variant 2 on this material could only be exploratory, in its
 training data as already in its evaluation. Whether to run it so, with a lowered training threshold and
 the test questions frozen first, or to turn to variant 1, is Erhan's decision.
@@ -345,8 +349,8 @@ the test questions frozen first, or to turn to variant 1, is Erhan's decision.
   `training_inventory.py` with its subsection annotations, and their tests; and the record
   `results/2026-11-23-training-inventory-2021-2025.json` (IDs, pages, sections, token counts, text
   hashes, codes, projects, families, counts, sensitivities and eligibility changes per view, no passage
-  text; it pins its tool files by SHA-256 and the commit it ran from, `0b1b045`, with no uncommitted
-  tool change).
+  text; it pins its tool files by SHA-256 and the commit it ran from, with no uncommitted tool
+  change).
 - Local and git-ignored: the PDFs under `data/raw/bag/al/<source ID>/`, and in
   `tools/commentary_rag/local/2026-11-23-older-inventory/` the page renders, the inspection notes and
   the recovered subsection annotations.
