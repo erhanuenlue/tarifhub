@@ -75,8 +75,12 @@ unchanged: re-run on 2026-11-23 from the branch, it writes the committed record
 Written after the parse, the page inspection and the named-project scan, and committed before the
 count of the record named under [Files](#files). One disclosure: a smoke run of the new tool on the
 real PDFs, made before these rules and before the inspection annotations existed, printed a
-provisional total per view; the lead saw those totals and nothing else of it. The rules below follow
-from the inspection and the scan; none was changed after the count. After the independent review,
+provisional total per view. Before writing the rules, the lead read in the worker's report those
+totals and its note that 6 baseline passages and 7 baseline families changed in that run; the lead
+did not open the run's record. The record's counts were computed afterwards with the committed
+rules; its primary totals and its baseline changes (6 passages, 7 families) equal the smoke run's.
+The rules below follow from the inspection and the scan; none was changed after the count.
+After the independent review,
 the printed-sections reading of rule 13 was corrected to follow the rule as written (every subsection
 fragment of a passage decides its family) and the record was regenerated; the primary counts did not
 change.
@@ -343,6 +347,16 @@ material: 44 eligible passages against 100, about half even in the most favourab
 family requirement is met. A pilot of variant 2 on this material could only be exploratory, in its
 training data as already in its evaluation. Whether to run it so, with a lowered training threshold and
 the test questions frozen first, or to turn to variant 1, is Erhan's decision.
+
+## Correction of 2026-11-24
+
+The disclosure under [Rules for the older commentaries, fixed before counting](#rules-for-the-older-commentaries-fixed-before-counting)
+first said that the lead saw the smoke run's provisional totals and nothing else of it. The worker's
+report, read before the rules were written, had also stated how many baseline passages and families
+changed in that run (6 and 7); the disclosure now says so and separates what the lead knew before
+the rules from what the record computed afterwards. No rule, count, date or other figure of this
+page or of its record changed; the page as first published remains in the repository history
+(squash commit `c2e7527`).
 
 ## Files
 
