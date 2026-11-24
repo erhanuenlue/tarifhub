@@ -123,8 +123,9 @@ from a registry.
 
 This image build is one stage of the wider CI/CD and quality-gate machinery that governs the
 AI-assisted build: lint and tests, the determinism boundary tests, secrets and vulnerability
-scans, and the anchor ratchet. That machinery and the `/ship` pipeline it sits inside are
-described in [the AI-SE framework chapter](../method/ai-se-framework.md).
+scans, and the anchor ratchet. That machinery and the earlier course's `/ship` pipeline it sat
+inside are described, as of that course, in [the AI-SE framework chapter](../method/ai-se-framework.md);
+the current release procedure is `/tarifhub-ship` (`.claude/skills/tarifhub-ship/SKILL.md`).
 
 ## Evidence 2: the full stack runs under Compose
 

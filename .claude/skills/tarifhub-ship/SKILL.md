@@ -1,6 +1,6 @@
 ---
-name: ship
-description: Land a finished tarifhub change in five steps — confirm scope, run the applicable checks, review the change, handle PR and CI only when Erhan explicitly asks, report. Invoke when work is ready to land or a prompt ends with "then /ship".
+name: tarifhub-ship
+description: Land a finished tarifhub change in five steps (confirm scope, run the applicable checks, review the change, handle PR and CI only when Erhan explicitly asks, report). Invoke when work is ready to land or a prompt ends with "then /tarifhub-ship".
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
 
