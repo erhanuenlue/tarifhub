@@ -1407,3 +1407,191 @@ def test_cells_already_in_the_books_are_left_out_of_the_rest_a_resumed_matrix_ho
         ("agent", "refused", "already_run"),
     ]
     assert len(provider.creates) == 2
+
+
+# The Phase 4 design: B, C and D (phase4/conditions.md)
+
+
+def coverage_reply(*claims: tuple[str, list[str]], coverage=None) -> dict:
+    """D's final message: its coverage beside the unchanged answer object."""
+    answer = {
+        "status": "answered",
+        "claims": [{"text": t, "citations": c} for t, c in claims],
+        "missing_evidence": [],
+    }
+    parts = coverage or [{"part": "Pauschale", "status": "covered", "passages": [TOP5[0]]}]
+    reply = final(*claims)
+    reply["content"][-1]["text"] = json.dumps(
+        {"coverage": parts, "answer": answer}, ensure_ascii=False
+    )
+    return reply
+
+
+def test_the_phase3_design_is_the_default_and_its_plan_is_unchanged(isolated, capsys):
+    cases = str(cases_file(isolated, case("E1")))
+
+    assert run_comparison.main(["plan", "--cases", cases]) == 0
+    default = json.loads(capsys.readouterr().out)
+    assert run_comparison.main(["plan", "--design", "phase3", "--cases", cases]) == 0
+    explicit = json.loads(capsys.readouterr().out)
+
+    for plan in (default, explicit):
+        plan["planned"].pop("at")
+    assert default == explicit
+    assert "design" not in default
+    assert [c["condition"] for c in default["order"]] == ["fixed5", "fixed10", "agent"]
+
+
+def test_the_phase4_plan_lays_out_b_c_and_d_and_shows_that_19_cases_do_not_fit(
+    isolated, capsys
+):
+    nineteen = [case(f"P{n:02d}") for n in range(1, 20)]
+    before = written(isolated)
+
+    code = run_comparison.main(
+        ["plan", "--design", "phase4", "--cases", str(cases_file(isolated, *nineteen))]
+    )
+
+    assert code == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["design"] == "phase4"
+    assert len(plan["order"]) == 57
+    assert [(c["case"], c["condition"], c["label"]) for c in plan["order"][:3]] == [
+        ("P01", "fixed10", "B"),
+        ("P01", "agent", "C"),
+        ("P01", "coverage", "D"),
+    ]
+    bounds = ("label", "initial_passages", "most_passages", "calls", "searches")
+    assert {
+        name: (*(c[k] for k in bounds), c["admission_usd"])
+        for name, c in plan["conditions"].items()
+    } == {
+        "fixed10": ("B", 10, 10, 1, 0, 1.4784),
+        "agent": ("C", 5, 10, 3, 2, 4.4352),
+        "coverage": ("D", 5, 10, 3, 2, 4.4352),
+    }
+    # One case is admitted at 1 + 3 + 3 calls at the input cap, 10.3488 USD; the 19 cases
+    # need 196.6272 at once, more than the headroom (100 minus the history's 0.25).
+    admission = plan["admission"]
+    assert (admission["worst_case_usd"], admission["headroom_usd"], admission["fits"]) == (
+        196.6272,
+        99.75,
+        False,
+    )
+    estimates = plan["estimates"]
+    assert list(estimates["per_condition"]) == ["fixed10", "agent", "coverage"]
+    assert estimates["per_condition"]["coverage"]["usd_per_cell"] is None
+    assert estimates["matrix_usd"] is None
+    assert isolated["loads"] == []
+    assert written(isolated) == before
+
+
+def test_the_phase4_run_refuses_19_cases_before_the_model_loads(
+    isolated, monkeypatch, capsys
+):
+    live(isolated, monkeypatch)  # no reply: nothing may be sent
+    nineteen = [case(f"P{n:02d}") for n in range(1, 20)]
+    argv_ = argv(isolated, "run", cases_file(isolated, *nineteen)) + ["--design", "phase4"]
+
+    assert exit_code(argv_) == 3
+    assert "196.6272" in capsys.readouterr().err
+    assert isolated["loads"] == []
+    assert not active(isolated).exists()
+
+
+def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_id(
+    isolated, monkeypatch, capsys
+):
+    provider = live(
+        isolated,
+        monkeypatch,
+        final(("B.", [TOP10[9]])),
+        search_call("Pauschale", "Begründung"),
+        final(("C.", [TOP5[0], RANKED[5]])),
+        coverage_reply(("D.", [TOP5[0]])),
+    )
+    argv_ = argv(isolated, "run", cases_file(isolated, case("E1"))) + ["--design", "phase4"]
+
+    code = run_comparison.main(argv_)
+
+    assert code == 0
+    b, c1, _, d = provider.creates
+    assert (sent(b), sent(c1), sent(d)) == (TOP10, TOP5, TOP5)
+    assert d["messages"][0] == c1["messages"][0]  # D starts where C does
+    assert d["system"] == (
+        f"{generation.SYSTEM_PROMPT}\n\n{evidence_agent.COVERAGE_INSTRUCTION}"
+    )
+    assert d["output_config"]["format"]["schema"] == evidence_agent.COVERAGE_ANSWER_SCHEMA
+    assert [(e["event"], e.get("attempt")) for e in ledger(isolated)] == [
+        ("baseline", None),
+        ("reserve", "E1-fixed10-call1"),
+        ("settle", "E1-fixed10-call1"),
+        ("reserve", "E1-agent-call1"),
+        ("settle", "E1-agent-call1"),
+        ("reserve", "E1-agent-call2"),
+        ("settle", "E1-agent-call2"),
+        ("reserve", "E1-coverage-call1"),
+        ("settle", "E1-coverage-call1"),
+    ]
+    public, local = outputs(isolated)
+    text = public.read_text("utf-8")
+    assert not [pid for pid in RANKED if pid in text]  # no passage ID in the public record
+    assert QUESTION not in text
+    record = json.loads(text)
+    (planned,) = record["cases"]
+    assert planned["ranked_passages"] == 10
+    assert "ranking" not in planned
+    cells = planned["cells"]
+    assert [(c["condition"], c["label"], c["status"]["execution"]) for c in cells] == [
+        ("fixed10", "B", "answer"),
+        ("agent", "C", "answer"),
+        ("coverage", "D", "answer"),
+    ]
+    assert [c["agent"]["supplied"] for c in cells] == [10, 10, 5]
+    assert [c["answer"]["cited_passages"] for c in cells] == [1, 2, 1]
+    assert cells[1]["agent"]["searches"][0]["returned"] == 5
+    assert cells[2]["agent"]["coverage"] == [
+        {
+            "call": 1,
+            "action": "answer",
+            "check": "ok",
+            "parts": 1,
+            "covered": 1,
+            "missing": 0,
+            "search_for": None,
+            "missing_not_reported": False,
+        }
+    ]
+    assert record["run"]["design"] == "phase4"
+    conditions = record["run"]["configuration"]["conditions"]
+    assert list(conditions) == ["fixed10", "agent", "coverage"]
+    assert "answer_format_sha256" in conditions["coverage"]
+    assert record["notes"] == list(run_comparison.NOTES_PHASE4)
+    kept = json.loads((local / "result.json").read_text("utf-8"))
+    (kept_case,) = kept["cases"]
+    assert kept_case["ranking"] == TOP10  # the local record keeps every ID
+    assert kept_case["cells"][2]["local"]["coverage"][0]["coverage"][0]["passages"] == [
+        TOP5[0]
+    ]
+    assert json.loads(capsys.readouterr().out)["exit_code"] == 0
+
+
+def test_estimates_read_cells_of_every_condition_under_either_design(isolated, capsys):
+    rows = [agent_cell("E2")[0]]
+    for name, calls in (("fixed5", 1), ("fixed10", 1), ("agent", 2), ("coverage", 1)):
+        for n in range(1, calls + 1):
+            rows += [_reserve("E3", name, n), _settle("E3", name, n)]
+    active(isolated).write_text("".join(json.dumps(e) + "\n" for e in rows), "utf-8")
+    cases = str(cases_file(isolated, case("E5")))
+    seen = {}
+
+    for design in ("phase3", "phase4"):
+        assert run_comparison.main(["plan", "--design", design, "--cases", cases]) == 0
+        per = json.loads(capsys.readouterr().out)["estimates"]["per_condition"]
+        seen[design] = {n: (c["observed_cells"], c["usd_per_cell"]) for n, c in per.items()}
+
+    # fixed5: the history (0.25) and E3 (0.024), mean 0.137; the other conditions E3 alone.
+    assert seen == {
+        "phase3": {"fixed5": (2, 0.137), "fixed10": (1, 0.024), "agent": (1, 0.048)},
+        "phase4": {"fixed10": (1, 0.024), "agent": (1, 0.048), "coverage": (1, 0.024)},
+    }
