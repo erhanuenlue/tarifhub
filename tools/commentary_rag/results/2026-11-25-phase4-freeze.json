@@ -1,0 +1,303 @@
+{
+ "record": "Freeze record of the Phase 4 evaluation (variant 1: the coverage decision D against the Phase 3 agent C and fixed top 10 B): hashes, IDs, editions, rules files and provenance only; no question, gold item or case-level result.",
+ "decision": {
+  "by": "Erhan",
+  "date": "2026-11-25",
+  "what": "selection of the proposed set of 19 cases (nine of the drafted cases and the ten alternates) and approval of the study design; recorded verbatim in the private decision record hashed under files. A selection of the proposed set as a whole, not a case-by-case audit by Erhan.",
+  "applied_by": "Claude (claude-opus-5-5), the lead, on 2026-11-25. On Erhan's instruction the lead wrote R1 and R2 numerically, the 19-pair basis, the counting of search opportunities by evidence and capacity before each decision, the separation of gap checks, and the rules for partly supported claims and incomplete repetitions into the rubric before the freeze; the wording of the last two rules is the lead's specification."
+ },
+ "frozen_at": "2026-11-25T08:55:54Z",
+ "fixed_before": "Frozen before any retrieval or ranking of the selected cases, before condition D was implemented (code_at_freeze: the conditions in code are fixed5, fixed10 and agent) and before any Phase 4 cell was in the books (books_at_freeze).",
+ "provenance": {
+  "drafted": "Drafted on 2026-11-25 by a fresh-context case author, a general-purpose subagent (the harness reported claude-opus-5-5 at effort max), whose only inputs were its brief and the 40 passages of the two 2026 commentaries: no ranking, retrieval record, earlier answer, agent output or earlier evaluation case. It drafted 24 cases and, on request, 10 alternates.",
+  "checked": "The case author ran its own mechanical checks (verbatim quotes, gap probes over all passages of the selected editions). The lead checked the drafts on 2026-11-25 (structure, equivalent passages by two independent sweeps, gaps, overlap with earlier cases, the author's transcript) and verified the 19 selected cases mechanically at the freeze (311 checks, all passed). Reports are kept locally with the set.",
+  "selected": "Erhan selected the proposed set as a whole: 19 of the 34 drafted cases. The comparison behind the proposal stays private.",
+  "not_done": "No human case-by-case review of the cases or their gold before the freeze, and no second-model review of the cases."
+ },
+ "source_documents": [
+  {
+   "edition": "2026-01-01",
+   "path": "data/raw/bag/al/2026-01-01/Kommentar zu den Änderungen des Anh. 3 KLV per 01.01.26.pdf",
+   "sha256": "0d335bd46adec0254a91e260cebe976f86fd0cfb54bb97ea8ecf98cadfd7e4fc"
+  },
+  {
+   "edition": "2026-07-01",
+   "path": "data/raw/bag/al/2026-07-01/Kommentar zu den Änderungen des Anh. 3 KLV per 01.07.26_final.pdf",
+   "sha256": "fe1856df9f7d0023aac52e13dc61a0055a7105b4810f18cc8822366625af5105"
+  }
+ ],
+ "files": [
+  {
+   "role": "runner input",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-freeze/runner/cases.json",
+   "sha256": "034e6947153b6344de73ddea4ab8d3fd1715e2ad6f962b8de946a685e583e15e",
+   "bytes": 5061,
+   "committed": false,
+   "holds": "each case's id, question and editions, nothing else: the only case file run_comparison.py reads"
+  },
+  {
+   "role": "private cases and gold",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-freeze/private/cases.json",
+   "sha256": "b4906698acdd439b7a599678b543887c7faf7e19422580f8a0c5b69efd1d541b",
+   "bytes": 48377,
+   "committed": false,
+   "holds": "per case: question, editions, expected status, required parts (fact or gap), the equivalent supporting passages of each fact part with quotes, each gap part with its justification, the draft ID"
+  },
+  {
+   "role": "decision record",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-freeze/private/selection.md",
+   "sha256": "8019d10524138cdbec1222cff54d411349fb71e0c790d61f9adf5dd736099511",
+   "bytes": 5396,
+   "committed": false,
+   "holds": "Erhan's decision verbatim, how the 19 cases were identified, the mapping to the drafts, the checks as they happened"
+  },
+  {
+   "role": "verification",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-freeze/private/verification.json",
+   "sha256": "e38a7216609c2b05362d72ad50b555368fb43b752423a814813f17bd8b63cb49",
+   "bytes": 33736,
+   "committed": false,
+   "holds": "the lead's mechanical verification of the 19 cases at the freeze"
+  },
+  {
+   "role": "rubric (German)",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-freeze/rubric-and-thresholds-de.md",
+   "sha256": "8253c65bf27fcbaa29f4442d821f29331b3be533fd3dbbd86b6da70f5a27c122",
+   "bytes": 15587,
+   "committed": false,
+   "holds": "the German rubric, equal in content to the English one"
+  },
+  {
+   "role": "rubric",
+   "path": "tools/commentary_rag/phase4/rubric-and-thresholds.md",
+   "sha256": "d3e09f2ec9cdc3b80e15a58a8133a386d1fe825e90b0015b78faeb5b84ad59bc",
+   "bytes": 13639,
+   "committed": true,
+   "holds": "units, pairing, measures, analysis rules, strata, complete and incomplete repetitions, thresholds T1 to T5, R1, R2 and their outcomes"
+  },
+  {
+   "role": "condition contract",
+   "path": "tools/commentary_rag/phase4/conditions.md",
+   "sha256": "a3b463606fd192cab9e9b9284b25badf1da16bdd5dd057ba54777560bca3dcc9",
+   "bytes": 17972,
+   "committed": true,
+   "holds": "conditions B, C and D: what each does, D's instruction, tool and answer format verbatim, its checks and records, the runner design, synthetic examples"
+  },
+  {
+   "role": "source drafts",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-eval-package/author-output/cases-draft.json",
+   "sha256": "562b6f0418b61b35c00e22a32dc0bdd2e59f46b41675949ba2d033763b8b7cca",
+   "bytes": 60386,
+   "committed": false,
+   "holds": "the case author's 24 drafts as written (kept unchanged)"
+  },
+  {
+   "role": "source drafts",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-eval-package/author-output/alternates-draft.json",
+   "sha256": "e6e312cb5d6ce12031b2f428babfeb125ce0fbfc858304bcd2345f0d2d332311",
+   "bytes": 25855,
+   "committed": false,
+   "holds": "the case author's 10 alternates as written (kept unchanged)"
+  },
+  {
+   "role": "author input",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-eval-package/author-inputs/corpus.json",
+   "sha256": "5c12130e870841a51d401986123d2eab458a94cca9a0152be69dd2cbf2814944",
+   "bytes": 49321,
+   "committed": false,
+   "holds": "the 40 passages the case author received"
+  },
+  {
+   "role": "review sheet",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-eval-package/review-sheet-de.md",
+   "sha256": "0fedebaa35cc4d119d40d15781116260985eab84f7898fc16d21649c6d157506",
+   "bytes": 37049,
+   "committed": false,
+   "holds": "the provisional review sheet that proposed the selection"
+  },
+  {
+   "role": "lead checks",
+   "path": "tools/commentary_rag/local/2026-11-25-phase4-eval-package/lead-checks.md",
+   "sha256": "1876c2335d6128c5317cf7d9cf20524ad689c87e11f7f47fc62111a3f50401ea",
+   "bytes": 5201,
+   "committed": false,
+   "holds": "the lead's checks of the drafts on 2026-11-25"
+  }
+ ],
+ "cases": [
+  {
+   "id": "P4-F01",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "question_sha256": "056c39ae265143e6e817014fa3526058c66b510e5b72a3b2ea5002f528f1602c"
+  },
+  {
+   "id": "P4-F02",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "07695ac99a20cf2ea1fc70f7eb9646799c3fb292d98735557a0a7398c05b87c3"
+  },
+  {
+   "id": "P4-F03",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "23f39ef295cd571663e5d078760dda14c2ac083ebed49fdbaef1ffa85b7d76e8"
+  },
+  {
+   "id": "P4-F04",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "2447b895e69bf18a1c3fb9266073e069f776a4a2f1492122e2d3e22d2a0d47df"
+  },
+  {
+   "id": "P4-F05",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "24b475be71fdabb37eaa551eeba1556599699c4ec8a0e67f02655ba12c339806"
+  },
+  {
+   "id": "P4-F06",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "55bf0db693da3dfee75695d5b577ae5b7baf95381ccce5ae21c555bc21df96b5"
+  },
+  {
+   "id": "P4-F07",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "5e361d1949000bfeb94632ff0f205e9dca3489b3effd7ae587d0f3849c864f47"
+  },
+  {
+   "id": "P4-F08",
+   "editions": [
+    "2026-01-01"
+   ],
+   "question_sha256": "67b5f491d3cacdf15023481b54c85cbfdaef427ccd64a33b54959c9617ba5476"
+  },
+  {
+   "id": "P4-F09",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "86cde88bf96ff84f4578fba55a68f16f01ffe796960a056b7344c75df7f57266"
+  },
+  {
+   "id": "P4-F10",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "897ac6dc21367b3767f094bb6b91a31ab1eab79bc3bc1ad4ea7bc842427adcf8"
+  },
+  {
+   "id": "P4-F11",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "95f9b0dad2b2c1e35bc27e0e22188e4c57b8b38c03eac8e02ee500b8672a1fe1"
+  },
+  {
+   "id": "P4-F12",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "9b3cc1462ee6ed7b42e420556d728dcd034e462e0108c49eb01bc3d55763f12a"
+  },
+  {
+   "id": "P4-F13",
+   "editions": [
+    "2026-01-01"
+   ],
+   "question_sha256": "a651ea2bc6bc34d0e25615b3fb158974a84500395814fc07e8df9ccba2dc42c2"
+  },
+  {
+   "id": "P4-F14",
+   "editions": [
+    "2026-01-01"
+   ],
+   "question_sha256": "be0e094b02dca7f048649da7b3f049da69ddb1f4a7eabd4a296817b1a1c79e6a"
+  },
+  {
+   "id": "P4-F15",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "c331b5d60bc7e23a008277f2c19ec88cc32553b77d437c157094320dad0c0a48"
+  },
+  {
+   "id": "P4-F16",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "cb6aca169bb73d4b9a56ab9c247eff5e10a17c2329debf76bb87edf4fdd41fab"
+  },
+  {
+   "id": "P4-F17",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "df1de8fbc5bb92655527ac6c170e6207d30344ddd66a0c8e9edd6fe8f81f0cfd"
+  },
+  {
+   "id": "P4-F18",
+   "editions": [
+    "2026-07-01"
+   ],
+   "question_sha256": "ec0490f37ce4745ef94d10a2746e352b97564499fe0ebc3318c81aab7b89dbbe"
+  },
+  {
+   "id": "P4-F19",
+   "editions": [
+    "2026-01-01",
+    "2026-07-01"
+   ],
+   "question_sha256": "fce4871767888668730577555a762b5443dbcaac6fd41c567c6570a56ef9226b"
+  }
+ ],
+ "question_sha256": "SHA-256 of the question's UTF-8 bytes, as run_comparison._sha256 and evidence_agent compute it; every reservation of a cell records it with the sorted editions, so the books of a run can be matched to this set.",
+ "order": "The cases run in the order listed (ascending question SHA-256, fixed at the freeze); within a case B, C, D.",
+ "rules": {
+  "conditions": "tools/commentary_rag/phase4/conditions.md",
+  "rubric": "tools/commentary_rag/phase4/rubric-and-thresholds.md"
+ },
+ "publication": "Gold-derived results only as aggregates; case-level results (gold coverage, passage IDs and stratum per case) stay local.",
+ "carried_limitation": "Because the Phase 3 records were published after the Phase 3 runs, Phase 4 does not treat the Phase 3 evaluation cases as blind held-out tests.",
+ "corpus_at_freeze": {
+  "passages": 40,
+  "per_edition": {
+   "2026-01-01": 11,
+   "2026-07-01": 29
+  },
+  "how": "the corpus of results/2026-11-14-retrieval-corrected.json (passage IDs and text SHA-256 equal), as the case author received it"
+ },
+ "books_at_freeze": {
+  "results/generation-ledger.jsonl": "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa",
+  "results/phase3-ledger.jsonl": "ca20af168ba1c5bc1488dc25fc6f290fd8bae66bb7ee301e7d33007b2a6d5d3f"
+ },
+ "code_at_freeze": {
+  "git_head": "8aacf9998c3f9b7a559d1a06d3f666b5b0dff235",
+  "conditions": [
+   "fixed5",
+   "fixed10",
+   "agent"
+  ],
+  "files_sha256": {
+   "evidence_agent.py": "8f764df5b9cea83588898ab22e45244e872502c51d6d702db94a873da105643d",
+   "evidence_search.py": "439e4c856bbcb62056eadd7672c22444eafdcbeed1bd7855012c813cf28710ef",
+   "generation.py": "4ee8822cae96985a5a9e0ec62bda34c9b12574625524913b16530ff54e416e3a",
+   "run_comparison.py": "536d9244ac9421e113ba9f7a82a5d0d3ca4f0a49dc08884d355cdbd655fc9380",
+   "run_question.py": "00b9d988b4a793d55e4ad846be05c2f0b7b0a221868f763da45941f7053d11df",
+   "retrieval.py": "7803c83d4f0a3a9e4bcdb94450587878b64d715fd6d77e8176fc50b9f3cf0d5a",
+   "corpus.py": "31221e8924e05b967f8e6455a95ff1a13ebe769133a6522594307dfbe03bef7f",
+   "pricing.json": "f3d8bb8e65c5bbecb1dfd2f5c7f2b6c65b70934a1de1df3f500d96d02e31538e"
+  }
+ },
+ "amendments": []
+}
