@@ -1676,3 +1676,11 @@ def test_a_cell_refused_after_a_sent_call_ran_and_one_stopped_before_any_did_not
     assert one_cell(sent, COVERED, "agent")["ran"] is True
     assert one_cell(unsent, COVERED, "agent")["ran"] is False
     assert one_cell(unsent, COVERED, "agent")["outcome"] == "persistence_error"
+
+
+def test_cells_of_one_repetition_run_with_different_time_budgets_are_refused():
+    result, gold = fixture()
+    d = next(c for c in result["cases"][0]["cells"] if c["condition"] == "coverage")
+    d["record"] = changed(d["record"], budget_s=120.0)  # the others ran at 600 s
+    with pytest.raises(ValueError, match="different time budgets"):
+        ps.score([result], gold)

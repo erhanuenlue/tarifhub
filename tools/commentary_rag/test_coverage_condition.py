@@ -16,7 +16,6 @@ import json
 import sys
 from pathlib import Path
 
-import httpx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -708,20 +707,3 @@ def test_an_integer_past_the_digit_limit_in_the_coverage_keeps_a_valid_answer(sp
     assert (result.outcome, result.answer) == ("answer", answer)
     assert result.record["coverage"][0]["check"] == "malformed"
 
-
-def test_a_tool_use_no_later_request_could_carry_ends_the_cell_recorded(spending):
-    lone = chr(0xD800)  # a lone surrogate: valid when escaped in JSON, never encodable as UTF-8
-    coverage = [
-        {"part": "Pauschale " + lone, "status": "covered", "passages": ["jul/k"]},
-        {"part": "Begründung", "status": "missing", "passages": []},
-    ]
-    reply = coverage_search(coverage, 2, "Pauschale", "Begründung")
-    body = json.dumps(reply).encode("ascii")  # the surrogate arrives escaped, as JSON allows
-    response = httpx.Response(200, content=body, headers={"content-type": "application/json"})
-    provider = Provider(Clock(), response)
-
-    result, _ = run_d(provider, spending)
-
-    assert (result.outcome, result.detail) == ("protocol_error", "unencodable_tool_use")
-    assert len(provider.creates) == 1
-    assert [e["event"] for e in events(spending)[1:]] == ["reserve", "settle"]

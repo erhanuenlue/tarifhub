@@ -679,12 +679,21 @@ def score(results, gold) -> dict:
     merged: dict[str, dict] = {}
     for case in listed:
         _merge(merged, case, frozen[case["case"]])
-    return {
-        "gold_cases": len(frozen),
-        "cases": [
-            _case(name, merged[name], frozen[name]) for name in frozen if name in merged
-        ],
+    scored = [
+        _case(name, merged[name], frozen[name]) for name in frozen if name in merged
+    ]
+    # One repetition, one time budget per cell (conditions.md, section 1): the records are
+    # checked above, so every cell that sent a call names its budget.
+    budgets = {
+        cell["record"].get("budget_s")
+        for known in merged.values()
+        for cells in known["cells"].values()
+        for cell in cells
+        if cell.get("record") is not None and cell["record"]["generation_calls"] >= 1
     }
+    if len(budgets) > 1:
+        raise ValueError("the cells of one repetition ran with different time budgets")
+    return {"gold_cases": len(frozen), "cases": scored}
 
 
 def _histogram(values) -> dict[str, int]:

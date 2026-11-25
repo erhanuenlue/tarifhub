@@ -699,24 +699,13 @@ def _coverage_search(arguments, state: evidence_search.SearchState, call: int,  
 
 def _bounded_int(literal: str):
     """An integer literal of D's answer text; one past the interpreter's digit limit becomes
-    infinity, which no field of D's formats accepts, instead of an error that would end the cell
-    after its call was settled, unrecorded."""
+    None, which no field of D's formats accepts, instead of an error that would end the cell after
+    its call was settled, unrecorded."""
 
     try:
         return int(literal)
     except ValueError:
-        return math.inf
-
-
-def _encodable(value) -> bool:
-    """Whether ``value`` serialises to UTF-8, as every later request of the cell must: an escaped
-    lone surrogate in a tool input would make the next request fail before it is counted."""
-
-    try:
-        json.dumps(value, ensure_ascii=False).encode("utf-8")
-    except UnicodeEncodeError:
-        return False
-    return True
+        return None
 
 
 def _coverage_answer(text: str, supplied: tuple[str, ...], call: int, record: dict,
@@ -999,8 +988,6 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
                 return end("protocol_error", "unknown_tool")
             if not isinstance(use.get("id"), str) or not use["id"]:
                 return end("protocol_error", "tool_use_without_id")  # no result could answer it
-            if chosen.coverage and not _encodable(content):  # D: a turn no request can replay
-                return end("protocol_error", "unencodable_tool_use")
             if entry["above_reservation"]:  # the ceiling did not hold: send nothing more
                 return end("spending_stop", "cost_above_reservation")
             messages.append({"role": "assistant", "content": content})  # exactly as returned

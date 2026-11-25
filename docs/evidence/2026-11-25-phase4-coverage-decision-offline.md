@@ -57,9 +57,9 @@ evaluation cases as blind held-out tests.
 
 | Part | What | Tests |
 |---|---|---|
-| Condition D (`evidence_agent.py`) | coverage instruction, a search tool that also takes the coverage and the number of the missing part, the coverage beside the unchanged answer object; a malformed coverage, a passage not received or a search for no missing part refused as a tool error that uses the round; answers accepted exactly as C's; the tool offered by capacity alone | 24 (`test_coverage_condition.py`) |
+| Condition D (`evidence_agent.py`) | coverage instruction, a search tool that also takes the coverage and the number of the missing part, the coverage beside the unchanged answer object; a malformed coverage, a passage not received or a search for no missing part refused as a tool error that uses the round; answers accepted exactly as C's; the tool offered by capacity alone | 23 (`test_coverage_condition.py`) |
 | Phase 4 design (`run_comparison.py`) | `--design phase4` runs B, C and D per case; its public record names no passage; the default Phase 3 design unchanged | 5 more, 48 in all (`test_run_comparison.py`) |
-| Scorer (`phase4_scoring.py`) | the local records of one repetition merged and checked (completeness, question, ranking and initial passages), decision points by capacity before each call, the frozen search measures, D's coverage diagnostics apart from them, the thresholds and both outcome tables | 142 (`test_phase4_scoring.py`) |
+| Scorer (`phase4_scoring.py`) | the local records of one repetition merged and checked (completeness, question, ranking and initial passages), decision points by capacity before each call, the frozen search measures, D's coverage diagnostics apart from them, the thresholds and both outcome tables | 143 (`test_phase4_scoring.py`) |
 
 The pilot's offline suite: 655 tests in fifteen files, all passing; lint clean. The tests check D's
 instruction, tool, answer format and refusal texts against the SHA-256 values frozen in the contract,
@@ -92,6 +92,9 @@ depend on the private gold and the rankings of the frozen cases and are kept loc
   answers' quality: no live run exists.
 - The provider contract for D's schemas (an integer field in a strict tool, the coverage beside the
   answer object) is unverified live.
+- A tool input carrying an escaped lone surrogate makes the cell's next request fail for C and D
+  alike: C behaved so before Phase 4, and D keeps C's behaviour as the frozen contract requires. The
+  cell's call stays booked, so its case cannot be completed in that repetition.
 - The current books cannot admit the frozen 19-case design in one invocation, and repetitions need
   their own identity: a live repetition needs Erhan's decision on books, cap and admission.
 - Open finding for Erhan: as frozen, a refused search at a decision point where nothing was missing
