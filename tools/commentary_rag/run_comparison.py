@@ -760,6 +760,8 @@ def _run(  # noqa: PLR0913
                     "question": item["question"],
                     "editions": item["editions"],
                     "ranking": [hit.passage_id for hit in ranking],
+                    # Phase 4 publishes no ranking: its scores and ranks are kept here instead.
+                    **({"ranking_detail": ranked_ids(ranking)} if phase4 else {}),
                     "cells": [
                         {
                             "condition": name,

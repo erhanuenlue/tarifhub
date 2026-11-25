@@ -760,11 +760,16 @@ at once; the books leave USD 92.939448, and `run` refuses such a matrix before t
 cell already in the books is never sent again, so a second repetition needs case IDs of its own.
 Books, cap and admission for a live repetition are Erhan's decision.
 
-**Scorer:** `phase4_scoring.py` reads a run's local `result.json` and the private frozen cases,
-rebuilds each C and D cell's decision points by capacity before each call and counts warranted,
-unnecessary, gap-check and missed useful searches, refused searches and points without action; it
-also implements the thresholds and both outcome tables as pure functions. It writes case-level
-results only to a new local path it is given (never into `results/`) and prints counts.
+**Scorer:** `phase4_scoring.py` reads the local `result.json` of one repetition (`--result` once per
+file, several after a resumed run, merged by case and condition: a cell ran when a generation call
+was sent) and the private frozen cases. It checks each case's question, editions, ranking and
+records against the gold file and each other, reports how many cases are complete (B, C and D
+ran), rebuilds each C and D cell's decision points by capacity before each call and counts
+warranted, unnecessary, gap-check and missed useful searches, refused searches and points without
+action; D's coverage diagnostics are counted apart and never enter a measure. It implements the
+thresholds and both outcome tables as pure functions (T3 and T4 not assessable on an incomplete
+repetition). It writes case-level results only to a new file outside the repository or under the
+git-ignored `local/` folder, and prints counts.
 
 ```bash
 # Offline plan of the Phase 4 matrix (nothing loaded, counted, sent or written):
@@ -775,7 +780,7 @@ UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
   uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
   python tools/commentary_rag/phase4_scoring.py --result <local result.json> \
-  --gold <private cases file> --out <new local file> --label <text>
+  --gold <private cases file> --out <new file under tools/commentary_rag/local/> --label <text>
 ```
 
 **Dry run (2026-11-25, simulated):** the ordinary entry point with a scripted provider (no key, no
@@ -783,7 +788,8 @@ provider call), the real corpus and cached e5 model, the frozen runner input and
 the books: the 19-case matrix was refused before the model loaded; three batches of 8, 8 and 3
 cases in the frozen order were admitted and ran 57 cells (88 simulated calls, each settled from its
 simulated usage in the scratch books); the real books and `results/` stayed byte-identical; the
-public records held no passage ID, and the scorer read every cell without a trace anomaly. Simulated
+public records held no passage ID, and the scorer, merging the three batches, found all 19 cases
+complete and no trace anomaly. Simulated
 answers and costs measure nothing about the model; the scored measures depend on the private gold
 and stay local.
 

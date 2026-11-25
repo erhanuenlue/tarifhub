@@ -1570,6 +1570,9 @@ def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_
     kept = json.loads((local / "result.json").read_text("utf-8"))
     (kept_case,) = kept["cases"]
     assert kept_case["ranking"] == TOP10  # the local record keeps every ID
+    detail = kept_case["ranking_detail"]  # and the scores the public record leaves out
+    assert [(r["rank"], r["passage_id"]) for r in detail] == list(enumerate(TOP10, start=1))
+    assert all(isinstance(r["score"], float) for r in detail)
     assert kept_case["cells"][2]["local"]["coverage"][0]["coverage"][0]["passages"] == [
         TOP5[0]
     ]

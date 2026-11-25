@@ -1,34 +1,42 @@
-"""Deterministic Phase 4 scoring of a comparison run against the frozen gold parts (offline).
+"""Deterministic Phase 4 scoring of comparison runs against the frozen gold parts (offline).
 
 It implements the frozen rubric (``phase4/rubric-and-thresholds.md``) on the trace the frozen
 condition contract describes (``phase4/conditions.md``, section 5):
 
 - ``strata``: a case's stratum from the shared top 10 and the frozen sets of equivalent
   passages (S1, S2, S3 or G, flagged when fact and gap parts are mixed).
-- ``decision_points``: per recorded call of a C (``agent``) or D (``coverage``) cell, its
+- ``decision_points``: per generation call of a C (``agent``) or D (``coverage``) cell, its
   capacity, anomaly flag, action and, at a decision point, its kind, the search measure it counts
   towards and its yield. Capacity alone decides: never the tool choice sent (a disagreement is an
-  anomaly) and never D's own coverage record, which is not read. B (``fixed10``) has none.
-- ``score`` (case level, local only: case, part and passage IDs) and ``summary`` (per-condition
-  counts only, which may be shown).
+  anomaly) and never D's own coverage record. B (``fixed10``) has none.
+- ``score`` merges the local results of one repetition (a resumed run gives several) per case
+  and condition: a cell ran when its record shows a generation call sent (one refused or
+  stopped before any call is not run; one refused after a sent call ran and failed); the cell
+  that ran is scored, two that ran are refused, and a case is complete when B, C and D all ran.
+  ``summary`` gives counts only, which may be shown. D's coverage record enters only its
+  exploratory diagnostics (counts), never a measure or a threshold.
 - ``t1`` to ``t5``, ``r1``, ``r2``, ``primary_outcome`` and ``reference_outcome``: the decision
   thresholds and both outcome tables as pure functions.
 
-The trace: every call of a cell except one that ended it ended in a tool use that ran one search
-request, so ``record["searches"][i]`` belongs to call i + 1. The initial passages are the first
-``len(supplied)`` minus all returned passages of ``record["supplied"]``. Before call k come those
-and what the searches of calls 1 to k - 1 returned, in order; the rounds used before it are those
-searches whose round is not None. A cell can end after a search, before its next call was
-recorded (the deadline, or a refusal before the reservation): that call is not in the trace and
-is no decision point. A trace that cannot be rebuilt is refused, never scored in part.
+The trace: the generation calls are the sent ones, calls 1 to ``generation_calls`` (a call
+reserved but stopped before sending is none). Every generation call except one that ended the
+cell ended in a tool use that ran one search request, so ``record["searches"][i]`` belongs to
+call i + 1. The initial passages are the first ``len(supplied)`` minus all returned passages of
+``record["supplied"]``, and must be the top 5 of the case's ranking (a B cell's supplied passages
+its top 10). Before call k come those and what the searches of calls 1 to k - 1 returned, in
+order; the rounds used before it are those searches whose round is not None. A cell can end
+after a search, before its next call was recorded: that call is no decision point. A record
+that disagrees with its case or cannot be rebuilt is refused, never scored in part.
 
-No model, provider, network or books: it reads two JSON files and writes one new file outside
-``results/``; stdout carries the per-condition counts and the label only.
+No model, provider, network or books: it reads JSON files and writes one new file, never in
+``results/`` and in the repository only under this module's git-ignored ``local/`` folder;
+stdout carries the counts and the label only.
 
     UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run \\
         --project services/ingestion --frozen --offline --extra ai --extra dev \\
         python tools/commentary_rag/phase4_scoring.py --result <local result.json> \\
-        --gold <gold file> --out <a new file outside results/> [--label SIMULATED]
+        [--result <the result.json of a resumed run> ...] --gold <gold file> \\
+        --out <a new file under local/ or outside the repository> [--label SIMULATED]
 
 Exit codes: 0 written, 2 invalid input (nothing written).
 """
@@ -48,10 +56,14 @@ import evidence_agent
 import evidence_search
 
 HERE = Path(__file__).resolve().parent
+REPO = HERE.parents[1]
 RESULTS = HERE / "results"  # public: case-level scoring is never written here
+LOCAL = (
+    HERE / "local"
+)  # git-ignored: the one folder of the repository a scoring may go to
 EXIT_OK, EXIT_INPUT = 0, 2
 LIMITS = evidence_search.SearchLimits()  # the bounds every comparison cell runs with
-TOP = 10  # the shared ranking: B's fixed context and the strata's horizon
+TOP = 10  # the shared ranking's depth: the strata's horizon
 FIRST = 5  # C's and D's initial context: S1 is support within ranks 1 to 5
 MIN_POINTS = 5  # T3 and T4: decision points with an action D needs
 MIN_GAP_PARTS = 3  # T5
@@ -77,6 +89,16 @@ ENDED = (
     "persistence_error",
     "spending_stop",
 )  # every other way evidence_agent ends a cell
+NOT_SENT = (
+    "deadline",
+    "persistence_error",
+)  # how a cell ends with its last call unsent
+CHECKS = (
+    "ok",
+    "malformed",
+    "passage_reference",
+    "search_for",
+)  # D's coverage check codes
 # The search measure a decision point counts towards, by its kind and action (rubric).
 MEASURES = {
     ("search_needed", "search_run"): "warranted",
@@ -121,8 +143,12 @@ def _ids(value) -> bool:
     )
 
 
+def _number(value) -> bool:
+    return isinstance(value, int) and not isinstance(value, bool)
+
+
 def _count(value, name: str) -> int:
-    if isinstance(value, bool) or not isinstance(value, int) or value < 0:
+    if not _number(value) or value < 0:
         raise ValueError(f"{name} must be a count (a non-negative integer)")
     return value
 
@@ -133,11 +159,11 @@ def _flag(value, name: str) -> bool:
     return value
 
 
-def _calls(condition: str) -> int:
-    """The generation calls of a searching condition; D's are C's (conditions.md, section 4)
-    for as long as ``evidence_agent.CONDITIONS`` does not name D."""
+def _condition(name: str):
+    """A condition's bounds (``evidence_agent.CONDITIONS``); D's are C's (conditions.md,
+    section 4) for as long as ``evidence_agent.CONDITIONS`` does not name D."""
     known = evidence_agent.CONDITIONS
-    return (known[condition] if condition in known else known["agent"]).calls
+    return known[name] if name in known else known["agent"]
 
 
 def _parts(parts) -> list[tuple[str, str, frozenset]]:
@@ -221,32 +247,37 @@ def _checked_record(record, condition: str) -> None:
     ):
         raise ValueError("a record's calls are numbered from 1, in order")
     sent = record.get("generation_calls")
-    if (
-        isinstance(sent, bool)
-        or not isinstance(sent, int)
-        or not 0 <= sent <= len(calls)
-    ):
-        raise ValueError("a record's generation_calls counts the calls it sent")
+    if not _number(sent) or not max(len(calls) - 1, 0) <= sent <= len(calls):
+        raise ValueError(
+            "generation_calls counts the calls sent: all calls, or all but the last"
+        )
+    if sent < len(calls) and record["outcome"] not in NOT_SENT:
+        raise ValueError(
+            "a reserved call stays unsent only when the deadline or a write stops it"
+        )
     if condition not in SEARCHING and searches:
         raise ValueError("a fixed condition never searches")
 
 
 def _trace(record, condition: str) -> tuple[list, list, list]:
-    """The calls, searches and initial passages of a C or D record, refused when the trace
+    """The sent calls, searches and initial passages of a C or D record, refused when the trace
     cannot be rebuilt as conditions.md, section 5, states it."""
     _checked_record(record, condition)
     calls, searches, supplied = record["calls"], record["searches"], record["supplied"]
+    sent = calls[: record["generation_calls"]]
     if any(call.get("tool_choice") not in ("auto", "none") for call in calls):
         raise ValueError(
             "every call of a searching cell sent the tool choice auto or none"
         )
-    if len(searches) not in (len(calls) - 1, len(calls)) or (
-        len(searches) == len(calls) and record["outcome"] in ANSWERED
+    if (
+        len(searches) not in (len(sent) - 1, len(sent))
+        or (len(searches) == len(sent) and record["outcome"] in ANSWERED)
+        or (len(sent) < len(calls) and len(searches) != len(sent))
     ):
         raise ValueError(
-            "every call except one that ended the cell ran one search request"
+            "every sent call except one that ended the cell ran one search request"
         )
-    returned = []
+    returned, rounds = [], 0
     for number, search in enumerate(searches, start=1):
         if not isinstance(search, dict) or not isinstance(search.get("returned"), list):
             raise ValueError(
@@ -259,20 +290,24 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
             raise ValueError(
                 "a search outcome is passages, no_new_passages, tool_error or refused_*"
             )
+        if bool(search["returned"]) != (outcome == "passages"):
+            raise ValueError(
+                "a search returns passages exactly when its outcome is passages"
+            )
         counted = search.get("round")
         if outcome == "refused_rounds":
             numbered = counted is None
         else:
+            rounds += 1
             numbered = (
-                isinstance(counted, int)
-                and not isinstance(counted, bool)
-                and counted > 0
+                _number(counted) and counted == rounds and rounds <= LIMITS.max_rounds
             )
         if not numbered:
             raise ValueError(
-                "a search has a round unless it was refused for want of rounds"
+                "counted search rounds are numbered 1 and 2, in order; a request "
+                "refused for want of rounds has none"
             )
-        if calls[number - 1]["tool_choice"] != "auto":
+        if sent[number - 1]["tool_choice"] != "auto":
             raise ValueError("a search belongs to a call that was offered the tool")
         returned += [
             r.get("passage_id") if isinstance(r, dict) else None
@@ -283,35 +318,19 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
         raise ValueError(
             "the supplied passages must end with what the searches returned"
         )
-    return calls, searches, supplied[:first]
+    return sent, searches, supplied[:first]
 
 
-def decision_points(record, parts, condition: str) -> list[dict]:
-    """One entry per recorded call of a C or D cell (rubric, Search opportunities).
-
-    Each entry: ``capacity`` (a decision point: not the condition's last call, a search round
-    left and fewer than 10 passages supplied before it), ``anomaly`` (capacity and a tool choice
-    of ``auto`` disagree), ``supplied_before``, ``rounds_before``, the fact parts
-    ``missing_before`` (no passage of their frozen set supplied before the call), the ``action``
-    (``search_run``, ``search_refused``, ``answer`` or ``no_action``) and the search outcome. At
-    a decision point also its ``kind`` (``search_needed``, ``gap_check`` or ``no_search_needed``),
-    the ``measure`` it counts towards (``warranted``, ``unnecessary``, ``gap_check_search``,
-    ``missed`` or None) and, for a warranted search, its ``yield`` (a missing fact part covered
-    by what it returned); otherwise these are None. A B cell, or one without a record, has none.
-    """
-    if condition not in CONDITIONS:
-        raise ValueError("the condition must be fixed10, agent or coverage")
-    checked = _parts(parts)
-    if record is None or condition not in SEARCHING:
-        return []
-    calls, searches, initial = _trace(record, condition)
+def _decisions(record, checked, condition: str) -> tuple[list[dict], list[str]]:
+    """The decision points of a C or D record and its initial passages."""
+    sent, searches, initial = _trace(record, condition)
     facts = [(part_id, support) for part_id, kind, support in checked if kind == "fact"]
     gaps = any(kind == "gap" for _, kind, _ in checked)
     supplied, rounds, points = list(initial), 0, []
-    for number, call in enumerate(calls, start=1):
+    for number, call in enumerate(sent, start=1):
         search = searches[number - 1] if number <= len(searches) else None
         capacity = (
-            number < _calls(condition)
+            number < _condition(condition).calls
             and rounds < LIMITS.max_rounds
             and len(supplied) < LIMITS.max_passages
         )
@@ -357,7 +376,28 @@ def decision_points(record, parts, condition: str) -> list[dict]:
         supplied += returned
         if search is not None and search["round"] is not None:
             rounds += 1
-    return points
+    return points, list(initial)
+
+
+def decision_points(record, parts, condition: str) -> list[dict]:
+    """One entry per generation call (sent) of a C or D cell (rubric, Search opportunities).
+
+    Each entry: ``capacity`` (a decision point: not the condition's last call, a search round
+    left and fewer than 10 passages supplied before it), ``anomaly`` (capacity and a tool choice
+    of ``auto`` disagree), ``supplied_before``, ``rounds_before``, the fact parts
+    ``missing_before`` (no passage of their frozen set supplied before the call), the ``action``
+    (``search_run``, ``search_refused``, ``answer`` or ``no_action``) and the search outcome. At
+    a decision point also its ``kind`` (``search_needed``, ``gap_check`` or ``no_search_needed``),
+    the ``measure`` it counts towards (``warranted``, ``unnecessary``, ``gap_check_search``,
+    ``missed`` or None) and, for a warranted search, its ``yield`` (a missing fact part covered
+    by what it returned); otherwise these are None. A B cell, or one without a record, has none.
+    """
+    if condition not in CONDITIONS:
+        raise ValueError("the condition must be fixed10, agent or coverage")
+    checked = _parts(parts)
+    if record is None or condition not in SEARCHING:
+        return []
+    return _decisions(record, checked, condition)[0]
 
 
 def _counts(points: list[dict], searches: list[dict]) -> dict:
@@ -399,18 +439,160 @@ def _counts(points: list[dict], searches: list[dict]) -> dict:
     }
 
 
+def _coverage(record, points: list[dict]) -> dict:
+    """D's coverage diagnostics for one cell (exploratory, counts only, never a measure).
+
+    From ``record["coverage"]`` (conditions.md, 4.8): check codes by action;
+    ``missing_not_reported`` as true, false or null; and, at decision points whose entry has
+    check ``ok``, the point's kind by whether D marked a part missing. Every entry must name a
+    different sent call and carry that call's action.
+    """
+    diagnostics = {
+        "checks": {action: dict.fromkeys(CHECKS, 0) for action in ("search", "answer")},
+        "missing_not_reported": {"true": 0, "false": 0, "null": 0},
+        "decision_points_with_ok_check": {
+            kind: {"marked_missing": 0, "marked_all_covered": 0} for kind in KINDS
+        },
+        "records_without_coverage": 0,
+    }
+    entries = record.get("coverage") if record is not None else []
+    if entries is None:
+        diagnostics["records_without_coverage"] = 1
+        return diagnostics
+    if not isinstance(entries, list):
+        raise ValueError("D's coverage record must be a list of coverage entries")
+    by_call, seen = {p["call"]: p for p in points}, set()
+    for entry in entries:
+        flag = entry.get("missing_not_reported") if isinstance(entry, dict) else None
+        if (
+            not isinstance(entry, dict)
+            or entry.get("action") not in ("search", "answer")
+            or entry.get("check") not in CHECKS
+            or not (flag is None or isinstance(flag, bool))
+        ):
+            raise ValueError(
+                "a coverage entry needs its action, its check code and "
+                "missing_not_reported (true, false or null)"
+            )
+        call = entry.get("call")
+        point = by_call.get(call) if _number(call) else None
+        if point is None or call in seen:
+            raise ValueError("each coverage entry names a different sent call")
+        seen.add(call)
+        expected = (
+            "search"
+            if point["action"] in ("search_run", "search_refused")
+            else "answer"
+            if point["action"] == "answer"
+            else None
+        )
+        if entry["action"] != expected:
+            raise ValueError("a coverage entry's action must be the action of its call")
+        diagnostics["checks"][entry["action"]][entry["check"]] += 1
+        diagnostics["missing_not_reported"][
+            "null" if flag is None else str(flag).lower()
+        ] += 1
+        if entry["check"] == "ok":
+            missing = entry.get("missing")
+            if not _number(missing) or missing < 0:
+                raise ValueError(
+                    "a coverage entry with check ok counts its missing parts"
+                )
+            if point["capacity"]:
+                column = "marked_missing" if missing > 0 else "marked_all_covered"
+                diagnostics["decision_points_with_ok_check"][point["kind"]][column] += 1
+    return diagnostics
+
+
+def _zero(condition: str) -> dict | None:
+    """The counts of a cell that did not run (None for B: the measures do not apply)."""
+    if condition not in SEARCHING:
+        return None
+    counts = _counts([], [])
+    if condition == "coverage":
+        counts["coverage_diagnostics"] = _coverage(None, [])
+    return counts
+
+
+def _scored_record(
+    record, case_id: str, ranking: list, checked, condition: str
+) -> dict:
+    """One record, checked against its case and the case's ranking, with its decision points,
+    counts and (for D) coverage diagnostics; refused when anything disagrees."""
+    _checked_record(record, condition)
+    if record.get("case") != case_id:
+        raise ValueError("a cell's record must name the cell's case")
+    top = ranking[: _condition(condition).passages]
+    if condition not in SEARCHING:
+        if record["supplied"] != top:
+            raise ValueError("a B cell's passages must be the case's top 10")
+        return {"points": [], "counts": None}
+    points, initial = _decisions(record, checked, condition)
+    if initial != top:
+        raise ValueError("a C or D cell's initial passages must be the case's top 5")
+    counts = _counts(points, record["searches"])
+    if condition == "coverage":
+        counts["coverage_diagnostics"] = _coverage(record, points)
+    return {"points": points, "counts": counts}
+
+
+def _merged_cell(
+    condition: str, cells: list[dict], case_id: str, ranking: list, checked
+) -> dict:
+    """The cell of one case and condition over every result: every record is checked; a cell
+    ran when its record shows at least one generation call sent; two that ran are refused; with
+    none that ran the cell is not run (``outcome``: that of the last record seen, if any)."""
+    scored = [
+        (
+            cell["record"],
+            _scored_record(cell["record"], case_id, ranking, checked, condition),
+        )
+        for cell in cells
+        if cell.get("record") is not None
+    ]
+    ran = [  # a generation call was sent: refused or stopped later, the cell still ran
+        (record, result) for record, result in scored if record["generation_calls"] >= 1
+    ]
+    if len(ran) > 1:
+        raise ValueError(
+            "two cells of one case and condition ran: a cell is never run twice"
+        )
+    if not ran:
+        return {
+            "condition": condition,
+            "ran": False,
+            "outcome": scored[-1][0]["outcome"] if scored else None,
+            "calls": None,
+            "searches": 0,
+            "decision_points": [],
+            "counts": _zero(condition),
+        }
+    record, result = ran[0]
+    return {
+        "condition": condition,
+        "ran": True,
+        "outcome": record["outcome"],
+        "calls": record["generation_calls"],
+        "searches": len(record["searches"]),
+        "decision_points": result["points"],
+        "counts": result["counts"],
+    }
+
+
 def _gold(gold) -> dict[str, dict]:
-    """The gold cases by ID, every case's editions and parts checked."""
+    """The gold cases by ID, every case's question, editions and parts checked."""
     cases = gold.get("cases") if isinstance(gold, dict) else None
     if not isinstance(cases, list) or not all(
         isinstance(c, dict)
         and _text(c.get("id"))
+        and _text(c.get("question"))
         and _ids(c.get("editions"))
         and c["editions"]
         for c in cases
     ):
         raise ValueError(
-            "a gold file holds a list of cases, each with an id and its editions"
+            "a gold file holds a list of cases, each with an id, its question and "
+            "its editions"
         )
     frozen = {case["id"]: case for case in cases}
     if len(frozen) != len(cases):
@@ -420,28 +602,16 @@ def _gold(gold) -> dict[str, dict]:
     return frozen
 
 
-def _cell(cell: dict, parts) -> dict:
-    condition, record = cell["condition"], cell.get("record")
-    if record is not None:
-        _checked_record(record, condition)
-    points = decision_points(record, parts, condition)
-    searches = record["searches"] if record else []
-    return {
-        "condition": condition,
-        "recorded": record is not None,
-        "outcome": record["outcome"] if record else None,
-        "calls": record["generation_calls"] if record else None,
-        "searches": len(searches),
-        "decision_points": points,
-        "counts": _counts(points, searches) if condition in SEARCHING else None,
-    }
-
-
-def _case(case: dict, frozen: dict) -> dict:
+def _merge(merged: dict, case: dict, frozen: dict) -> None:
+    """Add one result's case to the cases merged so far, checked against its gold case."""
+    if case.get("question") != frozen["question"]:
+        raise ValueError("a case's question must be its gold case's question")
     if not _ids(case.get("editions")) or sorted(case["editions"]) != sorted(
         frozen["editions"]
     ):
-        raise ValueError("a case's editions must be those of its gold case")
+        raise ValueError("a case's editions must be its gold case's editions")
+    if not _ids(case.get("ranking")):
+        raise ValueError("a ranking is a list of distinct passage IDs")
     cells = case.get("cells")
     if not isinstance(cells, list) or not all(
         isinstance(c, dict) and c.get("condition") in CONDITIONS for c in cells
@@ -451,36 +621,70 @@ def _case(case: dict, frozen: dict) -> dict:
         )
     named = [c["condition"] for c in cells]
     if len(set(named)) != len(named):
-        raise ValueError("a case has at most one cell per condition")
-    kinds = [kind for _, kind, _ in _parts(frozen["parts"])]
+        raise ValueError("a case of one result has at most one cell per condition")
+    known = merged.setdefault(
+        case["case"], {"ranking": case["ranking"], "cells": {c: [] for c in CONDITIONS}}
+    )
+    if known["ranking"] != case["ranking"]:
+        raise ValueError("a case must carry the same ranking in every result")
+    for c in cells:
+        known["cells"][c["condition"]].append(c)
+
+
+def _case(name: str, merged: dict, frozen: dict) -> dict:
+    checked = _parts(frozen["parts"])
+    kinds = [kind for _, kind, _ in checked]
+    cells = [
+        _merged_cell(
+            condition, merged["cells"][condition], name, merged["ranking"], checked
+        )
+        for condition in CONDITIONS
+    ]
     return {
-        "case": case["case"],
-        **strata(frozen["parts"], case.get("ranking")),
+        "case": name,
+        **strata(frozen["parts"], merged["ranking"]),
+        "complete": all(c["ran"] for c in cells),
         "fact_parts": kinds.count("fact"),
         "gap_parts": kinds.count("gap"),
-        "cells": [_cell(c, frozen["parts"]) for c in cells],
+        "cells": cells,
     }
 
 
-def score(result, gold) -> dict:
-    """The case-level scoring of one comparison run: LOCAL only (case, part and passage IDs).
+def score(results, gold) -> dict:
+    """The case-level scoring of one repetition: LOCAL only (case, part and passage IDs).
 
-    ``result`` is the local ``result.json`` of ``run_comparison.py``. Per case its stratum and
-    part counts; per cell its outcome, calls sent, searches, ``decision_points`` and ``counts``
-    (None for B: the search measures do not apply). Every case of the result must be in the gold
-    file with the same editions; a gold case without a result is not scored.
+    ``results`` is a list of local ``result.json`` files of ``run_comparison.py`` (several when
+    a run was resumed), merged per case and condition. For the gold cases in any result, in the
+    gold file's order: the stratum, part counts, ``complete`` (B, C and D all ran) and one cell
+    per condition with ``ran``, its outcome, calls sent, searches, ``decision_points`` and
+    ``counts`` (None for B: the search measures do not apply). Every result case must be in the
+    gold file with its question and editions, and carry one ranking in every result; every
+    record must name its case and start from the top of that ranking.
     """
     frozen = _gold(gold)
-    cases = result.get("cases") if isinstance(result, dict) else None
-    if not isinstance(cases, list) or not all(isinstance(c, dict) for c in cases):
-        raise ValueError("a result holds a list of cases")
-    names = [case.get("case") for case in cases]
-    if not all(_text(name) for name in names) or len(set(names)) != len(names):
-        raise ValueError("every case of the result needs its own case ID")
-    unknown = sum(name not in frozen for name in names)
+    if not isinstance(results, list) or not results:
+        raise ValueError("score takes a list of one or more results")
+    listed = []
+    for result in results:
+        cases = result.get("cases") if isinstance(result, dict) else None
+        if not isinstance(cases, list) or not all(isinstance(c, dict) for c in cases):
+            raise ValueError("a result holds a list of cases")
+        names = [case.get("case") for case in cases]
+        if not all(_text(name) for name in names) or len(set(names)) != len(names):
+            raise ValueError("every case of a result needs its own case ID")
+        listed += cases
+    unknown = len({case["case"] for case in listed} - set(frozen))
     if unknown:
-        raise ValueError(f"{unknown} case(s) of the result are not in the gold file")
-    return {"cases": [_case(case, frozen[case["case"]]) for case in cases]}
+        raise ValueError(f"{unknown} case(s) of the results are not in the gold file")
+    merged: dict[str, dict] = {}
+    for case in listed:
+        _merge(merged, case, frozen[case["case"]])
+    return {
+        "gold_cases": len(frozen),
+        "cases": [
+            _case(name, merged[name], frozen[name]) for name in frozen if name in merged
+        ],
+    }
 
 
 def _histogram(values) -> dict[str, int]:
@@ -497,32 +701,44 @@ def _added(total: dict, more: dict) -> dict:
 
 
 def summary(scored: dict) -> dict:
-    """Per-condition counts of a ``score`` result: no case ID, no passage ID, no list in case
-    order. Calls per cell are the generation calls sent and searches per cell include refused
-    requests, both over the cells with a record; B gets its cells and calls only."""
+    """Counts of a ``score`` result, safe to show: no case ID, no passage ID, no list in case
+    order.
+
+    ``gold_cases``; ``cases_in_results`` (gold cases in any result); ``complete_cases`` (B, C
+    and D all ran) and ``incomplete_cases`` (the other cases in the results; a gold case in no
+    result is neither), so the repetition is complete when ``complete_cases`` equals
+    ``gold_cases``. Per condition: its cells (one per case in the results), those ``not_run``,
+    calls per cell (generation calls sent) and searches per cell (refused requests included)
+    over the cells that ran, the search measures of C and D, and D's coverage diagnostics.
+    """
+    cases = scored["cases"]
+    complete = sum(case["complete"] for case in cases)
     conditions = {}
     for condition in CONDITIONS:
         cells = [
-            c
-            for case in scored["cases"]
-            for c in case["cells"]
-            if c["condition"] == condition
+            c for case in cases for c in case["cells"] if c["condition"] == condition
         ]
-        recorded = [c for c in cells if c["recorded"]]
+        ran = [c for c in cells if c["ran"]]
         entry = {
             "cells": len(cells),
-            "without_record": len(cells) - len(recorded),
-            "calls_per_cell": _histogram(c["calls"] for c in recorded),
+            "not_run": len(cells) - len(ran),
+            "calls_per_cell": _histogram(c["calls"] for c in ran),
         }
         if condition in SEARCHING:
-            total = _counts([], [])
+            total = _zero(condition)
             for c in cells:
                 total = _added(total, c["counts"])
             entry.update(
-                total, searches_per_cell=_histogram(c["searches"] for c in recorded)
+                total, searches_per_cell=_histogram(c["searches"] for c in ran)
             )
         conditions[condition] = entry
-    return {"conditions": conditions}
+    return {
+        "gold_cases": scored["gold_cases"],
+        "cases_in_results": len(cases),
+        "complete_cases": complete,
+        "incomplete_cases": len(cases) - complete,
+        "conditions": conditions,
+    }
 
 
 def _rate(entry, name: str) -> tuple[int, int]:
@@ -536,16 +752,16 @@ def _rate(entry, name: str) -> tuple[int, int]:
     return k, n
 
 
-def t3(d: dict, c: dict) -> dict:
+def t3(d: dict, c: dict, complete: bool) -> dict:
     """T3, fewer unnecessary searches (``d`` and ``c``: D's and C's ``summary`` entries).
 
     Met when D's unnecessary searches are at most a third of D's no-search-needed decision
-    points with an action and at least 2 fewer than C's; assessable when D has at least 5 such
-    decision points.
+    points with an action and at least 2 fewer than C's; assessable on a complete repetition
+    when D has at least 5 such decision points. Two of three repetitions are the caller's rule.
     """
     d_k, d_n = _rate(d, "unnecessary_rate")
     c_k, _ = _rate(c, "unnecessary_rate")
-    if d_n < MIN_POINTS:
+    if not _flag(complete, "complete") or d_n < MIN_POINTS:
         status = "not_assessable"
     else:
         status = "met" if 3 * d_k <= d_n and d_k <= c_k - 2 else "failed"
@@ -557,15 +773,16 @@ def t3(d: dict, c: dict) -> dict:
     }
 
 
-def t4(d: dict, c: dict) -> dict:
+def t4(d: dict, c: dict, complete: bool) -> dict:
     """T4, no more missed useful searches (``d`` and ``c``: D's and C's ``summary`` entries).
 
     Met when D's missed useful searches are at most C's plus 1 and at most a fifth of D's
-    search-needed decision points with an action; assessable when D has at least 5 of them.
+    search-needed decision points with an action; assessable on a complete repetition when D
+    has at least 5 of them. Two of three repetitions are the caller's rule.
     """
     d_k, d_n = _rate(d, "missed_rate")
     c_k, _ = _rate(c, "missed_rate")
-    if d_n < MIN_POINTS:
+    if not _flag(complete, "complete") or d_n < MIN_POINTS:
         status = "not_assessable"
     else:
         status = "met" if d_k <= c_k + 1 and 5 * d_k <= d_n else "failed"
@@ -706,15 +923,28 @@ def reference_outcome(r1, r2, repetition_complete) -> dict:
     return {"outcome": code, "text": REFERENCE[code]}
 
 
-def _public(path: Path) -> bool:
-    """Whether ``path`` lies in ``results/``, however it is spelled (a link, another case)."""
-    target = path.resolve()
-    if target.is_relative_to(RESULTS.resolve()):
+def _inside(target: Path, folder: Path) -> bool:
+    """Whether the resolved ``target`` lies in ``folder``, however it is spelled (a link,
+    another letter case)."""
+    if target.is_relative_to(folder.resolve()):
         return True
-    return RESULTS.is_dir() and any(
-        folder.exists() and os.path.samefile(folder, RESULTS)
-        for folder in (target, *target.parents)
+    return folder.is_dir() and any(
+        a.exists() and os.path.samefile(a, folder) for a in (target, *target.parents)
     )
+
+
+def _placement(path: Path) -> str | None:
+    """Why ``path`` may not hold a scoring, or None: never in ``results/``, and in the
+    repository only under this module's git-ignored ``local/`` folder."""
+    target = path.resolve()
+    if _inside(target, RESULTS):
+        return "--out lies in results/, which is public; case-level scoring stays local"
+    if _inside(target, REPO) and not _inside(target, LOCAL):
+        return (
+            "--out lies in the repository outside tools/commentary_rag/local/; write the "
+            "scoring there or outside the repository"
+        )
+    return None
 
 
 def _load(path: Path):
@@ -734,37 +964,39 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument(
         "--result",
         type=Path,
+        action="append",
         required=True,
-        help="the LOCAL result.json of a comparison run",
+        help="a LOCAL result.json of the repetition; repeat it for a resumed run",
     )
     parser.add_argument("--gold", type=Path, required=True, help="the frozen gold file")
     parser.add_argument(
         "--out",
         type=Path,
         required=True,
-        help="the new JSON file for the case-level scoring, outside results/",
+        help="the new JSON file for the case-level scoring: under "
+        "tools/commentary_rag/local/ or outside the repository",
     )
     parser.add_argument(
         "--label", help="a label written with the scoring, e.g. SIMULATED"
     )
     args = parser.parse_args(argv)
-    # Both refusals of the output come before any input is read.
-    if _public(args.out):
-        return _refuse(
-            "--out lies in results/, which is public; case-level scoring stays local"
-        )
+    # Every refusal of the output comes before any input is read.
+    placement = _placement(args.out)
+    if placement:
+        return _refuse(placement)
     if args.out.exists() or args.out.is_symlink():
         return _refuse("--out already exists; a scoring never replaces a file")
     if not args.out.parent.is_dir():
         return _refuse("--out must name a file in an existing folder")
     try:
-        inputs = (_load(args.result), _load(args.gold))
+        results = [_load(path) for path in args.result]
+        gold = _load(args.gold)
     except (OSError, ValueError) as exc:
         return _refuse(
             f"--result and --gold must be readable JSON files ({type(exc).__name__})"
         )
     try:
-        scored = score(*inputs)
+        scored = score(results, gold)
     except ValueError as exc:
         return _refuse(str(exc))
     counts = summary(scored)

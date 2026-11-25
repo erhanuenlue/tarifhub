@@ -1,14 +1,16 @@
 """Offline tests for the deterministic Phase 4 scorer (``phase4_scoring.py``).
 
 Synthetic records and gold parts only: no model, no network, no books, and nothing written
-outside pytest's tmp_path (the results/ guard is tested by refusal, the folder listed before and
-after). Passage IDs follow the synthetic test corpus (``test_evidence_search.world``, July
-passages ``jul/a`` to ``jul/l``); C's and D's initial context is ``jul/k``, ``jul/h``, ``jul/a``,
-``jul/l``, ``jul/i`` (conditions.md, section 7). Expected values are worked out by hand from
-the frozen rubric (phase4/rubric-and-thresholds.md); the outcome tables are checked against row
-predicates written here from the rubric. Two tests compare scorer output with scorer output
-instead: the same trace read as C and as D, with D's coverage record present, absent or
-contradictory, and the command line's file and stdout against ``score`` and ``summary``.
+outside pytest's tmp_path (the results/ and repository guards are tested by refusal, nothing is
+read or written under local/). Passage IDs follow the synthetic test corpus
+(``test_evidence_search.world``, July passages ``jul/a`` to ``jul/l``); C's and D's initial
+context is ``jul/k``, ``jul/h``, ``jul/a``, ``jul/l``, ``jul/i`` (conditions.md, section 7), the
+top 5 of the synthetic ranking. Expected values are worked out by hand from the frozen rubric
+(phase4/rubric-and-thresholds.md); the outcome tables are checked against row predicates written
+here from the rubric. Some tests compare scorer output with scorer output instead: the same
+trace read as C and as D, with D's coverage record present, absent or contradictory; a resumed
+run against one uninterrupted run; and the command line's file and stdout against ``score`` and
+``summary``.
 
     UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run \\
         --project services/ingestion --frozen --offline --extra ai --extra dev \\
@@ -76,6 +78,8 @@ COMPLETE = {
     "search_for": None,
     "missing_not_reported": False,
 }
+NO_CHECKS = dict.fromkeys(("ok", "malformed", "passage_reference", "search_for"), 0)
+NO_MARKS = {"marked_missing": 0, "marked_all_covered": 0}
 
 
 def search(rounds: int | None, outcome: str, *returned: str) -> dict:
@@ -100,7 +104,7 @@ def record(
     outcome: str = "answer",
     initial: tuple = INITIAL,
 ) -> dict:
-    """A cell's record as ``evidence_agent._case`` leaves it: one call per tool choice."""
+    """A cell's record as ``evidence_agent._case`` leaves it: one sent call per tool choice."""
     searches = [copy.deepcopy(s) for s in searches]
     return {
         "case": "X-01",
@@ -156,30 +160,31 @@ def cell(condition: str, rec: dict | None) -> dict:
     }
 
 
+def gold_case(case_id: str, parts: list) -> dict:
+    return {
+        "id": case_id,
+        "question": f"Synthetic question of {case_id}",
+        "editions": [JUL],
+        "expected_status": "answered",
+        "parts": parts,
+    }
+
+
+def result_case(case_id: str, cells: list, ranking: list = RANKING) -> dict:
+    return {
+        "case": case_id,
+        "question": f"Synthetic question of {case_id}",
+        "editions": [JUL],
+        "ranking": list(ranking),
+        "cells": cells,
+    }
+
+
 def one_cell(rec: dict | None, parts: list, condition: str) -> dict:
     """The scored cell of a one-case result that holds only this cell."""
-    result = {
-        "cases": [
-            {
-                "case": "X-01",
-                "question": "synthetic",
-                "editions": [JUL],
-                "ranking": RANKING,
-                "cells": [cell(condition, rec)],
-            }
-        ]
-    }
-    gold = {
-        "cases": [
-            {
-                "id": "X-01",
-                "editions": [JUL],
-                "expected_status": "answered",
-                "parts": parts,
-            }
-        ]
-    }
-    return ps.score(result, gold)["cases"][0]["cells"][0]
+    result = {"cases": [result_case("X-01", [cell(condition, rec)])]}
+    scored = ps.score([result], {"cases": [gold_case("X-01", parts)]})
+    return next(c for c in scored["cases"][0]["cells"] if c["condition"] == condition)
 
 
 def fixture() -> tuple[dict, dict]:
@@ -191,66 +196,72 @@ def fixture() -> tuple[dict, dict]:
     """
     direct = record("coverage", ["auto"])
     direct["coverage"] = [COMPLETE]
-    b_cell = record("fixed10", [None], initial=tuple(RANKING))
+    b_one = record("fixed10", [None], initial=tuple(RANKING))
+    c_one = record("agent", ["auto", "auto"], [search(1, "passages", "jul/c")])
+    c_two = record("agent", ["auto", "auto"], [search(1, "passages", "jul/g")])
     result = {
         "cases": [
-            {
-                "case": "X-01",
-                "question": "synthetic one",
-                "editions": [JUL],
-                "ranking": RANKING,
-                "cells": [
-                    cell("fixed10", b_cell),
-                    cell(
-                        "agent",
-                        record(
-                            "agent", ["auto", "auto"], [search(1, "passages", "jul/c")]
-                        ),
-                    ),
+            result_case(
+                "X-01",
+                [
+                    cell("fixed10", b_one),
+                    cell("agent", c_one),
                     cell("coverage", direct),
                 ],
-            },
-            {
-                "case": "X-02",
-                "question": "synthetic two",
-                "editions": [JUL],
-                "ranking": RANKING,
-                "cells": [
-                    cell("fixed10", copy.deepcopy(b_cell)),
-                    cell(
-                        "agent",
-                        record(
-                            "agent", ["auto", "auto"], [search(1, "passages", "jul/g")]
-                        ),
-                    ),
+            ),
+            result_case(
+                "X-02",
+                [
+                    cell("fixed10", changed(b_one, case="X-02")),
+                    cell("agent", changed(c_two, case="X-02")),
                     cell("coverage", None),
                 ],
-            },
+            ),
         ]
     }
     gold = {
         "cases": [
-            {
-                "id": "X-01",
-                "editions": [JUL],
-                "expected_status": "answered",
-                "parts": [fact("X-01-R1", "jul/k"), fact("X-01-R2", "jul/c", "jul/f")],
-            },
-            {
-                "id": "X-02",
-                "editions": [JUL],
-                "expected_status": "insufficient_evidence",
-                "parts": [gap("X-02-R1")],
-            },
-            {
-                "id": "X-03",
-                "editions": [JUL],
-                "expected_status": "answered",
-                "parts": [fact("X-03-R1", "jul/b")],
-            },
+            gold_case(
+                "X-01", [fact("X-01-R1", "jul/k"), fact("X-01-R2", "jul/c", "jul/f")]
+            ),
+            gold_case("X-02", [gap("X-02-R1")]),
+            gold_case("X-03", [fact("X-03-R1", "jul/b")]),
         ]
     }
     return result, gold
+
+
+def resumed() -> tuple[dict, dict, dict]:
+    """The fixture's repetition run twice: run 1 stopped after X-01's C (its D held back, X-02
+    not reached); run 2 resumed it, its X-01 B and C refused by the books as already run."""
+    result, gold = fixture()
+    one, two = copy.deepcopy(result["cases"])
+    run_1 = {
+        "cases": [
+            result_case(
+                "X-01", [one["cells"][0], one["cells"][1], cell("coverage", None)]
+            )
+        ]
+    }
+    run_2 = {
+        "cases": [
+            result_case(
+                "X-01",
+                [
+                    cell(
+                        "fixed10",
+                        record(
+                            "fixed10", [], outcome="refused", initial=tuple(RANKING)
+                        ),
+                    ),
+                    cell("agent", record("agent", [], outcome="refused")),
+                    one["cells"][2],
+                ],
+            ),
+            two,
+        ]
+    }
+    return run_1, run_2, gold
 
 
 # Strata
@@ -529,12 +540,27 @@ def test_a_decision_point_without_action_is_listed_and_left_out_of_the_rates():
         {"k": 0, "n": 1},
         {"k": 0, "n": 1},
     )
-    # The deadline after the reservation, before sending: the call is recorded but not sent.
-    unsent = changed(later, generation_calls=1)
-    assert ps.decision_points(unsent, MISSING, "agent") == ps.decision_points(
-        later, MISSING, "agent"
+
+
+def test_a_call_reserved_but_never_sent_is_no_generation_call():
+    """The deadline after the reservation, before sending: the entry stays in ``calls`` with
+    cost basis not_sent, but only calls 1 to ``generation_calls`` were sent."""
+    later = record(
+        "agent", ["auto", "auto"], [search(1, "passages", "jul/b")], outcome="deadline"
     )
-    assert one_cell(unsent, MISSING, "agent")["calls"] == 1
+    unsent = changed(later, generation_calls=1)
+    unsent["calls"][1].update(cost_usd=0.0, cost_basis="not_sent")
+    assert view(
+        ps.decision_points(unsent, MISSING, "agent"), "call", "action", "measure"
+    ) == [(1, "search_run", "warranted")]
+    scored = one_cell(unsent, MISSING, "agent")
+    assert (
+        scored["calls"],
+        scored["counts"]["decision_points"]["search_needed"],
+        scored["counts"]["missed_rate"],
+    ) == (1, {"with_action": 1, "without_action": 0}, {"k": 0, "n": 1})
+    first = changed(record("agent", ["auto"], outcome="deadline"), generation_calls=0)
+    assert ps.decision_points(first, MISSING, "agent") == []
 
 
 def test_a_full_passage_budget_after_one_search_ends_the_decision_points():
@@ -613,18 +639,15 @@ def test_cells_without_a_call_or_a_record_and_b_cells_have_no_decision_points():
     )
     assert ps.decision_points(b_rec, MISSING, "fixed10") == []
     held = one_cell(None, MISSING, "coverage")
-    assert (held["recorded"], held["calls"], held["decision_points"]) == (
-        False,
-        None,
-        [],
-    )
+    assert (held["ran"], held["calls"], held["decision_points"]) == (False, None, [])
     assert held["counts"]["missed_rate"] == {"k": 0, "n": 0}
     b_cell = one_cell(b_rec, MISSING, "fixed10")
-    assert (b_cell["calls"], b_cell["decision_points"], b_cell["counts"]) == (
-        1,
-        [],
-        None,
-    )
+    assert (
+        b_cell["ran"],
+        b_cell["calls"],
+        b_cell["decision_points"],
+        b_cell["counts"],
+    ) == (True, 1, [], None)
 
 
 BROKEN = {
@@ -675,6 +698,47 @@ BROKEN = {
         record("agent", ["auto", "auto"], [search(1, "refused_rounds")]),
         "agent",
     ),
+    "first-round-numbered-2": (
+        record("agent", ["auto", "auto"], [search(2, "passages", "jul/c")]),
+        "agent",
+    ),
+    "round-repeated": (
+        record(
+            "agent",
+            ["auto", "auto", "none"],
+            [search(1, "no_new_passages"), search(1, "passages", "jul/c")],
+        ),
+        "agent",
+    ),
+    "round-above-the-limit": (
+        record(
+            "agent",
+            ["auto", "auto", "auto"],
+            [
+                search(1, "no_new_passages"),
+                search(2, "no_new_passages"),
+                search(3, "no_new_passages"),
+            ],
+            outcome="deadline",
+        ),
+        "agent",
+    ),
+    "passages-without-returned": (
+        record("agent", ["auto", "auto"], [search(1, "passages")]),
+        "agent",
+    ),
+    "no-new-passages-with-returned": (
+        record("agent", ["auto", "auto"], [search(1, "no_new_passages", "jul/c")]),
+        "agent",
+    ),
+    "tool-error-with-returned": (
+        record("agent", ["auto", "auto"], [search(1, "tool_error", "jul/c")]),
+        "agent",
+    ),
+    "refused-with-returned": (
+        record("agent", ["auto", "auto"], [search(1, "refused_repeat", "jul/c")]),
+        "agent",
+    ),
     "tool-choice-missing": (record("agent", [None]), "agent"),
     "calls-out-of-order": (
         changed(record("agent", ["auto"]), calls=[{"call": 2, "tool_choice": "auto"}]),
@@ -682,6 +746,31 @@ BROKEN = {
     ),
     "generation-calls-above-calls": (
         changed(record("agent", ["auto"]), generation_calls=2),
+        "agent",
+    ),
+    "unsent-call-on-an-answer": (
+        changed(
+            record("agent", ["auto", "auto"], [search(1, "passages", "jul/c")]),
+            generation_calls=1,
+        ),
+        "agent",
+    ),
+    "two-unsent-calls": (
+        changed(
+            record(
+                "agent",
+                ["auto", "auto"],
+                [search(1, "passages", "jul/c")],
+                outcome="deadline",
+            ),
+            generation_calls=0,
+        ),
+        "agent",
+    ),
+    "unsent-call-before-any-search": (
+        changed(
+            record("agent", ["auto", "auto"], outcome="deadline"), generation_calls=1
+        ),
         "agent",
     ),
     "record-of-another-condition": (record("coverage", ["auto"]), "agent"),
@@ -696,13 +785,141 @@ def test_a_trace_that_cannot_be_rebuilt_is_refused(name):
         ps.decision_points(rec, MISSING, condition)
 
 
-# Scoring a run and its summary
+# D's coverage diagnostics (exploratory, counts only)
 
 
-def test_score_gives_each_case_its_stratum_and_each_cell_its_decision_points():
+def test_d_coverage_diagnostics_are_counts_beside_the_measures():
+    entries = [
+        {
+            "call": 1,
+            "action": "search",
+            "check": "search_for",
+            "parts": 2,
+            "covered": 2,
+            "missing": 0,
+            "search_for": 1,
+            "missing_not_reported": None,
+        },
+        {
+            "call": 2,
+            "action": "search",
+            "check": "ok",
+            "parts": 2,
+            "covered": 1,
+            "missing": 1,
+            "search_for": 2,
+            "missing_not_reported": None,
+        },
+        {
+            "call": 3,
+            "action": "answer",
+            "check": "ok",
+            "parts": 2,
+            "covered": 2,
+            "missing": 0,
+            "search_for": None,
+            "missing_not_reported": False,
+        },
+    ]
+    rec = changed(
+        record(
+            "coverage",
+            ["auto", "auto", "none"],
+            [search(1, "refused_coverage"), search(2, "passages", "jul/f")],
+        ),
+        coverage=entries,
+    )
+    counts = one_cell(rec, MISSING, "coverage")["counts"]
+    assert counts["coverage_diagnostics"] == {
+        "checks": {
+            "search": {**NO_CHECKS, "ok": 1, "search_for": 1},
+            "answer": {**NO_CHECKS, "ok": 1},
+        },
+        "missing_not_reported": {"true": 0, "false": 1, "null": 2},
+        # call 1's entry is not ok and call 3 is no decision point: only call 2 is tabled
+        "decision_points_with_ok_check": {
+            "search_needed": {"marked_missing": 1, "marked_all_covered": 0},
+            "gap_check": NO_MARKS,
+            "no_search_needed": NO_MARKS,
+        },
+        "records_without_coverage": 0,
+    }
+    assert (counts["missed_rate"], counts["warranted"], counts["yield"]) == (
+        {"k": 1, "n": 2},
+        1,
+        {"k": 1, "n": 1},
+    )
+    plain = one_cell(changed(rec, coverage=[]), MISSING, "coverage")["counts"]
+    del plain["coverage_diagnostics"], counts["coverage_diagnostics"]
+    assert plain == counts  # the diagnostics never change a measure
+
+
+def test_d_coverage_diagnostics_table_and_flags():
+    marked = changed(
+        record("coverage", ["auto"]),
+        coverage=[
+            {**COMPLETE, "covered": 1, "missing": 1, "missing_not_reported": True}
+        ],
+    )
+    got = one_cell(marked, COVERED, "coverage")["counts"]["coverage_diagnostics"]
+    assert got["decision_points_with_ok_check"]["no_search_needed"] == {
+        "marked_missing": 1,
+        "marked_all_covered": 0,
+    }
+    assert got["missing_not_reported"] == {"true": 1, "false": 0, "null": 0}
+    malformed = changed(
+        record("coverage", ["auto"]),
+        coverage=[
+            {
+                "call": 1,
+                "action": "answer",
+                "check": "malformed",
+                "parts": None,
+                "covered": None,
+                "missing": None,
+                "search_for": None,
+                "missing_not_reported": None,
+            }
+        ],
+    )
+    got = one_cell(malformed, COVERED, "coverage")["counts"]["coverage_diagnostics"]
+    assert got["checks"]["answer"] == {**NO_CHECKS, "malformed": 1}
+    assert got["decision_points_with_ok_check"] == {
+        kind: NO_MARKS for kind in ("search_needed", "gap_check", "no_search_needed")
+    }
+    absent = one_cell(record("coverage", ["auto"]), COVERED, "coverage")["counts"]
+    assert absent["coverage_diagnostics"]["records_without_coverage"] == 1
+
+
+BAD_COVERAGE = {
+    "not-a-list": {"call": 1},
+    "unknown-check": [{**COMPLETE, "check": "fine"}],
+    "unknown-action": [{**COMPLETE, "action": "think"}],
+    "call-not-sent": [{**COMPLETE, "call": 2}],
+    "call-twice": [COMPLETE, COMPLETE],
+    "action-not-the-calls": [
+        {**COMPLETE, "action": "search", "search_for": 1, "missing_not_reported": None}
+    ],
+    "ok-without-a-missing-count": [{**COMPLETE, "missing": None}],
+    "flag-not-a-bool": [{**COMPLETE, "missing_not_reported": 0}],
+}
+
+
+@pytest.mark.parametrize("name", list(BAD_COVERAGE))
+def test_a_d_coverage_record_that_disagrees_with_its_trace_is_refused(name):
+    rec = changed(record("coverage", ["auto"]), coverage=BAD_COVERAGE[name])
+    with pytest.raises(ValueError):
+        one_cell(rec, MISSING, "coverage")
+
+
+# Scoring a repetition and its summary
+
+
+def test_score_gives_each_case_its_stratum_completeness_and_each_cell_its_decision_points():
     result, gold = fixture()
-    scored = ps.score(result, gold)
-    assert len(scored["cases"]) == 2  # X-03 has no result: not scored
+    scored = ps.score([result], gold)
+    assert scored["gold_cases"] == 3
+    assert len(scored["cases"]) == 2  # X-03 is in no result: not scored
     one, two = scored["cases"]
     assert (
         one["case"],
@@ -711,20 +928,23 @@ def test_score_gives_each_case_its_stratum_and_each_cell_its_decision_points():
         one["best_rank"],
         one["fact_parts"],
         one["gap_parts"],
-    ) == ("X-01", "S2", False, {"X-01-R1": 1, "X-01-R2": 6}, 2, 0)
-    assert (two["case"], two["stratum"], two["best_rank"], two["gap_parts"]) == (
-        "X-02",
-        "G",
-        {},
-        1,
-    )
+        one["complete"],
+    ) == ("X-01", "S2", False, {"X-01-R1": 1, "X-01-R2": 6}, 2, 0, True)
+    assert (
+        two["case"],
+        two["stratum"],
+        two["best_rank"],
+        two["gap_parts"],
+        two["complete"],
+    ) == ("X-02", "G", {}, 1, False)
     b_cell, c_cell, d_cell = one["cells"]
     assert (
         b_cell["condition"],
+        b_cell["ran"],
         b_cell["outcome"],
         b_cell["calls"],
         b_cell["counts"],
-    ) == ("fixed10", "answer", 1, None)
+    ) == ("fixed10", True, "answer", 1, None)
     assert view(
         c_cell["decision_points"], "call", "kind", "action", "measure", "yield"
     ) == [
@@ -734,20 +954,28 @@ def test_score_gives_each_case_its_stratum_and_each_cell_its_decision_points():
     assert view(d_cell["decision_points"], "call", "kind", "action", "measure") == [
         (1, "search_needed", "answer", "missed")
     ]
-    assert [c["recorded"] for c in two["cells"]] == [True, True, False]
+    assert view(two["cells"], "condition", "ran", "outcome") == [
+        ("fixed10", True, "answer"),
+        ("agent", True, "answer"),
+        ("coverage", False, None),
+    ]
 
 
 def test_summary_counts_per_condition_and_names_no_case_or_passage():
     result, gold = fixture()
-    counts = ps.summary(ps.score(result, gold))
+    counts = ps.summary(ps.score([result], gold))
     none = {"with_action": 0, "without_action": 0}
     no_refusal = {"total": 0, "search_needed": 0, "gap_check": 0, "no_search_needed": 0}
     assert counts == {
+        "gold_cases": 3,
+        "cases_in_results": 2,
+        "complete_cases": 1,
+        "incomplete_cases": 1,
         "conditions": {
-            "fixed10": {"cells": 2, "without_record": 0, "calls_per_cell": {"1": 2}},
+            "fixed10": {"cells": 2, "not_run": 0, "calls_per_cell": {"1": 2}},
             "agent": {
                 "cells": 2,
-                "without_record": 0,
+                "not_run": 0,
                 "calls_per_cell": {"2": 2},
                 "searches_per_cell": {"1": 2},
                 "searches": 2,
@@ -769,7 +997,7 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
             },
             "coverage": {
                 "cells": 2,
-                "without_record": 1,
+                "not_run": 1,
                 "calls_per_cell": {"1": 1},
                 "searches_per_cell": {"0": 1},
                 "searches": 0,
@@ -788,24 +1016,87 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
                 "anomalies": 0,
                 "unnecessary_rate": {"k": 0, "n": 0},
                 "missed_rate": {"k": 1, "n": 1},
+                "coverage_diagnostics": {
+                    "checks": {"search": NO_CHECKS, "answer": {**NO_CHECKS, "ok": 1}},
+                    "missing_not_reported": {"true": 0, "false": 1, "null": 0},
+                    "decision_points_with_ok_check": {
+                        "search_needed": {"marked_missing": 0, "marked_all_covered": 1},
+                        "gap_check": NO_MARKS,
+                        "no_search_needed": NO_MARKS,
+                    },
+                    "records_without_coverage": 0,
+                },
             },
-        }
+        },
     }
     text = json.dumps(counts)
-    for name in ("X-01", "X-02", "X-03", "jul/", "R1", "R2"):
+    for name in ("X-01", "X-02", "X-03", "jul/", "R1", "R2", "Synthetic question"):
         assert name not in text
     d, c = counts["conditions"]["coverage"], counts["conditions"]["agent"]
-    assert (ps.t3(d, c)["status"], ps.t4(d, c)["status"]) == (
+    complete = counts["complete_cases"] == counts["gold_cases"]  # False: 1 of 3
+    assert (ps.t3(d, c, complete)["status"], ps.t4(d, c, complete)["status"]) == (
         NA,
         NA,
-    )  # D's n is 0 and 1
+    )
+
+
+def test_the_results_of_a_resumed_run_are_merged_by_case_and_condition():
+    run_1, run_2, gold = resumed()
+    merged = ps.score([run_1, run_2], gold)
+    result, _ = fixture()
+    assert merged == ps.score([result], gold)  # the same as one uninterrupted run
+    assert ps.score([run_2, run_1], gold) == merged  # whatever the order of the results
+
+
+def test_a_cell_that_ran_in_no_result_is_reported_as_not_run():
+    _, run_2, gold = resumed()
+    scored = ps.score([{"cases": [run_2["cases"][0]]}], gold)["cases"][0]
+    assert view(
+        scored["cells"], "condition", "ran", "outcome", "calls", "decision_points"
+    ) == [
+        ("fixed10", False, "refused", None, []),
+        ("agent", False, "refused", None, []),
+        ("coverage", True, "answer", 1, [scored["cells"][2]["decision_points"][0]]),
+    ]
+    assert scored["complete"] is False
+    assert scored["cells"][1]["counts"]["missed_rate"] == {"k": 0, "n": 0}
+
+
+def test_two_cells_that_ran_for_one_case_and_condition_are_refused():
+    result, gold = fixture()
+    with pytest.raises(ValueError, match="two cells"):
+        ps.score([result, copy.deepcopy(result)], gold)
+
+
+def test_a_case_carries_one_ranking_in_every_result():
+    result, gold = fixture()
+    other = {"cases": [result_case("X-01", [], ranking=[*RANKING[1:], "jul/g"])]}
+    with pytest.raises(ValueError, match="ranking"):
+        ps.score([result, other], gold)
+
+
+def test_initial_passages_must_be_the_top_of_the_case_ranking():
+    """Codex's case: D's fifth initial passage swapped for the sixth-ranked jul/c turns a
+    search-needed point into a no-search-needed one; scored against its case, it is refused."""
+    swapped = record("coverage", ["auto"], initial=(*INITIAL[:4], "jul/c"))
+    assert view(ps.decision_points(swapped, MISSING, "coverage"), "kind") == [
+        ("no_search_needed",)
+    ]
+    with pytest.raises(ValueError, match="top 5"):
+        one_cell(swapped, MISSING, "coverage")
+    with pytest.raises(ValueError, match="top 10"):
+        one_cell(
+            record("fixed10", [None], initial=(*RANKING[:9], "jul/g")),
+            MISSING,
+            "fixed10",
+        )
 
 
 def test_score_refuses_a_case_the_gold_file_lacks_without_naming_it():
     result, gold = fixture()
     gold["cases"] = gold["cases"][1:]
     with pytest.raises(ValueError, match="not in the gold file") as refused:
-        ps.score(result, gold)
+        ps.score([result], gold)
     assert "X-01" not in str(refused.value)
 
 
@@ -825,10 +1116,30 @@ def other_editions(result, gold):
     result["cases"][0]["editions"] = ["2026-01-01"]
 
 
+def other_question(result, gold):
+    result["cases"][0]["question"] = "Another question"
+
+
+def gold_without_question(result, gold):
+    del gold["cases"][0]["question"]
+
+
+def record_of_another_case(result, gold):
+    result["cases"][0]["cells"][1]["record"]["case"] = "X-02"
+
+
 def b_searched(result, gold):
     result["cases"][0]["cells"][0]["record"]["searches"] = [
         search(1, "passages", "jul/g")
     ]
+
+
+def b_not_the_top_10(result, gold):
+    result["cases"][0]["cells"][0]["record"]["supplied"] = [*RANKING[:9], "jul/g"]
+
+
+def d_not_the_top_5(result, gold):
+    result["cases"][0]["cells"][2]["record"]["supplied"] = [*INITIAL[:4], "jul/c"]
 
 
 def record_of_another_condition(result, gold):
@@ -850,7 +1161,12 @@ def damaged_unscored_gold_case(result, gold):
         phase3_condition,
         condition_twice,
         other_editions,
+        other_question,
+        gold_without_question,
+        record_of_another_case,
         b_searched,
+        b_not_the_top_10,
+        d_not_the_top_5,
         record_of_another_condition,
         gold_case_twice,
         damaged_unscored_gold_case,
@@ -861,7 +1177,7 @@ def test_score_refuses_a_damaged_result_or_gold_file(damage):
     result, gold = fixture()
     damage(result, gold)
     with pytest.raises(ValueError):
-        ps.score(result, gold)
+        ps.score([result], gold)
 
 
 # Thresholds
@@ -897,7 +1213,7 @@ def entry(unnecessary=(0, 0), missed=(0, 0)) -> dict:
     ],
 )
 def test_t3(d, c_k, expected):
-    got = ps.t3(entry(unnecessary=d), entry(unnecessary=(c_k, 9)))
+    got = ps.t3(entry(unnecessary=d), entry(unnecessary=(c_k, 9)), True)
     assert got == {
         "status": expected,
         "d_unnecessary": d[0],
@@ -918,13 +1234,23 @@ def test_t3(d, c_k, expected):
     ids=["five-points", "four-points", "a-fifth", "above-a-fifth", "c-plus-2"],
 )
 def test_t4(d, c_k, expected):
-    got = ps.t4(entry(missed=d), entry(missed=(c_k, 9)))
+    got = ps.t4(entry(missed=d), entry(missed=(c_k, 9)), True)
     assert got == {
         "status": expected,
         "d_missed": d[0],
         "d_search_needed_with_action": d[1],
         "c_missed": c_k,
     }
+
+
+@pytest.mark.parametrize("threshold", [ps.t3, ps.t4], ids=["T3", "T4"])
+def test_t3_and_t4_are_not_assessable_on_an_incomplete_repetition(threshold):
+    d, c = (
+        entry(unnecessary=(0, 9), missed=(0, 9)),
+        entry(unnecessary=(5, 9), missed=(5, 9)),
+    )
+    assert threshold(d, c, True)["status"] == "met"
+    assert threshold(d, c, False)["status"] == NA
 
 
 @pytest.mark.parametrize(
@@ -1060,20 +1386,22 @@ INVALID = {
     "negative-count": lambda: ps.t1(-1, 0, True),
     "bool-count": lambda: ps.t2(True, 0, True),
     "complete-not-a-bool": lambda: ps.t1(1, 1, 1),
+    "t3-complete-not-a-bool": lambda: ps.t3(entry(), entry(), "yes"),
     "more-gaps-handled-than-gap-parts": lambda: ps.t5(4, 0, 3, True),
-    "k-above-n": lambda: ps.t3(entry(unnecessary=(6, 5)), entry()),
-    "no-rate": lambda: ps.t4({}, entry()),
+    "k-above-n": lambda: ps.t3(entry(unnecessary=(6, 5)), entry(), True),
+    "no-rate": lambda: ps.t4({}, entry(), True),
     "unknown-stratum": lambda: ps.r1([("S4", False, True)]),
     "success-not-a-bool": lambda: ps.r2([("S1", 1, 0)]),
     "unknown-status": lambda: ps.primary_outcome(
         "met", "met", "met", "met", "pass", True
     ),
     "repetition-not-a-bool": lambda: ps.reference_outcome("met", "met", "yes"),
+    "results-not-a-list": lambda: ps.score(fixture()[0], fixture()[1]),
 }
 
 
 @pytest.mark.parametrize("name", list(INVALID))
-def test_invalid_threshold_inputs_are_refused(name):
+def test_invalid_threshold_and_score_inputs_are_refused(name):
     with pytest.raises(ValueError):
         INVALID[name]()
 
@@ -1137,8 +1465,8 @@ def test_primary_outcome_texts_are_the_rubrics():
         ps.primary_outcome(
             ps.t1(5, 5, True),
             ps.t2(0, 0, True),
-            ps.t3(entry(unnecessary=(0, 6)), entry(unnecessary=(3, 9))),
-            ps.t4(entry(missed=(1, 5)), entry(missed=(1, 9))),
+            ps.t3(entry(unnecessary=(0, 6)), entry(unnecessary=(3, 9)), True),
+            ps.t4(entry(missed=(1, 5)), entry(missed=(1, 9)), True),
             ps.t5(1, 1, 2, True),
             True,
         )["outcome"]
@@ -1200,16 +1528,17 @@ def test_reference_outcome_texts_are_the_rubrics():
 # The command line
 
 
-def write_inputs(folder: Path) -> tuple[Path, Path]:
-    result, gold = fixture()
-    paths = (folder / "result.json", folder / "gold.json")
-    for path, value in zip(paths, (result, gold), strict=True):
+def write_inputs(folder: Path, *values: dict) -> list[Path]:
+    """Each value as JSON in its own file of ``folder``, named by position."""
+    paths = [folder / f"input-{n}.json" for n in range(len(values))]
+    for path, value in zip(paths, values, strict=True):
         path.write_text(json.dumps(value), encoding="utf-8")
     return paths
 
 
 def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys):
-    result_path, gold_path = write_inputs(tmp_path)
+    result, gold = fixture()
+    result_path, gold_path = write_inputs(tmp_path, result, gold)
     out = tmp_path / "scoring.json"
     args = [
         "--result",
@@ -1222,7 +1551,7 @@ def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys):
     assert ps.main([*args, "--out", str(out)]) == 0
     printed = capsys.readouterr()
     written = json.loads(out.read_text(encoding="utf-8"))
-    scored = ps.score(*fixture())
+    scored = ps.score([result], gold)
     assert written == {
         "label": "SIMULATED",
         "score": scored,
@@ -1232,7 +1561,7 @@ def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys):
         "label": "SIMULATED",
         "summary": written["summary"],
     }
-    for name in ("X-01", "X-02", "jul/", "R1", "R2"):
+    for name in ("X-01", "X-02", "jul/", "R1", "R2", "Synthetic question"):
         assert name not in printed.out
         assert name not in printed.err
     again = tmp_path / "again.json"  # as a script from another folder: the same bytes
@@ -1246,6 +1575,36 @@ def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys):
     assert run.returncode == 0, run.stderr
     assert again.read_bytes() == out.read_bytes()
     assert str(tmp_path) not in out.read_text(encoding="utf-8")
+
+
+def test_main_merges_the_results_of_a_resumed_run(tmp_path, capsys):
+    run_1, run_2, gold = resumed()
+    first, second, gold_path = write_inputs(tmp_path, run_1, run_2, gold)
+    out = tmp_path / "scoring.json"
+    assert (
+        ps.main(
+            [
+                "--result",
+                str(first),
+                "--result",
+                str(second),
+                "--gold",
+                str(gold_path),
+                "--out",
+                str(out),
+            ]
+        )
+        == 0
+    )
+    assert json.loads(out.read_text(encoding="utf-8"))["score"] == ps.score(
+        [run_1, run_2], gold
+    )
+    printed = json.loads(capsys.readouterr().out)
+    assert printed["label"] is None
+    assert (printed["summary"]["complete_cases"], printed["summary"]["gold_cases"]) == (
+        1,
+        3,
+    )
 
 
 def test_main_refuses_results_and_an_existing_out_before_reading_any_input(
@@ -1272,11 +1631,30 @@ def test_main_refuses_results_and_an_existing_out_before_reading_any_input(
     assert "existing folder" in capsys.readouterr().err
 
 
+def test_main_writes_in_the_repository_only_under_local(tmp_path, capsys):
+    absent = tmp_path / "absent.json"
+    args = ["--result", str(absent), "--gold", str(absent), "--out"]
+    for out in (
+        ps.REPO / "phase4-scoring-test.json",
+        ps.HERE / "phase4-scoring-test.json",
+        ps.REPO / "docs" / "phase4-scoring-test.json",
+    ):
+        assert ps.main([*args, str(out)]) == 2
+        assert not out.exists()
+        assert "tools/commentary_rag/local/" in capsys.readouterr().err
+    # Under local/ the placement is allowed: this path is refused only because its folder does
+    # not exist, so nothing is read or written there.
+    inside_local = ps.LOCAL / "phase4-scoring-test-no-such-folder" / "scoring.json"
+    assert ps.main([*args, str(inside_local)]) == 2
+    err = capsys.readouterr().err
+    assert "existing folder" in err
+    assert "repository" not in err
+
+
 def test_main_refuses_invalid_inputs_without_writing(tmp_path, capsys):
-    result_path, gold_path = write_inputs(tmp_path)
-    gold = json.loads(gold_path.read_text(encoding="utf-8"))
+    result, gold = fixture()
     gold["cases"] = gold["cases"][1:]  # X-01 is no longer in the gold file
-    gold_path.write_text(json.dumps(gold), encoding="utf-8")
+    result_path, gold_path = write_inputs(tmp_path, result, gold)
     out = tmp_path / "scoring.json"
     args = ["--result", str(result_path), "--gold", str(gold_path), "--out", str(out)]
     assert ps.main(args) == 2
@@ -1287,3 +1665,14 @@ def test_main_refuses_invalid_inputs_without_writing(tmp_path, capsys):
     result_path.write_text("{not json", encoding="utf-8")
     assert ps.main(args) == 2
     assert not out.exists()
+
+
+def test_a_cell_refused_after_a_sent_call_ran_and_one_stopped_before_any_did_not():
+    # Refused at call 2 (for example input_over_limit) after call 1 was sent and searched: the
+    # cell ran and failed. Stopped before any call was sent: the cell did not run.
+    returned = ("jul/c", "jul/f", "jul/b", "jul/d", "jul/e")
+    sent = record("agent", ["auto"], [search(1, "passages", *returned)], outcome="refused")
+    unsent = record("agent", [], outcome="persistence_error")
+    assert one_cell(sent, COVERED, "agent")["ran"] is True
+    assert one_cell(unsent, COVERED, "agent")["ran"] is False
+    assert one_cell(unsent, COVERED, "agent")["outcome"] == "persistence_error"

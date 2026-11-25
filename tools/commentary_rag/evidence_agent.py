@@ -697,20 +697,45 @@ def _coverage_search(arguments, state: evidence_search.SearchState, call: int,  
                                              passages=passages, limits=limits)
 
 
+def _bounded_int(literal: str):
+    """An integer literal of D's answer text; one past the interpreter's digit limit becomes
+    infinity, which no field of D's formats accepts, instead of an error that would end the cell
+    after its call was settled, unrecorded."""
+
+    try:
+        return int(literal)
+    except ValueError:
+        return math.inf
+
+
+def _encodable(value) -> bool:
+    """Whether ``value`` serialises to UTF-8, as every later request of the cell must: an escaped
+    lone surrogate in a tool input would make the next request fail before it is counted."""
+
+    try:
+        json.dumps(value, ensure_ascii=False).encode("utf-8")
+    except UnicodeEncodeError:
+        return False
+    return True
+
+
 def _coverage_answer(text: str, supplied: tuple[str, ...], call: int, record: dict,
                      local: dict) -> tuple[dict | None, list[str], list[str]]:
     """D's answer: the value of ``answer`` is validated exactly as the agent's answer text is; the
     coverage beside it is checked and recorded and never rejects the answer."""
 
-    data = _json(text)
+    try:
+        data = json.loads(text, parse_int=_bounded_int)
+    except (ValueError, RecursionError):  # not JSON, or nested past the parser
+        data = None
     wrapped = isinstance(data, dict) and "answer" in data
     coverage = data.get("coverage") if isinstance(data, dict) else None
     code, counts = coverage_check(coverage, supplied)
     unreported = None
-    if code == "ok":  # a part marked missing that missing_evidence does not name at all
+    if code == "ok":  # a part marked missing while missing_evidence is an empty list
         inner = data["answer"] if wrapped else None
         named = inner.get("missing_evidence") if isinstance(inner, dict) else None
-        unreported = counts["missing"] > 0 and not (isinstance(named, list) and named)
+        unreported = counts["missing"] > 0 and named == []
     record["coverage"].append(_coverage_entry(call, "answer", code, counts,
                                               missing_not_reported=unreported))
     local["coverage"].append({"call": call, "coverage": coverage, "search_for": None})
@@ -974,6 +999,8 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
                 return end("protocol_error", "unknown_tool")
             if not isinstance(use.get("id"), str) or not use["id"]:
                 return end("protocol_error", "tool_use_without_id")  # no result could answer it
+            if chosen.coverage and not _encodable(content):  # D: a turn no request can replay
+                return end("protocol_error", "unencodable_tool_use")
             if entry["above_reservation"]:  # the ceiling did not hold: send nothing more
                 return end("spending_stop", "cost_above_reservation")
             messages.append({"role": "assistant", "content": content})  # exactly as returned

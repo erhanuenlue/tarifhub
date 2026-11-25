@@ -57,11 +57,11 @@ evaluation cases as blind held-out tests.
 
 | Part | What | Tests |
 |---|---|---|
-| Condition D (`evidence_agent.py`) | coverage instruction, a search tool that also takes the coverage and the number of the missing part, the coverage beside the unchanged answer object; a malformed coverage, a passage not received or a search for no missing part refused as a tool error that uses the round; answers accepted exactly as C's; the tool offered by capacity alone | 20 (`test_coverage_condition.py`) |
+| Condition D (`evidence_agent.py`) | coverage instruction, a search tool that also takes the coverage and the number of the missing part, the coverage beside the unchanged answer object; a malformed coverage, a passage not received or a search for no missing part refused as a tool error that uses the round; answers accepted exactly as C's; the tool offered by capacity alone | 24 (`test_coverage_condition.py`) |
 | Phase 4 design (`run_comparison.py`) | `--design phase4` runs B, C and D per case; its public record names no passage; the default Phase 3 design unchanged | 5 more, 48 in all (`test_run_comparison.py`) |
-| Scorer (`phase4_scoring.py`) | decision points by capacity before each call, the frozen search measures, the thresholds and both outcome tables | 104 (`test_phase4_scoring.py`) |
+| Scorer (`phase4_scoring.py`) | the local records of one repetition merged and checked (completeness, question, ranking and initial passages), decision points by capacity before each call, the frozen search measures, D's coverage diagnostics apart from them, the thresholds and both outcome tables | 142 (`test_phase4_scoring.py`) |
 
-The pilot's offline suite: 613 tests in fifteen files, all passing; lint clean. The tests check D's
+The pilot's offline suite: 655 tests in fifteen files, all passing; lint clean. The tests check D's
 instruction, tool, answer format and refusal texts against the SHA-256 values frozen in the contract,
 and B's and C's requests against hashes taken on the code before D existed; the default Phase 3
 `plan` gives the same output on the recorded books as before. The books, the limit, the prices and
@@ -81,7 +81,7 @@ no call) and a scratch copy of the books:
   searched validly, or sent a search with a passage it had not received, which code refused as
   designed.
 - The real books and `results/` stayed byte-identical (SHA-256 before and after); the batches'
-  public records held no passage ID; the scorer read every cell and found no trace anomaly.
+  public records held no passage ID; the scorer, merging the three batches, found all 19 cases complete and no trace anomaly.
 
 The simulated answers and costs measure nothing about the model. The scored measures of the dry run
 depend on the private gold and the rankings of the frozen cases and are kept local.
