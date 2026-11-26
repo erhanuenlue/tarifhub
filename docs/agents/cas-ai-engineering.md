@@ -3,7 +3,8 @@
 Read by `lead-engineer` and any worker that touches course deliverables. It records which
 course a piece of work belongs to, what counts as this course's contribution, and what the
 remaining delivery requires. The current milestone is issue
-[#62](https://github.com/erhanuenlue/tarifhub/issues/62) (Phase 4, variant 2 through data feasibility); the
+[#62](https://github.com/erhanuenlue/tarifhub/issues/62) (Phase 4: variant 2 assessed through data feasibility, variant 1,
+the agent extension, the working direction since 2026-11-24); the
 earlier milestone [#60](https://github.com/erhanuenlue/tarifhub/issues/60) is closed.
 
 ## Two courses, one repository
@@ -53,6 +54,9 @@ new capability and its measured result.
   in the [older commentaries inventory](../evidence/2026-11-23-phase4-older-commentaries-inventory.md)
   (44 eligible passages in 22 families, 56 short; two 2021 commentaries unresolved; the evaluation
   limitation unchanged; next decision in issue #62).
+- Phase 4, variant 1: the agent's explicit coverage decision (condition D, ADR-027, proposed),
+  its evaluation frozen on 2026-11-25 before the code, built and tested offline and dry-run with a
+  simulated provider, not run live ([evidence](../evidence/2026-11-25-phase4-coverage-decision-offline.md)).
 - Books: USD 7.060552 committed of the USD 100 aggregate limit for Phases 2 and 3.
 
 ## Phase 4 options

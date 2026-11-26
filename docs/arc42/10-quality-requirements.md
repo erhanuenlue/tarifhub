@@ -479,6 +479,8 @@ The generator received the hybrid ranking under the edition filter: it misses D1
 
 The agent changed the verdict against B on one case (E2), through the one passage its search added from outside the fixed top 10 that carries required evidence; B and C reached the same overall verdict and required-claim coverage on E3 to E6, and A already sufficed on E4 to E6. On E1 the agent alone covered both required claims. In this run C searched once per case, so each of its cells made one more call than B, and on E2 to E6 it sent 2.1 times B's input tokens in total; the agent may also answer without searching, in one call. Output tokens dominate each cell's cost and differ widely between cells, and with one run per cell no repeatable cost difference in either direction is established. One run per cell, one reviewer, partial blinding (answers shown verbatim), and on the January-only cases E4 and E5 B sees 10 of 11 January passages: observations on this set, not accuracy figures. Summary: `tools/commentary_rag/results/2026-11-22-phase3-E-review-summary.json`.
 
+**Phase 4 (frozen, not run):** the evaluation of the coverage decision ([ADR-027](../adr/027-coverage-decision.md), proposed) was frozen on 2026-11-25 with 19 AI-drafted cases, a rubric and decision thresholds (T1 to T5 against the agent, R1 and R2 against fixed top 10) before the code existed (`tools/commentary_rag/results/2026-11-25-phase4-freeze.json`). No live result exists, and none of its measures is reported here.
+
 ## Acceptance criteria
 
 One Given/When/Then per use case from the [§1 catalogue](01-introduction-goals.md), each

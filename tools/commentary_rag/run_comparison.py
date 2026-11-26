@@ -13,6 +13,12 @@ under the same identity), and so is a case booked before with another question o
 it refuses a case whose booked cells were asked something else or recorded no question (the D1
 run of 2026-11-20 recorded none), before the model loads.
 
+Two designs, chosen by name (``--design``): ``phase3`` (the default) runs A, B and C as above;
+``phase4`` runs B, C and D (``coverage``: the agent with the explicit coverage decision of
+Phase 4, frozen in ``phase4/conditions.md``), D with C's top 5, and its public record names no
+passage: it keeps codes, counts, hashes, usage and amounts, while rankings, supplied, cited and
+returned passages and D's coverage text stay in the local record.
+
 The input is a cases file holding each case's ID, question and editions and nothing else: any
 other field (a reference answer, gold evidence, a rubric) is refused before the file is used, so
 nothing that scores an answer can reach a request.
@@ -75,8 +81,10 @@ REPO = HERE.parents[1]
 RESULTS = HERE / "results"
 LOCAL = HERE / "local"
 CLOCK = time.monotonic  # every cell's deadline clock
-ORDER = ("fixed5", "fixed10", "agent")  # within a case: A, B, C
-LABELS = {"fixed5": "A", "fixed10": "B", "agent": "C"}
+ORDER = ("fixed5", "fixed10", "agent")  # within a case: A, B, C (the Phase 3 design)
+# The designs, chosen by name: Phase 3 (A, B, C) and Phase 4 (B, C, D; phase4/conditions.md).
+DESIGNS = {"phase3": ORDER, "phase4": ("fixed10", "agent", "coverage")}
+LABELS = {"fixed5": "A", "fixed10": "B", "agent": "C", "coverage": "D"}
 # One ranking per case, deep enough for every condition's fixed context (B's top 10).
 TOP_K = max(c.passages for c in evidence_agent.CONDITIONS.values())
 CASE_KEYS = ("id", "question", "editions")
@@ -134,6 +142,18 @@ NOTES = (
     "answer checks are shared.",
     "Admission figures are bounds (every call at the input cap), not expected costs; "
     "estimates come from earlier usage settlements of development cases.",
+)
+NOTES_PHASE4 = (
+    *run_question.NOTES,
+    "The conditions differ by design: B sends the Phase 2 request with its own system prompt "
+    "and no tool, once; C appends the search instruction, offers its one search tool and may "
+    "make three calls; D is C with its coverage decision (its own appended instruction, a "
+    "search tool that also takes the coverage and the missing part it looks for, and the "
+    "answer format coverage beside answer), and reviewers see only its answer object. Model, "
+    "settings, question, editions, initial ranking and answer checks are shared.",
+    NOTES[-1],
+    "Under the Phase 4 design this record names no passage: rankings, supplied, cited and "
+    "returned passages and the coverage text stay in the local record.",
 )
 
 
@@ -229,9 +249,10 @@ def _edition(value: str) -> bool:
         return False
 
 
-def _plan(cases: list[dict]) -> dict:
-    """The matrix in its order, its bounds and its admission beside the books now; estimates
-    labelled. Raises ValueError when the books cannot be used as they are."""
+def _plan(cases: list[dict], design: str = "phase3") -> dict:
+    """The matrix in its order (the conditions of ``design``), its bounds and its admission
+    beside the books now; estimates labelled. Raises ValueError when the books cannot be used
+    as they are."""
 
     state = evidence_agent.spending_state()
     ceiling = _micro(state["call_ceiling_at_input_cap_usd"])
@@ -241,7 +262,7 @@ def _plan(cases: list[dict]) -> dict:
     for cell in state["cells"]:
         booked.setdefault(cell["case"], []).append(cell)
     conditions = {}
-    for name in ORDER:
+    for name in DESIGNS[design]:
         c = evidence_agent.CONDITIONS[name]
         conditions[name] = {
             "label": LABELS[name],
@@ -261,7 +282,7 @@ def _plan(cases: list[dict]) -> dict:
             "in_books": (c["id"], name) in in_books,
         }
         for c in cases
-        for name in ORDER
+        for name in DESIGNS[design]
     ]
     worst = sum(
         _micro(conditions[o["condition"]]["admission_usd"])
@@ -305,7 +326,7 @@ def _plan(cases: list[dict]) -> dict:
             ),
             **state["assumptions"],
         },
-        "estimates": _estimates(state, order),
+        "estimates": _estimates(state, order, design),
     }
 
 
@@ -330,8 +351,9 @@ def _pairing(item: dict, booked: list[dict]) -> str:
     )
 
 
-def _estimates(state: dict, order: list[dict]) -> dict:
-    """The mean calculated cost of earlier cells priced from their usage, per condition."""
+def _estimates(state: dict, order: list[dict], design: str = "phase3") -> dict:
+    """The mean calculated cost of earlier cells priced from their usage, per condition of
+    ``design`` (cells of every condition in the books are read)."""
 
     # Phase 2's requests were ADR-025's fixed top 5, so each of its cases is a fixed5 cell.
     phase2: dict[str, list] = {}
@@ -348,13 +370,13 @@ def _estimates(state: dict, order: list[dict]) -> dict:
             return sum(_micro(c["cost_usd"]) for c in calls)
         return None
 
-    observed = {name: [] for name in ORDER}
+    observed = {name: [] for name in evidence_agent.CONDITIONS}
     for calls in phase2.values():
         observed["fixed5"].append(priced(calls))
     for (_, name), calls in cells.items():
         observed[name].append(priced(calls))
     per = {}
-    for name in ORDER:
+    for name in evidence_agent.CONDITIONS:
         costs = [c for c in observed[name] if c is not None]
         per[name] = {
             "observed_cells": len(costs),
@@ -364,6 +386,7 @@ def _estimates(state: dict, order: list[dict]) -> dict:
                 "fixed top 5) and fixed5 cells of the active ledger",
                 "fixed10": "fixed10 cells of the active ledger",
                 "agent": "agent cells of the active ledger (D1 is one)",
+                "coverage": "coverage cells of the active ledger (Phase 4, condition D)",
             }[name],
         }
     if (
@@ -393,7 +416,7 @@ def _estimates(state: dict, order: list[dict]) -> dict:
             "from their usage, on development cases with few observations; not an "
             "invoice and not a prediction for the cases planned"
         ),
-        "per_condition": per,
+        "per_condition": {name: per[name] for name in DESIGNS[design]},
         "cells_to_run": len(todo),
         "matrix_usd": (
             _usd(sum(_micro(k) for k in known))
@@ -440,10 +463,25 @@ def _now() -> str:
     return datetime.now(UTC).replace(microsecond=0).isoformat()
 
 
+def _system_prompt(condition: evidence_agent.Condition) -> str:
+    """The system prompt a condition sends: the Phase 2 prompt, with the agent's or D's
+    instruction appended for the conditions that search."""
+
+    if not condition.search:
+        return generation.SYSTEM_PROMPT
+    instruction = (
+        evidence_agent.COVERAGE_INSTRUCTION
+        if condition.coverage
+        else evidence_agent.INSTRUCTION
+    )
+    return f"{generation.SYSTEM_PROMPT}\n\n{instruction}"
+
+
 def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
     """Which code, settings, corpus and books the run used, computed before anything is sent."""
 
     config = generation.Config()
+    design = getattr(args, "design", "phase3")
     head = subprocess.run(
         ["git", "rev-parse", "HEAD"],
         cwd=REPO,
@@ -460,6 +498,7 @@ def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
     ).stdout.strip()
     return {
         "tag": args.tag,
+        **({"design": design} if design != "phase3" else {}),
         "time_budget_s_per_cell": args.time_budget_s,
         "cases": [
             {
@@ -489,13 +528,20 @@ def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
                     "initial_passages": c.passages,
                     "calls": c.calls,
                     "search_tool": c.search,
-                    "system_prompt_sha256": _sha256(
-                        f"{generation.SYSTEM_PROMPT}\n\n{evidence_agent.INSTRUCTION}"
-                        if c.search
-                        else generation.SYSTEM_PROMPT
+                    "system_prompt_sha256": _sha256(_system_prompt(c)),
+                    **(
+                        {
+                            "answer_format_sha256": _sha256(
+                                json.dumps(
+                                    evidence_agent.COVERAGE_ANSWER_SCHEMA, sort_keys=True
+                                )
+                            )
+                        }
+                        if c.coverage
+                        else {}
                     ),
                 }
-                for name, c in ((n, evidence_agent.CONDITIONS[n]) for n in ORDER)
+                for name, c in ((n, evidence_agent.CONDITIONS[n]) for n in DESIGNS[design])
             },
         },
         "ranking": {
@@ -539,6 +585,64 @@ def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
     }
 
 
+# The keys of a cell's record the Phase 4 public record carries as they are: codes, counts,
+# hashes, usage and amounts; supplied, cited and searched passages are reduced to counts.
+PUBLIC_PHASE4 = ("case", "condition", "budget_s", "generation_calls", "calls", "spending",
+                 "outcome", "detail", "elapsed_s", "schema_problems",
+                 "citations_outside_supplied", "coverage")
+SEARCH_PHASE4 = ("round", "outcome", "method", "window", "rounds_left", "passages_left")
+
+
+def _phase4_record(record: dict) -> dict:
+    """A cell's record as the Phase 4 public record carries it: no passage ID."""
+
+    kept = {k: record[k] for k in PUBLIC_PHASE4 if k in record}
+    for key in ("supplied", "cited"):
+        if key in record:
+            kept[key] = len(record[key])
+    if "searches" in record:
+        kept["searches"] = [
+            {
+                **{k: s.get(k) for k in SEARCH_PHASE4},
+                "returned": len(s.get("returned") or []),
+                "already_supplied": len(s.get("already_supplied") or []),
+            }
+            for s in record["searches"]
+        ]
+    return kept
+
+
+def _phase4_answer(answer: dict | None) -> dict | None:
+    """An accepted answer's public metadata under the Phase 4 design: cited passages counted."""
+
+    meta = run_question._answer_metadata(answer)
+    if meta is not None:
+        meta["cited_passages"] = len(meta["cited_passages"])
+    return meta
+
+
+def _phase4_case(item: dict, ranking, cells: list) -> dict:
+    """One case of the Phase 4 public record: its question by hash, no passage ID."""
+
+    return {
+        "case": item["id"],
+        "editions": item["editions"],
+        "question_sha256": _sha256(item["question"]),
+        "ranked_passages": len(ranking),
+        "cells": [
+            {
+                "condition": name,
+                "label": LABELS[name],
+                "status": status,
+                "exit_code": code,
+                "agent": _phase4_record(result.record) if result else None,
+                "answer": _phase4_answer(result.answer if result else None),
+            }
+            for name, result, status, code in cells
+        ],
+    }
+
+
 def _cell(result: evidence_agent.CaseResult) -> tuple[dict, int]:
     """A cell's statuses and its exit code, as the one-question runner reads one run."""
 
@@ -561,6 +665,8 @@ def _run(  # noqa: PLR0913
     paths = _paths(args.tag)
     provenance = _provenance(args, cases, loaded)
     passages = run_question._records(loaded)
+    design = getattr(args, "design", "phase3")
+    phase4 = design == "phase4"
     books = (
         evidence_agent.BOOKS
     )  # read now: the books are wherever the agent keeps them
@@ -640,8 +746,10 @@ def _run(  # noqa: PLR0913
                     ],
                 }
                 for item, ranking, cells in rows
-            ],
-            "notes": NOTES,
+            ]
+            if not phase4
+            else [_phase4_case(item, ranking, cells) for item, ranking, cells in rows],
+            "notes": NOTES_PHASE4 if phase4 else NOTES,
         }
 
     def kept() -> dict:
@@ -652,6 +760,8 @@ def _run(  # noqa: PLR0913
                     "question": item["question"],
                     "editions": item["editions"],
                     "ranking": [hit.passage_id for hit in ranking],
+                    # Phase 4 publishes no ranking: its scores and ranks are kept here instead.
+                    **({"ranking_detail": ranked_ids(ranking)} if phase4 else {}),
                     "cells": [
                         {
                             "condition": name,
@@ -672,7 +782,7 @@ def _run(  # noqa: PLR0913
         for item in cases:
             ranking, cells = rankings[item["id"]], []
             rows.append((item, ranking, cells))
-            for name in ORDER:
+            for name in DESIGNS[design]:
                 if state["stopped"]:  # nothing after a cell that needs a person
                     cells.append(
                         (
@@ -817,6 +927,12 @@ def main(argv: list[str] | None = None) -> int:
         help="run: each cell's cooperative time limit in seconds (not money)",
     )
     parser.add_argument(
+        "--design",
+        choices=tuple(DESIGNS),
+        default="phase3",
+        help="phase3: A, B, C (the default); phase4: B, C, D (phase4/conditions.md)",
+    )
+    parser.add_argument(
         "--manifest",
         type=Path,
         default=REPO / "data/manifests/bag-al.json",
@@ -839,14 +955,19 @@ def main(argv: list[str] | None = None) -> int:
         parser.error(cases)  # exit 2, before anything is loaded, counted or sent
     if args.step == "plan":
         try:
-            plan = _plan(cases)
+            plan = _plan(cases, args.design)
         except ValueError as refusal:
             print(
                 f"refused: the books cannot be used as they are ({refusal})",
                 file=sys.stderr,
             )
             return EXIT_REFUSED
-        print(json.dumps({"planned": _planned(), **plan}, ensure_ascii=False, indent=1))
+        shown = {"design": args.design} if args.design != "phase3" else {}
+        print(
+            json.dumps(
+                {"planned": _planned(), **shown, **plan}, ensure_ascii=False, indent=1
+            )
+        )
         return EXIT_ANSWER
     args.manifest = args.manifest.resolve()
     paths = _paths(args.tag)
@@ -862,7 +983,7 @@ def main(argv: list[str] | None = None) -> int:
             generation.Config()
         )  # the key is checked before the model loads
         try:
-            plan = _plan(cases)
+            plan = _plan(cases, args.design)
         except ValueError as refusal:
             raise run_question._Stop(
                 EXIT_REFUSED,

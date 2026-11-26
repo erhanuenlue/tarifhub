@@ -236,7 +236,14 @@ observation on this set, not an accuracy figure.
 - `test_run_comparison.py`: offline tests of the comparison's command over a tiny real corpus whose
   twelve-passage ranking is worked out by hand, the real retriever, loop and `anthropic` client on
   a mocked HTTP transport and temporary books; the repository's `results/` and `local/` are
-  checked to stay byte-identical.
+  checked to stay byte-identical. Since 2026-11-25 also the Phase 4 design (`--design phase4`).
+- `test_coverage_condition.py`: offline tests of condition D (the coverage decision) at the provider
+  boundary with the fixtures of `test_evidence_agent.py`; they check D's texts and schemas against
+  the hashes frozen in `phase4/conditions.md` and B's and C's requests against hashes taken before D.
+- `phase4/`: the frozen Phase 4 condition contract (`conditions.md`) and rubric with thresholds
+  (`rubric-and-thresholds.md`), hashed in `results/2026-11-25-phase4-freeze.json` (below, "Phase 4").
+- `phase4_scoring.py`, `test_phase4_scoring.py`: the deterministic Phase 4 scorer and its offline
+  tests on synthetic records.
 - `trace_demo.py`: one synthetic question through the real agent loop (`evidence_agent.run_case`)
   with a scripted provider and the real search over the synthetic test corpus, traced to a local
   Phoenix over OpenTelemetry (OTLP/HTTP, 127.0.0.1:6016). The spans hold IDs, codes, counts, elapsed
@@ -708,6 +715,83 @@ cannot meet among cells, since the matrix stops at the first); an unexpected err
 keeps the outputs of the cells before it; estimates count only cells whose every call was priced
 from usage. They do not show real model behaviour, real token counts or costs, or which condition
 answers better.
+
+## Phase 4: the coverage decision (condition D), frozen and offline
+
+Variant 1 of Phase 4 extends the agent ([ADR-027](../../docs/adr/027-coverage-decision.md),
+proposed; [evidence](../../docs/evidence/2026-11-25-phase4-coverage-decision-offline.md)). D (`coverage`) is C with an explicit coverage decision: in the
+same call as its action the model records the parts the question asks for (at most four) and
+whether the passages it has received state each one (covered, with their IDs, or missing); it
+answers when every part is covered and otherwise searches for one missing part, named by its number
+(`search_for`). Before anything is ranked, code refuses as a tool error that uses the round a
+coverage that is malformed or names a passage not received and a `search_for` that names no
+missing part; a valid search runs the unchanged search on C's arguments. An answer carries the
+coverage beside the unchanged answer object, which is accepted exactly as C's; the coverage is
+only checked and recorded (codes and counts in the record, the text locally). The tool is offered
+by capacity alone, as for C.
+
+| | B `fixed10` | C `agent` | D `coverage` |
+|---|---|---|---|
+| Fixed context | hybrid top 10 | hybrid top 5 | hybrid top 5 |
+| Most passages supplied | 10 | 10 | 10 |
+| Generation calls / searches | 1 / none | at most 3 / 2 | at most 3 / 2 |
+| System prompt | Phase 2's | Phase 2's + the search instruction | Phase 2's + the coverage instruction |
+| Tool | none | `search_commentary` | `search_commentary` with `coverage` and `search_for` |
+| Answer format | the Phase 2 answer | the Phase 2 answer | coverage beside the Phase 2 answer |
+| Admission (every call at the input cap) | USD 1.4784 | USD 4.4352 | USD 4.4352 |
+
+**Frozen before the code:** the 19 cases (local only), the condition contract
+[`phase4/conditions.md`](phase4/conditions.md) and the rubric with the thresholds
+[`phase4/rubric-and-thresholds.md`](phase4/rubric-and-thresholds.md), hashed in
+[`results/2026-11-25-phase4-freeze.json`](results/2026-11-25-phase4-freeze.json) before any ranking of
+the cases and before D was implemented. `test_coverage_condition.py` checks D's instruction, tool,
+answer format and refusal texts against the hashes in the contract, and B's and C's requests
+against hashes taken on the code before D existed.
+
+**Runner:** `run_comparison.py --design phase4` runs B, C and D per case in that order (`plan` and
+`run`); the default `--design phase3` is unchanged (its `plan` output on the recorded books is the
+same as before). Under `phase4` the public record names no passage (no ranking IDs and no supplied,
+cited or returned passage IDs, no coverage text); the local record keeps everything.
+
+**Books unchanged, and what that means for a live run:** D is booked like every cell, under its case
+and condition, in the same books and under the same aggregate limit. One case under B, C and D is
+admitted at USD 10.3488 (1 + 3 + 3 calls at the input cap), so 19 cases need USD 196.6272 of headroom
+at once; the books leave USD 92.939448, and `run` refuses such a matrix before the model loads. A
+cell already in the books is never sent again, so a second repetition needs case IDs of its own.
+Books, cap and admission for a live repetition are Erhan's decision.
+
+**Scorer:** `phase4_scoring.py` reads the local `result.json` of one repetition (`--result` once per
+file, several after a resumed run, merged by case and condition: a cell ran when a generation call
+was sent) and the private frozen cases. It checks each case's question, editions, ranking and
+records against the gold file and each other, reports how many cases are complete (B, C and D
+ran), rebuilds each C and D cell's decision points by capacity before each call and counts
+warranted, unnecessary, gap-check and missed useful searches, refused searches and points without
+action; D's coverage diagnostics are counted apart and never enter a measure. It implements the
+thresholds and both outcome tables as pure functions (T3 and T4 not assessable on an incomplete
+repetition). It writes case-level results only to a new file outside the repository or under the
+git-ignored `local/` folder, and prints counts.
+
+```bash
+# Offline plan of the Phase 4 matrix (nothing loaded, counted, sent or written):
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
+  uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
+  python tools/commentary_rag/run_comparison.py plan --design phase4 --cases <cases.json>
+# Scoring a run's local record against the private frozen cases (counts printed, cases kept local):
+UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
+  uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
+  python tools/commentary_rag/phase4_scoring.py --result <local result.json> \
+  --gold <private cases file> --out <new file under tools/commentary_rag/local/> --label <text>
+```
+
+**Dry run (2026-11-25, simulated):** the ordinary entry point with a scripted provider (no key, no
+provider call), the real corpus and cached e5 model, the frozen runner input and a scratch copy of
+the books: the 19-case matrix was refused before the model loaded; three batches of 8, 8 and 3
+cases in the frozen order were admitted and ran 57 cells (88 simulated calls, each settled from its
+simulated usage in the scratch books); the real books and `results/` stayed byte-identical; the
+public records held no passage ID, and the scorer, merging the three batches, found all 19 cases
+complete and no trace anomaly. Simulated
+answers and costs measure nothing about the model; the scored measures depend on the private gold
+and stay local.
 
 ## Tracing one synthetic run in a local Phoenix
 
