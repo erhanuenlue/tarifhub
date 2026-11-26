@@ -2019,3 +2019,20 @@ def test_estimates_read_cells_of_every_condition_under_either_design(
         "phase3": {"fixed5": (2, 0.137), "fixed10": (1, 0.024), "agent": (1, 0.048)},
         "phase4": {"fixed10": (1, 0.024), "agent": (1, 0.048), "coverage": (1, 0.024)},
     }
+
+
+@pytest.mark.parametrize("step", ["plan", "run"])
+def test_the_default_design_refuses_a_frozen_phase4_question_before_anything_loads(
+    isolated, monkeypatch, capsys, step
+):
+    live(isolated, monkeypatch)  # no reply: nothing may be sent
+    question = hashlib.sha256(QUESTION.encode("utf-8")).hexdigest()
+    monkeypatch.setattr(evidence_agent, "PHASE4_QUESTIONS", frozenset({question}))
+    before = written(isolated)
+
+    assert exit_code(argv(isolated, step, cases_file(isolated, case("E1")))) == 2
+
+    assert "frozen Phase 4 question" in capsys.readouterr().err
+    assert isolated["loads"] == []
+    assert written(isolated) == before
+    assert not active(isolated).exists()

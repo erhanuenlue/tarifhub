@@ -92,10 +92,12 @@ these books by giving a ``repetition`` (``PHASE4_REPETITIONS`` admits 1 only), w
 every Phase 4 cell's identity: (repetition, case, condition), call IDs
 ``<case>-<condition>-r<repetition>-call<n>``, recorded in every reservation and settlement and in
 the cell's record. Only B, C and D (``PHASE4_CONDITIONS``) are booked there, and condition D
-(``coverage``) nowhere else. The ceiling, admission (with the rest a comparison holds back: for
-Phase 4 the case's cells still to run), reservations, settlements, persistence and the strict
-reading of the ledger are the same code for both books; the Phase 2 and 3 books and the events
-written to them are unchanged.
+(``coverage``) nowhere else; a frozen Phase 4 question (``PHASE4_QUESTIONS``, from the freeze
+record) is refused in the Phase 2 and 3 books. In Phase 4's books every cell's admission holds
+back the case's other cells not yet booked, whoever calls, so a fresh case starts only when its
+whole triplet fits. The ceiling, admission, reservations, settlements, persistence and the
+strict reading of the ledger are the same code for both books; the Phase 2 and 3 books and the
+events written to them are unchanged.
 
 The deadline is cooperative, not a hard wall-clock limit. One monotonic deadline per case
 (``clock()`` at the start plus ``budget_s``) is checked before each token count, after the
@@ -143,6 +145,12 @@ PHASE4_LEDGER = "phase4-ledger.jsonl"
 PHASE4_LIMIT_USD = 40.0
 PHASE4_REPETITIONS = (1,)
 PHASE4_CONDITIONS = ("fixed10", "agent", "coverage")  # B, C and D
+# The frozen Phase 4 questions by SHA-256, read from the committed freeze record: they are booked
+# in Phase 4's books only, so none of their cells can draw on the Phase 2 and 3 allowance.
+FREEZE_RECORD = Path(__file__).resolve().parent / "results" / "2026-11-25-phase4-freeze.json"
+PHASE4_QUESTIONS = frozenset(
+    case["question_sha256"]
+    for case in json.loads(FREEZE_RECORD.read_text(encoding="utf-8"))["cases"])
 # A case ID is a plain name: it names the case's calls in the ledger and its artifact files.
 CASE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 PRICES = Path(__file__).resolve().parent / "pricing.json"
@@ -875,6 +883,9 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
     # What the case asks, as every reservation records it: one case ID, one question over one
     # edition selection, whatever the condition (the plain SHA-256 public records publish).
     asked = (hashlib.sha256(task.question.encode("utf-8")).hexdigest(), sorted(task.editions))
+    if repetition is None and asked[0] in PHASE4_QUESTIONS:
+        raise ValueError("a frozen Phase 4 question is booked only in the Phase 4 books, under a "
+                         "repetition")
     with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
         return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
                      budget_s=budget_s, spending=spending, pricing=pricing, config=config,
@@ -1001,7 +1012,16 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
     if any(e["event"] == "reserve" and e["attempt"] in calls for e in events):
         return end("refused", "call_id_taken")  # an older reservation's ID: never written twice
     # Admission is a check, not a charge: every call at the input cap bounds a growing context.
-    # A comparison's cells still to run after this one are held back beside it (``rest``).
+    # A comparison's cells still to run after this one are held back beside it (``rest``). In
+    # Phase 4's books the case's other cells not yet booked are held back whoever calls, so a
+    # fresh case starts only when its whole triplet fits.
+    if phase4:
+        others = [name for name in PHASE4_CONDITIONS if name != chosen.name and not any(
+            e["event"] == "reserve" and e["case"] == task.case_id
+            and e.get("condition") == name and e.get("repetition") == repetition
+            for e in events)]
+        rest = max(rest, sum(CONDITIONS[name].calls for name in others)
+                   * _ceiling(pricing, MAX_INPUT_TOKENS, config))
     limit = _micro(PHASE4_LIMIT_USD if phase4 else config.budget_usd)
     admission = chosen.calls * _ceiling(pricing, MAX_INPUT_TOKENS, config)
     if _micro(baseline) + _committed(events) + admission + rest > limit:

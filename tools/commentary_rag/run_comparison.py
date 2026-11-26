@@ -1123,6 +1123,17 @@ def main(argv: list[str] | None = None) -> int:
     cases = _cases(args.cases, questions=args.step == "run")
     if isinstance(cases, str):
         parser.error(cases)  # exit 2, before anything is loaded, counted or sent
+    frozen = [
+        c["id"]
+        for c in cases
+        if c["question"] is not None
+        and _sha256(c["question"]) in evidence_agent.PHASE4_QUESTIONS
+    ]
+    if args.design != "phase4" and frozen:
+        parser.error(
+            f"{', '.join(frozen)} ask a frozen Phase 4 question: they run only under "
+            "--design phase4, in Phase 4's own books"
+        )
     if (
         args.design == "phase4"
         and hashlib.sha256(args.cases.read_bytes()).hexdigest()

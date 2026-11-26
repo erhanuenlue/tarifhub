@@ -931,3 +931,72 @@ def test_c_and_d_fail_alike_on_an_unencodable_replay_with_their_calls_settled(
     result, _ = run(again, task(), spending, condition=condition, repetition=1)
     assert (result.outcome, result.detail) == ("refused", "already_run")
     assert again.creates == []
+
+
+def test_the_frozen_phase4_questions_are_the_freeze_records_nineteen():
+    freeze = json.loads(
+        evidence_agent.FREEZE_RECORD.read_text(encoding="utf-8")
+    )
+    assert len(evidence_agent.PHASE4_QUESTIONS) == 19
+    assert evidence_agent.PHASE4_QUESTIONS == {
+        case["question_sha256"] for case in freeze["cases"]
+    }
+
+
+def test_a_frozen_phase4_question_is_refused_in_the_phase2_and_3_books(
+    phase3_spending, spending, monkeypatch
+):
+    monkeypatch.setattr(evidence_agent, "PHASE4_QUESTIONS", frozenset({_sha(task().question)}))
+    refused = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+
+    for condition in ("agent", "fixed10"):
+        the_task = task(initial=TEN) if condition == "fixed10" else task()
+        with pytest.raises(ValueError, match="frozen Phase 4 question"):
+            run(refused, the_task, phase3_spending, condition=condition)
+    assert (refused.counts, refused.creates) == ([], [])
+    assert not phase3_spending.ledger.exists()
+
+    allowed = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+    result, _ = run(allowed, task(), spending, repetition=1)
+    assert result.outcome == "answer"
+
+
+def kept_r1(usd: float) -> list[dict]:
+    """Another case's B call in Phase 4's books, sent and kept at its whole reservation."""
+    named = {"attempt": "Z9-fixed10-r1-call1", "case": "Z9", "condition": "fixed10"}
+    reserve = reservation_r1(**named, reserved_usd=usd)
+    settle = {
+        "event": "settle",
+        **named,
+        "repetition": 1,
+        "sent": True,
+        "cost_usd": usd,
+        "cost_basis": "reservation_retained",
+        "above_reservation": False,
+        "usage": None,
+        "response_sha256": None,
+        "at": "2026-11-26T00:00:00+00:00",
+    }
+    return [PIN, reserve, settle]
+
+
+@pytest.mark.parametrize(
+    ("kept", "outcome"),
+    [(29.6512, "answer"), (29.651201, "refused")],
+    ids=["exact-fit", "one-micro-dollar-short"],
+)
+def test_a_fresh_case_holds_back_its_whole_triplet_whoever_calls(spending, kept, outcome):
+    # D called on its own for a fresh case: its 4.4352 would fit beside 29.651201, but B's and
+    # C's 5.9136 not yet booked are held back beside it, so the whole 10.3488 must fit.
+    rows = kept_r1(kept)
+    spending.ledger.write_text("".join(json.dumps(e) + "\n" for e in rows), "utf-8")
+    provider = Provider(Clock(), coverage_answer(COVERED, ("Antwort.", ["jul/k"])))
+
+    result, _ = run_d(provider, spending)
+
+    assert result.outcome == outcome
+    if outcome == "refused":
+        assert result.detail == "admission_budget"
+        assert provider.creates == []
+    else:
+        assert result.record["spending"]["rest_usd"] == 5.9136
