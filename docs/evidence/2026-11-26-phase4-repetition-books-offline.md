@@ -44,8 +44,8 @@ their USD 100, and no Phase 4 ledger exists yet. Decision records: amendments A1
 
 | Part | Change | Tests |
 |---|---|---|
-| Books (`evidence_agent.py`) | Phase 4's ledger beside the others, its own limit pinned in code and in its first line, the repetition in every reservation, settlement and record, repetition 1 and B, C, D only; D refused in the Phase 2 and 3 books, whose reader also refuses a D cell or a repetition as damage | 19 new in `test_coverage_condition.py` (42) |
-| Runner (`run_comparison.py`) | `--design phase4` books in those books under repetition 1, takes only the frozen runner input (SHA-256 pinned), admits case by case under the lock, shows how the reserved calls stand in its plan, and refuses a symbolic link as its local output folder | 11 new in `test_run_comparison.py` (59) |
+| Books (`evidence_agent.py`) | Phase 4's ledger beside the others, its own limit pinned in code and in its first line, the repetition in every reservation, settlement and record, repetition 1 and B, C, D only; D and every frozen Phase 4 question (the freeze record's 19 hashes) refused in the Phase 2 and 3 books, whose reader also refuses a D cell or a repetition as damage; every Phase 4 admission holds back the case's other cells not yet booked, whoever calls | 23 new in `test_coverage_condition.py` (46) |
+| Runner (`run_comparison.py`) | `--design phase4` books in those books under repetition 1, takes only the frozen runner input (SHA-256 pinned), admits case by case under the lock, shows how the reserved calls stand in its plan, and refuses a symbolic link as its local output folder; the default design refuses a frozen Phase 4 question before anything loads | 13 new in `test_run_comparison.py` (61) |
 | Scorer (`phase4_scoring.py`) | A1 beside T3 (`a1`, `search_thresholds`); a missing or malformed time budget refused; a search refused for want of rounds before both rounds were used refused; one repetition per scoring; completeness derived by the scorer; the frozen gold file only; a symbolic link as `local/` refused | 28 new in `test_phase4_scoring.py` (171) |
 
 The previous step's open review points and what happened to each:
@@ -59,12 +59,14 @@ The previous step's open review points and what happened to each:
 
 ## 4. Checks
 
-- **Pilot suite:** 713 tests in fifteen files pass offline (655 before), with pytest-socket's block on.
-  Run against the code of `140ca86`, the four changed test files fail or error in 86 of their 428 tests,
+- **Pilot suite:** 719 tests in fifteen files pass offline (655 before), with pytest-socket's block on.
+  Run against the code of `140ca86`, the four changed test files fail or error in 92 of their 434 tests,
   so the new tests depend on the new behaviour; they were written after the code, not before.
 - **Unchanged:** B's and C's requests equal the hashes taken before D existed, also in the Phase 4
-  books; the default Phase 3 `plan` output on the recorded books equals that of `140ca86`; the
-  recorded ledgers and the freeze record are byte-identical.
+  books; a scripted B cell and C cell in the Phase 2 and 3 books give the same ledger lines (times
+  aside), records and requests at `140ca86` and now; the default Phase 3 `plan` output on the
+  recorded books equals that of `140ca86`; the recorded ledgers and the freeze record are
+  byte-identical.
 - **The triplet ceiling** is derived in a test from the pinned configuration and `pricing.json`: USD
   1.4784 per call at the input cap, seven calls, USD 10.3488.
 - **The Phase 4 plan on the recorded books** (offline, nothing written): limit USD 40, nothing
@@ -104,8 +106,9 @@ byte-identical with no Phase 4 ledger.
   released before sending stays released, and neither is sent again; either leaves its case
   incomplete. Does not block.
 - **Headroom near the end:** with the cap at USD 40 a fresh case starts only while at most USD
-  29.6512 is committed. Under the high scenario of USD 31.24 the 19th case starts with USD 0.0554 to
-  spare, so one call kept at its reservation could stop the run before the last case. Does not block;
+  29.6512 is committed. Under the high scenario of USD 31.24 (USD 1.644404 per case) the 19th case
+  starts with about USD 0.05 to spare, so one call kept at its reservation could stop the run before
+  the last case. Does not block;
   the cap is Erhan's decision.
 - **Carried from ADR-027:** D's schemas have never been sent to the provider, so their live contract
   is unverified; the cases are AI-drafted and one person selected them and rates the answers.

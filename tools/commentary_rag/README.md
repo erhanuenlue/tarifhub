@@ -760,7 +760,9 @@ under `--design phase4` every cell is booked in `results/phase4-ledger.jsonl`, b
 (`evidence_agent.PHASE4_LIMIT_USD`) and in the ledger's first line; Phase 2 and 3 spending does not
 count against it, nor Phase 4 spending against their USD 100. The identity is (repetition, case,
 condition), call IDs `<case>-<condition>-r<repetition>-call<n>`; the code admits repetition 1 only,
-and D is booked nowhere else. The cases file must be the frozen runner input (its SHA-256 pinned in
+and D is booked nowhere else; a frozen Phase 4 question (the freeze record's 19 hashes) is refused
+in the Phase 2 and 3 books, so no entry point books its cells on their allowance, and every Phase 4
+admission holds back the case's other cells not yet booked, whoever calls. The cases file must be the frozen runner input (its SHA-256 pinned in
 `run_comparison.PHASE4_RUNNER_INPUT_SHA256`), so one invocation runs the 19 frozen cases in their
 order, B, C and D per case. Admission is per case: before each cell, under the lock, the worst case
 of the case's cells still to run (every call at the input cap; USD 10.3488 for a fresh case) must fit

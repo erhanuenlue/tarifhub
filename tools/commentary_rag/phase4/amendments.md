@@ -4,7 +4,8 @@ The rubric ([`rubric-and-thresholds.md`](rubric-and-thresholds.md)) and the cond
 ([`conditions.md`](conditions.md)) stay as frozen on 2026-11-25; their hashes in
 `../results/2026-11-25-phase4-freeze.json` still hold. This file records, dated and in order, what
 Erhan decided after the freeze. Each entry was written before any live result: when it was
-recorded, no Phase 4 cell had been sent to the provider.
+recorded, no Phase 4 cell had been sent to the provider. The published freeze record stays as it
+is, its own `amendments` list empty; the amendments are recorded here instead.
 
 ## A1: unnecessary search attempts, reported beside T3 (2026-11-26)
 
