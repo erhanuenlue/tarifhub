@@ -84,6 +84,19 @@ closing the file) leaves that line in force, a truthful settlement or release, w
 still ends as a persistence error; a line cut short leaves the ledger damaged. The ledger and the record hold codes, counts, hashes and amounts only;
 raw requests, responses and error text stay in local artifacts.
 
+Phase 4 has its own books (Erhan, 2026-11-26; ``phase4/amendments.md``, O1): the ledger
+``PHASE4_LEDGER`` beside the others in ``BOOKS``, under the same folder lock, with its own limit
+(``PHASE4_LIMIT_USD``) pinned in code and in its first line, and no historical ledger: Phase 2
+and 3 spending does not count against it, nor Phase 4 spending against theirs. A caller chooses
+these books by giving a ``repetition`` (``PHASE4_REPETITIONS`` admits 1 only), which is part of
+every Phase 4 cell's identity: (repetition, case, condition), call IDs
+``<case>-<condition>-r<repetition>-call<n>``, recorded in every reservation and settlement and in
+the cell's record. Only B, C and D (``PHASE4_CONDITIONS``) are booked there, and condition D
+(``coverage``) nowhere else. The ceiling, admission (with the rest a comparison holds back: for
+Phase 4 the case's cells still to run), reservations, settlements, persistence and the strict
+reading of the ledger are the same code for both books; the Phase 2 and 3 books and the events
+written to them are unchanged.
+
 The deadline is cooperative, not a hard wall-clock limit. One monotonic deadline per case
 (``clock()`` at the start plus ``budget_s``) is checked before each token count, after the
 count and the reservation just before sending, after each generation call and after each
@@ -123,6 +136,13 @@ HISTORICAL_LEDGER = "generation-ledger.jsonl"
 HISTORICAL_SHA256 = "e0d031ac4b648f5cd1e086c85ae55c3778254b1b70afcc5a9be461a8a4cf5caa"
 ACTIVE_LEDGER = "phase3-ledger.jsonl"
 AGGREGATE_LIMIT_USD = 100.0
+# Phase 4's own books (Erhan, 2026-11-26; phase4/amendments.md, O1): one ledger beside the others
+# in BOOKS, under the same folder lock, with its own limit and no historical ledger. The repetition
+# is part of every Phase 4 cell's identity; the code admits these repetitions and conditions only.
+PHASE4_LEDGER = "phase4-ledger.jsonl"
+PHASE4_LIMIT_USD = 40.0
+PHASE4_REPETITIONS = (1,)
+PHASE4_CONDITIONS = ("fixed10", "agent", "coverage")  # B, C and D
 # A case ID is a plain name: it names the case's calls in the ledger and its artifact files.
 CASE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 PRICES = Path(__file__).resolve().parent / "pricing.json"
@@ -237,9 +257,10 @@ class AgentTask:
 class Spending:
     """Where a question's calls are accounted; required, so no request is sent unaccounted."""
 
-    ledger: Path  # the active ledger in BOOKS, append-only, shared by every question and condition
-    baseline: Path  # the recorded Phase 2 ledger in BOOKS: read only, all it committed counts
-    baseline_sha256: str  # the hash the caller expects: it must be HISTORICAL_SHA256
+    ledger: Path  # the active ledger in BOOKS (Phase 3's or Phase 4's), append-only
+    baseline: Path | None  # Phase 3: the recorded Phase 2 ledger in BOOKS, read only, all it
+    #                        committed counts; Phase 4: None (its books count nothing else)
+    baseline_sha256: str | None  # Phase 3: it must be HISTORICAL_SHA256; Phase 4: None
     artifacts: Path  # local folder for each call's raw request and response
 
 
@@ -350,8 +371,10 @@ def _saved_cost(usage, pricing: generation.Pricing) -> float | None:
     return pricing.cost(_priced(usage))
 
 
-def _ledger(path: Path, pricing: generation.Pricing) -> list[dict]:
-    """The active ledger's events, read strictly: any damage refuses the ledger as it is."""
+def _ledger(path: Path, pricing: generation.Pricing, *, phase4: bool = False) -> list[dict]:
+    """The active ledger's events, read strictly: any damage refuses the ledger as it is.
+    ``phase4`` reads the Phase 4 ledger: its pin is the books line, and every reservation names
+    one of ``PHASE4_CONDITIONS`` and its repetition, one of ``PHASE4_REPETITIONS``."""
 
     if not path.exists():  # only a missing ledger is a new one
         return []
@@ -370,23 +393,37 @@ def _ledger(path: Path, pricing: generation.Pricing) -> list[dict]:
     except ValueError as exc:  # undecodable, unterminated, blank, not JSON or not finite
         raise _Refused("ledger_damaged") from exc
     reserved: dict[str, float] = {}
-    cells: dict[str, tuple] = {}  # call ID -> (case, condition as written: None before conditions)
+    # call ID -> (case, condition as written: None before conditions, repetition: Phase 4 only)
+    cells: dict[str, tuple] = {}
     settled: set[str] = set()
+    pin = "books" if phase4 else "baseline"
     for n, e in enumerate(events):
-        if not isinstance(e, dict) or (n == 0) != (e.get("event") == "baseline"):
+        if not isinstance(e, dict) or (n == 0) != (e.get("event") == pin):
             raise _Refused("ledger_damaged")  # the pin comes first and only once
         kind = e.get("event")
         attempt = e.get("attempt") if isinstance(e.get("attempt"), str) else None
-        if kind == "baseline":
+        if kind == "baseline" and not phase4:
             ok = (isinstance(e.get("sha256"), str) and _amount(e.get("committed_usd"))
                   and _amount(e.get("budget_usd")))
+        elif kind == "books" and phase4:  # Phase 4's pin: its ledger and its limit
+            ok = e.get("ledger") == PHASE4_LEDGER and _amount(e.get("budget_usd"))
         elif kind == "reserve":  # the call ID names its case, condition and call: one ID, one cell
             call, case, named = e.get("call"), e.get("case"), e.get("condition")
             # A reservation without a condition was written before conditions existed, by the
             # one-question runner (the D1 run): the agent's, under the call ID <case>-call<n>.
-            legacy = "condition" not in e
+            legacy = "condition" not in e and not phase4
+            # Phase 4's books take B, C and D; the Phase 2 and 3 books never take D.
+            known = CONDITIONS.get(named) if isinstance(named, str) else None
             chosen = CONDITIONS["agent"] if legacy else (
-                CONDITIONS.get(named) if isinstance(named, str) else None)
+                known if known is not None
+                and (named in PHASE4_CONDITIONS if phase4 else not known.coverage) else None)
+            # Phase 4 names a repetition the code admits; Phase 2 and 3 reservations name none.
+            repetition = e.get("repetition")
+            repeated = (isinstance(repetition, int) and not isinstance(repetition, bool)
+                        and repetition in PHASE4_REPETITIONS) if phase4 else "repetition" not in e
+            expected = (f"{case}-call{call}" if legacy
+                        else f"{case}-{named}-r{repetition}-call{call}" if phase4
+                        else f"{case}-{named}-call{call}")
             asked = e.get("question_sha256"), e.get("editions")
             recorded = (  # what the case was asked: both with a condition, neither before them
                 (legacy and "question_sha256" not in e and "editions" not in e)
@@ -394,15 +431,14 @@ def _ledger(path: Path, pricing: generation.Pricing) -> list[dict]:
                     and isinstance(asked[1], list) and bool(asked[1])
                     and all(isinstance(x, str) for x in asked[1])))
             ok = (attempt is not None and attempt not in reserved and isinstance(case, str)
-                  and recorded and chosen is not None and isinstance(call, int)
+                  and recorded and repeated and chosen is not None and isinstance(call, int)
                   and not isinstance(call, bool) and 1 <= call <= chosen.calls
-                  and attempt == (f"{case}-call{call}" if legacy else f"{case}-{named}-call{call}")
-                  and _amount(e.get("reserved_usd")))
-            reserved[attempt], cells[attempt] = e.get("reserved_usd"), (case, named)
+                  and attempt == expected and _amount(e.get("reserved_usd")))
+            reserved[attempt], cells[attempt] = e.get("reserved_usd"), (case, named, repetition)
         elif kind == "settle":  # the amount must be what its basis says it is
             cost, basis = e.get("cost_usd"), e.get("cost_basis")
             ok = (attempt in reserved and attempt not in settled and _amount(cost)
-                  and (e.get("case"), e.get("condition")) == cells[attempt]
+                  and (e.get("case"), e.get("condition"), e.get("repetition")) == cells[attempt]
                   and (basis, e.get("sent")) in (("usage", True), ("reservation_retained", True),
                                                  ("not_sent", False))
                   and (basis != "usage" or cost == _saved_cost(e.get("usage"), pricing))
@@ -441,6 +477,15 @@ def _books(spending: Spending, config: generation.Config,
         if pin["budget_usd"] != config.budget_usd:  # the limit pinned with the ledger holds
             raise _Refused("budget_changed")
     return events, baseline
+
+
+def _phase4_books(spending: Spending, pricing: generation.Pricing) -> list[dict]:
+    """The Phase 4 ledger's events, refused when it is damaged or its pinned limit changed."""
+
+    events = _ledger(spending.ledger, pricing, phase4=True)
+    if events and events[0]["budget_usd"] != PHASE4_LIMIT_USD:
+        raise _Refused("budget_changed")
+    return events
 
 
 def _count(value) -> bool:
@@ -511,18 +556,24 @@ def _prices(config: generation.Config) -> generation.Pricing:
         "retrieved")})
 
 
-def spending_state(config: generation.Config | None = None) -> dict:
+def spending_state(config: generation.Config | None = None, *, books: str = "phase3") -> dict:
     """What the books in ``BOOKS`` hold now, for a plan: read strictly but without the lock, so
     nothing is reserved and another invocation may change them before a run. The committed
     amounts, the call ceiling at the input cap, the cells (case and condition) already reserved
-    and every settlement's cost and basis. Raises ValueError with the refusal's code when the
-    books cannot be used as they are."""
+    and every settlement's cost and basis. ``books`` names the books: ``phase3`` (Phase 2's
+    and Phase 3's, the default) or ``phase4`` (``PHASE4_LEDGER`` alone, cells with their
+    repetition, and how the reserved calls stand). Raises ValueError with the refusal's code when
+    the books cannot be used as they are."""
 
     config = config or generation.Config()
     pricing = _prices(config)
-    books = BOOKS.resolve()
-    spending = Spending(ledger=books / ACTIVE_LEDGER, baseline=books / HISTORICAL_LEDGER,
-                        baseline_sha256=HISTORICAL_SHA256, artifacts=books)
+    if books not in ("phase3", "phase4"):
+        raise ValueError("the books are phase3 or phase4")
+    folder = BOOKS.resolve()
+    if books == "phase4":
+        return _phase4_state(config, pricing, folder)
+    spending = Spending(ledger=folder / ACTIVE_LEDGER, baseline=folder / HISTORICAL_LEDGER,
+                        baseline_sha256=HISTORICAL_SHA256, artifacts=folder)
     try:
         events, baseline = _books(spending, config, pricing)
     except _Refused as refusal:
@@ -535,15 +586,7 @@ def spending_state(config: generation.Config | None = None) -> dict:
         "call_ceiling_at_input_cap_usd": _ceiling(pricing, MAX_INPUT_TOKENS, config) / 1_000_000,
         "input_usd_per_mtok": pricing.input,
         # What every bound above is calculated from: code and pricing.json.
-        "assumptions": {
-            "model": config.model, "input_cap_tokens": MAX_INPUT_TOKENS,
-            "input_margin": config.input_margin, "max_output_tokens": config.max_tokens,
-            "us_multiplier": float(US_INFERENCE),
-            "ceiling_input_usd_per_mtok": max(pricing.input, pricing.cache_write_5m,
-                                              pricing.cache_write_1h, pricing.cache_read),
-            "prices_usd_per_mtok": {k: getattr(pricing, k) for k in (
-                "input", "output", "cache_write_5m", "cache_write_1h", "cache_read")},
-            "prices_source": pricing.source, "prices_retrieved": pricing.retrieved},
+        "assumptions": _assumptions(config, pricing),
         "cells": _cells(events),
         # Every reserved call with its settlement, if any: Phase 2's requests (ADR-025's fixed
         # top 5, no condition) and every later call, by case and condition.
@@ -552,16 +595,76 @@ def spending_state(config: generation.Config | None = None) -> dict:
     }
 
 
+def _phase4_state(config: generation.Config, pricing: generation.Pricing,
+                  folder: Path) -> dict:
+    """``spending_state`` of the Phase 4 books: their limit and committed amount alone, each
+    cell with its repetition, every reserved call, and how the reserved calls stand."""
+
+    spending = Spending(ledger=folder / PHASE4_LEDGER, baseline=None, baseline_sha256=None,
+                        artifacts=folder)
+    try:
+        events = _phase4_books(spending, pricing)
+    except _Refused as refusal:
+        raise ValueError(refusal.detail) from None
+    return {
+        "books": PHASE4_LEDGER,
+        "limit_usd": PHASE4_LIMIT_USD,
+        "repetitions": list(PHASE4_REPETITIONS),
+        "committed_usd": _committed(events) / 1_000_000,
+        "call_ceiling_at_input_cap_usd": _ceiling(pricing, MAX_INPUT_TOKENS, config) / 1_000_000,
+        "input_usd_per_mtok": pricing.input,
+        "assumptions": _assumptions(config, pricing),
+        "cells": _cells(events),
+        "active_calls": _calls(events, None),
+        "booked": _booked(events),
+    }
+
+
+def _assumptions(config: generation.Config, pricing: generation.Pricing) -> dict:
+    """What every bound is calculated from: code and pricing.json."""
+
+    return {
+        "model": config.model, "input_cap_tokens": MAX_INPUT_TOKENS,
+        "input_margin": config.input_margin, "max_output_tokens": config.max_tokens,
+        "us_multiplier": float(US_INFERENCE),
+        "ceiling_input_usd_per_mtok": max(pricing.input, pricing.cache_write_5m,
+                                          pricing.cache_write_1h, pricing.cache_read),
+        "prices_usd_per_mtok": {k: getattr(pricing, k) for k in (
+            "input", "output", "cache_write_5m", "cache_write_1h", "cache_read")},
+        "prices_source": pricing.source, "prices_retrieved": pricing.retrieved}
+
+
+def _booked(events: list[dict]) -> dict:
+    """How the reserved calls of strictly read books stand, as counts and amounts: ``usage``
+    (settled at the cost of their usage), ``retained`` (sent, kept at their whole reservation:
+    nothing to price them by), ``released`` (recorded as never sent, at no cost) and ``open``
+    (reserved, no settlement: whether the call was sent is unknown; held at its reservation)."""
+
+    settled = {e["attempt"]: e for e in events if e["event"] == "settle"}
+    kinds = {"usage": "usage", "reservation_retained": "retained", "not_sent": "released"}
+    totals = {kind: [0, 0] for kind in ("usage", "retained", "released", "open")}
+    for e in events:
+        if e["event"] == "reserve":
+            settle = settled.get(e["attempt"])
+            kind = "open" if settle is None else kinds[settle["cost_basis"]]
+            amount = e["reserved_usd"] if settle is None else settle["cost_usd"]
+            totals[kind][0] += 1
+            totals[kind][1] += _micro(amount)
+    return {kind: {"calls": n, "usd": micro / 1_000_000} for kind, (n, micro) in totals.items()}
+
+
 def _cells(events: list[dict]) -> list[dict]:
-    """Each cell (case and condition) with a reservation, and what it was asked: the question's
-    SHA-256 and the editions, None for a reservation written before 2026-11-21."""
+    """Each cell (case and condition, and its repetition in the Phase 4 books) with a
+    reservation, and what it was asked: the question's SHA-256 and the editions, None for a
+    reservation written before 2026-11-21."""
 
     cells: dict[tuple, dict] = {}
     for e in events:
         if e["event"] == "reserve":
             condition = e.get("condition", "agent")
-            cells.setdefault((e["case"], condition), {
-                "case": e["case"], "condition": condition,
+            repeated = {"repetition": e["repetition"]} if "repetition" in e else {}
+            cells.setdefault((e["case"], condition, e.get("repetition", 0)), {
+                "case": e["case"], "condition": condition, **repeated,
                 "question_sha256": e.get("question_sha256"), "editions": e.get("editions")})
     return [cells[key] for key in sorted(cells)]
 
@@ -572,6 +675,7 @@ def _calls(events: list[dict], unnamed: str | None) -> list[dict]:
 
     settled = {e.get("attempt"): e for e in events if e.get("event") == "settle"}
     return [{"case": e.get("case"), "condition": e.get("condition", unnamed),
+             **({"repetition": e["repetition"]} if "repetition" in e else {}),
              "attempt": e.get("attempt"),
              "cost_usd": settled.get(e.get("attempt"), {}).get("cost_usd"),
              "cost_basis": settled.get(e.get("attempt"), {}).get("cost_basis")}
@@ -737,11 +841,14 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
              clock: Callable[[], float], budget_s: float, spending: Spending,
              config: generation.Config | None = None,
              limits: evidence_search.SearchLimits | None = None,
-             condition: str = "agent", matrix_rest_usd: float = 0.0) -> CaseResult:
+             condition: str = "agent", matrix_rest_usd: float = 0.0,
+             repetition: int | None = None) -> CaseResult:
     """Run one question under one condition (``CONDITIONS``) to an outcome within ``budget_s``
     seconds of ``clock``, every call accounted in ``spending``'s ledger. ``matrix_rest_usd``
     is the worst case of a comparison's cells still to run after this one: the admission, under
-    the lock, must fit it beside this cell's own (0 for a question on its own)."""
+    the lock, must fit it beside this cell's own (0 for a question on its own). ``repetition``
+    books the cell in the Phase 4 books under (repetition, case, condition); None books it in the
+    Phase 2 and 3 books, where condition D is refused."""
 
     config = config or generation.Config()
     limits = limits or evidence_search.SearchLimits()
@@ -758,22 +865,10 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
             or any(p["edition"] not in task.editions for p in task.passages)):
         raise ValueError("the initial passages must be distinct, within the condition's passage "
                          "budget and from the editions selected for the question")
-    if (spending.baseline.resolve() != (BOOKS / HISTORICAL_LEDGER).resolve()
-            or spending.ledger.resolve() != (BOOKS / ACTIVE_LEDGER).resolve()
-            or not spending.baseline.is_file()):
-        raise ValueError(f"the books are {HISTORICAL_LEDGER}, which must exist, and the active "
-                         f"ledger {ACTIVE_LEDGER} beside it, in {BOOKS.name}/: one scope, one lock")
     # From here on the books are the canonical paths, not the caller's spelling of them: a link
     # from another folder must not move the folder lock away from the books it guards.
-    books = BOOKS.resolve()
-    spending = replace(spending, baseline=books / HISTORICAL_LEDGER, ledger=books / ACTIVE_LEDGER)
-    if spending.baseline_sha256 != HISTORICAL_SHA256:  # a caller cannot vouch for other bytes
-        raise ValueError(f"the historical ledger is pinned to SHA-256 {HISTORICAL_SHA256[:12]}..., "
-                         "the Phase 2 ledger as recorded; another needs another decision")
-    if config.budget_usd != AGGREGATE_LIMIT_USD or config != generation.Config():
-        raise ValueError(f"the aggregate limit is USD {AGGREGATE_LIMIT_USD:g} for Phase 2 and "
-                         "Phase 3 together, with the Phase 2 settings that set each ceiling; "
-                         "another limit or setting needs another decision")
+    spending = (_phase3_spending(spending, chosen, config) if repetition is None
+                else _phase4_spending(spending, condition, repetition, config))
     pricing = _prices(config)
     if not CASE_ID.fullmatch(task.case_id):
         raise ValueError("the case id must be a plain name: it names the case's artifact files")
@@ -784,14 +879,61 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
         return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
                      budget_s=budget_s, spending=spending, pricing=pricing, config=config,
                      limits=limits, held=held, chosen=chosen, asked=asked,
-                     rest=_micro(matrix_rest_usd))
+                     rest=_micro(matrix_rest_usd), repetition=repetition)
+
+
+def _phase3_spending(spending: Spending, chosen: Condition,
+                     config: generation.Config) -> Spending:
+    """The Phase 2 and 3 books as the caller named them, checked, by their canonical paths."""
+
+    if chosen.coverage:  # D is booked in the Phase 4 books only (phase4/amendments.md, O1)
+        raise ValueError("condition D (coverage) is booked only in the Phase 4 books, under a "
+                         "repetition")
+    if (spending.baseline is None
+            or spending.baseline.resolve() != (BOOKS / HISTORICAL_LEDGER).resolve()
+            or spending.ledger.resolve() != (BOOKS / ACTIVE_LEDGER).resolve()
+            or not spending.baseline.is_file()):
+        raise ValueError(f"the books are {HISTORICAL_LEDGER}, which must exist, and the active "
+                         f"ledger {ACTIVE_LEDGER} beside it, in {BOOKS.name}/: one scope, one lock")
+    books = BOOKS.resolve()
+    spending = replace(spending, baseline=books / HISTORICAL_LEDGER, ledger=books / ACTIVE_LEDGER)
+    if spending.baseline_sha256 != HISTORICAL_SHA256:  # a caller cannot vouch for other bytes
+        raise ValueError(f"the historical ledger is pinned to SHA-256 {HISTORICAL_SHA256[:12]}..., "
+                         "the Phase 2 ledger as recorded; another needs another decision")
+    if config.budget_usd != AGGREGATE_LIMIT_USD or config != generation.Config():
+        raise ValueError(f"the aggregate limit is USD {AGGREGATE_LIMIT_USD:g} for Phase 2 and "
+                         "Phase 3 together, with the Phase 2 settings that set each ceiling; "
+                         "another limit or setting needs another decision")
+    return spending
+
+
+def _phase4_spending(spending: Spending, condition: str, repetition,
+                     config: generation.Config) -> Spending:
+    """The Phase 4 books as the caller named them, checked, by their canonical path: a
+    repetition the code admits, B, C or D, no historical ledger and the Phase 2 settings."""
+
+    if (isinstance(repetition, bool) or not isinstance(repetition, int)
+            or repetition not in PHASE4_REPETITIONS):
+        raise ValueError("the Phase 4 books admit repetition "
+                         f"{', '.join(str(r) for r in PHASE4_REPETITIONS)} only; another needs "
+                         "another decision")
+    if condition not in PHASE4_CONDITIONS:
+        raise ValueError(f"the Phase 4 books take B, C and D only ({', '.join(PHASE4_CONDITIONS)})")
+    if (spending.baseline is not None or spending.baseline_sha256 is not None
+            or spending.ledger.resolve() != (BOOKS / PHASE4_LEDGER).resolve()):
+        raise ValueError(f"the Phase 4 books are {PHASE4_LEDGER} in {BOOKS.name}/ and nothing "
+                         "else: no historical ledger counts beside them")
+    if config != generation.Config():
+        raise ValueError("the Phase 4 books take the Phase 2 settings that set each ceiling; "
+                         "another setting needs another decision")
+    return replace(spending, ledger=BOOKS.resolve() / PHASE4_LEDGER)
 
 
 def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping],  # noqa: PLR0913
           clock: Callable[[], float], budget_s: float, spending: Spending,
           pricing: generation.Pricing, config: generation.Config,
           limits: evidence_search.SearchLimits, held: bool, chosen: Condition,
-          asked: tuple[str, list[str]], rest: int) -> CaseResult:
+          asked: tuple[str, list[str]], rest: int, repetition: int | None) -> CaseResult:
     started = clock()
     deadline = started + budget_s
     first = generation.request({"question": task.question, "editions": list(task.editions),
@@ -801,7 +943,9 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
     messages = list(first["messages"])
     state = evidence_search.SearchState(permitted=tuple(task.editions),
                                         supplied=tuple(p["passage_id"] for p in task.passages))
-    record = {"case": task.case_id, "condition": chosen.name, "budget_s": budget_s,
+    phase4 = repetition is not None
+    ident = {"repetition": repetition} if phase4 else {}  # Phase 4: part of the cell's identity
+    record = {"case": task.case_id, "condition": chosen.name, **ident, "budget_s": budget_s,
               "generation_calls": 0, "calls": [], "searches": []}
     local = {"requests": [], "responses": [], "searches": [], "errors": []}
     if chosen.coverage:  # D's coverage decisions: codes and counts here, the record itself local
@@ -833,36 +977,55 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
         return CaseResult(outcome=outcome, status=answer["status"] if answer else None,
                           detail=detail, answer=answer, record=record, local=local)
 
+    def read() -> tuple[list[dict], float]:
+        """The books' events and the historical amount counted beside them (none in Phase 4)."""
+        if phase4:
+            return _phase4_books(spending, pricing), 0.0
+        return _books(spending, config, pricing)
+
     if not held:  # another invocation holds the books: nothing is counted, sent or written
         return end("refused", "locked")
     try:
-        events, baseline = _books(spending, config, pricing)
+        events, baseline = read()
     except _Refused as refusal:
         return end("refused", refusal.detail)
     if any(e["event"] == "reserve" and e["case"] == task.case_id and "question_sha256" in e
            and (e["question_sha256"], e["editions"]) != asked for e in events):
         return end("refused", "case_redefined")  # booked before with another question
     if any(e["event"] == "reserve" and e["case"] == task.case_id
-           and e.get("condition", "agent") == chosen.name for e in events):
+           and e.get("condition", "agent") == chosen.name
+           and e.get("repetition") == repetition for e in events):
         return end("refused", "already_run")  # completed or unresolved: never sent again
-    calls = {f"{task.case_id}-{chosen.name}-call{n}" for n in range(1, chosen.calls + 1)}
+    stem = f"{task.case_id}-{chosen.name}" + (f"-r{repetition}" if phase4 else "")
+    calls = {f"{stem}-call{n}" for n in range(1, chosen.calls + 1)}
     if any(e["event"] == "reserve" and e["attempt"] in calls for e in events):
         return end("refused", "call_id_taken")  # an older reservation's ID: never written twice
     # Admission is a check, not a charge: every call at the input cap bounds a growing context.
     # A comparison's cells still to run after this one are held back beside it (``rest``).
+    limit = _micro(PHASE4_LIMIT_USD if phase4 else config.budget_usd)
     admission = chosen.calls * _ceiling(pricing, MAX_INPUT_TOKENS, config)
-    if _micro(baseline) + _committed(events) + admission + rest > _micro(config.budget_usd):
+    if _micro(baseline) + _committed(events) + admission + rest > limit:
         return end("refused", "admission_budget")
-    if not events and not kept(lambda: generation._append(spending.ledger, {
-            "event": "baseline", "ledger": spending.baseline.name,
-            "sha256": HISTORICAL_SHA256, "committed_usd": baseline,
-            "budget_usd": config.budget_usd, "at": generation._now()})):
-        return end("persistence_error", "baseline_not_saved")  # the first question pins it
-    record["spending"] = {
-        "budget_usd": config.budget_usd, "baseline_sha256": HISTORICAL_SHA256,
-        "baseline_committed_usd": baseline,
-        "committed_before_usd": (_micro(baseline) + _committed(events)) / 1_000_000,
-        "admission_usd": admission / 1_000_000}
+    if phase4:  # the first Phase 4 cell pins the books: their ledger and limit
+        if not events and not kept(lambda: generation._append(spending.ledger, {
+                "event": "books", "ledger": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
+                "at": generation._now()})):
+            return end("persistence_error", "books_not_saved")
+        record["spending"] = {
+            "books": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
+            "committed_before_usd": _committed(events) / 1_000_000,
+            "admission_usd": admission / 1_000_000, "rest_usd": rest / 1_000_000}
+    else:
+        if not events and not kept(lambda: generation._append(spending.ledger, {
+                "event": "baseline", "ledger": spending.baseline.name,
+                "sha256": HISTORICAL_SHA256, "committed_usd": baseline,
+                "budget_usd": config.budget_usd, "at": generation._now()})):
+            return end("persistence_error", "baseline_not_saved")  # the first question pins it
+        record["spending"] = {
+            "budget_usd": config.budget_usd, "baseline_sha256": HISTORICAL_SHA256,
+            "baseline_committed_usd": baseline,
+            "committed_before_usd": (_micro(baseline) + _committed(events)) / 1_000_000,
+            "admission_usd": admission / 1_000_000}
 
     for call in range(1, chosen.calls + 1):
         searching = (chosen.search and call < chosen.calls
@@ -892,15 +1055,15 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
             return end("provider_error", "unreadable_count")  # nothing to reserve from
         if counted > MAX_INPUT_TOKENS:
             return end("refused", "input_over_limit")
-        attempt = f"{task.case_id}-{chosen.name}-call{call}"  # one ID, one case and condition
+        attempt = f"{stem}-call{call}"  # one ID, one cell
         reserved = _ceiling(pricing, counted, config) / 1_000_000  # the admission's ceiling
         # A guard behind the admission check, which already holds this call's worst case:
         # the books are read again and the reservation must fit beside everything committed.
         try:
-            events, baseline = _books(spending, config, pricing)
+            events, baseline = read()
         except _Refused as refusal:
             return end("refused", refusal.detail)
-        if _micro(baseline) + _committed(events) + _micro(reserved) > _micro(config.budget_usd):
+        if _micro(baseline) + _committed(events) + _micro(reserved) > limit:
             return end("refused", "budget")
         request = json.dumps(body, ensure_ascii=False, sort_keys=True)  # hashes as _sha256(body)
         if not kept(lambda: _create(spending.artifacts / "requests" / f"{attempt}.json",
@@ -908,7 +1071,8 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
             return end("persistence_error", "request_not_saved")
         if not kept(lambda: generation._append(spending.ledger, {
                 "event": "reserve", "attempt": attempt, "case": task.case_id,
-                "condition": chosen.name, "question_sha256": asked[0], "editions": asked[1],
+                "condition": chosen.name, **ident, "question_sha256": asked[0],
+                "editions": asked[1],
                 "call": call,
                 "request_sha256": _sha256(request), "counted_input_tokens": counted,
                 "reserved_usd": reserved, "at": generation._now()})):
@@ -923,7 +1087,7 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
         if left <= 0:  # reserved but demonstrably never sent: recorded so, which releases it
             if not kept(lambda: generation._append(spending.ledger, {
                     "event": "settle", "attempt": attempt, "case": task.case_id,
-                    "condition": chosen.name, "sent": False,
+                    "condition": chosen.name, **ident, "sent": False,
                     "cost_usd": 0.0, "cost_basis": "not_sent", "above_reservation": False,
                     "usage": None, "response_sha256": None, "at": generation._now()})):
                 return end("persistence_error", "release_not_saved")  # stays reserved
@@ -955,7 +1119,7 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
         above = _micro(cost) > _micro(reserved)  # recorded as calculated, never capped
         if not kept(lambda: generation._append(spending.ledger, {
                 "event": "settle", "attempt": attempt, "case": task.case_id,
-                "condition": chosen.name, "sent": True,
+                "condition": chosen.name, **ident, "sent": True,
                 "cost_usd": cost, "cost_basis": basis, "above_reservation": above,
                 "usage": usage, "response_sha256": entry["response_sha256"],
                 "at": generation._now()})):

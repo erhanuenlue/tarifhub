@@ -17,6 +17,18 @@ condition contract describes (``phase4/conditions.md``, section 5):
   exploratory diagnostics (counts), never a measure or a threshold.
 - ``t1`` to ``t5``, ``r1``, ``r2``, ``primary_outcome`` and ``reference_outcome``: the decision
   thresholds and both outcome tables as pure functions.
+- ``a1``: amendment A1 (``phase4/amendments.md``), reported beside T3 and never a threshold:
+  unnecessary search attempts, an executed search or a refused search request at a
+  no-search-needed decision point (once per point, for C and D alike), executed and refused
+  apart, over T3's own denominator. ``search_thresholds`` gives T3, A1 and T4 from one
+  ``summary``, whose completeness is the scoring's own, never a caller's.
+
+Every record names its repetition (Phase 4's books, ``evidence_agent.PHASE4_REPETITIONS``) and
+its time budget (a finite number of seconds above 0); one scoring holds one repetition. The
+repetition is complete when every gold case is complete in it, and the command line takes the
+frozen gold file only (``FROZEN_GOLD_SHA256``), so neither a split batch nor a trimmed gold
+file can look complete. A search refused for want of rounds (``refused_rounds``) is accepted
+only after both rounds were used.
 
 The trace: the generation calls are the sent ones, calls 1 to ``generation_calls`` (a call
 reserved but stopped before sending is none). Every generation call except one that ended the
@@ -29,13 +41,14 @@ after a search, before its next call was recorded: that call is no decision poin
 that disagrees with its case or cannot be rebuilt is refused, never scored in part.
 
 No model, provider, network or books: it reads JSON files and writes one new file, never in
-``results/`` and in the repository only under this module's git-ignored ``local/`` folder;
-stdout carries the counts and the label only.
+``results/`` and in the repository only under this module's git-ignored ``local/`` folder,
+which must be a real folder, not a symbolic link; stdout carries the counts, T3, A1 and T4 and
+the label only.
 
     UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run \\
         --project services/ingestion --frozen --offline --extra ai --extra dev \\
         python tools/commentary_rag/phase4_scoring.py --result <local result.json> \\
-        [--result <the result.json of a resumed run> ...] --gold <gold file> \\
+        [--result <the result.json of a resumed run> ...] --gold <the frozen gold file> \\
         --out <a new file under local/ or outside the repository> [--label SIMULATED]
 
 Exit codes: 0 written, 2 invalid input (nothing written).
@@ -44,7 +57,9 @@ Exit codes: 0 written, 2 invalid input (nothing written).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
+import math
 import os
 import sys
 from collections import Counter
@@ -62,6 +77,9 @@ LOCAL = (
     HERE / "local"
 )  # git-ignored: the one folder of the repository a scoring may go to
 EXIT_OK, EXIT_INPUT = 0, 2
+# The frozen gold (results/2026-11-25-phase4-freeze.json, role "private cases and gold"): the
+# command line scores against this file and no other.
+FROZEN_GOLD_SHA256 = "b4906698acdd439b7a599678b543887c7faf7e19422580f8a0c5b69efd1d541b"
 LIMITS = evidence_search.SearchLimits()  # the bounds every comparison cell runs with
 TOP = 10  # the shared ranking's depth: the strata's horizon
 FIRST = 5  # C's and D's initial context: S1 is support within ranks 1 to 5
@@ -257,6 +275,24 @@ def _checked_record(record, condition: str) -> None:
         )
     if condition not in SEARCHING and searches:
         raise ValueError("a fixed condition never searches")
+    budget = record.get("budget_s")
+    if (
+        isinstance(budget, bool)
+        or not isinstance(budget, int | float)
+        or not math.isfinite(budget)
+        or budget <= 0
+    ):
+        raise ValueError("a record's budget_s must be a finite number of seconds above 0")
+    repetition = record.get("repetition")
+    if (
+        isinstance(repetition, bool)
+        or not isinstance(repetition, int)
+        or repetition not in evidence_agent.PHASE4_REPETITIONS
+    ):
+        raise ValueError(
+            "a record names its repetition, one Phase 4's books admit "
+            f"({', '.join(str(r) for r in evidence_agent.PHASE4_REPETITIONS)})"
+        )
 
 
 def _trace(record, condition: str) -> tuple[list, list, list]:
@@ -295,8 +331,8 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
                 "a search returns passages exactly when its outcome is passages"
             )
         counted = search.get("round")
-        if outcome == "refused_rounds":
-            numbered = counted is None
+        if outcome == "refused_rounds":  # no round left: only after both were used
+            numbered = counted is None and rounds == LIMITS.max_rounds
         else:
             rounds += 1
             numbered = (
@@ -305,7 +341,7 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
         if not numbered:
             raise ValueError(
                 "counted search rounds are numbered 1 and 2, in order; a request "
-                "refused for want of rounds has none"
+                "refused for want of rounds has none and comes only after both"
             )
         if sent[number - 1]["tool_choice"] != "auto":
             raise ValueError("a search belongs to a call that was offered the tool")
@@ -406,6 +442,8 @@ def _counts(points: list[dict], searches: list[dict]) -> dict:
     acted = [p for p in at if p["action"] != "no_action"]
     measures = Counter(p["measure"] for p in at)
     refused = Counter(p["kind"] for p in at if p["action"] == "search_refused")
+    # A1: an executed or a refused request at a no-search-needed point, once per point.
+    attempts = measures["unnecessary"] + refused["no_search_needed"]
     return {
         "searches": len(searches),
         "tool_errors": sum(s["outcome"] == "tool_error" for s in searches),
@@ -430,6 +468,15 @@ def _counts(points: list[dict], searches: list[dict]) -> dict:
         "anomalies": sum(p["anomaly"] for p in points),
         "unnecessary_rate": {
             "k": measures["unnecessary"],
+            "n": sum(p["kind"] == "no_search_needed" for p in acted),
+        },
+        "unnecessary_attempts": {
+            "executed": measures["unnecessary"],
+            "refused": refused["no_search_needed"],
+            "total": attempts,
+        },
+        "unnecessary_attempt_rate": {
+            "k": attempts,
             "n": sum(p["kind"] == "no_search_needed" for p in acted),
         },
         "missed_rate": {
@@ -693,7 +740,21 @@ def score(results, gold) -> dict:
     }
     if len(budgets) > 1:
         raise ValueError("the cells of one repetition ran with different time budgets")
-    return {"gold_cases": len(frozen), "cases": scored}
+    # One scoring, one repetition: the records are checked above, so each names its own.
+    repetitions = {
+        cell["record"]["repetition"]
+        for known in merged.values()
+        for cells in known["cells"].values()
+        for cell in cells
+        if cell.get("record") is not None
+    }
+    if len(repetitions) > 1:
+        raise ValueError("the records of one scoring belong to one repetition")
+    return {
+        "gold_cases": len(frozen),
+        "repetition": next(iter(repetitions), None),
+        "cases": scored,
+    }
 
 
 def _histogram(values) -> dict[str, int]:
@@ -713,10 +774,11 @@ def summary(scored: dict) -> dict:
     """Counts of a ``score`` result, safe to show: no case ID, no passage ID, no list in case
     order.
 
-    ``gold_cases``; ``cases_in_results`` (gold cases in any result); ``complete_cases`` (B, C
-    and D all ran) and ``incomplete_cases`` (the other cases in the results; a gold case in no
-    result is neither), so the repetition is complete when ``complete_cases`` equals
-    ``gold_cases``. Per condition: its cells (one per case in the results), those ``not_run``,
+    ``gold_cases``; ``repetition``; ``cases_in_results`` (gold cases in any result);
+    ``complete_cases`` (B, C and D all ran) and ``incomplete_cases`` (the other cases in the
+    results; a gold case in no result is neither); ``repetition_complete``, true exactly when
+    ``complete_cases`` equals ``gold_cases``. Per condition: its cells (one per case in the
+    results), those ``not_run``,
     calls per cell (generation calls sent) and searches per cell (refused requests included)
     over the cells that ran, the search measures of C and D, and D's coverage diagnostics.
     """
@@ -743,9 +805,12 @@ def summary(scored: dict) -> dict:
         conditions[condition] = entry
     return {
         "gold_cases": scored["gold_cases"],
+        "repetition": scored["repetition"],
         "cases_in_results": len(cases),
         "complete_cases": complete,
         "incomplete_cases": len(cases) - complete,
+        "repetition_complete": scored["repetition"] is not None
+        and complete == scored["gold_cases"],
         "conditions": conditions,
     }
 
@@ -800,6 +865,57 @@ def t4(d: dict, c: dict, complete: bool) -> dict:
         "d_missed": d_k,
         "d_search_needed_with_action": d_n,
         "c_missed": c_k,
+    }
+
+
+def a1(d: dict, c: dict) -> dict:
+    """A1 beside T3 (``d`` and ``c``: D's and C's ``summary`` entries), never a threshold.
+
+    Per condition: the executed and the refused unnecessary search attempts, their total and
+    T3's denominator (no-search-needed decision points with an action); ``percent`` only when
+    that denominator is at least 5. The executed attempts are T3's unnecessary searches.
+    """
+
+    def entry(counts: dict, label: str) -> dict:
+        k, n = _rate(counts, "unnecessary_attempt_rate")
+        t3_k, t3_n = _rate(counts, "unnecessary_rate")
+        split = counts.get("unnecessary_attempts")
+        if not isinstance(split, dict):
+            raise ValueError(f"{label}: a summary entry with unnecessary_attempts is needed")
+        executed = _count(split.get("executed"), f"{label} executed attempts")
+        refused = _count(split.get("refused"), f"{label} refused attempts")
+        total = _count(split.get("total"), f"{label} attempts")
+        if executed != t3_k or n != t3_n or executed + refused != total or total != k:
+            raise ValueError(
+                f"{label}: A1 counts T3's unnecessary searches plus refused requests over "
+                "T3's own denominator"
+            )
+        percent = round(100 * k / n, 1) if n >= MIN_POINTS else None
+        return {
+            "executed": executed,
+            "refused": refused,
+            "attempts": k,
+            "n": n,
+            "percent": percent,
+        }
+
+    return {"d": entry(d, "D"), "c": entry(c, "C"), "threshold": None}
+
+
+def search_thresholds(counts: dict) -> dict:
+    """T3, A1 beside it, and T4 from one ``summary``: the repetition is complete when the
+    summary says so (every gold case complete in one repetition), never on a caller's word."""
+
+    if not isinstance(counts, dict) or not isinstance(counts.get("conditions"), dict):
+        raise ValueError("search_thresholds takes a summary")
+    complete = _flag(counts.get("repetition_complete"), "repetition_complete")
+    d, c = counts["conditions"].get("coverage"), counts["conditions"].get("agent")
+    return {
+        "repetition": counts.get("repetition"),
+        "repetition_complete": complete,
+        "T3": t3(d, c, complete),
+        "A1": a1(d, c),
+        "T4": t4(d, c, complete),
     }
 
 
@@ -945,6 +1061,11 @@ def _inside(target: Path, folder: Path) -> bool:
 def _placement(path: Path) -> str | None:
     """Why ``path`` may not hold a scoring, or None: never in ``results/``, and in the
     repository only under this module's git-ignored ``local/`` folder."""
+    if LOCAL.is_symlink():  # a link would carry case-level scoring wherever it points
+        return (
+            "tools/commentary_rag/local/ is a symbolic link; case-level scoring goes to "
+            "the real, git-ignored folder or outside the repository"
+        )
     target = path.resolve()
     if _inside(target, RESULTS):
         return "--out lies in results/, which is public; case-level scoring stays local"
@@ -998,6 +1119,11 @@ def main(argv: list[str] | None = None) -> int:
     if not args.out.parent.is_dir():
         return _refuse("--out must name a file in an existing folder")
     try:
+        if hashlib.sha256(args.gold.read_bytes()).hexdigest() != FROZEN_GOLD_SHA256:
+            return _refuse(
+                "--gold must be the frozen gold file (its SHA-256 as frozen in "
+                "results/2026-11-25-phase4-freeze.json)"
+            )
         results = [_load(path) for path in args.result]
         gold = _load(args.gold)
     except (OSError, ValueError) as exc:
@@ -1006,11 +1132,17 @@ def main(argv: list[str] | None = None) -> int:
         )
     try:
         scored = score(results, gold)
+        counts = summary(scored)
+        thresholds = search_thresholds(counts)
     except ValueError as exc:
         return _refuse(str(exc))
-    counts = summary(scored)
     text = json.dumps(
-        {"label": args.label, "score": scored, "summary": counts},
+        {
+            "label": args.label,
+            "score": scored,
+            "summary": counts,
+            "search_thresholds": thresholds,
+        },
         ensure_ascii=False,
         indent=1,
         sort_keys=True,
@@ -1022,7 +1154,7 @@ def main(argv: list[str] | None = None) -> int:
         return _refuse(f"--out could not be written ({type(exc).__name__})")
     print(
         json.dumps(
-            {"label": args.label, "summary": counts},
+            {"label": args.label, "summary": counts, "search_thresholds": thresholds},
             ensure_ascii=False,
             indent=1,
             sort_keys=True,

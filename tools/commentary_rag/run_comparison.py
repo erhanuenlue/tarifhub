@@ -19,6 +19,17 @@ Phase 4, frozen in ``phase4/conditions.md``), D with C's top 5, and its public r
 passage: it keeps codes, counts, hashes, usage and amounts, while rankings, supplied, cited and
 returned passages and D's coverage text stay in the local record.
 
+Under ``phase4`` the cells are booked in Phase 4's own books (``evidence_agent.PHASE4_LEDGER``,
+USD 40; ``phase4/amendments.md``, O1) under repetition 1, the one those books admit, and the
+cases file must be the frozen runner input (``PHASE4_RUNNER_INPUT_SHA256``): one invocation runs
+the frozen cases in their order, B, C and D per case, and no batch split or reordering reaches the
+books. Admission is per case: before each cell, under the lock, the worst case of the case's
+cells still to run (every call at the input cap: USD 10.3488 for B, C and D of a fresh case) must
+fit beside everything committed in those books, so a case that does not fit stops the run before
+anything of it is sent. A rerun after an interruption skips every cell already in the books and
+goes on in the frozen order; a cell whose booking is unresolved (a reservation without a
+settlement: sending unknown) is never sent again, and its case stays incomplete.
+
 The input is a cases file holding each case's ID, question and editions and nothing else: any
 other field (a reference answer, gold evidence, a rubric) is refused before the file is used, so
 nothing that scores an answer can reach a request.
@@ -26,11 +37,13 @@ nothing that scores an answer can reach a request.
 ``plan`` is offline: no corpus, no model, no client, nothing counted, sent or written. It reads
 the books without the lock and prints the matrix in its order, each condition's bounds, the
 admission check (the worst case of every cell still to run beside everything committed, under
-the aggregate limit, a bound) and ESTIMATES from earlier usage settlements, labelled as such.
+the aggregate limit, a bound; under ``phase4`` the next case's beside the Phase 4 books) and
+ESTIMATES from earlier usage settlements, labelled as such.
 
 ``run`` is the live step and runs only when explicitly authorised. It checks the cases, refuses
-existing outputs, builds the client (the key's presence only), refuses when the plan's worst
-case does not fit or a case cannot be paired, loads the verified corpus and the cached e5 model
+existing outputs and a local output folder that is a symbolic link, builds the client (the key's
+presence only), refuses when the plan's worst case (under ``phase4``: the next case's) does
+not fit or a case cannot be paired, loads the verified corpus and the cached e5 model
 once (as the one-question runner does), checks every case's editions and question length and
 ranks every case (hybrid over its editions only) before any cell runs. Then it runs the matrix
 case by case, a case's A, B and C one after the other: A receives the top 5, B the top 10 and C
@@ -85,6 +98,13 @@ ORDER = ("fixed5", "fixed10", "agent")  # within a case: A, B, C (the Phase 3 de
 # The designs, chosen by name: Phase 3 (A, B, C) and Phase 4 (B, C, D; phase4/conditions.md).
 DESIGNS = {"phase3": ORDER, "phase4": ("fixed10", "agent", "coverage")}
 LABELS = {"fixed5": "A", "fixed10": "B", "agent": "C", "coverage": "D"}
+# Phase 4 (phase4/amendments.md, O1): the one repetition its books admit, and the frozen runner
+# input (results/2026-11-25-phase4-freeze.json, role "runner input"), the only cases file a
+# Phase 4 plan or run reads.
+PHASE4_REPETITION = evidence_agent.PHASE4_REPETITIONS[0]
+PHASE4_RUNNER_INPUT_SHA256 = (
+    "034e6947153b6344de73ddea4ab8d3fd1715e2ad6f962b8de946a685e583e15e"
+)
 # One ranking per case, deep enough for every condition's fixed context (B's top 10).
 TOP_K = max(c.passages for c in evidence_agent.CONDITIONS.values())
 CASE_KEYS = ("id", "question", "editions")
@@ -254,6 +274,8 @@ def _plan(cases: list[dict], design: str = "phase3") -> dict:
     beside the books now; estimates labelled. Raises ValueError when the books cannot be used
     as they are."""
 
+    if design == "phase4":
+        return _plan_phase4(cases)
     state = evidence_agent.spending_state()
     ceiling = _micro(state["call_ceiling_at_input_cap_usd"])
     limits = evidence_search.SearchLimits()
@@ -330,6 +352,127 @@ def _plan(cases: list[dict], design: str = "phase3") -> dict:
     }
 
 
+def _bounds(design: str, ceiling: int) -> dict:
+    """Each condition of ``design``: its label, passages, calls, searches and admission."""
+
+    limits = evidence_search.SearchLimits()
+    conditions = {}
+    for name in DESIGNS[design]:
+        c = evidence_agent.CONDITIONS[name]
+        conditions[name] = {
+            "label": LABELS[name],
+            "initial_passages": c.passages,
+            "most_passages": limits.max_passages if c.search else c.passages,
+            "calls": c.calls,
+            "searches": limits.max_rounds if c.search else 0,
+            "search_tool": c.search,
+            "admission_usd": _usd(c.calls * ceiling),
+        }
+    return conditions
+
+
+def _plan_phase4(cases: list[dict]) -> dict:
+    """The Phase 4 matrix beside Phase 4's own books: its order, bounds and per-case admission
+    (the next case's cells still to run at their worst case beside everything committed there,
+    under their limit), how the reserved calls stand, and estimates from every earlier usage
+    settlement (Phase 2, 3 and 4), labelled."""
+
+    state = evidence_agent.spending_state(books="phase4")
+    ceiling = _micro(state["call_ceiling_at_input_cap_usd"])
+    conditions = _bounds("phase4", ceiling)
+    mine = [c for c in state["cells"] if c["repetition"] == PHASE4_REPETITION]
+    in_books = {(cell["case"], cell["condition"]) for cell in mine}
+    booked: dict[str, list] = {}
+    for cell in state["cells"]:  # every repetition: one case ID, one question and editions
+        booked.setdefault(cell["case"], []).append(cell)
+    calls: dict[tuple, dict] = {}
+    kinds = {"usage": "usage", "reservation_retained": "retained", "not_sent": "released"}
+    for call in state["active_calls"]:
+        if call["repetition"] == PHASE4_REPETITION:
+            tally = calls.setdefault(
+                (call["case"], call["condition"]),
+                dict.fromkeys(("usage", "retained", "released", "open"), 0),
+            )
+            tally[kinds.get(call["cost_basis"], "open")] += 1
+    order = [
+        {
+            "case": c["id"],
+            "condition": name,
+            "label": LABELS[name],
+            "editions": c["editions"],
+            "in_books": (c["id"], name) in in_books,
+            **(
+                {"calls_in_books": calls[(c["id"], name)]}
+                if (c["id"], name) in calls
+                else {}
+            ),
+        }
+        for c in cases
+        for name in DESIGNS["phase4"]
+    ]
+    rest: dict[str, int] = {}
+    for o in order:
+        if not o["in_books"]:
+            rest[o["case"]] = rest.get(o["case"], 0) + _micro(
+                conditions[o["condition"]]["admission_usd"]
+            )
+    following = next((c["id"] for c in cases if c["id"] in rest), None)
+    limit, committed = _micro(state["limit_usd"]), _micro(state["committed_usd"])
+    case_ceiling = sum(_micro(c["admission_usd"]) for c in conditions.values())
+    worst = sum(rest.values())
+    earlier = evidence_agent.spending_state()  # Phase 2 and 3: estimates only
+    observed = {
+        "historical_calls": earlier["historical_calls"],
+        "active_calls": earlier["active_calls"]
+        + [{**call, "books": "phase4"} for call in state["active_calls"]],
+        "input_usd_per_mtok": state["input_usd_per_mtok"],
+    }
+    return {
+        "order": order,
+        "conditions": conditions,
+        "admission": {
+            "label": (
+                "BOUND, not an expected cost: a case starts only when every call of its "
+                "cells still to run, at the input cap, fits beside everything committed "
+                "in the Phase 4 books, under their limit; checked again under the lock "
+                "before every cell"
+            ),
+            "books": state["books"],
+            "repetition": PHASE4_REPETITION,
+            "limit_usd": state["limit_usd"],
+            "committed_usd": state["committed_usd"],
+            "booked": state["booked"],
+            "headroom_usd": _usd(limit - committed),
+            "call_ceiling_at_input_cap_usd": _usd(ceiling),
+            "case_ceiling_usd": _usd(case_ceiling),
+            "cases_to_run": len(rest),
+            "next_case": following,
+            "next_case_worst_case_usd": _usd(rest.get(following, 0)),
+            "fits": committed + rest.get(following, 0) <= limit,
+            "worst_case_usd": _usd(worst),
+        },
+        "cases": [
+            {
+                "case": c["id"],
+                "editions": c["editions"],
+                "booked": [cell["condition"] for cell in booked.get(c["id"], [])],
+                "pairing": _pairing(c, booked.get(c["id"], [])),
+            }
+            for c in cases
+        ],
+        "assumptions": {
+            "label": (
+                "ASSUMPTIONS of the bounds, fixed in code and pricing.json: "
+                "each call's ceiling is its counted input with the margin at "
+                "the dearest input rate, plus every output token, times the "
+                "US multiplier; prices as recorded, not a billing guarantee"
+            ),
+            **state["assumptions"],
+        },
+        "estimates": _estimates(observed, order, "phase4"),
+    }
+
+
 def _pairing(item: dict, booked: list[dict]) -> str:
     """Whether a case's cells already in the books were asked what this case asks: new (none
     booked), same, other (another question or editions), unverifiable (a cell recorded neither,
@@ -360,8 +503,9 @@ def _estimates(state: dict, order: list[dict], design: str = "phase3") -> dict:
     for call in state["historical_calls"]:
         phase2.setdefault(call["case"], []).append(call)
     cells: dict[tuple, list] = {}
-    for call in state["active_calls"]:
-        cells.setdefault((call["case"], call["condition"]), []).append(call)
+    for call in state["active_calls"]:  # a cell per books, case, condition and repetition
+        key = (call.get("books"), call["case"], call["condition"], call.get("repetition"))
+        cells.setdefault(key, []).append(call)
 
     def priced(calls: list) -> int | None:
         """A cell's cost in micro-dollars when every call it reserved was settled from its
@@ -373,7 +517,7 @@ def _estimates(state: dict, order: list[dict], design: str = "phase3") -> dict:
     observed = {name: [] for name in evidence_agent.CONDITIONS}
     for calls in phase2.values():
         observed["fixed5"].append(priced(calls))
-    for (_, name), calls in cells.items():
+    for (_, _, name, _), calls in cells.items():
         observed[name].append(priced(calls))
     per = {}
     for name in evidence_agent.CONDITIONS:
@@ -426,7 +570,7 @@ def _estimates(state: dict, order: list[dict], design: str = "phase3") -> dict:
     }
 
 
-def _planned() -> dict:
+def _planned(design: str = "phase3") -> dict:
     """When, from which code and against which books a plan was made."""
 
     books = evidence_agent.BOOKS.resolve()
@@ -447,6 +591,11 @@ def _planned() -> dict:
         "offline": "nothing counted, sent or written; the books read without the lock",
         "historical_ledger_sha256": sha(books / evidence_agent.HISTORICAL_LEDGER),
         "active_ledger_sha256": sha(books / evidence_agent.ACTIVE_LEDGER),
+        **(
+            {"phase4_ledger_sha256": sha(books / evidence_agent.PHASE4_LEDGER)}
+            if design == "phase4"
+            else {}
+        ),
     }
 
 
@@ -567,11 +716,20 @@ def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
             ],
             "passages": len(loaded.built.passages),
         },
-        "books": {
-            "historical_ledger": evidence_agent.HISTORICAL_LEDGER,
-            "historical_sha256": evidence_agent.HISTORICAL_SHA256,
-            "active_ledger": evidence_agent.ACTIVE_LEDGER,
-        },
+        "books": (
+            {
+                "ledger": evidence_agent.PHASE4_LEDGER,
+                "limit_usd": evidence_agent.PHASE4_LIMIT_USD,
+                "repetition": PHASE4_REPETITION,
+                "runner_input_sha256": PHASE4_RUNNER_INPUT_SHA256,
+            }
+            if design == "phase4"
+            else {
+                "historical_ledger": evidence_agent.HISTORICAL_LEDGER,
+                "historical_sha256": evidence_agent.HISTORICAL_SHA256,
+                "active_ledger": evidence_agent.ACTIVE_LEDGER,
+            }
+        ),
         "environment": {
             "python": platform.python_version(),
             "packages": {n: metadata.version(n) for n in ("anthropic", "httpx")},
@@ -587,7 +745,8 @@ def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
 
 # The keys of a cell's record the Phase 4 public record carries as they are: codes, counts,
 # hashes, usage and amounts; supplied, cited and searched passages are reduced to counts.
-PUBLIC_PHASE4 = ("case", "condition", "budget_s", "generation_calls", "calls", "spending",
+PUBLIC_PHASE4 = ("case", "condition", "repetition", "budget_s", "generation_calls", "calls",
+                 "spending",
                  "outcome", "detail", "elapsed_s", "schema_problems",
                  "citations_outside_supplied", "coverage")
 SEARCH_PHASE4 = ("round", "outcome", "method", "window", "rounds_left", "passages_left")
@@ -670,25 +829,35 @@ def _run(  # noqa: PLR0913
     books = (
         evidence_agent.BOOKS
     )  # read now: the books are wherever the agent keeps them
-    spending = evidence_agent.Spending(
-        ledger=books / evidence_agent.ACTIVE_LEDGER,
-        baseline=books / evidence_agent.HISTORICAL_LEDGER,
-        baseline_sha256=evidence_agent.HISTORICAL_SHA256,
-        artifacts=paths["local"],
+    spending = (
+        evidence_agent.Spending(
+            ledger=books / evidence_agent.PHASE4_LEDGER,
+            baseline=None,
+            baseline_sha256=None,
+            artifacts=paths["local"],
+        )
+        if phase4
+        else evidence_agent.Spending(
+            ledger=books / evidence_agent.ACTIVE_LEDGER,
+            baseline=books / evidence_agent.HISTORICAL_LEDGER,
+            baseline_sha256=evidence_agent.HISTORICAL_SHA256,
+            artifacts=paths["local"],
+        )
     )
     retriever, rankings = ranked
     # Each cell's admission, under the lock, also holds back the worst case of the cells after
     # it that were not in the books when the matrix was admitted: a booking by another
     # invocation in between stops the matrix at the next cell once the rest no longer fits.
-    rest_after, remaining = {}, sum(
-        _micro(plan["conditions"][o["condition"]]["admission_usd"])
-        for o in plan["order"]
-        if not o["in_books"]
-    )
-    for o in plan["order"]:
-        if not o["in_books"]:
-            remaining -= _micro(plan["conditions"][o["condition"]]["admission_usd"])
+    # Under phase4 the rest is the case's own cells still to run: a case is admitted whole
+    # before its first cell, and the next case only when its own worst case fits.
+    rest_after, remaining = {}, 0
+    for o in reversed(plan["order"]):
+        if phase4 and o["condition"] == DESIGNS[design][-1]:
+            remaining = 0  # the case's last cell: nothing of its case follows
         rest_after[(o["case"], o["condition"])] = remaining
+        if not o["in_books"]:
+            remaining += _micro(plan["conditions"][o["condition"]]["admission_usd"])
+    repetition = {"repetition": PHASE4_REPETITION} if phase4 else {}
     times = {"started": _now(), "finished": None}
     state = {"stopped": None, "reserved": False}
     rows = []  # (case, ranking, [(name, result or None, status, code)]), filled as cells end
@@ -818,6 +987,7 @@ def _run(  # noqa: PLR0913
                     spending=spending,
                     condition=name,
                     matrix_rest_usd=_usd(rest_after[(item["id"], name)]),
+                    **repetition,
                 )
                 status, code = _cell(result)
                 cells.append((name, result, status, code))
@@ -953,6 +1123,15 @@ def main(argv: list[str] | None = None) -> int:
     cases = _cases(args.cases, questions=args.step == "run")
     if isinstance(cases, str):
         parser.error(cases)  # exit 2, before anything is loaded, counted or sent
+    if (
+        args.design == "phase4"
+        and hashlib.sha256(args.cases.read_bytes()).hexdigest()
+        != PHASE4_RUNNER_INPUT_SHA256
+    ):
+        parser.error(
+            "--design phase4 takes the frozen runner input only (its SHA-256 as frozen in "
+            "results/2026-11-25-phase4-freeze.json): no other case set, subset or order"
+        )
     if args.step == "plan":
         try:
             plan = _plan(cases, args.design)
@@ -965,7 +1144,9 @@ def main(argv: list[str] | None = None) -> int:
         shown = {"design": args.design} if args.design != "phase3" else {}
         print(
             json.dumps(
-                {"planned": _planned(), **shown, **plan}, ensure_ascii=False, indent=1
+                {"planned": _planned(args.design), **shown, **plan},
+                ensure_ascii=False,
+                indent=1,
             )
         )
         return EXIT_ANSWER
@@ -979,6 +1160,13 @@ def main(argv: list[str] | None = None) -> int:
                 f"refused: {', '.join(existing)} already "
                 "exists; a run never overwrites an earlier output",
             )
+        linked = _linked(paths)
+        if linked:
+            raise run_question._Stop(
+                EXIT_REFUSED,
+                f"refused: {linked} is a symbolic link; local outputs (questions, answers, "
+                "rankings) stay in the real, git-ignored local/ folder",
+            )
         client = _client(
             generation.Config()
         )  # the key is checked before the model loads
@@ -989,12 +1177,21 @@ def main(argv: list[str] | None = None) -> int:
                 EXIT_REFUSED,
                 f"refused: the books cannot be used as they are ({refusal})",
             ) from None
-        if not plan["admission"]["fits"]:
+        admission = plan["admission"]
+        if not admission["fits"] and args.design == "phase4":
+            raise run_question._Stop(
+                EXIT_REFUSED,
+                f"refused: the next case, {admission['next_case']}, needs USD "
+                f"{admission['next_case_worst_case_usd']} at its worst case, more than "
+                f"the headroom of USD {admission['headroom_usd']} in the Phase 4 books; "
+                "nothing was loaded, counted or sent",
+            )
+        if not admission["fits"]:
             raise run_question._Stop(
                 EXIT_REFUSED,
                 "refused: the matrix's worst case of USD "
-                f"{plan['admission']['worst_case_usd']} does not fit the "
-                f"headroom of USD {plan['admission']['headroom_usd']}",
+                f"{admission['worst_case_usd']} does not fit the "
+                f"headroom of USD {admission['headroom_usd']}",
             )
         unpaired = [
             c for c in plan["cases"] if c["pairing"] in ("other", "unverifiable")
@@ -1017,6 +1214,16 @@ def main(argv: list[str] | None = None) -> int:
         print(stop, file=sys.stderr)
         return stop.code
     return _run(args, cases, client, plan, loaded, ranked)
+
+
+def _linked(paths: dict[str, Path]) -> str | None:
+    """The first of local/ and the run's folder in it that is a symbolic link, or None: a link
+    could carry the local record into a tracked or published folder."""
+
+    for path in (LOCAL, paths["local"]):
+        if path.is_symlink():
+            return str(path)
+    return None
 
 
 def _rankings(cases: list[dict], loaded) -> tuple:

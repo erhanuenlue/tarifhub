@@ -5,7 +5,9 @@ contract ``phase4/conditions.md``: its appended instruction, the input schema of
 and its answer format ``{"coverage": [...], "answer": {...}}``. Every test runs the real loop at
 the provider's HTTP boundary with the fixtures of ``test_evidence_agent`` (temporary books, a
 stand-in clock, the synthetic two-edition corpus of ``test_evidence_search``). The frozen texts
-and schemas are checked against the SHA-256 values the contract recorded before D existed.
+and schemas are checked against the SHA-256 values the contract recorded before D existed. D is
+booked in Phase 4's books under repetition 1 (``phase4/amendments.md``, O1); B and C are pinned
+on the Phase 2 and 3 books, as they were before D existed.
 """
 
 from __future__ import annotations
@@ -16,6 +18,7 @@ import json
 import sys
 from pathlib import Path
 
+import httpx
 import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -31,6 +34,7 @@ from test_evidence_agent import (
     books,
     events,
     final,
+    phase4_books,
     run,
     search_call,
     task,
@@ -81,6 +85,13 @@ def _isolated(tmp_path, monkeypatch):
 
 @pytest.fixture
 def spending() -> evidence_agent.Spending:
+    """Phase 4's books, where D is booked (phase4/amendments.md, O1)."""
+    return phase4_books()
+
+
+@pytest.fixture
+def phase3_spending() -> evidence_agent.Spending:
+    """The Phase 2 and 3 books, on which B's and C's requests were pinned before D existed."""
     return books()
 
 
@@ -148,7 +159,14 @@ ONE_MISSING = [part("Pauschale", "covered", "jul/k"), part("Begründung", "missi
 
 
 def run_d(provider: Provider, spending, the_task=None, **options):
-    return run(provider, the_task or task(), spending, condition="coverage", **options)
+    return run(
+        provider,
+        the_task or task(),
+        spending,
+        condition="coverage",
+        repetition=1,
+        **options,
+    )
 
 
 def tool_result(body: dict) -> dict:
@@ -161,7 +179,7 @@ def tool_result(body: dict) -> dict:
 
 
 def test_c_sends_the_same_requests_as_before_d_existed_and_records_no_coverage(
-    spending,
+    phase3_spending,
 ):
     provider = Provider(
         Clock(),
@@ -169,7 +187,7 @@ def test_c_sends_the_same_requests_as_before_d_existed_and_records_no_coverage(
         final(("Die Pauschale ist neu begründet.", ["jul/c", "jul/k"])),
     )
 
-    result, _ = run(provider, task(), spending)
+    result, _ = run(provider, task(), phase3_spending)
 
     assert result.outcome == "answer"
     assert [_canonical(body) for body in provider.creates] == PINNED_C
@@ -178,10 +196,10 @@ def test_c_sends_the_same_requests_as_before_d_existed_and_records_no_coverage(
     assert "coverage" not in result.record and "coverage" not in result.local
 
 
-def test_b_sends_the_same_request_as_before_d_existed(spending):
+def test_b_sends_the_same_request_as_before_d_existed(phase3_spending):
     provider = Provider(Clock(), final(("Antwort.", ["jul/g"])))
 
-    result, _ = run(provider, task(initial=TEN), spending, condition="fixed10")
+    result, _ = run(provider, task(initial=TEN), phase3_spending, condition="fixed10")
 
     assert result.outcome == "answer"
     assert [_canonical(body) for body in provider.creates] == PINNED_B
@@ -212,7 +230,7 @@ def test_d_sends_the_frozen_instruction_tool_and_answer_format_and_otherwise_cs_
     c_provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
 
     run_d(provider, spending)
-    run(c_provider, dataclasses.replace(task(), case_id="T2"), spending)
+    run(c_provider, dataclasses.replace(task(), case_id="T2"), spending, repetition=1)
 
     (d,), (c,) = provider.creates, c_provider.creates
     assert _sha(evidence_agent.COVERAGE_INSTRUCTION) == FROZEN["instruction"]
@@ -279,8 +297,8 @@ def test_a_direct_answer_is_accepted_as_cs_would_be_and_its_coverage_recorded(sp
     assert [
         (e["event"], e["attempt"], e["condition"]) for e in events(spending)[1:]
     ] == [
-        ("reserve", "T1-coverage-call1", "coverage"),
-        ("settle", "T1-coverage-call1", "coverage"),
+        ("reserve", "T1-coverage-r1-call1", "coverage"),
+        ("settle", "T1-coverage-r1-call1", "coverage"),
     ]
     assert result.record["spending"]["admission_usd"] == 4.4352  # three calls, as C
 
@@ -623,21 +641,23 @@ def test_d_and_c_of_one_case_are_two_cells_in_one_set_of_books(spending):
     c = Provider(Clock(), final(("Antwort.", ["jul/k"])))
 
     first, _ = run_d(d, spending)
-    second, _ = run(c, task(), spending)
+    second, _ = run(c, task(), spending, repetition=1)
     again, _ = run_d(Provider(Clock()), spending)
 
     assert (first.outcome, second.outcome) == ("answer", "answer")
     assert (again.outcome, again.detail) == ("refused", "already_run")
-    assert evidence_agent.spending_state()["cells"] == [
+    assert evidence_agent.spending_state(books="phase4")["cells"] == [
         {
             "case": "T1",
             "condition": "agent",
+            "repetition": 1,
             "question_sha256": _sha(task().question),
             "editions": [JUL],
         },
         {
             "case": "T1",
             "condition": "coverage",
+            "repetition": 1,
             "question_sha256": _sha(task().question),
             "editions": [JUL],
         },
@@ -707,3 +727,207 @@ def test_an_integer_past_the_digit_limit_in_the_coverage_keeps_a_valid_answer(sp
     assert (result.outcome, result.answer) == ("answer", answer)
     assert result.record["coverage"][0]["check"] == "malformed"
 
+
+# Phase 4's books (phase4/amendments.md, O1)
+
+
+def test_d_is_refused_in_the_phase2_and_3_books_before_anything_is_counted(
+    phase3_spending,
+):
+    provider = Provider(Clock(), coverage_answer(COVERED, ("Antwort.", ["jul/k"])))
+    with pytest.raises(ValueError, match="only in the Phase 4 books"):
+        run(provider, task(), phase3_spending, condition="coverage")
+    assert (provider.counts, provider.creates) == ([], [])
+    assert not phase3_spending.ledger.exists()
+
+
+@pytest.mark.parametrize(
+    ("condition", "repetition", "phase4", "match"),
+    [
+        ("coverage", 2, True, "admit repetition 1 only"),
+        ("coverage", True, True, "admit repetition 1 only"),
+        ("coverage", "1", True, "admit repetition 1 only"),
+        ("fixed5", 1, True, "B, C and D only"),
+        ("agent", 1, False, "no historical ledger"),
+        ("agent", None, True, "the books are"),
+    ],
+    ids=["repetition-2", "true", "text", "a-in-phase4", "phase3-books", "no-repetition"],
+)
+def test_the_phase4_books_take_repetition_1_and_b_c_and_d_only(  # noqa: PLR0913
+    spending, phase3_spending, condition, repetition, phase4, match
+):
+    provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+    books_ = spending if phase4 else phase3_spending
+    with pytest.raises(ValueError, match=match):
+        run(provider, task(), books_, condition=condition, repetition=repetition)
+    assert (provider.counts, provider.creates) == ([], [])
+    assert not spending.ledger.exists()
+    assert not phase3_spending.ledger.exists()
+
+
+def reservation_r1(**changes) -> dict:
+    """A Phase 4 reservation of another case (Z9), changed as given."""
+    row = {
+        "event": "reserve",
+        "attempt": "Z9-agent-r1-call1",
+        "case": "Z9",
+        "condition": "agent",
+        "repetition": 1,
+        "question_sha256": "0" * 64,
+        "editions": [JUL],
+        "call": 1,
+        "request_sha256": "0" * 64,
+        "counted_input_tokens": 1500,
+        "reserved_usd": 0.5,
+        "at": "2026-11-26T00:00:00+00:00",
+    }
+    row.update(changes)
+    return row
+
+
+PIN = {
+    "event": "books",
+    "ledger": "phase4-ledger.jsonl",
+    "budget_usd": 40.0,
+    "at": "2026-11-26T00:00:00+00:00",
+}
+DAMAGED_PHASE4 = {
+    "repetition-2": [PIN, reservation_r1(repetition=2, attempt="Z9-agent-r2-call1")],
+    "condition-a": [PIN, reservation_r1(condition="fixed5", attempt="Z9-fixed5-r1-call1")],
+    "no-repetition": [
+        PIN,
+        {k: v for k, v in reservation_r1().items() if k != "repetition"},
+    ],
+    "id-without-repetition": [PIN, reservation_r1(attempt="Z9-agent-call1")],
+    "phase3-pin": [{**PIN, "event": "baseline"}],
+    "other-limit": [{**PIN, "budget_usd": 50.0}],
+}
+
+
+@pytest.mark.parametrize("name", list(DAMAGED_PHASE4))
+def test_phase4_books_naming_another_repetition_condition_or_limit_are_refused(
+    spending, name
+):
+    rows = DAMAGED_PHASE4[name]
+    spending.ledger.write_text("".join(json.dumps(e) + "\n" for e in rows), "utf-8")
+    before = spending.ledger.read_bytes()
+    provider = Provider(Clock())
+
+    result, _ = run_d(provider, spending)
+
+    detail = "budget_changed" if name == "other-limit" else "ledger_damaged"
+    assert (result.outcome, result.detail) == ("refused", detail)
+    assert (provider.counts, provider.creates) == ([], [])
+    assert spending.ledger.read_bytes() == before
+
+
+@pytest.mark.parametrize("cell", ["coverage", "repetition"])
+def test_the_phase2_and_3_books_refuse_a_d_cell_or_a_repetition_as_damage(
+    phase3_spending, cell
+):
+    pin = {
+        "event": "baseline",
+        "ledger": evidence_agent.HISTORICAL_LEDGER,
+        "sha256": evidence_agent.HISTORICAL_SHA256,
+        "committed_usd": 0.0,
+        "budget_usd": 100.0,
+        "at": "2026-11-26T00:00:00+00:00",
+    }
+    row = reservation_r1(attempt="Z9-agent-call1")
+    if cell == "coverage":
+        row = {k: v for k, v in row.items() if k != "repetition"}
+        row.update(condition="coverage", attempt="Z9-coverage-call1")
+    phase3_spending.ledger.write_text(
+        "".join(json.dumps(e) + "\n" for e in (pin, row)), "utf-8"
+    )
+    provider = Provider(Clock())
+
+    result, _ = run(provider, task(), phase3_spending)
+
+    assert (result.outcome, result.detail) == ("refused", "ledger_damaged")
+    assert provider.creates == []
+
+
+def test_b_and_c_send_their_pinned_requests_in_the_phase4_books_too(spending):
+    c = Provider(
+        Clock(),
+        search_call("Pauschale", "Begründung der Pauschale"),
+        final(("Die Pauschale ist neu begründet.", ["jul/c", "jul/k"])),
+    )
+    b = Provider(Clock(), final(("Antwort.", ["jul/g"])))
+
+    run(c, task(), spending, repetition=1)
+    run(b, task(initial=TEN), spending, condition="fixed10", repetition=1)
+
+    assert [_canonical(body) for body in c.creates] == PINNED_C
+    assert [_canonical(body) for body in b.creates] == PINNED_B
+
+
+def test_a_phase4_booking_leaves_the_phase2_and_3_books_as_they_are(
+    spending, phase3_spending
+):
+    history = phase3_spending.baseline.read_bytes()
+
+    result, _ = run_d(
+        Provider(Clock(), coverage_answer(COVERED, ("Antwort.", ["jul/k"]))), spending
+    )
+
+    assert result.outcome == "answer"
+    assert phase3_spending.baseline.read_bytes() == history
+    assert not phase3_spending.ledger.exists()
+    pin, reserve, settle = events(spending)
+    assert {k: pin[k] for k in ("event", "ledger", "budget_usd")} == {
+        "event": "books",
+        "ledger": "phase4-ledger.jsonl",
+        "budget_usd": 40.0,
+    }
+    assert (reserve["repetition"], settle["repetition"]) == (1, 1)
+    assert result.record["repetition"] == 1
+    assert result.record["spending"]["books"] == "phase4-ledger.jsonl"
+
+
+# The limit C and D share: a lone surrogate the model escaped in a tool input
+
+
+def unencodable(condition: str) -> httpx.Response:
+    """A search request whose shared seeking field escapes a lone surrogate: the JSON parses,
+    but the turn cannot be written as UTF-8 when it is replayed in the next request."""
+    arguments = {"query": "Pauschale", "seeking": "Begründung \ud800"}
+    if condition == "coverage":
+        arguments = {"coverage": ONE_MISSING, "search_for": 2, **arguments}
+    message = _message(
+        [
+            {"type": "thinking", "thinking": "", "signature": "sig-toolu_1"},
+            {"type": "tool_use", "id": "toolu_1", "name": TOOL, "input": arguments},
+        ],
+        "tool_use",
+    )
+    return httpx.Response(
+        200,
+        content=json.dumps(message).encode("ascii"),  # the escape as the provider sends it
+        headers={"content-type": "application/json", "request-id": "req_test"},
+    )
+
+
+@pytest.mark.parametrize("condition", ["agent", "coverage"])
+def test_c_and_d_fail_alike_on_an_unencodable_replay_with_their_calls_settled(
+    spending, condition
+):
+    provider = Provider(Clock(), unencodable(condition))
+
+    with pytest.raises(UnicodeError):
+        run(provider, task(), spending, condition=condition, repetition=1)
+
+    # The same stage for both: the first call was sent and settled from its usage; the
+    # replay fails before the next count, so nothing more is reserved or sent.
+    assert (len(provider.counts), len(provider.creates)) == (1, 1)
+    rows = events(spending)[1:]
+    assert [(e["event"], e.get("cost_basis")) for e in rows] == [
+        ("reserve", None),
+        ("settle", "usage"),
+    ]
+    assert generation.committed_usd(spending.ledger) == 0.024
+    again = Provider(Clock())  # the cell is in the books: it is never sent again
+    result, _ = run(again, task(), spending, condition=condition, repetition=1)
+    assert (result.outcome, result.detail) == ("refused", "already_run")
+    assert again.creates == []

@@ -22,6 +22,7 @@ passage has 12 and would lead any ranking that let it in.
 
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 import sys
@@ -34,9 +35,11 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 import evidence_agent
 import generation
+import phase4_scoring
 import run_comparison
 import run_question
 from test_corpus import make_repo
+from test_coverage_condition import unencodable
 from test_evidence_agent import Clock, Provider, _dearest, books, final, search_call
 from test_run_question import StandInE5, _tree
 
@@ -1442,15 +1445,131 @@ def test_the_phase3_design_is_the_default_and_its_plan_is_unchanged(isolated, ca
     assert [c["condition"] for c in default["order"]] == ["fixed5", "fixed10", "agent"]
 
 
-def test_the_phase4_plan_lays_out_b_c_and_d_and_shows_that_19_cases_do_not_fit(
-    isolated, capsys
+def frozen_input(env, monkeypatch, *cases) -> Path:
+    """A cases file pinned in the place of the frozen runner input for this test only."""
+    path = cases_file(env, *cases)
+    digest = hashlib.sha256(path.read_bytes()).hexdigest()
+    monkeypatch.setattr(run_comparison, "PHASE4_RUNNER_INPUT_SHA256", digest)
+    return path
+
+
+def phase4_path(env) -> Path:
+    return env["tmp"] / "books" / evidence_agent.PHASE4_LEDGER
+
+
+def phase4_ledger(env) -> list[dict]:
+    return [json.loads(line) for line in phase4_path(env).read_text("utf-8").splitlines()]
+
+
+def phase4_books(env, *rows: dict) -> None:
+    """Phase 4 books already in use: their pin, then ``rows``."""
+    pin = {
+        "event": "books",
+        "ledger": evidence_agent.PHASE4_LEDGER,
+        "budget_usd": 40.0,
+        "at": "2026-11-26T00:00:00+00:00",
+    }
+    phase4_path(env).write_text(
+        "".join(json.dumps(e) + "\n" for e in (pin, *rows)), "utf-8"
+    )
+
+
+def kept_at(case_id: str, usd: float) -> tuple[dict, dict]:
+    """Another case's B call in the Phase 4 books, sent and kept at its whole reservation."""
+    attempt = f"{case_id}-fixed10-r1-call1"
+    named = {"attempt": attempt, "case": case_id, "condition": "fixed10", "repetition": 1}
+    return (
+        {
+            "event": "reserve",
+            **named,
+            "question_sha256": "0" * 64,
+            "editions": [JUL],
+            "call": 1,
+            "request_sha256": "0" * 64,
+            "counted_input_tokens": 1500,
+            "reserved_usd": usd,
+            "at": "2026-11-26T00:00:00+00:00",
+        },
+        {
+            "event": "settle",
+            **named,
+            "sent": True,
+            "cost_usd": usd,
+            "cost_basis": "reservation_retained",
+            "above_reservation": False,
+            "usage": None,
+            "response_sha256": None,
+            "at": "2026-11-26T00:00:00+00:00",
+        },
+    )
+
+
+def phase4_answers(label: str = "") -> tuple[dict, ...]:
+    """B, C and D of one case each answer at once, citing the top passage."""
+    return (
+        final((f"B{label}.", [TOP10[0]])),
+        final((f"C{label}.", [TOP5[0]])),
+        coverage_reply((f"D{label}.", [TOP5[0]])),
+    )
+
+
+def phase4_argv(env, cases: Path, *, tag: str = "2026-11-26") -> list[str]:
+    return argv(env, "run", cases, tag=tag) + ["--design", "phase4"]
+
+
+def untouched(env, history: bytes) -> bool:
+    """The Phase 2 and 3 books as they were: the stand-in history, no Phase 3 ledger."""
+    baseline = env["tmp"] / "books" / evidence_agent.HISTORICAL_LEDGER
+    return baseline.read_bytes() == history and not active(env).exists()
+
+
+def history(env) -> bytes:
+    return (env["tmp"] / "books" / evidence_agent.HISTORICAL_LEDGER).read_bytes()
+
+
+def gold(*case_ids: str) -> dict:
+    """A gold file for the scorer: each case's one fact part stated by the top passage."""
+    return {
+        "cases": [
+            {
+                "id": case_id,
+                "question": QUESTION,
+                "editions": [JUL],
+                "parts": [
+                    {"id": "p1", "kind": "fact", "support": [{"passage_id": TOP5[0]}]}
+                ],
+            }
+            for case_id in case_ids
+        ]
+    }
+
+
+def test_the_triplet_ceiling_is_derived_from_the_pinned_configuration_and_prices():
+    config = generation.Config()
+    pricing = evidence_agent._prices(config)  # the repository's pricing.json, as recorded
+    per_call = evidence_agent._ceiling(pricing, evidence_agent.MAX_INPUT_TOKENS, config)
+    calls = sum(
+        evidence_agent.CONDITIONS[name].calls for name in evidence_agent.PHASE4_CONDITIONS
+    )
+
+    assert (per_call, calls, calls * per_call) == (1_478_400, 7, 10_348_800)  # USD 10.3488
+    assert run_comparison.DESIGNS["phase4"] == evidence_agent.PHASE4_CONDITIONS
+    assert (evidence_agent.PHASE4_LIMIT_USD, evidence_agent.PHASE4_REPETITIONS) == (40.0, (1,))
+    freeze = json.loads(
+        (HERE / "results" / "2026-11-25-phase4-freeze.json").read_text("utf-8")
+    )
+    (runner_input,) = [f for f in freeze["files"] if f["role"] == "runner input"]
+    assert run_comparison.PHASE4_RUNNER_INPUT_SHA256 == runner_input["sha256"]
+
+
+def test_the_phase4_plan_admits_case_by_case_beside_the_phase4_books(
+    isolated, monkeypatch, capsys
 ):
     nineteen = [case(f"P{n:02d}") for n in range(1, 20)]
-    before = written(isolated)
+    cases = frozen_input(isolated, monkeypatch, *nineteen)
+    before, earlier = written(isolated), history(isolated)
 
-    code = run_comparison.main(
-        ["plan", "--design", "phase4", "--cases", str(cases_file(isolated, *nineteen))]
-    )
+    code = run_comparison.main(["plan", "--design", "phase4", "--cases", str(cases)])
 
     assert code == 0
     plan = json.loads(capsys.readouterr().out)
@@ -1470,33 +1589,250 @@ def test_the_phase4_plan_lays_out_b_c_and_d_and_shows_that_19_cases_do_not_fit(
         "agent": ("C", 5, 10, 3, 2, 4.4352),
         "coverage": ("D", 5, 10, 3, 2, 4.4352),
     }
-    # One case is admitted at 1 + 3 + 3 calls at the input cap, 10.3488 USD; the 19 cases
-    # need 196.6272 at once, more than the headroom (100 minus the history's 0.25).
-    admission = plan["admission"]
-    assert (admission["worst_case_usd"], admission["headroom_usd"], admission["fits"]) == (
-        196.6272,
-        99.75,
-        False,
-    )
-    estimates = plan["estimates"]
-    assert list(estimates["per_condition"]) == ["fixed10", "agent", "coverage"]
-    assert estimates["per_condition"]["coverage"]["usd_per_cell"] is None
-    assert estimates["matrix_usd"] is None
+    # Phase 4's books alone: a fresh case needs 1 + 3 + 3 calls at the input cap, 10.3488 USD,
+    # beside nothing committed under 40 USD; the whole matrix's 196.6272 is shown, not used.
+    admission = {k: v for k, v in plan["admission"].items() if k != "label"}
+    zero = {"calls": 0, "usd": 0.0}
+    assert admission == {
+        "books": "phase4-ledger.jsonl",
+        "repetition": 1,
+        "limit_usd": 40.0,
+        "committed_usd": 0.0,
+        "booked": {"usage": zero, "retained": zero, "released": zero, "open": zero},
+        "headroom_usd": 40.0,
+        "call_ceiling_at_input_cap_usd": 1.4784,
+        "case_ceiling_usd": 10.3488,
+        "cases_to_run": 19,
+        "next_case": "P01",
+        "next_case_worst_case_usd": 10.3488,
+        "fits": True,
+        "worst_case_usd": 196.6272,
+    }
+    assert list(plan["estimates"]["per_condition"]) == ["fixed10", "agent", "coverage"]
+    assert isolated["loads"] == []
+    assert written(isolated) == before
+    assert untouched(isolated, earlier)
+
+
+@pytest.mark.parametrize("step", ["plan", "run"])
+def test_phase4_takes_the_frozen_runner_input_only(isolated, monkeypatch, capsys, step):
+    live(isolated, monkeypatch)  # no reply: nothing may be sent
+    pinned = frozen_input(isolated, monkeypatch, case("E1"), case("E2"))
+    subset = cases_file(isolated, case("E1"), name="subset.json")
+    reordered = cases_file(isolated, case("E2"), case("E1"), name="reordered.json")
+    before = written(isolated)
+
+    for other in (subset, reordered):
+        command = (
+            ["plan", "--design", "phase4", "--cases", str(other)]
+            if step == "plan"
+            else phase4_argv(isolated, other)
+        )
+        assert exit_code(command) == 2
+        assert "frozen runner input only" in capsys.readouterr().err
+
+    assert pinned.exists()
     assert isolated["loads"] == []
     assert written(isolated) == before
 
 
-def test_the_phase4_run_refuses_19_cases_before_the_model_loads(
+def test_a_case_fitting_exactly_runs_and_the_next_that_no_longer_fits_stops_the_run(
     isolated, monkeypatch, capsys
 ):
-    live(isolated, monkeypatch)  # no reply: nothing may be sent
-    nineteen = [case(f"P{n:02d}") for n in range(1, 20)]
-    argv_ = argv(isolated, "run", cases_file(isolated, *nineteen)) + ["--design", "phase4"]
+    # 29.6512 USD are kept at another case's reservation: E1's 10.3488 fits exactly beside
+    # them. After E1, E2's worst case no longer fits: the run stops before anything of E2 is
+    # counted or sent, and E2's cells stay out of the books.
+    phase4_books(isolated, *kept_at("Z9", 29.6512))
+    provider = live(isolated, monkeypatch, *phase4_answers())
+    cases = frozen_input(isolated, monkeypatch, case("E1"), case("E2"))
+    earlier = history(isolated)
 
-    assert exit_code(argv_) == 3
-    assert "196.6272" in capsys.readouterr().err
+    code = run_comparison.main(phase4_argv(isolated, cases))
+
+    assert code == 3
+    assert (len(provider.counts), len(provider.creates)) == (3, 3)
+    shown = json.loads(capsys.readouterr().out)
+    assert [(c["case"], c["condition"], c["execution"], c["detail"]) for c in shown["cells"]] == [
+        ("E1", "fixed10", "answer", None),
+        ("E1", "agent", "answer", None),
+        ("E1", "coverage", "answer", None),
+        ("E2", "fixed10", "refused", "admission_budget"),
+        ("E2", "agent", "not_run", "matrix_stopped"),
+        ("E2", "coverage", "not_run", "matrix_stopped"),
+    ]
+    assert shown["stopped_after"] == {"case": "E2", "condition": "fixed10"}
+    events = phase4_ledger(isolated)
+    assert [e.get("attempt") for e in events[3:]] == [
+        a for n in ("fixed10", "agent", "coverage")
+        for a in (f"E1-{n}-r1-call1",) * 2
+    ]
+    assert all(e["repetition"] == 1 for e in events[1:])
+    assert not [e for e in events if e.get("case") == "E2"]
+    assert untouched(isolated, earlier)
+
+
+def test_a_next_case_one_micro_dollar_short_is_refused_before_the_model_loads(
+    isolated, monkeypatch, capsys
+):
+    phase4_books(isolated, *kept_at("Z9", 29.651201))
+    provider = live(isolated, monkeypatch)  # no reply: nothing may be counted or sent
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    before = phase4_path(isolated).read_bytes()
+
+    assert exit_code(phase4_argv(isolated, cases)) == 3
+
+    assert "the next case, E1, needs USD 10.3488" in capsys.readouterr().err
     assert isolated["loads"] == []
-    assert not active(isolated).exists()
+    assert (provider.counts, provider.creates) == ([], [])
+    assert phase4_path(isolated).read_bytes() == before
+
+
+def test_an_interrupted_run_resumes_in_frozen_order_and_never_sends_a_cell_twice(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"), case("E2"))
+    earlier = history(isolated)
+
+    def interrupt():
+        if len(first.creates) == 2:  # C's first call is on the wire
+            raise KeyboardInterrupt
+
+    first = live(isolated, monkeypatch, *phase4_answers(), on_create=interrupt)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    capsys.readouterr()
+    open_call = phase4_ledger(isolated)[-1]
+    assert (open_call["event"], open_call["attempt"]) == ("reserve", "E1-agent-r1-call1")
+
+    second = live(isolated, monkeypatch, phase4_answers()[2], *phase4_answers("2"))
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+
+    shown = json.loads(capsys.readouterr().out)
+    assert [(c["case"], c["condition"], c["execution"]) for c in shown["cells"]] == [
+        ("E1", "fixed10", "refused"),
+        ("E1", "agent", "refused"),
+        ("E1", "coverage", "answer"),
+        ("E2", "fixed10", "answer"),
+        ("E2", "agent", "answer"),
+        ("E2", "coverage", "answer"),
+    ]
+    assert len(second.creates) == 4  # E1's D and E2's three cells; nothing of E1 again
+    events = phase4_ledger(isolated)
+    reserved = [e["attempt"] for e in events if e["event"] == "reserve"]
+    assert len(reserved) == len(set(reserved)) == 6
+    settled = {e["attempt"] for e in events if e["event"] == "settle"}
+    assert set(reserved) - settled == {"E1-agent-r1-call1"}  # booked, sending unknown: kept
+
+    assert run_comparison.main(["plan", "--design", "phase4", "--cases", str(cases)]) == 0
+    plan = json.loads(capsys.readouterr().out)
+    assert plan["admission"]["booked"]["open"] == {"calls": 1, "usd": 0.71852}
+    assert plan["order"][1]["calls_in_books"] == {
+        "usage": 0, "retained": 0, "released": 0, "open": 1}
+    assert plan["admission"]["cases_to_run"] == 0
+
+    # The interrupted cell left no record: E1 stays incomplete and the repetition gives no
+    # verdict; E2 is complete.
+    results = [
+        json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
+        for tag in ("2026-11-26", "2026-11-27")
+    ]
+    scored = phase4_scoring.score(results, gold("E1", "E2"))
+    assert [(c["case"], c["complete"]) for c in scored["cases"]] == [
+        ("E1", False), ("E2", True)]
+    counts = phase4_scoring.summary(scored)
+    assert (counts["repetition"], counts["repetition_complete"]) == (1, False)
+    assert untouched(isolated, earlier)
+
+
+class SlowFirstCount(Provider):
+    """The provider's HTTP side whose first token count takes longer than a cell's budget."""
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        """Answer one request; the first count lets 601 seconds pass."""
+        if request.url.path == "/v1/messages/count_tokens" and not self.counts:
+            self.clock.advance(601)
+        return super().__call__(request)
+
+
+def test_a_call_released_before_sending_stays_never_sent_and_is_never_sent_later(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    provider = SlowFirstCount(isolated["clock"], *phase4_answers()[1:])
+    monkeypatch.setattr(run_comparison, "_client", lambda config: provider.client())
+
+    assert run_comparison.main(phase4_argv(isolated, cases)) == 4
+
+    shown = json.loads(capsys.readouterr().out)
+    assert [(c["condition"], c["execution"], c["detail"]) for c in shown["cells"]] == [
+        ("fixed10", "deadline", "before_send"),
+        ("agent", "answer", None),
+        ("coverage", "answer", None),
+    ]
+    released = [e for e in phase4_ledger(isolated) if e.get("attempt") == "E1-fixed10-r1-call1"]
+    assert [(e["event"], e.get("sent"), e.get("cost_basis")) for e in released] == [
+        ("reserve", None, None), ("settle", False, "not_sent")]
+    again = live(isolated, monkeypatch)  # no reply: nothing may be sent
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 3
+    assert again.creates == []
+    local = outputs(isolated, tag="2026-11-26")[1]
+    result = json.loads((local / "result.json").read_text("utf-8"))
+    (scored,) = phase4_scoring.score([result], gold("E1"))["cases"]
+    assert (scored["complete"], scored["cells"][0]["ran"]) == (False, False)
+
+
+def test_a_concurrent_invocation_is_refused_by_the_lock_and_sends_or_books_nothing(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    seen = {}
+
+    def meanwhile():  # a second invocation starts while E1's B is on the wire
+        if not seen:
+            seen["before"] = phase4_path(isolated).read_bytes()
+            seen["code"] = exit_code(phase4_argv(isolated, cases, tag="2026-11-27"))
+            seen["after"] = phase4_path(isolated).read_bytes()
+
+    provider = live(isolated, monkeypatch, *phase4_answers(), on_create=meanwhile)
+
+    assert run_comparison.main(phase4_argv(isolated, cases)) == 0
+
+    assert seen["code"] == 3
+    assert seen["before"] == seen["after"]
+    assert not outputs(isolated, tag="2026-11-27")[0].exists()
+    assert len(provider.creates) == 3
+    out = capsys.readouterr().out
+    assert '"detail": "locked"' in out
+
+
+def test_invocations_interleaving_between_cells_book_and_send_every_cell_once(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"), case("E2"))
+    provider = live(isolated, monkeypatch, *phase4_answers(), *phase4_answers("2"))
+    real, state = evidence_agent.run_case, {}
+
+    def between(*args, **kwargs):  # after the first cell, a second invocation runs to its end
+        result = real(*args, **kwargs)
+        if not state:
+            state["running"] = True
+            state["code"] = exit_code(phase4_argv(isolated, cases, tag="2026-11-27"))
+        return result
+
+    monkeypatch.setattr(evidence_agent, "run_case", between)
+
+    assert run_comparison.main(phase4_argv(isolated, cases)) == 0
+
+    assert state["code"] == 0
+    assert len(provider.creates) == 6
+    events = phase4_ledger(isolated)
+    reserved = [e["attempt"] for e in events if e["event"] == "reserve"]
+    assert reserved == [
+        f"{c}-{n}-r1-call1" for c in ("E1", "E2") for n in ("fixed10", "agent", "coverage")
+    ]
+    capsys.readouterr()
+    assert run_comparison.main(["plan", "--design", "phase4", "--cases", str(cases)]) == 0
+    assert json.loads(capsys.readouterr().out)["admission"]["committed_usd"] == 0.144
 
 
 def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_id(
@@ -1510,9 +1846,10 @@ def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_
         final(("C.", [TOP5[0], RANKED[5]])),
         coverage_reply(("D.", [TOP5[0]])),
     )
-    argv_ = argv(isolated, "run", cases_file(isolated, case("E1"))) + ["--design", "phase4"]
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    earlier = history(isolated)
 
-    code = run_comparison.main(argv_)
+    code = run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-21"))
 
     assert code == 0
     b, c1, _, d = provider.creates
@@ -1522,17 +1859,18 @@ def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_
         f"{generation.SYSTEM_PROMPT}\n\n{evidence_agent.COVERAGE_INSTRUCTION}"
     )
     assert d["output_config"]["format"]["schema"] == evidence_agent.COVERAGE_ANSWER_SCHEMA
-    assert [(e["event"], e.get("attempt")) for e in ledger(isolated)] == [
-        ("baseline", None),
-        ("reserve", "E1-fixed10-call1"),
-        ("settle", "E1-fixed10-call1"),
-        ("reserve", "E1-agent-call1"),
-        ("settle", "E1-agent-call1"),
-        ("reserve", "E1-agent-call2"),
-        ("settle", "E1-agent-call2"),
-        ("reserve", "E1-coverage-call1"),
-        ("settle", "E1-coverage-call1"),
+    assert [(e["event"], e.get("attempt")) for e in phase4_ledger(isolated)] == [
+        ("books", None),
+        ("reserve", "E1-fixed10-r1-call1"),
+        ("settle", "E1-fixed10-r1-call1"),
+        ("reserve", "E1-agent-r1-call1"),
+        ("settle", "E1-agent-r1-call1"),
+        ("reserve", "E1-agent-r1-call2"),
+        ("settle", "E1-agent-r1-call2"),
+        ("reserve", "E1-coverage-r1-call1"),
+        ("settle", "E1-coverage-r1-call1"),
     ]
+    assert untouched(isolated, earlier)
     public, local = outputs(isolated)
     text = public.read_text("utf-8")
     assert not [pid for pid in RANKED if pid in text]  # no passage ID in the public record
@@ -1547,9 +1885,17 @@ def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_
         ("agent", "C", "answer"),
         ("coverage", "D", "answer"),
     ]
+    assert [c["agent"]["repetition"] for c in cells] == [1, 1, 1]
     assert [c["agent"]["supplied"] for c in cells] == [10, 10, 5]
     assert [c["answer"]["cited_passages"] for c in cells] == [1, 2, 1]
     assert cells[1]["agent"]["searches"][0]["returned"] == 5
+    assert cells[0]["agent"]["spending"] == {
+        "books": "phase4-ledger.jsonl",
+        "budget_usd": 40.0,
+        "committed_before_usd": 0.0,
+        "admission_usd": 1.4784,
+        "rest_usd": 8.8704,
+    }
     assert cells[2]["agent"]["coverage"] == [
         {
             "call": 1,
@@ -1563,6 +1909,12 @@ def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_
         }
     ]
     assert record["run"]["design"] == "phase4"
+    assert record["run"]["books"] == {
+        "ledger": "phase4-ledger.jsonl",
+        "limit_usd": 40.0,
+        "repetition": 1,
+        "runner_input_sha256": run_comparison.PHASE4_RUNNER_INPUT_SHA256,
+    }
     conditions = record["run"]["configuration"]["conditions"]
     assert list(conditions) == ["fixed10", "agent", "coverage"]
     assert "answer_format_sha256" in conditions["coverage"]
@@ -1579,13 +1931,81 @@ def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_
     assert json.loads(capsys.readouterr().out)["exit_code"] == 0
 
 
-def test_estimates_read_cells_of_every_condition_under_either_design(isolated, capsys):
+@pytest.mark.parametrize("linked", ["local", "run"])
+def test_a_run_whose_local_folder_is_a_link_is_refused_before_the_model_loads(
+    isolated, monkeypatch, capsys, linked
+):
+    live(isolated, monkeypatch)  # no reply: nothing may be sent
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    elsewhere = isolated["tmp"] / "published"
+    elsewhere.mkdir()
+    local = isolated["tmp"] / "local"
+    if linked == "local":
+        local.symlink_to(elsewhere, target_is_directory=True)
+    else:
+        local.mkdir()
+        (local / "2026-11-26-comparison").symlink_to(elsewhere, target_is_directory=True)
+
+    assert exit_code(phase4_argv(isolated, cases)) == 3
+
+    assert "is a symbolic link" in capsys.readouterr().err
+    assert isolated["loads"] == []
+    assert list(elsewhere.iterdir()) == []
+    assert not phase4_path(isolated).exists()
+
+
+def test_a_shared_replay_failure_stops_the_run_with_its_calls_settled_and_a_restart_skips_it(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    live(isolated, monkeypatch, final(("B.", [TOP10[0]])), unencodable("agent"))
+
+    with pytest.raises(UnicodeError):  # C's replay cannot be written: the run ends here
+        run_comparison.main(phase4_argv(isolated, cases))
+
+    events = phase4_ledger(isolated)
+    assert [(e["event"], e["attempt"]) for e in events[1:]] == [
+        ("reserve", "E1-fixed10-r1-call1"),
+        ("settle", "E1-fixed10-r1-call1"),
+        ("reserve", "E1-agent-r1-call1"),
+        ("settle", "E1-agent-r1-call1"),
+    ]
+    local = outputs(isolated, tag="2026-11-26")[1]
+    first = json.loads((local / "result.json").read_text("utf-8"))
+    assert [c["condition"] for c in first["cases"][0]["cells"]] == ["fixed10"]
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, coverage_reply(("D.", [TOP5[0]])))
+
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+
+    assert len(again.creates) == 1  # D only: C is in the books and never sent again
+    local = outputs(isolated, tag="2026-11-27")[1]
+    second = json.loads((local / "result.json").read_text("utf-8"))
+    (scored,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
+    # C sent and settled a call but left no record: it reads as not run, so E1 stays
+    # incomplete and the repetition gives no verdict (the books show the settled call).
+    assert [(c["condition"], c["ran"]) for c in scored["cells"]] == [
+        ("fixed10", True),
+        ("agent", False),
+        ("coverage", True),
+    ]
+    assert scored["complete"] is False
+
+
+def test_estimates_read_cells_of_every_condition_under_either_design(
+    isolated, monkeypatch, capsys
+):
     rows = [agent_cell("E2")[0]]
-    for name, calls in (("fixed5", 1), ("fixed10", 1), ("agent", 2), ("coverage", 1)):
+    for name, calls in (("fixed5", 1), ("fixed10", 1), ("agent", 2)):
         for n in range(1, calls + 1):
             rows += [_reserve("E3", name, n), _settle("E3", name, n)]
     active(isolated).write_text("".join(json.dumps(e) + "\n" for e in rows), "utf-8")
-    cases = str(cases_file(isolated, case("E5")))
+    d_cell = (_reserve("E4", "coverage", 1), _settle("E4", "coverage", 1))
+    phase4_books(  # D is booked in Phase 4's books only
+        isolated,
+        *({**e, "attempt": "E4-coverage-r1-call1", "repetition": 1} for e in d_cell),
+    )
+    cases = str(frozen_input(isolated, monkeypatch, case("E5")))
     seen = {}
 
     for design in ("phase3", "phase4"):
@@ -1593,7 +2013,8 @@ def test_estimates_read_cells_of_every_condition_under_either_design(isolated, c
         per = json.loads(capsys.readouterr().out)["estimates"]["per_condition"]
         seen[design] = {n: (c["observed_cells"], c["usd_per_cell"]) for n, c in per.items()}
 
-    # fixed5: the history (0.25) and E3 (0.024), mean 0.137; the other conditions E3 alone.
+    # fixed5: the history (0.25) and E3 (0.024), mean 0.137; B and C E3 alone; D the Phase 4
+    # books' E4.
     assert seen == {
         "phase3": {"fixed5": (2, 0.137), "fixed10": (1, 0.024), "agent": (1, 0.048)},
         "phase4": {"fixed10": (1, 0.024), "agent": (1, 0.048), "coverage": (1, 0.024)},

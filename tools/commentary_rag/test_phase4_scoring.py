@@ -20,8 +20,10 @@ run against one uninterrupted run; and the command line's file and stdout agains
 from __future__ import annotations
 
 import copy
+import hashlib
 import itertools
 import json
+import math
 import subprocess
 import sys
 from pathlib import Path
@@ -30,6 +32,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
+import evidence_agent
 import phase4_scoring as ps
 
 SCRIPT = Path(__file__).resolve().parent / "phase4_scoring.py"
@@ -109,12 +112,13 @@ def record(
     return {
         "case": "X-01",
         "condition": condition,
+        "repetition": 1,
         "budget_s": 600.0,
         "generation_calls": len(choices),
         "calls": [
             {
                 "call": n,
-                "attempt": f"X-01-{condition}-call{n}",
+                "attempt": f"X-01-{condition}-r1-call{n}",
                 "tool_choice": choice,
                 "reserved_usd": 1.5,
                 "cost_usd": 0.5,
@@ -616,18 +620,20 @@ def test_a_cell_that_ends_after_a_search_has_no_later_decision_point():
         ]
 
 
-def test_a_request_refused_for_want_of_rounds_uses_no_round():
+@pytest.mark.parametrize("rounds_before", [0, 1])
+def test_a_request_refused_for_want_of_rounds_before_both_were_used_is_refused(
+    rounds_before,
+):
+    # The code offers the tool only while a round is left, so a request refused for want of
+    # rounds cannot follow fewer than two counted rounds: such a trace is refused, not scored.
+    earlier = [search(1, "passages", "jul/c")][:rounds_before]
     rec = record(
         "agent",
-        ["auto", "auto", "none"],
-        [search(None, "refused_rounds"), search(1, "passages", "jul/c")],
+        ["auto"] * (rounds_before + 1) + ["none"],
+        [*earlier, search(None, "refused_rounds")],
     )
-    points = ps.decision_points(rec, MISSING, "agent")
-    assert view(points, "call", "rounds_before", "action") == [
-        (1, 0, "search_refused"),
-        (2, 0, "search_run"),
-        (3, 1, "answer"),
-    ]
+    with pytest.raises(ValueError, match="comes only after both"):
+        ps.decision_points(rec, MISSING, "agent")
 
 
 def test_cells_without_a_call_or_a_record_and_b_cells_have_no_decision_points():
@@ -966,11 +972,14 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
     counts = ps.summary(ps.score([result], gold))
     none = {"with_action": 0, "without_action": 0}
     no_refusal = {"total": 0, "search_needed": 0, "gap_check": 0, "no_search_needed": 0}
+    no_attempt = {"executed": 0, "refused": 0, "total": 0}
     assert counts == {
         "gold_cases": 3,
+        "repetition": 1,
         "cases_in_results": 2,
         "complete_cases": 1,
         "incomplete_cases": 1,
+        "repetition_complete": False,
         "conditions": {
             "fixed10": {"cells": 2, "not_run": 0, "calls_per_cell": {"1": 2}},
             "agent": {
@@ -993,6 +1002,8 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
                 "yield": {"k": 1, "n": 1},
                 "anomalies": 0,
                 "unnecessary_rate": {"k": 0, "n": 1},
+                "unnecessary_attempts": no_attempt,
+                "unnecessary_attempt_rate": {"k": 0, "n": 1},
                 "missed_rate": {"k": 0, "n": 1},
             },
             "coverage": {
@@ -1015,6 +1026,8 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
                 "yield": {"k": 0, "n": 0},
                 "anomalies": 0,
                 "unnecessary_rate": {"k": 0, "n": 0},
+                "unnecessary_attempts": no_attempt,
+                "unnecessary_attempt_rate": {"k": 0, "n": 0},
                 "missed_rate": {"k": 1, "n": 1},
                 "coverage_diagnostics": {
                     "checks": {"search": NO_CHECKS, "answer": {**NO_CHECKS, "ok": 1}},
@@ -1033,7 +1046,7 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
     for name in ("X-01", "X-02", "X-03", "jul/", "R1", "R2", "Synthetic question"):
         assert name not in text
     d, c = counts["conditions"]["coverage"], counts["conditions"]["agent"]
-    complete = counts["complete_cases"] == counts["gold_cases"]  # False: 1 of 3
+    complete = counts["repetition_complete"]  # False: 1 of 3
     assert (ps.t3(d, c, complete)["status"], ps.t4(d, c, complete)["status"]) == (
         NA,
         NA,
@@ -1536,9 +1549,27 @@ def write_inputs(folder: Path, *values: dict) -> list[Path]:
     return paths
 
 
-def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys):
+def pinned(monkeypatch, gold_path: Path) -> str:
+    """The gold file's SHA-256, pinned in the place of the frozen one for this test only."""
+    digest = hashlib.sha256(gold_path.read_bytes()).hexdigest()
+    monkeypatch.setattr(ps, "FROZEN_GOLD_SHA256", digest)
+    return digest
+
+
+# A script from another folder that pins the test's gold in place of the frozen one, as the
+# in-process tests do: no option or variable of the scorer itself can change the pin.
+WRAPPER = """import sys
+sys.path.insert(0, sys.argv[1])
+import phase4_scoring as ps
+ps.FROZEN_GOLD_SHA256 = sys.argv[2]
+raise SystemExit(ps.main(sys.argv[3:]))
+"""
+
+
+def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys, monkeypatch):
     result, gold = fixture()
     result_path, gold_path = write_inputs(tmp_path, result, gold)
+    digest = pinned(monkeypatch, gold_path)
     out = tmp_path / "scoring.json"
     args = [
         "--result",
@@ -1556,18 +1587,31 @@ def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys):
         "label": "SIMULATED",
         "score": scored,
         "summary": ps.summary(scored),
+        "search_thresholds": ps.search_thresholds(ps.summary(scored)),
     }
     assert json.loads(printed.out) == {
         "label": "SIMULATED",
         "summary": written["summary"],
+        "search_thresholds": written["search_thresholds"],
     }
     for name in ("X-01", "X-02", "jul/", "R1", "R2", "Synthetic question"):
         assert name not in printed.out
         assert name not in printed.err
     again = tmp_path / "again.json"  # as a script from another folder: the same bytes
+    wrapper = tmp_path / "elsewhere" / "score.py"
+    wrapper.parent.mkdir()
+    wrapper.write_text(WRAPPER, encoding="utf-8")
     run = subprocess.run(
-        [sys.executable, str(SCRIPT), *args, "--out", str(again)],
-        cwd=tmp_path,
+        [
+            sys.executable,
+            str(wrapper),
+            str(SCRIPT.parent),
+            digest,
+            *args,
+            "--out",
+            str(again),
+        ],
+        cwd=wrapper.parent,
         capture_output=True,
         text=True,
         check=False,
@@ -1577,9 +1621,10 @@ def test_main_writes_the_scoring_and_prints_only_counts(tmp_path, capsys):
     assert str(tmp_path) not in out.read_text(encoding="utf-8")
 
 
-def test_main_merges_the_results_of_a_resumed_run(tmp_path, capsys):
+def test_main_merges_the_results_of_a_resumed_run(tmp_path, capsys, monkeypatch):
     run_1, run_2, gold = resumed()
     first, second, gold_path = write_inputs(tmp_path, run_1, run_2, gold)
+    pinned(monkeypatch, gold_path)
     out = tmp_path / "scoring.json"
     assert (
         ps.main(
@@ -1651,10 +1696,11 @@ def test_main_writes_in_the_repository_only_under_local(tmp_path, capsys):
     assert "repository" not in err
 
 
-def test_main_refuses_invalid_inputs_without_writing(tmp_path, capsys):
+def test_main_refuses_invalid_inputs_without_writing(tmp_path, capsys, monkeypatch):
     result, gold = fixture()
     gold["cases"] = gold["cases"][1:]  # X-01 is no longer in the gold file
     result_path, gold_path = write_inputs(tmp_path, result, gold)
+    pinned(monkeypatch, gold_path)
     out = tmp_path / "scoring.json"
     args = ["--result", str(result_path), "--gold", str(gold_path), "--out", str(out)]
     assert ps.main(args) == 2
@@ -1684,3 +1730,197 @@ def test_cells_of_one_repetition_run_with_different_time_budgets_are_refused():
     d["record"] = changed(d["record"], budget_s=120.0)  # the others ran at 600 s
     with pytest.raises(ValueError, match="different time budgets"):
         ps.score([result], gold)
+
+
+# Amendment A1 (phase4/amendments.md): unnecessary search attempts beside T3
+
+
+def test_a1_counts_an_executed_search_and_a_refused_request_where_nothing_is_missing():
+    executed = record("agent", ["auto", "auto"], [search(1, "passages", "jul/c")])
+    refused = record("coverage", ["auto", "auto"], [search(1, "refused_coverage")])
+
+    run = one_cell(executed, COVERED, "agent")["counts"]
+    ref = one_cell(refused, COVERED, "coverage")["counts"]
+
+    # T3 as frozen counts the executed search only; A1 counts each point's attempt once, over
+    # T3's own denominator (both calls are no-search-needed points with an action).
+    assert (run["unnecessary_rate"], run["unnecessary_attempt_rate"]) == (
+        {"k": 1, "n": 2},
+        {"k": 1, "n": 2},
+    )
+    assert run["unnecessary_attempts"] == {"executed": 1, "refused": 0, "total": 1}
+    assert (ref["unnecessary_rate"], ref["unnecessary_attempt_rate"]) == (
+        {"k": 0, "n": 2},
+        {"k": 1, "n": 2},
+    )
+    assert ref["unnecessary_attempts"] == {"executed": 0, "refused": 1, "total": 1}
+
+
+def test_a1_reads_c_and_d_by_the_same_rule():
+    choices, searches = ["auto", "auto"], [search(1, "refused_arguments")]
+    c = one_cell(record("agent", choices, searches), COVERED, "agent")["counts"]
+    d = one_cell(record("coverage", choices, searches), COVERED, "coverage")["counts"]
+
+    keys = ("unnecessary_rate", "unnecessary_attempts", "unnecessary_attempt_rate")
+    assert {k: c[k] for k in keys} == {k: d[k] for k in keys}
+    assert c["unnecessary_attempts"] == {"executed": 0, "refused": 1, "total": 1}
+
+
+def test_a1_leaves_gap_checks_points_without_action_and_t4_as_they_were():
+    refused = [search(1, "refused_arguments")]
+    at_gap = one_cell(record("agent", ["auto", "auto"], refused), GAP, "agent")["counts"]
+    assert at_gap["unnecessary_attempts"] == {"executed": 0, "refused": 0, "total": 0}
+    assert at_gap["refused_searches"]["gap_check"] == 1
+    no_action = one_cell(
+        record("agent", ["auto"], outcome="provider_error"), COVERED, "agent"
+    )["counts"]
+    assert no_action["unnecessary_attempt_rate"] == {"k": 0, "n": 0}
+    assert no_action["decision_points"]["no_search_needed"]["without_action"] == 1
+    missed = one_cell(record("agent", ["auto", "auto"], refused), MISSING, "agent")[
+        "counts"
+    ]
+    assert (missed["missed_rate"], missed["unnecessary_attempt_rate"]) == (
+        {"k": 2, "n": 2},
+        {"k": 0, "n": 0},
+    )
+
+
+def a1_entry(unnecessary, refused, missed=(0, 5)) -> dict:
+    """A summary entry with T3's rate as (k, n), A1's refused attempts and T4's rate."""
+    k, n = unnecessary
+    return {
+        "unnecessary_rate": {"k": k, "n": n},
+        "unnecessary_attempts": {"executed": k, "refused": refused, "total": k + refused},
+        "unnecessary_attempt_rate": {"k": k + refused, "n": n},
+        "missed_rate": {"k": missed[0], "n": missed[1]},
+    }
+
+
+def test_search_thresholds_keep_t3_as_frozen_and_report_a1_beside_it():
+    d, c = a1_entry((1, 6), 3), a1_entry((4, 6), 0)
+    counts = {
+        "repetition": 1,
+        "repetition_complete": True,
+        "conditions": {"coverage": d, "agent": c},
+    }
+
+    got = ps.search_thresholds(counts)
+
+    # T3 is met on executed searches alone, whatever the refused requests are.
+    assert got["T3"] == ps.t3(d, c, True)
+    assert got["T3"]["status"] == "met"
+    assert got["A1"] == {
+        "d": {"executed": 1, "refused": 3, "attempts": 4, "n": 6, "percent": 66.7},
+        "c": {"executed": 4, "refused": 0, "attempts": 4, "n": 6, "percent": 66.7},
+        "threshold": None,
+    }
+    assert got["T4"] == ps.t4(d, c, True)
+    small = ps.a1(a1_entry((1, 4), 1), a1_entry((1, 4), 0))
+    assert (small["d"]["percent"], small["c"]["percent"]) == (None, None)  # n below 5
+
+
+def test_an_incomplete_repetition_gives_no_t3_or_t4_and_a1_stays_a_report():
+    d, c = a1_entry((0, 9), 1), a1_entry((5, 9), 0)
+    counts = {
+        "repetition": 1,
+        "repetition_complete": False,
+        "conditions": {"coverage": d, "agent": c},
+    }
+    got = ps.search_thresholds(counts)
+    assert (got["T3"]["status"], got["T4"]["status"]) == (NA, NA)
+    assert got["A1"]["d"]["attempts"] == 1
+    assert "status" not in got["A1"]
+
+
+@pytest.mark.parametrize(
+    "broken",
+    [
+        {"unnecessary_attempts": {"executed": 0, "refused": 3, "total": 3}},
+        {"unnecessary_attempt_rate": {"k": 4, "n": 7}},
+        {"unnecessary_attempts": {"executed": 1, "refused": 3, "total": 5}},
+    ],
+    ids=["executed-not-t3", "other-denominator", "total-not-the-sum"],
+)
+def test_a1_refuses_an_entry_that_does_not_add_up(broken):
+    with pytest.raises(ValueError, match="A1"):
+        ps.a1({**a1_entry((1, 6), 3), **broken}, a1_entry((4, 6), 0))
+
+
+def test_completeness_is_the_scorings_own():
+    result, gold = fixture()  # X-02's D did not run and X-03 has no result
+    counts = ps.summary(ps.score([result], gold))
+    assert (
+        counts["repetition"],
+        counts["complete_cases"],
+        counts["gold_cases"],
+        counts["repetition_complete"],
+    ) == (1, 1, 3, False)
+    assert ps.search_thresholds(counts)["T3"]["status"] == NA
+    # A gold file cut to the complete case would look complete: the command line takes the
+    # frozen gold file only.
+    cut = ps.score([{"cases": result["cases"][:1]}], {"cases": gold["cases"][:1]})
+    assert ps.summary(cut)["repetition_complete"] is True
+
+
+@pytest.mark.parametrize(
+    "budget",
+    ["missing", None, [], "600", True, 0, -1.0, math.nan, math.inf],
+)
+def test_a_record_without_a_valid_time_budget_is_refused(budget):
+    rec = record("agent", ["auto"])
+    if budget == "missing":
+        del rec["budget_s"]
+    else:
+        rec["budget_s"] = budget
+    with pytest.raises(ValueError, match="budget_s"):
+        one_cell(rec, COVERED, "agent")
+
+
+@pytest.mark.parametrize("repetition", ["missing", None, 2, True, "1", 1.0])
+def test_a_record_without_an_admitted_repetition_is_refused(repetition):
+    rec = record("agent", ["auto"])
+    if repetition == "missing":
+        del rec["repetition"]
+    else:
+        rec["repetition"] = repetition
+    with pytest.raises(ValueError, match="repetition"):
+        one_cell(rec, COVERED, "agent")
+
+
+def test_one_scoring_holds_one_repetition(monkeypatch):
+    monkeypatch.setattr(evidence_agent, "PHASE4_REPETITIONS", (1, 2))
+    result, gold = fixture()
+    d = next(c for c in result["cases"][0]["cells"] if c["condition"] == "coverage")
+    d["record"] = changed(d["record"], repetition=2)
+    with pytest.raises(ValueError, match="one repetition"):
+        ps.score([result], gold)
+
+
+def test_main_scores_against_the_frozen_gold_file_only(tmp_path, capsys):
+    result, gold = fixture()
+    result_path, gold_path = write_inputs(tmp_path, result, gold)
+    out = tmp_path / "scoring.json"
+    args = ["--result", str(result_path), "--gold", str(gold_path), "--out", str(out)]
+
+    assert ps.main(args) == 2
+
+    assert "frozen gold file" in capsys.readouterr().err
+    assert not out.exists()
+    freeze = json.loads(
+        (ps.RESULTS / "2026-11-25-phase4-freeze.json").read_text(encoding="utf-8")
+    )
+    (frozen,) = [f for f in freeze["files"] if f["role"] == "private cases and gold"]
+    assert ps.FROZEN_GOLD_SHA256 == frozen["sha256"]
+
+
+def test_main_refuses_a_local_folder_that_is_a_link(tmp_path, capsys, monkeypatch):
+    elsewhere = tmp_path / "published"
+    elsewhere.mkdir()
+    link = tmp_path / "local"
+    link.symlink_to(elsewhere, target_is_directory=True)
+    monkeypatch.setattr(ps, "LOCAL", link)
+    absent = tmp_path / "absent.json"  # never read: the refusal comes first
+    for out in (link / "scoring.json", tmp_path / "outside.json"):
+        assert ps.main(["--result", str(absent), "--gold", str(absent), "--out", str(out)]) == 2
+        assert "symbolic link" in capsys.readouterr().err
+    assert list(elsewhere.iterdir()) == []
