@@ -191,11 +191,13 @@ def _client(config: generation.Config):
     return run_question._client(config)
 
 
-def _cases(path: Path, *, questions: bool) -> list[dict] | str:
-    """The cases in ``path`` (ID, question, editions), or why they cannot be used."""
+def _cases(path: Path, *, questions: bool, raw: bytes | None = None) -> list[dict] | str:
+    """The cases in ``path`` (ID, question, editions), or why they cannot be used; ``raw``
+    is the file's bytes when already read, so the bytes checked are the bytes used."""
 
     try:
-        data = json.loads(path.read_text(encoding="utf-8"))
+        text = raw.decode("utf-8") if raw is not None else path.read_text(encoding="utf-8")
+        data = json.loads(text)
     except (
         OSError,
         UnicodeDecodeError,
@@ -439,6 +441,7 @@ def _plan_phase4(cases: list[dict]) -> dict:
             ),
             "books": state["books"],
             "repetition": PHASE4_REPETITION,
+            "time_budget_s": state["time_budget_s"],
             "limit_usd": state["limit_usd"],
             "committed_usd": state["committed_usd"],
             "booked": state["booked"],
@@ -664,7 +667,9 @@ def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
             "max_tokens": config.max_tokens,
             "timeout_s": config.timeout_s,
             "client_max_retries": 0,
-            "budget_usd": config.budget_usd,
+            "budget_usd": (
+                evidence_agent.PHASE4_LIMIT_USD if design == "phase4" else config.budget_usd
+            ),
             "input_margin": config.input_margin,
             "max_input_tokens": evidence_agent.MAX_INPUT_TOKENS,
             "search_limits": dataclasses.asdict(evidence_search.SearchLimits()),
@@ -996,12 +1001,21 @@ def _run(  # noqa: PLR0913
                     or bool(result.record.get("calls"))
                     or (result.detail == run_question.UNCONFIRMED_RESERVATION)
                 )
-                if code in STOPS or (
-                    result.outcome == "refused" and result.detail not in CELL_REFUSALS
+                booked = bool(result.record.get("calls")) or (
+                    result.detail == run_question.UNCONFIRMED_RESERVATION
+                )
+                if (
+                    code in STOPS
+                    or (result.outcome == "refused" and result.detail not in CELL_REFUSALS)
+                    # Phase 4: a cell that booked nothing can run again, but only in the frozen
+                    # order, so nothing after it runs now.
+                    or (phase4 and not booked and result.outcome != "refused")
                 ):
                     state["stopped"] = {"case": item["id"], "condition": name}
     finally:  # nothing reserved means nothing of the matrix is in the books: no output either
         times["finished"] = _now()
+        if phase4 and not state["reserved"]:
+            _release(paths)  # the claimed run folder, when nothing was written in it
         outputs = (
             [(paths["local"] / "result.json", kept), (paths["public"], public)]
             if state["reserved"]
@@ -1120,24 +1134,31 @@ def main(argv: list[str] | None = None) -> int:
             )
         if not evidence_agent.CASE_ID.fullmatch(args.tag):
             parser.error("--tag must be a plain name (letters, digits, '_', '.', '-')")
-    cases = _cases(args.cases, questions=args.step == "run")
+    try:  # read once: the bytes checked against the freeze are the bytes used
+        raw = args.cases.read_bytes()
+    except OSError:
+        raw = None
+    cases = _cases(args.cases, questions=args.step == "run", raw=raw)
     if isinstance(cases, str):
         parser.error(cases)  # exit 2, before anything is loaded, counted or sent
     frozen = [
         c["id"]
         for c in cases
-        if c["question"] is not None
-        and _sha256(c["question"]) in evidence_agent.PHASE4_QUESTIONS
+        if evidence_agent.frozen_case(
+            c["id"],
+            _sha256(c["question"]) if c["question"] is not None else None,
+            c["editions"],
+        )
+        is not None
     ]
     if args.design != "phase4" and frozen:
         parser.error(
-            f"{', '.join(frozen)} ask a frozen Phase 4 question: they run only under "
-            "--design phase4, in Phase 4's own books"
+            f"{', '.join(frozen)} name a frozen Phase 4 case (its ID or its question): it "
+            "runs only under --design phase4, in Phase 4's own books"
         )
     if (
         args.design == "phase4"
-        and hashlib.sha256(args.cases.read_bytes()).hexdigest()
-        != PHASE4_RUNNER_INPUT_SHA256
+        and hashlib.sha256(raw or b"").hexdigest() != PHASE4_RUNNER_INPUT_SHA256
     ):
         parser.error(
             "--design phase4 takes the frozen runner input only (its SHA-256 as frozen in "
@@ -1163,6 +1184,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ANSWER
     args.manifest = args.manifest.resolve()
     paths = _paths(args.tag)
+    claimed = False  # whether this invocation created the run's local folder
     try:
         existing = run_question._existing(paths)
         if existing:
@@ -1178,6 +1200,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"refused: {linked} is a symbolic link; local outputs (questions, answers, "
                 "rankings) stay in the real, git-ignored local/ folder",
             )
+        if args.design == "phase4":  # the tag is this invocation's before anything is spent
+            refusal = _claim(paths)
+            if refusal:
+                raise run_question._Stop(EXIT_REFUSED, refusal)
+            claimed = True
         client = _client(
             generation.Config()
         )  # the key is checked before the model loads
@@ -1189,6 +1216,13 @@ def main(argv: list[str] | None = None) -> int:
                 f"refused: the books cannot be used as they are ({refusal})",
             ) from None
         admission = plan["admission"]
+        pinned = admission.get("time_budget_s")
+        if args.design == "phase4" and pinned not in (None, args.time_budget_s):
+            raise run_question._Stop(
+                EXIT_REFUSED,
+                f"refused: the Phase 4 books are pinned to a time budget of {pinned} s per "
+                f"cell, not {args.time_budget_s}; one repetition, one budget",
+            )
         if not admission["fits"] and args.design == "phase4":
             raise run_question._Stop(
                 EXIT_REFUSED,
@@ -1218,23 +1252,62 @@ def main(argv: list[str] | None = None) -> int:
                 + ", ".join(f"{c['case']} ({c['pairing']})" for c in unpaired),
             )
         loaded = run_question._load(args.manifest)
+        sources = {d.edition: d.sha256 for d in loaded.built.documents}
+        if args.design == "phase4" and sources != evidence_agent.PHASE4_SOURCES:
+            raise run_question._Stop(
+                EXIT_REFUSED,
+                "refused: the corpus is not the frozen one (its commentary PDFs must have "
+                "the SHA-256 values in results/2026-11-25-phase4-freeze.json); nothing was "
+                "counted or sent",
+            )
         for item in cases:  # every case checked before any cell runs
             run_question._checked(loaded, item["question"], item["editions"])
         ranked = _rankings(cases, loaded)
     except run_question._Stop as stop:
+        if claimed:
+            _release(paths)  # this invocation's claim, while still empty
         print(stop, file=sys.stderr)
         return stop.code
     return _run(args, cases, client, plan, loaded, ranked)
 
 
 def _linked(paths: dict[str, Path]) -> str | None:
-    """The first of local/ and the run's folder in it that is a symbolic link, or None: a link
-    could carry the local record into a tracked or published folder."""
+    """The first of local/, the run's folder in it and that folder's request and response
+    folders that is a symbolic link, or None: a link could carry the local record into a
+    tracked or published folder."""
 
-    for path in (LOCAL, paths["local"]):
+    run = paths["local"]
+    for path in (LOCAL, run, run / "requests", run / "responses"):
         if path.is_symlink():
             return str(path)
     return None
+
+
+def _claim(paths: dict[str, Path]) -> str | None:
+    """Phase 4: create the run's local folder now, empty and this invocation's, or say why not.
+    A second invocation under the same tag is refused before it spends, and no link inside the
+    folder predates the run."""
+
+    try:
+        LOCAL.mkdir(parents=True, exist_ok=True)
+        paths["local"].mkdir()
+    except FileExistsError:
+        return (
+            f"refused: {paths['local']} already exists (an earlier or a concurrent "
+            "invocation under this tag); use another tag"
+        )
+    except OSError as exc:
+        return f"refused: the local folder cannot be created ({type(exc).__name__})"
+    return None
+
+
+def _release(paths: dict[str, Path]) -> None:
+    """Give back a claimed run folder that is still empty; one with files stays."""
+
+    try:
+        paths["local"].rmdir()
+    except OSError:
+        pass
 
 
 def _rankings(cases: list[dict], loaded) -> tuple:

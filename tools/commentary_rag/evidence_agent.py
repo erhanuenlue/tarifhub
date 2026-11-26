@@ -92,8 +92,10 @@ these books by giving a ``repetition`` (``PHASE4_REPETITIONS`` admits 1 only), w
 every Phase 4 cell's identity: (repetition, case, condition), call IDs
 ``<case>-<condition>-r<repetition>-call<n>``, recorded in every reservation and settlement and in
 the cell's record. Only B, C and D (``PHASE4_CONDITIONS``) are booked there, and condition D
-(``coverage``) nowhere else; a frozen Phase 4 question (``PHASE4_QUESTIONS``, from the freeze
-record) is refused in the Phase 2 and 3 books. In Phase 4's books every cell's admission holds
+(``coverage``) nowhere else; a frozen Phase 4 case (``PHASE4_CASES``, from the freeze record),
+by its ID or its question, is refused in the Phase 2 and 3 books and booked in Phase 4's only
+under its frozen ID, question and editions. The first Phase 4 cell pins the books' time budget
+beside their limit, and a cell with another budget is refused (``time_budget_changed``). In Phase 4's books every cell's admission holds
 back the case's other cells not yet booked, whoever calls, so a fresh case starts only when its
 whole triplet fits. The ceiling, admission, reservations, settlements, persistence and the
 strict reading of the ledger are the same code for both books; the Phase 2 and 3 books and the
@@ -145,12 +147,15 @@ PHASE4_LEDGER = "phase4-ledger.jsonl"
 PHASE4_LIMIT_USD = 40.0
 PHASE4_REPETITIONS = (1,)
 PHASE4_CONDITIONS = ("fixed10", "agent", "coverage")  # B, C and D
-# The frozen Phase 4 questions by SHA-256, read from the committed freeze record: they are booked
-# in Phase 4's books only, so none of their cells can draw on the Phase 2 and 3 allowance.
+# The frozen Phase 4 cases and commentary sources, read from the committed freeze record: each
+# case ID with its question's SHA-256 and its sorted editions, each edition with its PDF's SHA-256.
+# A frozen case, by its ID or its question, is booked in Phase 4's books only and there only under
+# its frozen identity, so none of its cells can draw on the Phase 2 and 3 allowance.
 FREEZE_RECORD = Path(__file__).resolve().parent / "results" / "2026-11-25-phase4-freeze.json"
-PHASE4_QUESTIONS = frozenset(
-    case["question_sha256"]
-    for case in json.loads(FREEZE_RECORD.read_text(encoding="utf-8"))["cases"])
+_FROZEN = json.loads(FREEZE_RECORD.read_text(encoding="utf-8"))
+PHASE4_CASES = {case["id"]: (case["question_sha256"], tuple(sorted(case["editions"])))
+                for case in _FROZEN["cases"]}
+PHASE4_SOURCES = {doc["edition"]: doc["sha256"] for doc in _FROZEN["source_documents"]}
 # A case ID is a plain name: it names the case's calls in the ledger and its artifact files.
 CASE_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]{0,63}")
 PRICES = Path(__file__).resolve().parent / "pricing.json"
@@ -413,8 +418,9 @@ def _ledger(path: Path, pricing: generation.Pricing, *, phase4: bool = False) ->
         if kind == "baseline" and not phase4:
             ok = (isinstance(e.get("sha256"), str) and _amount(e.get("committed_usd"))
                   and _amount(e.get("budget_usd")))
-        elif kind == "books" and phase4:  # Phase 4's pin: its ledger and its limit
-            ok = e.get("ledger") == PHASE4_LEDGER and _amount(e.get("budget_usd"))
+        elif kind == "books" and phase4:  # Phase 4's pin: its ledger, limit and time budget
+            ok = (e.get("ledger") == PHASE4_LEDGER and _amount(e.get("budget_usd"))
+                  and _seconds(e.get("time_budget_s")))
         elif kind == "reserve":  # the call ID names its case, condition and call: one ID, one cell
             call, case, named = e.get("call"), e.get("case"), e.get("condition")
             # A reservation without a condition was written before conditions existed, by the
@@ -494,6 +500,32 @@ def _phase4_books(spending: Spending, pricing: generation.Pricing) -> list[dict]
     if events and events[0]["budget_usd"] != PHASE4_LIMIT_USD:
         raise _Refused("budget_changed")
     return events
+
+
+def frozen_case(case_id: str, question_sha256: str | None, editions=None) -> str | None:
+    """Whether a cell names a frozen Phase 4 case (``PHASE4_CASES``): ``same`` when its case
+    ID, question and editions are one frozen case, ``other`` when it shares the ID or the
+    question with one but not the rest, None when it names none. A question not given is matched
+    by the case ID alone."""
+
+    by_question = {question: case for case, (question, _) in PHASE4_CASES.items()}
+    frozen, named = PHASE4_CASES.get(case_id), by_question.get(question_sha256)
+    if frozen is None and named is None:
+        return None
+    if frozen is not None and question_sha256 is None:
+        return "other"
+    same = (frozen == (question_sha256, tuple(sorted(editions or ()))) and named == case_id)
+    return "same" if same else "other"
+
+
+def _seconds(value) -> bool:
+    """A time budget: a finite number of seconds above 0."""
+
+    try:
+        return (isinstance(value, int | float) and not isinstance(value, bool)
+                and math.isfinite(value) and value > 0)
+    except OverflowError:  # an integer past float range
+        return False
 
 
 def _count(value) -> bool:
@@ -618,6 +650,7 @@ def _phase4_state(config: generation.Config, pricing: generation.Pricing,
         "books": PHASE4_LEDGER,
         "limit_usd": PHASE4_LIMIT_USD,
         "repetitions": list(PHASE4_REPETITIONS),
+        "time_budget_s": events[0]["time_budget_s"] if events else None,
         "committed_usd": _committed(events) / 1_000_000,
         "call_ceiling_at_input_cap_usd": _ceiling(pricing, MAX_INPUT_TOKENS, config) / 1_000_000,
         "input_usd_per_mtok": pricing.input,
@@ -883,9 +916,15 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
     # What the case asks, as every reservation records it: one case ID, one question over one
     # edition selection, whatever the condition (the plain SHA-256 public records publish).
     asked = (hashlib.sha256(task.question.encode("utf-8")).hexdigest(), sorted(task.editions))
-    if repetition is None and asked[0] in PHASE4_QUESTIONS:
-        raise ValueError("a frozen Phase 4 question is booked only in the Phase 4 books, under a "
-                         "repetition")
+    frozen = frozen_case(task.case_id, asked[0], asked[1])
+    if repetition is None and frozen is not None:
+        raise ValueError("a frozen Phase 4 case, by its ID or its question, is booked only in the "
+                         "Phase 4 books, under a repetition")
+    if repetition is not None and frozen == "other":
+        raise ValueError("a frozen Phase 4 case is booked under its frozen ID, question and "
+                         "editions only")
+    if repetition is not None and not _seconds(budget_s):
+        raise ValueError("the time budget must be a finite number of seconds above 0")
     with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
         return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
                      budget_s=budget_s, spending=spending, pricing=pricing, config=config,
@@ -1000,6 +1039,8 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
         events, baseline = read()
     except _Refused as refusal:
         return end("refused", refusal.detail)
+    if phase4 and events and events[0]["time_budget_s"] != budget_s:
+        return end("refused", "time_budget_changed")  # one budget per cell, pinned with the books
     if any(e["event"] == "reserve" and e["case"] == task.case_id and "question_sha256" in e
            and (e["question_sha256"], e["editions"]) != asked for e in events):
         return end("refused", "case_redefined")  # booked before with another question
@@ -1029,7 +1070,7 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
     if phase4:  # the first Phase 4 cell pins the books: their ledger and limit
         if not events and not kept(lambda: generation._append(spending.ledger, {
                 "event": "books", "ledger": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
-                "at": generation._now()})):
+                "time_budget_s": budget_s, "at": generation._now()})):
             return end("persistence_error", "books_not_saved")
         record["spending"] = {
             "books": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,

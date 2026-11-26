@@ -59,7 +59,6 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import math
 import os
 import sys
 from collections import Counter
@@ -275,13 +274,7 @@ def _checked_record(record, condition: str) -> None:
         )
     if condition not in SEARCHING and searches:
         raise ValueError("a fixed condition never searches")
-    budget = record.get("budget_s")
-    if (
-        isinstance(budget, bool)
-        or not isinstance(budget, int | float)
-        or not math.isfinite(budget)
-        or budget <= 0
-    ):
+    if not evidence_agent._seconds(record.get("budget_s")):  # overflow included
         raise ValueError("a record's budget_s must be a finite number of seconds above 0")
     repetition = record.get("repetition")
     if (
@@ -750,8 +743,18 @@ def score(results, gold) -> dict:
     }
     if len(repetitions) > 1:
         raise ValueError("the records of one scoring belong to one repetition")
+    # The frozen cohort: the gold names exactly the freeze record's cases, each with its
+    # question's SHA-256 and its editions; a subset or another case set gives no verdict.
+    cohort = {
+        name: (
+            hashlib.sha256(case["question"].encode("utf-8")).hexdigest(),
+            tuple(sorted(case["editions"])),
+        )
+        for name, case in frozen.items()
+    }
     return {
         "gold_cases": len(frozen),
+        "frozen_cohort": cohort == evidence_agent.PHASE4_CASES,
         "repetition": next(iter(repetitions), None),
         "cases": scored,
     }
@@ -776,9 +779,10 @@ def summary(scored: dict) -> dict:
 
     ``gold_cases``; ``repetition``; ``cases_in_results`` (gold cases in any result);
     ``complete_cases`` (B, C and D all ran) and ``incomplete_cases`` (the other cases in the
-    results; a gold case in no result is neither); ``repetition_complete``, true exactly when
-    ``complete_cases`` equals ``gold_cases``. Per condition: its cells (one per case in the
-    results), those ``not_run``,
+    results; a gold case in no result is neither); ``frozen_cohort`` (the gold names exactly
+    the freeze record's cases, questions and editions); ``repetition_complete``, true exactly
+    when the cohort is the frozen one and ``complete_cases`` equals ``gold_cases``. Per
+    condition: its cells (one per case in the results), those ``not_run``,
     calls per cell (generation calls sent) and searches per cell (refused requests included)
     over the cells that ran, the search measures of C and D, and D's coverage diagnostics.
     """
@@ -805,11 +809,13 @@ def summary(scored: dict) -> dict:
         conditions[condition] = entry
     return {
         "gold_cases": scored["gold_cases"],
+        "frozen_cohort": scored["frozen_cohort"],
         "repetition": scored["repetition"],
         "cases_in_results": len(cases),
         "complete_cases": complete,
         "incomplete_cases": len(cases) - complete,
-        "repetition_complete": scored["repetition"] is not None
+        "repetition_complete": scored["frozen_cohort"]
+        and scored["repetition"] is not None
         and complete == scored["gold_cases"],
         "conditions": conditions,
     }
@@ -1078,8 +1084,12 @@ def _placement(path: Path) -> str | None:
 
 
 def _load(path: Path):
+    return _parsed(path.read_text(encoding="utf-8"))
+
+
+def _parsed(text: str):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(text)
     except RecursionError:
         raise ValueError("a JSON input nests too deeply") from None
 
@@ -1119,13 +1129,14 @@ def main(argv: list[str] | None = None) -> int:
     if not args.out.parent.is_dir():
         return _refuse("--out must name a file in an existing folder")
     try:
-        if hashlib.sha256(args.gold.read_bytes()).hexdigest() != FROZEN_GOLD_SHA256:
+        raw = args.gold.read_bytes()  # read once: the bytes checked are the bytes used
+        if hashlib.sha256(raw).hexdigest() != FROZEN_GOLD_SHA256:
             return _refuse(
                 "--gold must be the frozen gold file (its SHA-256 as frozen in "
                 "results/2026-11-25-phase4-freeze.json)"
             )
         results = [_load(path) for path in args.result]
-        gold = _load(args.gold)
+        gold = _parsed(raw.decode("utf-8"))
     except (OSError, ValueError) as exc:
         return _refuse(
             f"--result and --gold must be readable JSON files ({type(exc).__name__})"

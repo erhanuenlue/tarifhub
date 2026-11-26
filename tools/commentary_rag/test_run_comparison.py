@@ -1446,10 +1446,19 @@ def test_the_phase3_design_is_the_default_and_its_plan_is_unchanged(isolated, ca
 
 
 def frozen_input(env, monkeypatch, *cases) -> Path:
-    """A cases file pinned in the place of the frozen runner input for this test only."""
+    """A cases file pinned in the place of the frozen runner input, and the test corpus's PDFs in
+    the place of the frozen sources, for this test only."""
     path = cases_file(env, *cases)
     digest = hashlib.sha256(path.read_bytes()).hexdigest()
     monkeypatch.setattr(run_comparison, "PHASE4_RUNNER_INPUT_SHA256", digest)
+    manifest = json.loads(env["manifest"].read_text("utf-8"))
+    sources = {
+        edition["effective_date"]: document["sha256"]
+        for edition in manifest["editions"]
+        for document in edition["documents"]
+        if document["kind"] == "commentary_pdf"
+    }
+    monkeypatch.setattr(evidence_agent, "PHASE4_SOURCES", sources)
     return path
 
 
@@ -1467,6 +1476,7 @@ def phase4_books(env, *rows: dict) -> None:
         "event": "books",
         "ledger": evidence_agent.PHASE4_LEDGER,
         "budget_usd": 40.0,
+        "time_budget_s": 600.0,  # the budget ``phase4_argv`` gives every cell
         "at": "2026-11-26T00:00:00+00:00",
     }
     phase4_path(env).write_text(
@@ -1596,6 +1606,7 @@ def test_the_phase4_plan_admits_case_by_case_beside_the_phase4_books(
     assert admission == {
         "books": "phase4-ledger.jsonl",
         "repetition": 1,
+        "time_budget_s": None,
         "limit_usd": 40.0,
         "committed_usd": 0.0,
         "booked": {"usage": zero, "retained": zero, "released": zero, "open": zero},
@@ -1915,6 +1926,7 @@ def test_the_phase4_run_gives_b_c_and_d_their_passages_and_publishes_no_passage_
         "repetition": 1,
         "runner_input_sha256": run_comparison.PHASE4_RUNNER_INPUT_SHA256,
     }
+    assert record["run"]["configuration"]["budget_usd"] == 40.0  # the cap in force
     conditions = record["run"]["configuration"]["conditions"]
     assert list(conditions) == ["fixed10", "agent", "coverage"]
     assert "answer_format_sha256" in conditions["coverage"]
@@ -2021,18 +2033,131 @@ def test_estimates_read_cells_of_every_condition_under_either_design(
     }
 
 
-@pytest.mark.parametrize("step", ["plan", "run"])
-def test_the_default_design_refuses_a_frozen_phase4_question_before_anything_loads(
-    isolated, monkeypatch, capsys, step
+@pytest.mark.parametrize(
+    ("step", "case_id"), [("plan", "E1"), ("run", "E1"), ("run", "E9")]
+)
+def test_the_default_design_refuses_a_frozen_phase4_case_before_anything_loads(
+    isolated, monkeypatch, capsys, step, case_id
 ):
     live(isolated, monkeypatch)  # no reply: nothing may be sent
     question = hashlib.sha256(QUESTION.encode("utf-8")).hexdigest()
-    monkeypatch.setattr(evidence_agent, "PHASE4_QUESTIONS", frozenset({question}))
+    monkeypatch.setattr(evidence_agent, "PHASE4_CASES", {"E1": (question, (JUL,))})
     before = written(isolated)
 
-    assert exit_code(argv(isolated, step, cases_file(isolated, case("E1")))) == 2
+    # By its ID (a plan has no question) or by its question under another ID.
+    assert exit_code(argv(isolated, step, cases_file(isolated, case(case_id)))) == 2
 
-    assert "frozen Phase 4 question" in capsys.readouterr().err
+    assert "frozen Phase 4 case" in capsys.readouterr().err
     assert isolated["loads"] == []
     assert written(isolated) == before
     assert not active(isolated).exists()
+
+
+class FailFirstCount(Provider):
+    """The provider's HTTP side whose first token count fails, so nothing is reserved."""
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        """Answer one request; the first count is a server error."""
+        if request.url.path == "/v1/messages/count_tokens" and not self.counts:
+            self.counts.append({})
+            return httpx.Response(500, json={"type": "error", "error": {"type": "api_error"}})
+        return super().__call__(request)
+
+
+def test_a_cell_that_booked_nothing_stops_the_run_so_a_rerun_keeps_the_frozen_order(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"), case("E2"))
+    provider = FailFirstCount(isolated["clock"])
+    monkeypatch.setattr(run_comparison, "_client", lambda config: provider.client())
+
+    assert run_comparison.main(phase4_argv(isolated, cases)) == 4
+
+    shown = json.loads(capsys.readouterr().out)
+    assert shown["stopped_after"] == {"case": "E1", "condition": "fixed10"}
+    assert [c["execution"] for c in shown["cells"]] == ["provider_error"] + ["not_run"] * 5
+    assert provider.creates == []
+    assert [e["event"] for e in phase4_ledger(isolated)] == ["books"]  # nothing booked
+    again = live(isolated, monkeypatch, *phase4_answers(), *phase4_answers("2"))
+
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+
+    assert [sent(body)[:1] for body in again.creates][:1] == [[TOP10[0]]]  # B first
+    reserved = [e["attempt"] for e in phase4_ledger(isolated) if e["event"] == "reserve"]
+    assert reserved[0] == "E1-fixed10-r1-call1"
+
+
+def test_a_rerun_with_another_time_budget_is_refused_before_the_model_loads(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"), case("E2"))
+    live(isolated, monkeypatch, *phase4_answers())
+
+    def stop_after_e1(the_task, **kwargs):  # the first run ends after E1
+        if the_task.case_id == "E2":
+            raise KeyboardInterrupt
+        return real(the_task, **kwargs)
+
+    real = evidence_agent.run_case
+    monkeypatch.setattr(evidence_agent, "run_case", stop_after_e1)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(evidence_agent, "run_case", real)
+    capsys.readouterr()
+    again = live(isolated, monkeypatch)  # no reply: nothing may be sent
+    loads = len(isolated["loads"])
+    command = argv(isolated, "run", cases, tag="2026-11-27", budget="601")
+
+    assert exit_code([*command, "--design", "phase4"]) == 3
+
+    assert "pinned to a time budget of 600.0 s" in capsys.readouterr().err
+    assert (again.counts, again.creates) == ([], [])
+    assert len(isolated["loads"]) == loads
+
+
+def test_the_corpus_must_be_the_frozen_one_before_anything_is_counted(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    monkeypatch.setattr(evidence_agent, "PHASE4_SOURCES", {JUL: "0" * 64})
+    provider = live(isolated, monkeypatch)  # no reply: nothing may be sent
+
+    assert exit_code(phase4_argv(isolated, cases)) == 3
+
+    assert "the corpus is not the frozen one" in capsys.readouterr().err
+    assert (provider.counts, provider.creates) == ([], [])
+    assert not phase4_path(isolated).exists()
+    assert not outputs(isolated, tag="2026-11-26")[1].exists()  # the claim is given back
+
+
+def test_a_tag_another_invocation_holds_is_refused_and_an_unused_claim_given_back(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    provider = live(isolated, monkeypatch)  # no reply: nothing may be sent
+    held = outputs(isolated, tag="2026-11-26")[1]
+    held.mkdir(parents=True)  # claimed, still empty: another invocation's run folder
+
+    assert exit_code(phase4_argv(isolated, cases)) == 3
+
+    assert "already exists" in capsys.readouterr().err
+    assert held.is_dir()  # left as it is: it is not this invocation's
+    phase4_books(isolated, *kept_at("Z9", 29.651201))  # the next case no longer fits
+    assert exit_code(phase4_argv(isolated, cases, tag="2026-11-27")) == 3
+    assert not outputs(isolated, tag="2026-11-27")[1].exists()  # claimed, then given back
+    assert (provider.counts, provider.creates) == ([], [])
+
+
+def test_a_linked_request_folder_in_the_run_folder_is_refused(isolated, monkeypatch, capsys):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    live(isolated, monkeypatch)  # no reply: nothing may be sent
+    elsewhere = isolated["tmp"] / "published"
+    elsewhere.mkdir()
+    run = outputs(isolated, tag="2026-11-26")[1]
+    run.mkdir(parents=True)
+    (run / "requests").symlink_to(elsewhere, target_is_directory=True)
+
+    assert exit_code(phase4_argv(isolated, cases)) == 3
+
+    assert "is a symbolic link" in capsys.readouterr().err
+    assert list(elsewhere.iterdir()) == []

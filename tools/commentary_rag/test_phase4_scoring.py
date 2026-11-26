@@ -975,6 +975,7 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
     no_attempt = {"executed": 0, "refused": 0, "total": 0}
     assert counts == {
         "gold_cases": 3,
+        "frozen_cohort": False,  # synthetic gold: never the freeze record's cases
         "repetition": 1,
         "cases_in_results": 2,
         "complete_cases": 1,
@@ -1846,25 +1847,48 @@ def test_a1_refuses_an_entry_that_does_not_add_up(broken):
         ps.a1({**a1_entry((1, 6), 3), **broken}, a1_entry((4, 6), 0))
 
 
-def test_completeness_is_the_scorings_own():
+def cohort(gold: dict) -> dict:
+    """A gold file's cases as the freeze record names them: question hash and editions."""
+    return {
+        case["id"]: (
+            hashlib.sha256(case["question"].encode("utf-8")).hexdigest(),
+            tuple(sorted(case["editions"])),
+        )
+        for case in gold["cases"]
+    }
+
+
+def test_completeness_is_the_scorings_own(monkeypatch):
     result, gold = fixture()  # X-02's D did not run and X-03 has no result
+    monkeypatch.setattr(evidence_agent, "PHASE4_CASES", cohort(gold))
     counts = ps.summary(ps.score([result], gold))
     assert (
+        counts["frozen_cohort"],
         counts["repetition"],
         counts["complete_cases"],
         counts["gold_cases"],
         counts["repetition_complete"],
-    ) == (1, 1, 3, False)
+    ) == (True, 1, 1, 3, False)
     assert ps.search_thresholds(counts)["T3"]["status"] == NA
-    # A gold file cut to the complete case would look complete: the command line takes the
-    # frozen gold file only.
-    cut = ps.score([{"cases": result["cases"][:1]}], {"cases": gold["cases"][:1]})
-    assert ps.summary(cut)["repetition_complete"] is True
+    # A gold file cut to the complete case is not the frozen cohort: still no verdict.
+    cut_gold = {"cases": gold["cases"][:1]}
+    cut = ps.summary(ps.score([{"cases": result["cases"][:1]}], cut_gold))
+    assert (cut["complete_cases"], cut["frozen_cohort"], cut["repetition_complete"]) == (
+        1,
+        False,
+        False,
+    )
+    assert ps.search_thresholds(cut)["T3"]["status"] == NA
+    # Only the frozen cohort, complete, gives one.
+    monkeypatch.setattr(evidence_agent, "PHASE4_CASES", cohort(cut_gold))
+    assert ps.summary(ps.score([{"cases": result["cases"][:1]}], cut_gold))[
+        "repetition_complete"
+    ] is True
 
 
 @pytest.mark.parametrize(
     "budget",
-    ["missing", None, [], "600", True, 0, -1.0, math.nan, math.inf],
+    ["missing", None, [], "600", True, 0, -1.0, math.nan, math.inf, 10**309],
 )
 def test_a_record_without_a_valid_time_budget_is_refused(budget):
     rec = record("agent", ["auto"])

@@ -789,6 +789,7 @@ PIN = {
     "event": "books",
     "ledger": "phase4-ledger.jsonl",
     "budget_usd": 40.0,
+    "time_budget_s": 3600.0,  # the budget ``run`` gives every cell
     "at": "2026-11-26T00:00:00+00:00",
 }
 DAMAGED_PHASE4 = {
@@ -933,32 +934,67 @@ def test_c_and_d_fail_alike_on_an_unencodable_replay_with_their_calls_settled(
     assert again.creates == []
 
 
-def test_the_frozen_phase4_questions_are_the_freeze_records_nineteen():
-    freeze = json.loads(
-        evidence_agent.FREEZE_RECORD.read_text(encoding="utf-8")
-    )
-    assert len(evidence_agent.PHASE4_QUESTIONS) == 19
-    assert evidence_agent.PHASE4_QUESTIONS == {
-        case["question_sha256"] for case in freeze["cases"]
+def test_the_frozen_cases_and_sources_are_the_freeze_records():
+    freeze = json.loads(evidence_agent.FREEZE_RECORD.read_text(encoding="utf-8"))
+    assert len(evidence_agent.PHASE4_CASES) == 19
+    assert evidence_agent.PHASE4_CASES == {
+        case["id"]: (case["question_sha256"], tuple(sorted(case["editions"])))
+        for case in freeze["cases"]
+    }
+    assert evidence_agent.PHASE4_SOURCES == {
+        doc["edition"]: doc["sha256"] for doc in freeze["source_documents"]
     }
 
 
-def test_a_frozen_phase4_question_is_refused_in_the_phase2_and_3_books(
-    phase3_spending, spending, monkeypatch
+@pytest.mark.parametrize(
+    ("case_id", "question", "editions", "phase4", "match"),
+    [
+        ("T1", None, (JUL,), False, "frozen Phase 4 case"),
+        ("T9", None, (JUL,), False, "frozen Phase 4 case"),
+        ("T1", "Welche Pauschale gilt und warum? ", (JUL,), False, "frozen Phase 4 case"),
+        ("T9", None, (JUL,), True, "frozen ID, question and editions only"),
+        ("T1", "Welche Pauschale gilt und warum? ", (JUL,), True, "frozen ID"),
+        ("T1", None, (JAN, JUL), True, "frozen ID"),
+    ],
+    ids=["id-and-question", "question", "id", "phase4-other-id", "phase4-other-question",
+         "phase4-other-editions"],
+)
+def test_a_frozen_case_is_booked_in_the_phase4_books_under_its_frozen_identity_only(  # noqa: PLR0913
+    phase3_spending, spending, monkeypatch, case_id, question, editions, phase4, match
 ):
-    monkeypatch.setattr(evidence_agent, "PHASE4_QUESTIONS", frozenset({_sha(task().question)}))
-    refused = Provider(Clock(), final(("Antwort.", ["jul/k"])))
+    frozen = task()
+    monkeypatch.setattr(
+        evidence_agent, "PHASE4_CASES", {"T1": (_sha(frozen.question), (JUL,))}
+    )
+    asked = dataclasses.replace(
+        frozen, case_id=case_id, question=question or frozen.question, editions=editions
+    )
+    provider = Provider(Clock(), final(("Antwort.", ["jul/k"])))
 
-    for condition in ("agent", "fixed10"):
-        the_task = task(initial=TEN) if condition == "fixed10" else task()
-        with pytest.raises(ValueError, match="frozen Phase 4 question"):
-            run(refused, the_task, phase3_spending, condition=condition)
-    assert (refused.counts, refused.creates) == ([], [])
-    assert not phase3_spending.ledger.exists()
+    with pytest.raises(ValueError, match=match):
+        if phase4:
+            run(provider, asked, spending, repetition=1)
+        else:
+            run(provider, asked, phase3_spending)
 
+    assert (provider.counts, provider.creates) == ([], [])
     allowed = Provider(Clock(), final(("Antwort.", ["jul/k"])))
-    result, _ = run(allowed, task(), spending, repetition=1)
+    result, _ = run(allowed, frozen, spending, repetition=1)  # its frozen identity: booked
     assert result.outcome == "answer"
+
+
+def test_the_first_phase4_cell_pins_the_time_budget_and_another_is_refused(spending):
+    run_d(Provider(Clock(), coverage_answer(COVERED, ("Antwort.", ["jul/k"]))), spending)
+    assert events(spending)[0]["time_budget_s"] == 3600.0
+    other = Provider(Clock())
+
+    result, _ = run(other, task(), spending, repetition=1, budget_s=1800.0)
+
+    assert (result.outcome, result.detail) == ("refused", "time_budget_changed")
+    assert (other.counts, other.creates) == ([], [])
+    for budget in (float("nan"), float("inf"), 0.0, -1.0):
+        with pytest.raises(ValueError, match="time budget"):
+            run(Provider(Clock()), task(), spending, repetition=1, budget_s=budget)
 
 
 def kept_r1(usd: float) -> list[dict]:
