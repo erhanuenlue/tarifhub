@@ -241,7 +241,8 @@ observation on this set, not an accuracy figure.
   boundary with the fixtures of `test_evidence_agent.py`; they check D's texts and schemas against
   the hashes frozen in `phase4/conditions.md` and B's and C's requests against hashes taken before D.
 - `phase4/`: the frozen Phase 4 condition contract (`conditions.md`) and rubric with thresholds
-  (`rubric-and-thresholds.md`), hashed in `results/2026-11-25-phase4-freeze.json` (below, "Phase 4").
+  (`rubric-and-thresholds.md`), hashed in `results/2026-11-25-phase4-freeze.json` (below, "Phase 4"),
+  and the dated amendments recorded after the freeze (`amendments.md`: A1 and O1, 2026-11-26).
 - `phase4_scoring.py`, `test_phase4_scoring.py`: the deterministic Phase 4 scorer and its offline
   tests on synthetic records.
 - `trace_demo.py`: one synthetic question through the real agent loop (`evidence_agent.run_case`)
@@ -753,12 +754,24 @@ against hashes taken on the code before D existed.
 same as before). Under `phase4` the public record names no passage (no ranking IDs and no supplied,
 cited or returned passage IDs, no coverage text); the local record keeps everything.
 
-**Books unchanged, and what that means for a live run:** D is booked like every cell, under its case
-and condition, in the same books and under the same aggregate limit. One case under B, C and D is
-admitted at USD 10.3488 (1 + 3 + 3 calls at the input cap), so 19 cases need USD 196.6272 of headroom
-at once; the books leave USD 92.939448, and `run` refuses such a matrix before the model loads. A
-cell already in the books is never sent again, so a second repetition needs case IDs of its own.
-Books, cap and admission for a live repetition are Erhan's decision.
+**Phase 4's own books (since 2026-11-26, [ADR-028](../../docs/adr/028-phase4-books.md), amendment O1):**
+under `--design phase4` every cell is booked in `results/phase4-ledger.jsonl`, beside the Phase 2 and
+3 ledgers and under the same folder lock, with a limit of USD 40 pinned in code
+(`evidence_agent.PHASE4_LIMIT_USD`) and in the ledger's first line; Phase 2 and 3 spending does not
+count against it, nor Phase 4 spending against their USD 100. The identity is (repetition, case,
+condition), call IDs `<case>-<condition>-r<repetition>-call<n>`; the code admits repetition 1 only,
+and D is booked nowhere else. The cases file must be the frozen runner input (its SHA-256 pinned in
+`run_comparison.PHASE4_RUNNER_INPUT_SHA256`), so one invocation runs the 19 frozen cases in their
+order, B, C and D per case. Admission is per case: before each cell, under the lock, the worst case
+of the case's cells still to run (every call at the input cap; USD 10.3488 for a fresh case) must fit
+beside everything committed there (settled calls at their cost, calls kept at their reservation,
+reservations without a settlement), so a fresh case starts only while at most USD 29.6512 is
+committed, and a case that does not fit stops the run before anything of it is counted or sent.
+A rerun after an interruption (under a new tag) skips every cell in the books and continues in the
+frozen order; a call whose sending is unknown stays open at its reservation, a call released before
+sending stays released, and neither is sent again, so their case stays incomplete. A local output
+folder that is a symbolic link is refused before the model loads. `plan` shows the books, the next
+case's worst case and how the reserved calls stand (`booked`: usage, retained, released, open).
 
 **Scorer:** `phase4_scoring.py` reads the local `result.json` of one repetition (`--result` once per
 file, several after a resumed run, merged by case and condition: a cell ran when a generation call
@@ -768,19 +781,28 @@ ran), rebuilds each C and D cell's decision points by capacity before each call 
 warranted, unnecessary, gap-check and missed useful searches, refused searches and points without
 action; D's coverage diagnostics are counted apart and never enter a measure. It implements the
 thresholds and both outcome tables as pure functions (T3 and T4 not assessable on an incomplete
-repetition). It writes case-level results only to a new file outside the repository or under the
-git-ignored `local/` folder, and prints counts.
+repetition). Since 2026-11-26 it reports amendment A1 beside T3 (`a1`, `search_thresholds`):
+unnecessary search attempts, an executed search or a refused request at a no-search-needed point
+counted once, executed and refused apart, over T3's own denominator, for C and D alike; T3 itself
+is unchanged. Every record must name its time budget (a finite number of seconds above 0) and its
+repetition (one scoring, one repetition); a search refused for want of rounds is accepted only after
+both rounds were used; the repetition is complete only when every gold case is, as the scorer finds
+it, and the command takes the frozen gold file only (`FROZEN_GOLD_SHA256`). It writes case-level
+results only to a new file outside the repository or under the git-ignored `local/` folder, which
+must not be a symbolic link, and prints counts with T3, A1 and T4.
 
 ```bash
 # Offline plan of the Phase 4 matrix (nothing loaded, counted, sent or written):
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
   uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
-  python tools/commentary_rag/run_comparison.py plan --design phase4 --cases <cases.json>
+  python tools/commentary_rag/run_comparison.py plan --design phase4 \
+  --cases tools/commentary_rag/local/2026-11-25-phase4-freeze/runner/cases.json
 # Scoring a run's local record against the private frozen cases (counts printed, cases kept local):
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
   uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
   python tools/commentary_rag/phase4_scoring.py --result <local result.json> \
-  --gold <private cases file> --out <new file under tools/commentary_rag/local/> --label <text>
+  --gold tools/commentary_rag/local/2026-11-25-phase4-freeze/private/cases.json \
+  --out <new file under tools/commentary_rag/local/> --label <text>
 ```
 
 **Dry run (2026-11-25, simulated):** the ordinary entry point with a scripted provider (no key, no
@@ -792,6 +814,16 @@ public records held no passage ID, and the scorer, merging the three batches, fo
 complete and no trace anomaly. Simulated
 answers and costs measure nothing about the model; the scored measures depend on the private gold
 and stay local.
+
+**Rehearsal (2026-11-26, simulated) of Phase 4's books:** the same entry point and inputs with
+disposable books: one repetition in one invocation (57 cells, 77 simulated calls, each sent and
+booked once; the scorer found all 19 cases complete), a concurrent invocation refused by the lock
+with nothing counted, sent, booked or written, an interruption while a call was on the wire resumed
+under a new tag without sending any call again (the interrupted call kept open, its case
+incomplete), a stop before the first case that no longer fit under expensive scripted usage, an
+exact fit admitted and one micro-dollar short refused before the model loaded; the repository's
+`results/` stayed byte-identical with no Phase 4 ledger
+([evidence](../../docs/evidence/2026-11-26-phase4-repetition-books-offline.md)).
 
 ## Tracing one synthetic run in a local Phoenix
 

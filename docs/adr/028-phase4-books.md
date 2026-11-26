@@ -1,0 +1,25 @@
+# ADR-028: Phase 4 books: a separate cap, the repetition in the identity, admission by case
+
+*Status: Accepted (decided by Erhan on 2026-11-26; implemented and tested offline, rehearsed with a simulated provider; not run live) · Date: 2026-11-26 · Decider: Erhan (+ AI-assisted analysis)*
+
+## Context
+The spending protection of the evidence-seeking agent ([ADR-026](026-commentary-evidence-search.md)) books every call of every condition in one active ledger beside the recorded Phase 2 ledger, under one aggregate limit of USD 100, and admits a comparison only when the worst case of all its cells still to run fits at once. The frozen Phase 4 evaluation ([ADR-027](027-coverage-decision.md), proposed) runs B, C and D on 19 cases: one case is admitted at USD 10.3488 (1 + 3 + 3 calls at the input cap), so the matrix needs USD 196.6272 at once, more than those books leave (USD 92.939448). A cell already in the books is never run again, so a repetition also needs an identity of its own. On 2026-11-26 Erhan decided to make one exploratory repetition runnable under a separate cap of USD 40 (expected about USD 16.6, high scenario USD 31.24: calculated from recorded usage, not invoiced).
+
+## Decision
+Phase 4 gets its own books: `results/phase4-ledger.jsonl` beside the Phase 2 and Phase 3 ledgers, under the same folder lock, with a limit of USD 40 pinned in code (`evidence_agent.PHASE4_LIMIT_USD`) and in the ledger's first line, and nothing else counted beside it. Every Phase 4 cell is booked under (repetition, case, condition), with the call IDs `<case>-<condition>-r<repetition>-call<n>`; the code admits repetition 1, the conditions B, C and D, and books D nowhere else. The comparison runner's Phase 4 design takes only the frozen runner input (its SHA-256 pinned) and runs its cases in their order, B, C and D per case, in one invocation. Before each cell, under the lock, the worst case of the case's cells still to run must fit beside everything committed in those books (settled calls at their cost, calls kept at their reservation, reservations without a settlement), so a fresh case starts only when its USD 10.3488 fits, and a case that does not fit stops the run before anything of it is sent. The ceiling, reservations, settlements, persistence and the strict reading of the ledger are ADR-026's code; the Phase 2 and 3 books, B's and C's requests and the Phase 3 design stay byte-identical. The scorer takes the frozen gold file only, every record names its repetition, and a repetition's completeness is the scorer's own finding, never a caller's.
+
+## Alternatives weighed
+- **Phase 4 in the Phase 2 and 3 books:** the frozen matrix does not fit them at once, and batches admitted one by one would spend their allowance with no cap of Phase 4's own.
+- **The whole matrix admitted at once under a larger cap:** USD 196.6272 of headroom for a run expected at about USD 16.6 binds a cap far above any planned spend.
+- **A repetition or batches chosen on the command line:** a new tag, a subset or another order of the cases could bypass the case admission or make an incomplete repetition look complete; the repetition is fixed in code and the cases file pinned.
+- **Sending again a cell whose booking is unresolved:** its call may have reached the provider; it is never sent again, and its case stays incomplete.
+
+## Consequences
+- (+) No Phase 4 call can be sent outside the USD 40 books, and the Phase 2 and 3 allowance is not used. An interruption, a restart or a concurrent invocation cannot send or book a cell twice: each cell's identity and each reservation are checked under the lock (tested offline and rehearsed with a simulated provider, [evidence](../evidence/2026-11-26-phase4-repetition-books-offline.md)).
+- (+) A repetition is complete only when every frozen case ran under B, C and D; an incomplete one gives no threshold verdict, whatever the tag or the batch.
+- (-) A call whose sending is unknown (an interruption while it was on the wire) stays open at its reservation, and a call released before sending stays released; either leaves its case incomplete. A replay failure that C and D share (a lone surrogate the model escaped in a tool input) ends the run after the cell's calls are settled and leaves no record of that cell, so its case stays incomplete too.
+- (-) Under the high cost scenario (every cell at the highest recorded cost of its condition) the 19th case starts with USD 0.0554 to spare; one call kept at its reservation or one open reservation can stop the run before the last case and leave the repetition exploratory.
+- (-) A second or third repetition needs another decision: a higher cap and the repetitions admitted in code.
+
+## Decision status
+Accepted by Erhan on 2026-11-26 for one exploratory repetition; implemented and tested offline and rehearsed with a simulated provider. A live run needs his separate decision.
