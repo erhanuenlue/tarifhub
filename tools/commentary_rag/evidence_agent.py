@@ -94,8 +94,9 @@ every Phase 4 cell's identity: (repetition, case, condition), call IDs
 the cell's record. Only B, C and D (``PHASE4_CONDITIONS``) are booked there, and condition D
 (``coverage``) nowhere else; a frozen Phase 4 case (``PHASE4_CASES``, from the freeze record),
 by its ID or its question, is refused in the Phase 2 and 3 books and booked in Phase 4's only
-under its frozen ID, question and editions. The first Phase 4 cell pins the books' time budget
-beside their limit, and a cell with another budget is refused (``time_budget_changed``). In Phase 4's books every cell's admission holds
+under its frozen ID, question and editions. The books' first line pins their ledger, limit and
+time budget and is written with their first reservation, so an attempt that books nothing pins
+nothing; a cell with another budget is refused (``time_budget_changed``). In Phase 4's books every cell's admission holds
 back the case's other cells not yet booked, whoever calls, so a fresh case starts only when its
 whole triplet fits. The ceiling, admission, reservations, settlements, persistence and the
 strict reading of the ledger are the same code for both books; the Phase 2 and 3 books and the
@@ -1067,11 +1068,7 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
     admission = chosen.calls * _ceiling(pricing, MAX_INPUT_TOKENS, config)
     if _micro(baseline) + _committed(events) + admission + rest > limit:
         return end("refused", "admission_budget")
-    if phase4:  # the first Phase 4 cell pins the books: their ledger and limit
-        if not events and not kept(lambda: generation._append(spending.ledger, {
-                "event": "books", "ledger": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
-                "time_budget_s": budget_s, "at": generation._now()})):
-            return end("persistence_error", "books_not_saved")
+    if phase4:  # the books are pinned with their first reservation, below
         record["spending"] = {
             "books": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
             "committed_before_usd": _committed(events) / 1_000_000,
@@ -1126,6 +1123,12 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
             return end("refused", refusal.detail)
         if _micro(baseline) + _committed(events) + _micro(reserved) > limit:
             return end("refused", "budget")
+        # Phase 4's books are pinned (ledger, limit, time budget) with their first reservation,
+        # so an attempt that books nothing pins nothing.
+        if phase4 and not events and not kept(lambda: generation._append(spending.ledger, {
+                "event": "books", "ledger": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
+                "time_budget_s": budget_s, "at": generation._now()})):
+            return end("persistence_error", "books_not_saved")  # nothing reserved or sent
         request = json.dumps(body, ensure_ascii=False, sort_keys=True)  # hashes as _sha256(body)
         if not kept(lambda: _create(spending.artifacts / "requests" / f"{attempt}.json",
                                     request)):

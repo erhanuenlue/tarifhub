@@ -2077,10 +2077,12 @@ def test_a_cell_that_booked_nothing_stops_the_run_so_a_rerun_keeps_the_frozen_or
     assert shown["stopped_after"] == {"case": "E1", "condition": "fixed10"}
     assert [c["execution"] for c in shown["cells"]] == ["provider_error"] + ["not_run"] * 5
     assert provider.creates == []
-    assert [e["event"] for e in phase4_ledger(isolated)] == ["books"]  # nothing booked
+    assert not phase4_path(isolated).exists()  # nothing booked, nothing pinned
     again = live(isolated, monkeypatch, *phase4_answers(), *phase4_answers("2"))
+    rerun = argv(isolated, "run", cases, tag="2026-11-27", budget="601")
 
-    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    # Another time budget is accepted: the attempt that booked nothing pinned none.
+    assert run_comparison.main([*rerun, "--design", "phase4"]) == 0
 
     assert [sent(body)[:1] for body in again.creates][:1] == [[TOP10[0]]]  # B first
     reserved = [e["attempt"] for e in phase4_ledger(isolated) if e["event"] == "reserve"]
@@ -2161,3 +2163,33 @@ def test_a_linked_request_folder_in_the_run_folder_is_refused(isolated, monkeypa
 
     assert "is a symbolic link" in capsys.readouterr().err
     assert list(elsewhere.iterdir()) == []
+
+
+def test_a_phase3_run_under_a_tag_a_phase4_run_claimed_is_refused(
+    isolated, monkeypatch, capsys
+):
+    paths = run_comparison._paths("2026-11-26")
+    assert run_comparison._claim(paths) is None  # a Phase 4 invocation's claim, still unused
+    provider = live(isolated, monkeypatch)  # no reply: nothing may be sent
+    command = argv(isolated, "run", cases_file(isolated, case("E1")), tag="2026-11-26")
+
+    assert exit_code(command) == 3
+
+    assert "already exists" in capsys.readouterr().err
+    assert (provider.counts, provider.creates) == ([], [])
+    run_comparison._release(paths)
+    assert not paths["local"].exists()  # an unused claim is given back whole
+
+
+def test_an_interruption_before_any_cell_gives_the_claim_back(isolated, monkeypatch):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    live(isolated, monkeypatch)  # no reply: nothing may be sent
+
+    def interrupted(manifest):
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(run_question, "_load", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+
+    assert not outputs(isolated, tag="2026-11-26")[1].exists()

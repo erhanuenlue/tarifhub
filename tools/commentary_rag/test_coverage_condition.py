@@ -984,8 +984,17 @@ def test_a_frozen_case_is_booked_in_the_phase4_books_under_its_frozen_identity_o
 
 
 def test_the_first_phase4_cell_pins_the_time_budget_and_another_is_refused(spending):
+    failing = Provider(Clock(), count_reply=httpx.Response(500, json={"type": "error"}))
+    result, _ = run_d(failing, spending, budget_s=60.0)
+    assert result.outcome == "provider_error"
+    assert not spending.ledger.exists()  # nothing booked, so no budget pinned
     run_d(Provider(Clock(), coverage_answer(COVERED, ("Antwort.", ["jul/k"]))), spending)
-    assert events(spending)[0]["time_budget_s"] == 3600.0
+    pin, reserve, _ = events(spending)
+    assert (pin["event"], pin["time_budget_s"], reserve["event"]) == (
+        "books",
+        3600.0,
+        "reserve",
+    )  # pinned with the first reservation
     other = Provider(Clock())
 
     result, _ = run(other, task(), spending, repetition=1, budget_s=1800.0)

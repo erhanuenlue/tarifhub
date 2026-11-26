@@ -109,6 +109,7 @@ PHASE4_RUNNER_INPUT_SHA256 = (
 TOP_K = max(c.passages for c in evidence_agent.CONDITIONS.values())
 CASE_KEYS = ("id", "question", "editions")
 TOOL_FILES = (*run_question.TOOL_FILES, "run_comparison.py")
+CLAIM = "claimed.json"  # a Phase 4 run's claim on its local folder, written before any spend
 # The one refusal that skips a cell: it is already in the books, so it is never sent again.
 # Any other refusal, a call ID that another case's reservation holds among them, stops the matrix.
 CELL_REFUSALS = ("already_run",)
@@ -1265,9 +1266,13 @@ def main(argv: list[str] | None = None) -> int:
         ranked = _rankings(cases, loaded)
     except run_question._Stop as stop:
         if claimed:
-            _release(paths)  # this invocation's claim, while still empty
+            _release(paths)  # this invocation's claim, while nothing else is in it
         print(stop, file=sys.stderr)
         return stop.code
+    except BaseException:  # an unexpected error or an interruption before any cell
+        if claimed:
+            _release(paths)
+        raise
     return _run(args, cases, client, plan, loaded, ranked)
 
 
@@ -1291,6 +1296,10 @@ def _claim(paths: dict[str, Path]) -> str | None:
     try:
         LOCAL.mkdir(parents=True, exist_ok=True)
         paths["local"].mkdir()
+        # A file in the claimed folder: the existing-output check of any invocation under this
+        # tag, Phase 3's included, now refuses it.
+        with (paths["local"] / CLAIM).open("x", encoding="utf-8") as handle:
+            handle.write(json.dumps({"design": "phase4", "claimed_at": _now()}) + "\n")
     except FileExistsError:
         return (
             f"refused: {paths['local']} already exists (an earlier or a concurrent "
@@ -1302,10 +1311,14 @@ def _claim(paths: dict[str, Path]) -> str | None:
 
 
 def _release(paths: dict[str, Path]) -> None:
-    """Give back a claimed run folder that is still empty; one with files stays."""
+    """Give back a claimed run folder that holds nothing but its claim; one with other files
+    stays."""
 
+    folder = paths["local"]
     try:
-        paths["local"].rmdir()
+        if {p.name for p in folder.iterdir()} == {CLAIM}:
+            (folder / CLAIM).unlink()
+        folder.rmdir()
     except OSError:
         pass
 
