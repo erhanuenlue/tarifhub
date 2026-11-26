@@ -44,8 +44,8 @@ their USD 100, and no Phase 4 ledger exists yet. Decision records: amendments A1
 
 | Part | Change | Tests |
 |---|---|---|
-| Books (`evidence_agent.py`) | Phase 4's ledger beside the others, its own limit pinned in code and in its first line, the repetition in every reservation, settlement and record, repetition 1 and B, C, D only; D and every frozen Phase 4 question (the freeze record's 19 hashes) refused in the Phase 2 and 3 books, whose reader also refuses a D cell or a repetition as damage; every Phase 4 admission holds back the case's other cells not yet booked, whoever calls; a frozen case is booked in Phase 4's books only under its frozen ID, question and editions; the first Phase 4 cell pins the books' time budget | 29 new in `test_coverage_condition.py` (52) |
-| Runner (`run_comparison.py`) | `--design phase4` books in those books under repetition 1, takes only the frozen runner input (SHA-256 pinned), admits case by case under the lock, shows how the reserved calls stand in its plan, and refuses a symbolic link as its local output folder or as a request or response folder in it; it takes only the frozen corpus, stops after a cell that booked nothing so a rerun keeps the frozen order, refuses a rerun with another time budget, claims its run folder before spending and reports the Phase 4 cap; the default design refuses a frozen Phase 4 case, by its ID or its question, before anything loads | 19 new in `test_run_comparison.py` (67) |
+| Books (`evidence_agent.py`) | Phase 4's ledger beside the others, its own limit pinned in code and in its first line, the repetition in every reservation, settlement and record, repetition 1 and B, C, D only; D and every frozen Phase 4 question (the freeze record's 19 hashes) refused in the Phase 2 and 3 books, whose reader also refuses a D cell or a repetition as damage; every Phase 4 admission holds back the case's other cells not yet booked, whoever calls; a frozen case is booked in Phase 4's books only under its frozen ID, question and editions; the books' time budget is pinned with their first reservation | 29 new in `test_coverage_condition.py` (52) |
+| Runner (`run_comparison.py`) | `--design phase4` books in those books under repetition 1, takes only the frozen runner input (SHA-256 pinned), admits case by case under the lock, shows how the reserved calls stand in its plan, and refuses a symbolic link as its local output folder or as a request or response folder in it; it takes only the frozen corpus, stops after a cell that booked nothing so a rerun keeps the frozen order, refuses a rerun with another time budget, claims its run folder with a claim file before spending (refusing a second invocation under the tag, of either design) and reports the Phase 4 cap; the default design refuses a frozen Phase 4 case, by its ID or its question, before anything loads | 21 new in `test_run_comparison.py` (69) |
 | Scorer (`phase4_scoring.py`) | A1 beside T3 (`a1`, `search_thresholds`); a missing or malformed time budget refused; a search refused for want of rounds before both rounds were used refused; one repetition per scoring; completeness derived by the scorer and only for the frozen cohort (the freeze record's case IDs, question hashes and editions); the frozen gold file only, read once; a symbolic link as `local/` refused | 29 new in `test_phase4_scoring.py` (172) |
 
 The previous step's open review points and what happened to each:
@@ -59,8 +59,8 @@ The previous step's open review points and what happened to each:
 
 ## 4. Checks
 
-- **Pilot suite:** 732 tests in fifteen files pass offline (655 before), with pytest-socket's block on.
-  Run against the code of `140ca86`, the four changed test files fail or error in 105 of their 447 tests,
+- **Pilot suite:** 734 tests in fifteen files pass offline (655 before), with pytest-socket's block on.
+  Run against the code of `140ca86`, the four changed test files fail or error in 107 of their 449 tests,
   so the new tests depend on the new behaviour; they were written after the code, not before.
 - **Unchanged:** B's and C's requests equal the hashes taken before D existed, also in the Phase 4
   books; a scripted B cell and C cell in the Phase 2 and 3 books give the same ledger lines (times

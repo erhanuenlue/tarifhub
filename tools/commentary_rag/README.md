@@ -764,8 +764,9 @@ and D is booked nowhere else; a frozen Phase 4 question (the freeze record's 19 
 in the Phase 2 and 3 books, so no entry point books its cells on their allowance (a frozen case ID is
 refused there too, and Phase 4's books take a frozen case only under its frozen ID, question and
 editions), and every Phase 4 admission holds back the case's other cells not yet booked, whoever
-calls. The first Phase 4 cell pins the books' time budget beside their limit; a cell or a rerun with
-another budget is refused. The cases file must be the frozen runner input (its SHA-256 pinned in
+calls. The books' first line pins their time budget beside their limit and is written with their first
+reservation (an attempt that books nothing pins nothing); a cell or a rerun with another budget is
+refused. The cases file must be the frozen runner input (its SHA-256 pinned in
 `run_comparison.PHASE4_RUNNER_INPUT_SHA256`), so one invocation runs the 19 frozen cases in their
 order, B, C and D per case. Admission is per case: before each cell, under the lock, the worst case
 of the case's cells still to run (every call at the input cap; USD 10.3488 for a fresh case) must fit
@@ -776,8 +777,11 @@ A rerun after an interruption (under a new tag) skips every cell in the books an
 frozen order; a call whose sending is unknown stays open at its reservation, a call released before
 sending stays released, and neither is sent again, so their case stays incomplete. A local output
 folder (or a request or response folder in it) that is a symbolic link is refused before the model
-loads; the run claims its local folder before anything is spent, so a second invocation under the
-same tag is refused, and gives the claim back when nothing was written. A corpus whose PDFs are not
+loads; the run claims its local folder with a claim file (`claimed.json`) before anything is spent, so a
+second invocation under the same tag, of either design, is refused, and gives the claim back when
+nothing else was written (also after an interruption before any cell). A Phase 3 run started
+under the same tag before the claim and still without any file in its folder is not seen; no Phase
+3 run is planned. A corpus whose PDFs are not
 the frozen ones (`results/2026-11-25-phase4-freeze.json`) is refused before anything is counted,
 and a cell that booked nothing (a failed token count, say) stops the run, so a rerun keeps the
 frozen order. `plan` shows the books, the next
