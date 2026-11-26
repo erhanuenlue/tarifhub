@@ -761,8 +761,11 @@ under `--design phase4` every cell is booked in `results/phase4-ledger.jsonl`, b
 count against it, nor Phase 4 spending against their USD 100. The identity is (repetition, case,
 condition), call IDs `<case>-<condition>-r<repetition>-call<n>`; the code admits repetition 1 only,
 and D is booked nowhere else; a frozen Phase 4 question (the freeze record's 19 hashes) is refused
-in the Phase 2 and 3 books, so no entry point books its cells on their allowance, and every Phase 4
-admission holds back the case's other cells not yet booked, whoever calls. The cases file must be the frozen runner input (its SHA-256 pinned in
+in the Phase 2 and 3 books, so no entry point books its cells on their allowance (a frozen case ID is
+refused there too, and Phase 4's books take a frozen case only under its frozen ID, question and
+editions), and every Phase 4 admission holds back the case's other cells not yet booked, whoever
+calls. The first Phase 4 cell pins the books' time budget beside their limit; a cell or a rerun with
+another budget is refused. The cases file must be the frozen runner input (its SHA-256 pinned in
 `run_comparison.PHASE4_RUNNER_INPUT_SHA256`), so one invocation runs the 19 frozen cases in their
 order, B, C and D per case. Admission is per case: before each cell, under the lock, the worst case
 of the case's cells still to run (every call at the input cap; USD 10.3488 for a fresh case) must fit
@@ -772,7 +775,12 @@ committed, and a case that does not fit stops the run before anything of it is c
 A rerun after an interruption (under a new tag) skips every cell in the books and continues in the
 frozen order; a call whose sending is unknown stays open at its reservation, a call released before
 sending stays released, and neither is sent again, so their case stays incomplete. A local output
-folder that is a symbolic link is refused before the model loads. `plan` shows the books, the next
+folder (or a request or response folder in it) that is a symbolic link is refused before the model
+loads; the run claims its local folder before anything is spent, so a second invocation under the
+same tag is refused, and gives the claim back when nothing was written. A corpus whose PDFs are not
+the frozen ones (`results/2026-11-25-phase4-freeze.json`) is refused before anything is counted,
+and a cell that booked nothing (a failed token count, say) stops the run, so a rerun keeps the
+frozen order. `plan` shows the books, the next
 case's worst case and how the reserved calls stand (`booked`: usage, retained, released, open).
 
 **Scorer:** `phase4_scoring.py` reads the local `result.json` of one repetition (`--result` once per
@@ -788,8 +796,9 @@ unnecessary search attempts, an executed search or a refused request at a no-sea
 counted once, executed and refused apart, over T3's own denominator, for C and D alike; T3 itself
 is unchanged. Every record must name its time budget (a finite number of seconds above 0) and its
 repetition (one scoring, one repetition); a search refused for want of rounds is accepted only after
-both rounds were used; the repetition is complete only when every gold case is, as the scorer finds
-it, and the command takes the frozen gold file only (`FROZEN_GOLD_SHA256`). It writes case-level
+both rounds were used; the repetition is complete only for the frozen cohort (the freeze record's case
+IDs, question hashes and editions) with every case complete, as the scorer finds it, and the
+command takes the frozen gold file only (`FROZEN_GOLD_SHA256`). It writes case-level
 results only to a new file outside the repository or under the git-ignored `local/` folder, which
 must not be a symbolic link, and prints counts with T3, A1 and T4.
 
