@@ -982,10 +982,11 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
         "incomplete_cases": 1,
         "repetition_complete": False,
         "conditions": {
-            "fixed10": {"cells": 2, "not_run": 0, "calls_per_cell": {"1": 2}},
+            "fixed10": {"cells": 2, "not_run": 0, "aborted": 0, "calls_per_cell": {"1": 2}},
             "agent": {
                 "cells": 2,
                 "not_run": 0,
+                "aborted": 0,
                 "calls_per_cell": {"2": 2},
                 "searches_per_cell": {"1": 2},
                 "searches": 2,
@@ -1010,6 +1011,7 @@ def test_summary_counts_per_condition_and_names_no_case_or_passage():
             "coverage": {
                 "cells": 2,
                 "not_run": 1,
+                "aborted": 0,
                 "calls_per_cell": {"1": 1},
                 "searches_per_cell": {"0": 1},
                 "searches": 0,
@@ -1723,6 +1725,110 @@ def test_a_cell_refused_after_a_sent_call_ran_and_one_stopped_before_any_did_not
     assert one_cell(sent, COVERED, "agent")["ran"] is True
     assert one_cell(unsent, COVERED, "agent")["ran"] is False
     assert one_cell(unsent, COVERED, "agent")["outcome"] == "persistence_error"
+
+
+# A cell the runner recorded from the books after an unexpected stop (run_comparison._aborted)
+
+
+def aborted(condition: str, sent: int = 1, unconfirmed: int = 0) -> dict:
+    """An aborted cell's record: its calls the books show as sent, the rest apart, no trace."""
+
+    def call(n: int) -> dict:
+        return {"call": n, "attempt": f"X-01-{condition}-r1-call{n}",
+                "request_sha256": "0" * 64, "reserved_usd": 1.5}
+
+    return {
+        "case": "X-01",
+        "condition": condition,
+        "repetition": 1,
+        "budget_s": 600.0,
+        "generation_calls": sent,
+        "calls": [
+            {**call(n), "counted_input_tokens": 1500, "sent": True, "cost_usd": 0.5,
+             "cost_basis": "usage", "above_reservation": False, "usage": None,
+             "response_sha256": None}
+            for n in range(1, sent + 1)
+        ],
+        "unconfirmed_calls": [
+            {**call(n), "settlement": None} for n in range(sent + 1, sent + unconfirmed + 1)
+        ],
+        "outcome": "aborted",
+        "detail": "UnicodeEncodeError",
+        "trace": "not_recorded",
+    }
+
+
+@pytest.mark.parametrize("condition", ["fixed10", "agent", "coverage"])
+def test_an_aborted_cell_with_a_sent_call_ran_and_failed_and_no_action_is_inferred(condition):
+    scored = one_cell(aborted(condition, sent=2, unconfirmed=1), MISSING, condition)
+
+    assert view([scored], "ran", "outcome", "calls", "searches") == [
+        (True, "aborted", 2, None)
+    ]
+    assert scored["decision_points"] == []  # never recorded, so none rebuilt or invented
+    assert scored["counts"] == ps._zero(condition)
+
+
+def test_an_aborted_cell_without_a_confirmed_send_did_not_run():
+    scored = one_cell(aborted("agent", sent=0, unconfirmed=1), MISSING, "agent")
+
+    assert view([scored], "ran", "outcome", "calls", "searches") == [
+        (False, "aborted", None, 0)
+    ]
+
+
+def test_an_aborted_cell_and_its_refusal_in_the_resumed_run_are_one_cell_that_ran():
+    result, gold = fixture()
+    cells = result["cases"][0]["cells"]
+    run_1 = {"cases": [result_case("X-01", [cells[0], cell("agent", aborted("agent"))])]}
+    run_2 = {
+        "cases": [
+            result_case(
+                "X-01",
+                [cell("agent", record("agent", [], outcome="refused")), cells[2]],
+            )
+        ]
+    }
+
+    (scored,) = ps.score([run_1, run_2], gold)["cases"]
+
+    assert view(scored["cells"], "condition", "ran", "outcome") == [
+        ("fixed10", True, "answer"),
+        ("agent", True, "aborted"),
+        ("coverage", True, "answer"),
+    ]
+    assert scored["complete"] is True  # the aborted cell ran: a non-success, never re-run
+    with pytest.raises(ValueError, match="two cells"):  # it may not be run a second time
+        ps.score([run_1, {"cases": [result_case("X-01", [cells[1]])]}], gold)
+    counts = ps.summary(ps.score([run_1, run_2], gold))["conditions"]["agent"]
+    assert (counts["aborted"], counts["calls_per_cell"], counts["searches_per_cell"]) == (
+        1,
+        {"1": 1},
+        {},
+    )
+    assert counts["decision_points"]["search_needed"] == {"with_action": 0, "without_action": 0}
+
+
+BROKEN_ABORTED = {
+    "a recorded search": lambda r: changed(r, searches=[]),
+    "supplied passages": lambda r: changed(r, supplied=list(INITIAL)),
+    "no trace marker": lambda r: {k: v for k, v in r.items() if k != "trace"},
+    "a call not sent": lambda r: changed(r, calls=[{**r["calls"][0], "sent": False}]),
+    "calls miscounted": lambda r: changed(r, generation_calls=2),
+    "calls misnumbered": lambda r: changed(r, calls=[{**r["calls"][0], "call": 2}]),
+    "unconfirmed before sent": lambda r: changed(
+        r, unconfirmed_calls=[{"call": 1, "attempt": "X", "settlement": None}]
+    ),
+    "no unconfirmed list": lambda r: {k: v for k, v in r.items() if k != "unconfirmed_calls"},
+    "no time budget": lambda r: {k: v for k, v in r.items() if k != "budget_s"},
+    "another repetition": lambda r: changed(r, repetition=2),
+}
+
+
+@pytest.mark.parametrize("name", list(BROKEN_ABORTED))
+def test_an_aborted_record_the_runner_does_not_write_is_refused(name):
+    with pytest.raises(ValueError):
+        one_cell(BROKEN_ABORTED[name](aborted("agent")), MISSING, "agent")
 
 
 def test_cells_of_one_repetition_run_with_different_time_budgets_are_refused():

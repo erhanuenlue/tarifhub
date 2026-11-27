@@ -22,8 +22,10 @@ passage has 12 and would lead any ranking that let it in.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import json
+import os
 import re
 import sys
 from pathlib import Path
@@ -40,7 +42,15 @@ import run_comparison
 import run_question
 from test_corpus import make_repo
 from test_coverage_condition import unencodable
-from test_evidence_agent import Clock, Provider, _dearest, books, final, search_call
+from test_evidence_agent import (
+    Clock,
+    Provider,
+    _dearest,
+    _fail_opening,
+    books,
+    final,
+    search_call,
+)
 from test_run_question import StandInE5, _tree
 
 JUL, JAN = "2026-07-01", "2026-01-01"
@@ -973,9 +983,14 @@ def test_a_cost_above_its_reservation_stops_the_matrix(isolated, monkeypatch, ca
 
 
 def test_a_failed_write_stops_the_matrix_before_anything_is_sent(isolated, monkeypatch):
-    blocker = isolated["tmp"] / "blocker"
-    blocker.write_text("a file where the local folder's parent should be\n", "utf-8")
-    monkeypatch.setattr(run_comparison, "LOCAL", blocker / "local")
+    real = run_comparison._claim
+
+    def claimed_then_blocked(paths, design):  # a file where the run's request folder goes
+        refusal, owner = real(paths, design)
+        (paths["local"] / "requests").write_text("kein Ordner\n", "utf-8")
+        return refusal, owner
+
+    monkeypatch.setattr(run_comparison, "_claim", claimed_then_blocked)
     provider = live(isolated, monkeypatch, *answers())
 
     code = run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1"))))
@@ -983,6 +998,20 @@ def test_a_failed_write_stops_the_matrix_before_anything_is_sent(isolated, monke
     # A's request could not be saved, so it was neither reserved nor sent, and nothing followed.
     assert code == 7
     assert (len(provider.counts), provider.creates) == (1, [])
+
+
+def test_a_local_folder_that_cannot_be_created_is_refused_before_anything_loads(
+    isolated, monkeypatch, capsys
+):
+    blocker = isolated["tmp"] / "blocker"
+    blocker.write_text("a file where the local folder's parent should be\n", "utf-8")
+    monkeypatch.setattr(run_comparison, "LOCAL", blocker / "local")
+    provider = live(isolated, monkeypatch, *answers())
+
+    assert run_comparison.main(argv(isolated, "run", cases_file(isolated, case("E1")))) == 3
+
+    assert "cannot be created" in capsys.readouterr().err
+    assert (provider.counts, provider.creates, isolated["loads"]) == ([], [], [])
 
 
 def test_a_refusal_by_the_books_stops_the_matrix(isolated, monkeypatch, capsys):
@@ -1741,12 +1770,21 @@ def test_an_interrupted_run_resumes_in_frozen_order_and_never_sends_a_cell_twice
         "usage": 0, "retained": 0, "released": 0, "open": 1}
     assert plan["admission"]["cases_to_run"] == 0
 
-    # The interrupted cell left no record: E1 stays incomplete and the repetition gives no
-    # verdict; E2 is complete.
+    # The interrupted cell is kept with its call unconfirmed (open: sending unknown), so it did
+    # not run: E1 stays incomplete and the repetition gives no verdict; E2 is complete.
     results = [
         json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
         for tag in ("2026-11-26", "2026-11-27")
     ]
+    interrupted = results[0]["cases"][0]["cells"][1]
+    assert (interrupted["status"]["execution"], interrupted["status"]["accounting"]) == (
+        "aborted",
+        "uncertain",
+    )
+    assert (interrupted["record"]["generation_calls"], interrupted["record"]["calls"]) == (0, [])
+    assert [
+        (x["attempt"], x["settlement"]) for x in interrupted["record"]["unconfirmed_calls"]
+    ] == [("E1-agent-r1-call1", None)]
     scored = phase4_scoring.score(results, gold("E1", "E2"))
     assert [(c["case"], c["complete"]) for c in scored["cases"]] == [
         ("E1", False), ("E2", True)]
@@ -1966,42 +2004,76 @@ def test_a_run_whose_local_folder_is_a_link_is_refused_before_the_model_loads(
     assert not phase4_path(isolated).exists()
 
 
-def test_a_shared_replay_failure_stops_the_run_with_its_calls_settled_and_a_restart_skips_it(
-    isolated, monkeypatch, capsys
+@pytest.mark.parametrize("condition", ["agent", "coverage"])
+def test_a_shared_replay_failure_keeps_the_sent_cell_as_run_and_a_restart_sends_nothing_again(
+    isolated, monkeypatch, capsys, condition
 ):
     cases = frozen_input(isolated, monkeypatch, case("E1"))
-    live(isolated, monkeypatch, final(("B.", [TOP10[0]])), unencodable("agent"))
+    b, c, d = phase4_answers()
+    replies = (b, unencodable("agent")) if condition == "agent" else (b, c, unencodable(condition))
+    live(isolated, monkeypatch, *replies)
 
-    with pytest.raises(UnicodeError):  # C's replay cannot be written: the run ends here
+    with pytest.raises(UnicodeError) as raised:  # the replay cannot be written: the run ends
         run_comparison.main(phase4_argv(isolated, cases))
 
+    attempt = f"E1-{condition}-r1-call1"
     events = phase4_ledger(isolated)
-    assert [(e["event"], e["attempt"]) for e in events[1:]] == [
-        ("reserve", "E1-fixed10-r1-call1"),
-        ("settle", "E1-fixed10-r1-call1"),
-        ("reserve", "E1-agent-r1-call1"),
-        ("settle", "E1-agent-r1-call1"),
-    ]
-    local = outputs(isolated, tag="2026-11-26")[1]
+    assert [(e["event"], e.get("attempt")) for e in events][-2:] == [
+        ("reserve", attempt),
+        ("settle", attempt),
+    ]  # sent, settled from its usage, nothing more reserved
+    public, local = outputs(isolated, tag="2026-11-26")
     first = json.loads((local / "result.json").read_text("utf-8"))
-    assert [c["condition"] for c in first["cases"][0]["cells"]] == ["fixed10"]
+    kept_cell = first["cases"][0]["cells"][-1]
+    error = raised.type.__name__
+    assert (kept_cell["condition"], kept_cell["status"]) == (
+        condition,
+        {"execution": "aborted", "detail": error, "answer": None, "accounting": "priced"},
+    )
+    record = kept_cell["record"]
+    assert (record["outcome"], record["detail"], record["trace"]) == (
+        "aborted",
+        error,
+        "not_recorded",
+    )
+    assert (record["generation_calls"], record["unconfirmed_calls"]) == (1, [])
+    assert [(x["attempt"], x["sent"], x["cost_basis"]) for x in record["calls"]] == [
+        (attempt, True, "usage")
+    ]
+    request = (local / "requests" / f"{attempt}.json").read_bytes()
+    assert record["calls"][0]["request_sha256"] == hashlib.sha256(request).hexdigest()
+    # The search that call asked for was never recorded: no action is kept or inferred.
+    assert not {"searches", "supplied", "cited", "coverage"} & record.keys()
+    shown = json.loads(public.read_text("utf-8"))["cases"][0]["cells"][-1]
+    assert (shown["status"]["execution"], shown["agent"]["generation_calls"]) == ("aborted", 1)
+    assert not any(pid in json.dumps(shown) for pid in RANKED)  # no passage ID published
     capsys.readouterr()
-    again = live(isolated, monkeypatch, coverage_reply(("D.", [TOP5[0]])))
 
-    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    again = live(isolated, monkeypatch, d) if condition == "agent" else live(isolated, monkeypatch)
+    code = run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27"))
 
-    assert len(again.creates) == 1  # D only: C is in the books and never sent again
-    local = outputs(isolated, tag="2026-11-27")[1]
-    second = json.loads((local / "result.json").read_text("utf-8"))
-    (scored,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
-    # C sent and settled a call but left no record: it reads as not run, so E1 stays
-    # incomplete and the repetition gives no verdict (the books show the settled call).
-    assert [(c["condition"], c["ran"]) for c in scored["cells"]] == [
+    results = [first]
+    if condition == "agent":  # D only: B and C are in the books and never sent again
+        assert (code, len(again.creates)) == (0, 1)
+        second = outputs(isolated, tag="2026-11-27")[1] / "result.json"
+        results.append(json.loads(second.read_text("utf-8")))
+    else:  # every cell is in the books: nothing counted or sent, nothing written
+        assert (code, again.counts, again.creates) == (3, [], [])
+        assert not outputs(isolated, tag="2026-11-27")[1].exists()
+    scored = phase4_scoring.score(results, gold("E1"))
+    (case_,) = scored["cases"]
+    assert [(x["condition"], x["ran"]) for x in case_["cells"]] == [
         ("fixed10", True),
-        ("agent", False),
+        ("agent", True),
         ("coverage", True),
     ]
-    assert scored["complete"] is False
+    assert case_["complete"] is True  # the cell ran and failed: a non-success, but run
+    aborted = next(x for x in case_["cells"] if x["condition"] == condition)
+    assert (aborted["outcome"], aborted["calls"], aborted["searches"]) == ("aborted", 1, None)
+    assert aborted["decision_points"] == []  # no missing action invented
+    assert aborted["counts"] == phase4_scoring._zero(condition)
+    counts = phase4_scoring.summary(scored)["conditions"][condition]
+    assert (counts["aborted"], counts["calls_per_cell"]) == (1, {"1": 1})
 
 
 def test_estimates_read_cells_of_every_condition_under_either_design(
@@ -2169,7 +2241,8 @@ def test_a_phase3_run_under_a_tag_a_phase4_run_claimed_is_refused(
     isolated, monkeypatch, capsys
 ):
     paths = run_comparison._paths("2026-11-26")
-    assert run_comparison._claim(paths) is None  # a Phase 4 invocation's claim, still unused
+    refusal, owner = run_comparison._claim(paths, "phase4")
+    assert refusal is None  # a Phase 4 invocation's claim, still unused
     provider = live(isolated, monkeypatch)  # no reply: nothing may be sent
     command = argv(isolated, "run", cases_file(isolated, case("E1")), tag="2026-11-26")
 
@@ -2177,8 +2250,8 @@ def test_a_phase3_run_under_a_tag_a_phase4_run_claimed_is_refused(
 
     assert "already exists" in capsys.readouterr().err
     assert (provider.counts, provider.creates) == ([], [])
-    run_comparison._release(paths)
-    assert not paths["local"].exists()  # an unused claim is given back whole
+    run_comparison._release(paths, owner)
+    assert not paths["local"].exists()  # an unused claim is given back whole, by its owner
 
 
 def test_an_interruption_before_any_cell_gives_the_claim_back(isolated, monkeypatch):
@@ -2193,3 +2266,271 @@ def test_an_interruption_before_any_cell_gives_the_claim_back(isolated, monkeypa
         run_comparison.main(phase4_argv(isolated, cases))
 
     assert not outputs(isolated, tag="2026-11-26")[1].exists()
+
+
+# Both designs claim the tag before the model loads (Erhan, 2026-11-27)
+
+
+@pytest.mark.parametrize("moment", ["while_loading", "before_its_claim"])
+@pytest.mark.parametrize("outer", ["phase3", "phase4"])
+def test_overlapping_invocations_of_either_design_leave_the_tag_to_the_first_claim(
+    isolated, monkeypatch, capsys, outer, moment
+):
+    tag = "2026-11-27"
+    commands = {
+        "phase3": argv(isolated, "run", cases_file(isolated, case("E2"), name="p3.json"), tag=tag),
+        "phase4": phase4_argv(isolated, frozen_input(isolated, monkeypatch, case("E1")), tag=tag),
+    }
+    inner = "phase4" if outer == "phase3" else "phase3"
+    # While the outer invocation loads, the tag is already claimed: the inner one is refused.
+    # Between the outer one's existing-output check and its claim, the inner one claims first
+    # and runs: the outer one is refused at its own claim.
+    winner = outer if moment == "while_loading" else inner
+    loser = inner if winner == outer else outer
+    provider = live(isolated, monkeypatch, *(answers() if winner == "phase3" else phase4_answers()))
+    seen: dict = {}
+    hooked = "_load" if moment == "while_loading" else "_existing"
+    real = getattr(run_question, hooked)
+
+    def meanwhile(value):  # the inner invocation starts here, once
+        checked = real(value) if hooked == "_existing" else None  # the outer check, passed
+        if "code" not in seen:
+            seen["code"] = None
+            seen["code"] = exit_code(commands[inner])
+        return checked if hooked == "_existing" else real(value)
+
+    monkeypatch.setattr(run_question, hooked, meanwhile)
+
+    codes = {outer: exit_code(commands[outer])}
+    codes[inner] = seen["code"]
+
+    assert (codes[winner], codes[loser]) == (0, 3)
+    err = capsys.readouterr().err
+    assert "already exists" in err
+    if moment == "before_its_claim":  # refused by the claim itself, not by an existing file
+        assert "of either design" in err
+    assert len(isolated["loads"]) == 1  # the loser loaded nothing
+    assert len(provider.creates) == 3  # and sent nothing: the winner's cells only
+    loser_books = phase4_path(isolated) if loser == "phase4" else active(isolated)
+    assert not loser_books.exists()  # nor booked anything
+    public, local = outputs(isolated, tag=tag)
+    claim = json.loads((local / run_comparison.CLAIM).read_text("utf-8"))
+    assert claim["design"] == winner  # the tag stays the winner's
+    record = json.loads(public.read_text("utf-8"))
+    assert [c["case"] for c in record["cases"]] == (["E2"] if winner == "phase3" else ["E1"])
+
+
+def test_a_claim_that_cannot_be_written_is_given_back_before_anything_loads(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    provider = live(isolated, monkeypatch)  # no reply: nothing may be sent
+    folder = outputs(isolated, tag="2026-11-26")[1]
+    _fail_opening(monkeypatch, folder / run_comparison.CLAIM)
+
+    assert exit_code(phase4_argv(isolated, cases)) == 3
+
+    assert "the claim on it cannot be written" in capsys.readouterr().err
+    assert not folder.exists()  # this invocation's empty folder goes again
+    assert (provider.counts, provider.creates, isolated["loads"]) == ([], [], [])
+
+
+def test_a_claim_file_another_invocation_wrote_in_the_new_folder_stays(isolated, monkeypatch):
+    paths = run_comparison._paths("2026-11-26")
+    real = Path.open
+
+    def raced(self, mode="r", *args, **kwargs):  # another invocation's claim appears first
+        if self == paths["local"] / run_comparison.CLAIM and "x" in mode:
+            monkeypatch.setattr(Path, "open", real)
+            with real(self, "x", encoding="utf-8") as handle:
+                handle.write('{"design": "phase4", "owner": "theirs"}\n')
+        return real(self, mode, *args, **kwargs)
+
+    monkeypatch.setattr(Path, "open", raced)
+    refusal, owner = run_comparison._claim(paths, "phase3")
+
+    assert owner is None and "the claim on it cannot be written" in refusal
+    theirs = paths["local"] / run_comparison.CLAIM
+    assert json.loads(theirs.read_text("utf-8"))["owner"] == "theirs"  # left as it is
+
+
+@pytest.mark.parametrize("design", ["phase3", "phase4"])
+def test_a_failure_before_the_first_cell_gives_the_unused_claim_back(
+    isolated, monkeypatch, design
+):
+    command = (
+        phase4_argv(isolated, frozen_input(isolated, monkeypatch, case("E1")))
+        if design == "phase4"
+        else argv(isolated, "run", cases_file(isolated, case("E2")), tag="2026-11-26")
+    )
+    provider = live(isolated, monkeypatch)  # no reply: nothing may be sent
+
+    def failing(*args, **kwargs):  # the run's provenance cannot be taken
+        raise RuntimeError("provenance unavailable")
+
+    monkeypatch.setattr(run_comparison, "_provenance", failing)
+    with pytest.raises(RuntimeError, match="provenance unavailable"):
+        run_comparison.main(command)
+
+    assert not outputs(isolated, tag="2026-11-26")[1].exists()  # given back whole
+    assert (provider.counts, provider.creates) == ([], [])
+
+
+def test_only_the_owner_gives_back_an_unused_claim_and_never_one_holding_a_file(isolated):
+    paths = run_comparison._paths("2026-11-26")
+    refusal, owner = run_comparison._claim(paths, "phase3")
+    assert refusal is None
+    claim_file = paths["local"] / run_comparison.CLAIM
+    claim = claim_file.read_bytes()
+    assert json.loads(claim)["design"] == "phase3"
+
+    run_comparison._release(paths, "another invocation's token")
+    assert claim_file.read_bytes() == claim  # another owner's claim stays
+    artifact = paths["local"] / "requests" / "E1-fixed5-call1.json"
+    artifact.parent.mkdir()
+    artifact.write_text("{}", "utf-8")
+    run_comparison._release(paths, owner)
+    assert claim_file.read_bytes() == claim and artifact.exists()  # in use: all of it stays
+    artifact.unlink()
+    artifact.parent.rmdir()
+    run_comparison._release(paths, owner)
+    assert not paths["local"].exists()  # unused and its own: given back whole
+
+
+# A Phase 4 cell an unexpected error or an interruption ends: what the books show of it is kept
+
+
+def test_an_interruption_after_a_sent_call_keeps_the_cell_as_run_with_its_open_call_apart(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, _, d = phase4_answers()
+
+    def interrupt():
+        if len(first.creates) == 3:  # C's second call is on the wire
+            raise KeyboardInterrupt
+
+    first = live(
+        isolated,
+        monkeypatch,
+        b,
+        search_call("Pauschale", "Begründung"),
+        final(("C.", [TOP5[0]])),
+        on_create=interrupt,
+    )
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    record = kept_cell["record"]
+    assert (kept_cell["status"]["execution"], kept_cell["status"]["accounting"]) == (
+        "aborted",
+        "uncertain",
+    )
+    assert (record["generation_calls"], [x["attempt"] for x in record["calls"]]) == (
+        1,
+        ["E1-agent-r1-call1"],
+    )
+    assert [(x["attempt"], x["settlement"]) for x in record["unconfirmed_calls"]] == [
+        ("E1-agent-r1-call2", None)
+    ]  # booked, sending unknown: confirms nothing
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+
+    assert len(again.creates) == 1  # D only: neither of C's calls is sent again
+    results = [
+        json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
+        for tag in ("2026-11-26", "2026-11-27")
+    ]
+    (case_,) = phase4_scoring.score(results, gold("E1"))["cases"]
+    c_cell = case_["cells"][1]
+    assert (c_cell["ran"], c_cell["outcome"], c_cell["calls"], c_cell["decision_points"]) == (
+        True,
+        "aborted",
+        1,
+        [],
+    )
+    assert case_["complete"] is True
+
+
+def test_an_aborted_cell_counts_only_the_calls_this_run_saved(isolated, monkeypatch, capsys):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    named = {"case": "E1", "condition": "agent", "repetition": 1}
+    elsewhere = {"attempt": "E1-agent-r1-call1", **named}  # booked and sent by another run
+    phase4_books(
+        isolated,
+        {
+            "event": "reserve",
+            **elsewhere,
+            "question_sha256": hashlib.sha256(QUESTION.encode("utf-8")).hexdigest(),
+            "editions": [JUL],
+            "call": 1,
+            "request_sha256": "0" * 64,
+            "counted_input_tokens": 1500,
+            "reserved_usd": 0.5,
+            "at": "2026-11-26T00:00:00+00:00",
+        },
+        {
+            "event": "settle",
+            **elsewhere,
+            "sent": True,
+            "cost_usd": 0.5,
+            "cost_basis": "reservation_retained",
+            "above_reservation": False,
+            "usage": None,
+            "response_sha256": None,
+            "at": "2026-11-26T00:00:00+00:00",
+        },
+    )
+    live(isolated, monkeypatch, phase4_answers()[0])
+    real = evidence_agent.run_case
+
+    def failing(the_task, **kwargs):  # the loop fails unexpectedly before C books anything
+        if kwargs["condition"] == "agent":
+            raise RuntimeError("unexpected failure in the loop")
+        return real(the_task, **kwargs)
+
+    monkeypatch.setattr(evidence_agent, "run_case", failing)
+    with pytest.raises(RuntimeError, match="unexpected failure"):
+        run_comparison.main(phase4_argv(isolated, cases))
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    assert kept_cell["status"] == {
+        "execution": "aborted",
+        "detail": "RuntimeError",
+        "answer": None,
+        "accounting": "nothing_reserved",
+    }
+    assert kept_cell["record"]["generation_calls"] == 0  # the other run's send is not this one's
+    assert (kept_cell["record"]["calls"], kept_cell["record"]["unconfirmed_calls"]) == ([], [])
+
+
+def test_an_uncertain_first_booking_stops_the_run_before_anything_is_sent(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    provider = live(isolated, monkeypatch, *phase4_answers())
+    real = os.link
+
+    def linked_then_failed(source, target, *args, **kwargs):  # in force, reported as failed
+        real(source, target, *args, **kwargs)
+        raise OSError(errno.EIO, "simulated failure after the link")
+
+    monkeypatch.setattr(os, "link", linked_then_failed)
+
+    # A failed write exits 7 before the accounting's 6 (EPILOG); the run stops either way.
+    assert run_comparison.main(phase4_argv(isolated, cases)) == 7
+
+    assert provider.creates == []
+    shown = json.loads(capsys.readouterr().out)
+    assert [(c["condition"], c["execution"], c["detail"], c["accounting"]) for c in shown["cells"]] == [
+        ("fixed10", "persistence_error", "reservation_not_saved", "uncertain"),
+        ("agent", "not_run", "matrix_stopped", "nothing_reserved"),
+        ("coverage", "not_run", "matrix_stopped", "nothing_reserved"),
+    ]
+    pin, reserve = phase4_ledger(isolated)  # the pin and the first reservation, whole
+    assert (pin["event"], reserve["attempt"]) == ("books", "E1-fixed10-r1-call1")

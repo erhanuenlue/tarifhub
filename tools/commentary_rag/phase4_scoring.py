@@ -23,6 +23,14 @@ condition contract describes (``phase4/conditions.md``, section 5):
   apart, over T3's own denominator. ``search_thresholds`` gives T3, A1 and T4 from one
   ``summary``, whose completeness is the scoring's own, never a caller's.
 
+A cell an unexpected error or an interruption ended inside the agent's loop is recorded by the
+runner from the books (``run_comparison._aborted``, outcome ``aborted``): ``generation_calls``
+counts the calls the books show as sent, so with one it ran and failed (a non-success, as the
+rubric counts it); a reservation without a confirmed send confirms nothing. Its searches and
+decisions were never recorded (``trace`` ``not_recorded``), so it has no decision point and adds
+nothing to any search measure: no action is inferred for it, and the summary counts such cells
+apart (``aborted``).
+
 Every record names its repetition (Phase 4's books, ``evidence_agent.PHASE4_REPETITIONS``) and
 its time budget (a finite number of seconds above 0); one scoring holds one repetition. The
 repetition is complete when every gold case is complete in it, and the command line takes the
@@ -110,6 +118,7 @@ NOT_SENT = (
     "deadline",
     "persistence_error",
 )  # how a cell ends with its last call unsent
+ABORTED = "aborted"  # a cell the runner recorded from the books after an unexpected stop
 CHECKS = (
     "ok",
     "malformed",
@@ -242,9 +251,14 @@ def strata(parts, ranking) -> dict:
 
 
 def _checked_record(record, condition: str) -> None:
-    """Refuse a record that is not one ``evidence_agent`` writes for this condition."""
+    """Refuse a record that is not one ``evidence_agent`` writes for this condition, or, for an
+    aborted cell, one ``run_comparison._aborted`` writes."""
     if not isinstance(record, dict) or record.get("condition") != condition:
         raise ValueError("a cell's record must be a record of the cell's condition")
+    if record.get("outcome") == ABORTED:
+        _checked_aborted(record)
+        _checked_identity(record)
+        return
     calls, searches = record.get("calls"), record.get("searches")
     if (
         not isinstance(calls, list)
@@ -274,6 +288,44 @@ def _checked_record(record, condition: str) -> None:
         )
     if condition not in SEARCHING and searches:
         raise ValueError("a fixed condition never searches")
+    _checked_identity(record)
+
+
+def _checked_aborted(record: dict) -> None:
+    """Refuse an aborted record that is not one the runner writes: the calls the books show as
+    sent, numbered from 1 and counted by ``generation_calls``, the unconfirmed ones apart, and
+    no trace (no search, supplied or cited passage, coverage or answer count)."""
+    calls, unconfirmed = record.get("calls"), record.get("unconfirmed_calls")
+    if (
+        record.get("trace") != "not_recorded"
+        or not isinstance(calls, list)
+        or not isinstance(unconfirmed, list)
+        or any(
+            key in record
+            for key in ("searches", "supplied", "cited", "coverage", "schema_problems")
+        )
+    ):
+        raise ValueError(
+            "an aborted record holds the calls the books show as sent and no trace"
+        )
+    if not all(
+        isinstance(call, dict) and call.get("call") == number and call.get("sent") is True
+        for number, call in enumerate(calls, start=1)
+    ):
+        raise ValueError("an aborted record's calls are numbered from 1, each one sent")
+    if not _number(record.get("generation_calls")) or record["generation_calls"] != len(
+        calls
+    ):
+        raise ValueError("an aborted record's generation_calls counts its sent calls")
+    if not all(
+        isinstance(call, dict) and call.get("call") == number
+        for number, call in enumerate(unconfirmed, start=len(calls) + 1)
+    ):
+        raise ValueError("an aborted record's unconfirmed calls follow its sent calls")
+
+
+def _checked_identity(record: dict) -> None:
+    """Refuse a record without a valid time budget or an admitted repetition."""
     if not evidence_agent._seconds(record.get("budget_s")):  # overflow included
         raise ValueError("a record's budget_s must be a finite number of seconds above 0")
     repetition = record.get("repetition")
@@ -562,6 +614,8 @@ def _scored_record(
     _checked_record(record, condition)
     if record.get("case") != case_id:
         raise ValueError("a cell's record must name the cell's case")
+    if record["outcome"] == ABORTED:  # no trace recorded: no decision point, nothing inferred
+        return {"points": [], "counts": _zero(condition)}
     top = ranking[: _condition(condition).passages]
     if condition not in SEARCHING:
         if record["supplied"] != top:
@@ -613,7 +667,8 @@ def _merged_cell(
         "ran": True,
         "outcome": record["outcome"],
         "calls": record["generation_calls"],
-        "searches": len(record["searches"]),
+        # an aborted cell's searches were not recorded: not counted, never taken as none
+        "searches": None if record["outcome"] == ABORTED else len(record["searches"]),
         "decision_points": result["points"],
         "counts": result["counts"],
     }
@@ -784,7 +839,8 @@ def summary(scored: dict) -> dict:
     when the cohort is the frozen one and ``complete_cases`` equals ``gold_cases``. Per
     condition: its cells (one per case in the results), those ``not_run``,
     calls per cell (generation calls sent) and searches per cell (refused requests included)
-    over the cells that ran, the search measures of C and D, and D's coverage diagnostics.
+    over the cells that ran (an ``aborted`` cell, counted apart, has calls but no recorded
+    searches), the search measures of C and D, and D's coverage diagnostics.
     """
     cases = scored["cases"]
     complete = sum(case["complete"] for case in cases)
@@ -797,6 +853,8 @@ def summary(scored: dict) -> dict:
         entry = {
             "cells": len(cells),
             "not_run": len(cells) - len(ran),
+            # ran and failed, trace not recorded: no decision point, searches not counted
+            "aborted": sum(c["outcome"] == ABORTED for c in ran),
             "calls_per_cell": _histogram(c["calls"] for c in ran),
         }
         if condition in SEARCHING:
@@ -804,7 +862,10 @@ def summary(scored: dict) -> dict:
             for c in cells:
                 total = _added(total, c["counts"])
             entry.update(
-                total, searches_per_cell=_histogram(c["searches"] for c in ran)
+                total,
+                searches_per_cell=_histogram(
+                    c["searches"] for c in ran if c["searches"] is not None
+                ),
             )
         conditions[condition] = entry
     return {

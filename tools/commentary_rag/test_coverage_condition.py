@@ -13,8 +13,10 @@ on the Phase 2 and 3 books, as they were before D existed.
 from __future__ import annotations
 
 import dataclasses
+import errno
 import hashlib
 import json
+import os
 import sys
 from pathlib import Path
 
@@ -30,6 +32,7 @@ from test_evidence_agent import (
     TOOL,
     Clock,
     Provider,
+    _block,
     _message,
     books,
     events,
@@ -1004,6 +1007,92 @@ def test_the_first_phase4_cell_pins_the_time_budget_and_another_is_refused(spend
     for budget in (float("nan"), float("inf"), 0.0, -1.0):
         with pytest.raises(ValueError, match="time budget"):
             run(Provider(Clock()), task(), spending, repetition=1, budget_s=budget)
+
+
+# The pin and the first reservation: one accounting event, after the request is saved
+
+
+def _staged(spending) -> list[Path]:
+    """Files a first event staged beside the ledger and left behind: none may be."""
+    return sorted(spending.ledger.parent.glob(f".{spending.ledger.name}.*"))
+
+
+def _elsewhere(spending, name: str):
+    """The same books with another artifact folder, as a rerun under another tag has."""
+    return dataclasses.replace(spending, artifacts=spending.artifacts.parent / name)
+
+
+def test_a_first_request_that_cannot_be_saved_leaves_neither_pin_nor_reservation(spending):
+    blocked = spending.artifacts / "requests"
+    _block(blocked)  # a file where the request folder goes
+    provider = Provider(Clock(), coverage_answer(COVERED, ("Nie gesendet.", ["jul/k"])))
+
+    result, _ = run_d(provider, spending, budget_s=60.0)
+
+    assert (result.outcome, result.detail) == ("persistence_error", "request_not_saved")
+    assert (len(provider.counts), provider.creates) == (1, [])
+    assert not spending.ledger.exists()  # neither the pin nor the reservation
+    assert _staged(spending) == []
+    again = Provider(Clock(), coverage_answer(COVERED, ("Antwort.", ["jul/k"])))
+    result, _ = run_d(again, _elsewhere(spending, "rerun"))  # another budget: none was pinned
+    assert result.outcome == "answer"
+    pin, reserve, _ = events(spending)
+    assert (pin["event"], pin["time_budget_s"], reserve["attempt"]) == (
+        "books",
+        3600.0,
+        "T1-coverage-r1-call1",
+    )
+    assert pin["at"] == reserve["at"]  # written together
+
+
+@pytest.mark.parametrize("stage", ["staging", "linking"])
+def test_a_first_event_that_cannot_be_written_leaves_the_books_absent(
+    spending, monkeypatch, stage
+):
+    def failing(*args, **kwargs):  # a full disk while staging, an I/O error while linking
+        raise OSError(errno.ENOSPC if stage == "staging" else errno.EIO, "simulated")
+
+    provider = Provider(Clock(), coverage_answer(COVERED, ("Nie gesendet.", ["jul/k"])))
+    with monkeypatch.context() as m:
+        m.setattr(os, "fsync" if stage == "staging" else "link", failing)
+        result, _ = run_d(provider, spending, budget_s=60.0)
+
+    assert (result.outcome, result.detail) == ("persistence_error", "books_not_saved")
+    assert (provider.creates, result.record["calls"]) == ([], [])
+    assert not spending.ledger.exists() and _staged(spending) == []
+    saved = spending.artifacts / "requests" / "T1-coverage-r1-call1.json"
+    assert saved.is_file()  # the request was saved first, as every request is
+    again = Provider(Clock(), coverage_answer(COVERED, ("Antwort.", ["jul/k"])))
+    result, _ = run_d(again, _elsewhere(spending, "rerun"))  # nothing pinned: 3600 s taken
+    assert result.outcome == "answer"
+    assert events(spending)[0]["time_budget_s"] == 3600.0
+
+
+def test_a_first_event_whose_result_is_not_known_stops_before_sending(spending, monkeypatch):
+    real = os.link
+
+    def linked_then_failed(source, target, *args, **kwargs):  # in force, reported as failed
+        real(source, target, *args, **kwargs)
+        raise OSError(errno.EIO, "simulated failure after the link")
+
+    provider = Provider(Clock(), coverage_answer(COVERED, ("Nie gesendet.", ["jul/k"])))
+    with monkeypatch.context() as m:
+        m.setattr(os, "link", linked_then_failed)
+        result, _ = run_d(provider, spending)
+
+    assert (result.outcome, result.detail) == ("persistence_error", "reservation_not_saved")
+    assert (provider.creates, result.record["calls"]) == ([], [])  # stopped before sending
+    pin, reserve = events(spending)  # the whole event: the pin and its reservation, both
+    assert (pin["event"], reserve["event"], reserve["attempt"]) == (
+        "books",
+        "reserve",
+        "T1-coverage-r1-call1",
+    )
+    assert _staged(spending) == []
+    again = Provider(Clock())
+    result, _ = run_d(again, _elsewhere(spending, "rerun"))
+    assert (result.outcome, result.detail) == ("refused", "already_run")  # never sent later
+    assert (again.counts, again.creates) == ([], [])
 
 
 def kept_r1(usd: float) -> list[dict]:

@@ -41,8 +41,11 @@ the aggregate limit, a bound; under ``phase4`` the next case's beside the Phase 
 ESTIMATES from earlier usage settlements, labelled as such.
 
 ``run`` is the live step and runs only when explicitly authorised. It checks the cases, refuses
-existing outputs and a local output folder that is a symbolic link, builds the client (the key's
-presence only), refuses when the plan's worst case (under ``phase4``: the next case's) does
+existing outputs and a local output folder that is a symbolic link, claims the run's local folder
+for this invocation under either design (the folder and its claim file ``CLAIM``, naming the
+design and a token only this invocation holds, so a second invocation under the tag, of either
+design, is refused, and an unused claim is given back by its owner only), builds the client (the
+key's presence only), refuses when the plan's worst case (under ``phase4``: the next case's) does
 not fit or a case cannot be paired, loads the verified corpus and the cached e5 model
 once (as the one-question runner does), checks every case's editions and question length and
 ranks every case (hybrid over its editions only) before any cell runs. Then it runs the matrix
@@ -56,16 +59,23 @@ only when a cell reserved a call, and written for every cell that ended even whe
 error stops the matrix: ``local/<tag>-comparison/`` (git-ignored: each call's
 request and response, ``result.json`` with questions, answers and traces) and
 ``results/<tag>-comparison.json`` (metadata only: hashes, IDs, scores, codes, counts, amounts).
+Under ``phase4`` a cell that an unexpected error or an interruption ends inside ``run_case`` is
+recorded before the error stops the run (``_aborted``): the calls the books show as sent (only
+reservations whose request this run saved) make it a cell that ran and failed (outcome
+``aborted``), a reservation without a confirmed send is listed as unconfirmed and confirms
+nothing, and its searches and decisions, never recorded, are left out rather than inferred.
 """
 
 from __future__ import annotations
 
 import argparse
+import contextlib
 import dataclasses
 import hashlib
 import json
 import math
 import platform
+import secrets
 import subprocess
 import sys
 import time
@@ -109,7 +119,7 @@ PHASE4_RUNNER_INPUT_SHA256 = (
 TOP_K = max(c.passages for c in evidence_agent.CONDITIONS.values())
 CASE_KEYS = ("id", "question", "editions")
 TOOL_FILES = (*run_question.TOOL_FILES, "run_comparison.py")
-CLAIM = "claimed.json"  # a Phase 4 run's claim on its local folder, written before any spend
+CLAIM = "claimed.json"  # a run's claim on its local folder (either design), before the model loads
 # The one refusal that skips a cell: it is already in the books, so it is never sent again.
 # Any other refusal, a call ID that another case's reservation holds among them, stops the matrix.
 CELL_REFUSALS = ("already_run",)
@@ -754,7 +764,7 @@ def _provenance(args: argparse.Namespace, cases: list[dict], loaded) -> dict:
 PUBLIC_PHASE4 = ("case", "condition", "repetition", "budget_s", "generation_calls", "calls",
                  "spending",
                  "outcome", "detail", "elapsed_s", "schema_problems",
-                 "citations_outside_supplied", "coverage")
+                 "citations_outside_supplied", "coverage", "unconfirmed_calls", "trace")
 SEARCH_PHASE4 = ("round", "outcome", "method", "window", "rounds_left", "passages_left")
 
 
@@ -983,18 +993,32 @@ def _run(  # noqa: PLR0913
                         for hit in ranking[: condition.passages]
                     ),
                 )
-                result = evidence_agent.run_case(
-                    task,
-                    client=client,
-                    retriever=retriever,
-                    passages=passages,
-                    clock=CLOCK,
-                    budget_s=args.time_budget_s,
-                    spending=spending,
-                    condition=name,
-                    matrix_rest_usd=_usd(rest_after[(item["id"], name)]),
-                    **repetition,
-                )
+                try:
+                    result = evidence_agent.run_case(
+                        task,
+                        client=client,
+                        retriever=retriever,
+                        passages=passages,
+                        clock=CLOCK,
+                        budget_s=args.time_budget_s,
+                        spending=spending,
+                        condition=name,
+                        matrix_rest_usd=_usd(rest_after[(item["id"], name)]),
+                        **repetition,
+                    )
+                except BaseException as error:  # the run ends here, as before
+                    if phase4:  # what the books show of the cell is kept first
+                        try:
+                            aborted, booked = _aborted(
+                                paths, item, name, args.time_budget_s, error
+                            )
+                        except Exception:  # noqa: BLE001 - the error raised below stops the run
+                            aborted, booked = None, False
+                        if aborted is not None:
+                            cells.append(aborted)
+                        state["reserved"] = state["reserved"] or booked
+                        state["stopped"] = {"case": item["id"], "condition": name}
+                    raise
                 status, code = _cell(result)
                 cells.append((name, result, status, code))
                 state["reserved"] = (
@@ -1015,8 +1039,6 @@ def _run(  # noqa: PLR0913
                     state["stopped"] = {"case": item["id"], "condition": name}
     finally:  # nothing reserved means nothing of the matrix is in the books: no output either
         times["finished"] = _now()
-        if phase4 and not state["reserved"]:
-            _release(paths)  # the claimed run folder, when nothing was written in it
         outputs = (
             [(paths["local"] / "result.json", kept), (paths["public"], public)]
             if state["reserved"]
@@ -1185,7 +1207,7 @@ def main(argv: list[str] | None = None) -> int:
         return EXIT_ANSWER
     args.manifest = args.manifest.resolve()
     paths = _paths(args.tag)
-    claimed = False  # whether this invocation created the run's local folder
+    owner = None  # this invocation's token in the claim on the run's local folder, once made
     try:
         existing = run_question._existing(paths)
         if existing:
@@ -1201,11 +1223,11 @@ def main(argv: list[str] | None = None) -> int:
                 f"refused: {linked} is a symbolic link; local outputs (questions, answers, "
                 "rankings) stay in the real, git-ignored local/ folder",
             )
-        if args.design == "phase4":  # the tag is this invocation's before anything is spent
-            refusal = _claim(paths)
-            if refusal:
-                raise run_question._Stop(EXIT_REFUSED, refusal)
-            claimed = True
+        # The tag is this invocation's before the client is built or the model loads, whatever the
+        # design: a second invocation under it, of either design, is refused here.
+        refusal, owner = _claim(paths, args.design)
+        if refusal:
+            raise run_question._Stop(EXIT_REFUSED, refusal)
         client = _client(
             generation.Config()
         )  # the key is checked before the model loads
@@ -1265,15 +1287,16 @@ def main(argv: list[str] | None = None) -> int:
             run_question._checked(loaded, item["question"], item["editions"])
         ranked = _rankings(cases, loaded)
     except run_question._Stop as stop:
-        if claimed:
-            _release(paths)  # this invocation's claim, while nothing else is in it
+        _release(paths, owner)  # this invocation's claim, while nothing else is in it
         print(stop, file=sys.stderr)
         return stop.code
     except BaseException:  # an unexpected error or an interruption before any cell
-        if claimed:
-            _release(paths)
+        _release(paths, owner)
         raise
-    return _run(args, cases, client, plan, loaded, ranked)
+    try:
+        return _run(args, cases, client, plan, loaded, ranked)
+    finally:  # also after a failure before the first cell: an unused claim is given back
+        _release(paths, owner)
 
 
 def _linked(paths: dict[str, Path]) -> str | None:
@@ -1288,39 +1311,183 @@ def _linked(paths: dict[str, Path]) -> str | None:
     return None
 
 
-def _claim(paths: dict[str, Path]) -> str | None:
-    """Phase 4: create the run's local folder now, empty and this invocation's, or say why not.
-    A second invocation under the same tag is refused before it spends, and no link inside the
-    folder predates the run."""
+def _claim(paths: dict[str, Path], design: str) -> tuple[str | None, str | None]:
+    """Claim the run's local folder for this invocation, of either design, before the client is
+    built or the model loads: create the folder (which fails when it exists), then its claim file
+    (``CLAIM``) naming the design and a token only this invocation holds. Returns (None, the
+    token), or (the refusal, None): the folder exists (an earlier or a concurrent invocation under
+    the tag, of either design) or cannot be created, or its claim file cannot be written, in which
+    case the folder this invocation created goes again while it is empty; a claim file this
+    invocation did not create is left as it is. A file in the folder makes any later invocation's
+    existing-output check refuse the tag; the folder's creation is the claim itself."""
 
     try:
         LOCAL.mkdir(parents=True, exist_ok=True)
-        paths["local"].mkdir()
-        # A file in the claimed folder: the existing-output check of any invocation under this
-        # tag, Phase 3's included, now refuses it.
-        with (paths["local"] / CLAIM).open("x", encoding="utf-8") as handle:
-            handle.write(json.dumps({"design": "phase4", "claimed_at": _now()}) + "\n")
-    except FileExistsError:
-        return (
-            f"refused: {paths['local']} already exists (an earlier or a concurrent "
-            "invocation under this tag); use another tag"
-        )
     except OSError as exc:
-        return f"refused: the local folder cannot be created ({type(exc).__name__})"
-    return None
-
-
-def _release(paths: dict[str, Path]) -> None:
-    """Give back a claimed run folder that holds nothing but its claim; one with other files
-    stays."""
-
+        return f"refused: the local folder cannot be created ({type(exc).__name__})", None
     folder = paths["local"]
+    token, made, created = secrets.token_hex(16), False, False
     try:
-        if {p.name for p in folder.iterdir()} == {CLAIM}:
-            (folder / CLAIM).unlink()
+        folder.mkdir()
+        made = True
+        with (folder / CLAIM).open("x", encoding="utf-8") as handle:
+            created = True
+            claim = {"design": design, "owner": token, "claimed_at": _now()}
+            handle.write(json.dumps(claim) + "\n")
+    except BaseException as exc:  # what this invocation made goes again, while it is unused
+        if created:
+            with contextlib.suppress(OSError):
+                (folder / CLAIM).unlink()
+        if made:
+            with contextlib.suppress(OSError):
+                folder.rmdir()  # only while empty: another's claim file in it stays
+        if isinstance(exc, FileExistsError) and not made:
+            return (
+                f"refused: {folder} already exists (an earlier or a concurrent invocation "
+                "under this tag, of either design); use another tag",
+                None,
+            )
+        if isinstance(exc, OSError):
+            stage = "claim on it cannot be written" if made else "folder cannot be created"
+            return (
+                f"refused: {folder}: the {stage} ({type(exc).__name__}); nothing was "
+                "loaded, counted or sent",
+                None,
+            )
+        raise
+    return None, token
+
+
+def _release(paths: dict[str, Path], owner: str | None) -> None:
+    """Give back this invocation's claim while it is unused: a run folder that holds nothing but
+    a claim file naming ``owner``. Another invocation's claim, a folder with any other file in
+    it (an artifact, an output) and a claim that cannot be read stay as they are."""
+
+    if owner is None:
+        return
+    folder = paths["local"]
+    claim = folder / CLAIM
+    try:
+        if folder.is_symlink() or {p.name for p in folder.iterdir()} != {CLAIM}:
+            return
+        if claim.is_symlink() or json.loads(claim.read_text("utf-8")).get("owner") != owner:
+            return
+        claim.unlink()
         folder.rmdir()
-    except OSError:
-        pass
+    except (OSError, ValueError, AttributeError):  # unreadable or changed: it stays
+        return
+
+
+def _aborted(
+    paths: dict[str, Path], item: dict, name: str, budget_s: float, error: BaseException
+) -> tuple[tuple | None, bool]:
+    """A Phase 4 cell that an unexpected error or an interruption ended inside ``run_case``, as
+    the books and this run's request files show it (phase4/amendments.md, interpretation 1), and
+    whether this run booked anything for it. A reservation is this cell's in this run only when
+    the run saved its request (the request file in the run's own folder has the SHA-256 the
+    reservation records), and its call was sent only when the books hold a settlement with
+    ``sent`` true. Those calls, from the first on, are ``generation_calls``, so a cell with one
+    ran and failed (outcome ``aborted``). A reservation without such a settlement (open: sending
+    unknown; released: never sent) is listed under ``unconfirmed_calls`` and confirms nothing.
+    Its searches and decisions were never recorded (``trace``: ``not_recorded``): the record
+    holds none, and nothing is inferred about them. Books that cannot be read show nothing."""
+
+    try:
+        booked = evidence_agent.phase4_cell(item["id"], name, PHASE4_REPETITION)
+        readable = True
+    except (ValueError, OSError):
+        booked, readable = [], False
+    requests = paths["local"] / "requests"
+
+    def saved(reserve: dict) -> bool:  # this run's request, byte for byte
+        path = requests / f"{reserve['attempt']}.json"
+        try:
+            return (
+                not path.is_symlink()
+                and path.is_file()
+                and hashlib.sha256(path.read_bytes()).hexdigest() == reserve["request_sha256"]
+            )
+        except OSError:
+            return False
+
+    ours = [b for b in booked if saved(b["reserve"])]
+    sent = []
+    for b in ours:  # the confirmed sends, from the first call on
+        if b["settle"] is None or b["settle"]["sent"] is not True:
+            break
+        if b["reserve"]["call"] != len(sent) + 1:
+            break
+        sent.append(b)
+    unconfirmed = ours[len(sent):]
+    detail = type(error).__name__
+    record = {
+        "case": item["id"],
+        "condition": name,
+        "repetition": PHASE4_REPETITION,
+        "budget_s": budget_s,
+        "generation_calls": len(sent),
+        "calls": [
+            {
+                **{
+                    k: b["reserve"].get(k)
+                    for k in (
+                        "call",
+                        "attempt",
+                        "request_sha256",
+                        "counted_input_tokens",
+                        "reserved_usd",
+                    )
+                },
+                **{
+                    k: b["settle"].get(k)
+                    for k in (
+                        "sent",
+                        "cost_usd",
+                        "cost_basis",
+                        "above_reservation",
+                        "usage",
+                        "response_sha256",
+                    )
+                },
+            }
+            for b in sent
+        ],
+        "unconfirmed_calls": [
+            {
+                **{
+                    k: b["reserve"].get(k)
+                    for k in ("call", "attempt", "request_sha256", "reserved_usd")
+                },
+                "settlement": b["settle"]["cost_basis"] if b["settle"] else None,
+            }
+            for b in unconfirmed
+        ],
+        "outcome": "aborted",
+        "detail": detail,
+        "trace": "not_recorded",
+    }
+    if not readable:
+        accounting = "unknown"
+    elif not ours:
+        accounting = "nothing_reserved"
+    elif any(b["settle"] is None for b in ours):
+        accounting = "uncertain"  # a reservation whose sending is unknown
+    elif any(b["settle"].get("above_reservation") for b in sent):
+        accounting = "above_reservation"
+    elif any(b["settle"]["cost_basis"] not in ("usage", "not_sent") for b in ours):
+        accounting = "uncertain"
+    else:
+        accounting = "priced"
+    status = {"execution": "aborted", "detail": detail, "answer": None, "accounting": accounting}
+    result = evidence_agent.CaseResult(
+        outcome="aborted",
+        status=None,
+        detail=detail,
+        answer=None,
+        record=record,
+        local={"requests": [], "responses": [], "searches": [], "errors": [detail]},
+    )
+    return (name, result, status, None), bool(ours)
 
 
 def _rankings(cases: list[dict], loaded) -> tuple:

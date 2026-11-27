@@ -95,8 +95,13 @@ the cell's record. Only B, C and D (``PHASE4_CONDITIONS``) are booked there, and
 (``coverage``) nowhere else; a frozen Phase 4 case (``PHASE4_CASES``, from the freeze record),
 by its ID or its question, is refused in the Phase 2 and 3 books and booked in Phase 4's only
 under its frozen ID, question and editions. The books' first line pins their ledger, limit and
-time budget and is written with their first reservation, so an attempt that books nothing pins
-nothing; a cell with another budget is refused (``time_budget_changed``). In Phase 4's books every cell's admission holds
+time budget. It is written together with their first reservation, after that call's request is
+saved, as one accounting event (``_create_books``): the ledger is created holding both lines or
+not at all, so a failed request write leaves neither, a ledger write that leaves the ledger absent
+leaves neither (``books_not_saved``), and one whose result is not known stops the case before
+anything is sent (``reservation_not_saved``, as for any reservation whose write failed). An
+attempt that books nothing pins nothing; a cell with another budget is refused
+(``time_budget_changed``). In Phase 4's books every cell's admission holds
 back the case's other cells not yet booked, whoever calls, so a fresh case starts only when its
 whole triplet fits. The ceiling, admission, reservations, settlements, persistence and the
 strict reading of the ledger are the same code for both books; the Phase 2 and 3 books and the
@@ -116,10 +121,13 @@ cancellation is not built.
 
 from __future__ import annotations
 
+import contextlib
 import hashlib
 import json
 import math
+import os
 import re
+import secrets
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass, replace
 from fractions import Fraction
@@ -336,6 +344,39 @@ def _create(path: Path, text: str) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("x", encoding="utf-8") as handle:
         handle.write(text)
+
+
+def _create_books(ledger: Path, events: tuple[dict, ...], errors: list[str]) -> str | None:
+    """Create a new ledger holding ``events`` (Phase 4's pin and first reservation) and nothing
+    else, or leave it absent: one accounting event. The lines are staged in a new file beside
+    the ledger and linked into place, which never replaces an existing ledger, so no reader finds
+    the pin without its reservation and a failure leaves no partial or empty ledger. Returns None
+    when the event is in the books, ``books_not_saved`` when the ledger is still absent after a
+    failure (neither line in force: nothing reserved, nothing pinned) and
+    ``reservation_not_saved`` when a ledger exists after a failure (whether this event is in
+    force is not known). A failure's type is noted in ``errors`` (local artifacts only)."""
+
+    staged = ledger.with_name(f".{ledger.name}.{secrets.token_hex(8)}.new")
+    created = False
+    try:
+        with staged.open("x", encoding="utf-8") as handle:
+            created = True
+            handle.write("".join(json.dumps(e, ensure_ascii=False) + "\n" for e in events))
+            handle.flush()
+            os.fsync(handle.fileno())
+        os.link(staged, ledger)  # an existing ledger is an error, never replaced
+    except OSError as exc:
+        errors.append(type(exc).__name__)
+        try:
+            absent = not ledger.exists()
+        except OSError:  # not even that is known
+            absent = False
+        return "books_not_saved" if absent else "reservation_not_saved"
+    finally:
+        if created:  # only the file this call staged
+            with contextlib.suppress(OSError):
+                staged.unlink()
+    return None
 
 
 def _committed(events: list[dict]) -> int:
@@ -660,6 +701,26 @@ def _phase4_state(config: generation.Config, pricing: generation.Pricing,
         "active_calls": _calls(events, None),
         "booked": _booked(events),
     }
+
+
+def phase4_cell(case_id: str, condition: str, repetition: int) -> list[dict]:
+    """The reservations of one Phase 4 cell (repetition, case, condition) in ``BOOKS``, in the
+    order written, each with its settlement or None (``{"reserve": ..., "settle": ...}``): read
+    strictly but without the lock, as ``spending_state`` reads them, and nothing written. Raises
+    ValueError with the refusal's code when the books cannot be used as they are."""
+
+    config = generation.Config()
+    folder = BOOKS.resolve()
+    spending = Spending(ledger=folder / PHASE4_LEDGER, baseline=None, baseline_sha256=None,
+                        artifacts=folder)
+    try:
+        events = _phase4_books(spending, _prices(config))
+    except _Refused as refusal:
+        raise ValueError(refusal.detail) from None
+    settled = {e["attempt"]: e for e in events if e["event"] == "settle"}
+    return [{"reserve": e, "settle": settled.get(e["attempt"])} for e in events
+            if e["event"] == "reserve"
+            and (e["case"], e["condition"], e["repetition"]) == (case_id, condition, repetition)]
 
 
 def _assumptions(config: generation.Config, pricing: generation.Pricing) -> dict:
@@ -1068,7 +1129,7 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
     admission = chosen.calls * _ceiling(pricing, MAX_INPUT_TOKENS, config)
     if _micro(baseline) + _committed(events) + admission + rest > limit:
         return end("refused", "admission_budget")
-    if phase4:  # the books are pinned with their first reservation, below
+    if phase4:  # the books are pinned with their first reservation, after its request is saved
         record["spending"] = {
             "books": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
             "committed_before_usd": _committed(events) / 1_000_000,
@@ -1123,23 +1184,24 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
             return end("refused", refusal.detail)
         if _micro(baseline) + _committed(events) + _micro(reserved) > limit:
             return end("refused", "budget")
-        # Phase 4's books are pinned (ledger, limit, time budget) with their first reservation,
-        # so an attempt that books nothing pins nothing.
-        if phase4 and not events and not kept(lambda: generation._append(spending.ledger, {
-                "event": "books", "ledger": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
-                "time_budget_s": budget_s, "at": generation._now()})):
-            return end("persistence_error", "books_not_saved")  # nothing reserved or sent
         request = json.dumps(body, ensure_ascii=False, sort_keys=True)  # hashes as _sha256(body)
         if not kept(lambda: _create(spending.artifacts / "requests" / f"{attempt}.json",
                                     request)):
-            return end("persistence_error", "request_not_saved")
-        if not kept(lambda: generation._append(spending.ledger, {
-                "event": "reserve", "attempt": attempt, "case": task.case_id,
-                "condition": chosen.name, **ident, "question_sha256": asked[0],
-                "editions": asked[1],
-                "call": call,
-                "request_sha256": _sha256(request), "counted_input_tokens": counted,
-                "reserved_usd": reserved, "at": generation._now()})):
+            return end("persistence_error", "request_not_saved")  # nothing in the books
+        reservation = {
+            "event": "reserve", "attempt": attempt, "case": task.case_id,
+            "condition": chosen.name, **ident, "question_sha256": asked[0],
+            "editions": asked[1],
+            "call": call,
+            "request_sha256": _sha256(request), "counted_input_tokens": counted,
+            "reserved_usd": reserved, "at": generation._now()}
+        if phase4 and not events:  # Phase 4's books: their pin and first reservation, one event
+            unsaved = _create_books(spending.ledger, ({
+                "event": "books", "ledger": PHASE4_LEDGER, "budget_usd": PHASE4_LIMIT_USD,
+                "time_budget_s": budget_s, "at": reservation["at"]}, reservation), local["errors"])
+            if unsaved is not None:  # absent: nothing pinned or reserved; else not known
+                return end("persistence_error", unsaved)  # and nothing was sent
+        elif not kept(lambda: generation._append(spending.ledger, reservation)):
             return end("persistence_error", "reservation_not_saved")  # and nothing was sent
         local["requests"].append(body)
         entry = {"call": call, "attempt": attempt,
