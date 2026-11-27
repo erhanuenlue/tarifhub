@@ -153,11 +153,23 @@ are identical across runs); a search that ran before the abort should be scored.
 day as stated in the table above (the proof is the run's own request and response; the cell's
 record rides on the error); a typed `/ship-it source-only` in a fresh session is left for Erhan.
 
-**Checks.** The pilot's offline suite: 777 tests in fifteen files, all passing (734 before): D 56
-(52), runner 86 (69), scorer 194 (172). Run against the code of `e3a6bfb`, the three changed test
+**Independent review of those fixes (round 5, on `f8590bf`)** found 0 P1, 3 P2 and a P3 line, again
+in the recovery path: a booking another run made after this run stopped still entered its
+accounting and outputs; a settlement line cut short made the books unreadable and hid a send the
+run's own files prove; an interruption while the lock was given back escaped without the cell's
+record. Fixed the same day: a booking counts as the run's own only with its own response or the
+call in its own record, anything else is left out of the record, the accounting and the outputs;
+unreadable books take no part in the proof (accounting `unknown`), and the damaged books still
+refuse every run until repaired; the record rides on any error around the lock, and a cell that
+had ended keeps its recorded ending (`ended`), so a recorded answer turn is not turned into no
+action.
+
+**Checks.** The pilot's offline suite: 781 tests in fifteen files, all passing (734 before): D 56
+(52), runner 89 (69), scorer 195 (172). Run against the code of `e3a6bfb`, the three changed test
 files of the first fix commit failed in 26 of their 326 tests, all of them the new behaviour (the
 ten refusals of malformed aborted records passed there too, since that code refused every aborted
-record); run against the code of `6ac26cf`, the round-4 fixes' tests fail in 10 of 336. Lint clean. A
+record); run against the code of `6ac26cf`, the round-4 fixes' tests fail in 10 of 336, and against the
+code of `f8590bf`, the round-5 fixes' tests fail in 5 of 340. Lint clean. A
 scripted B cell and C cell in the Phase 2 and 3 books give identical records, requests and ledger
 lines (times aside) at `140ca86` and now; `results/` is byte-identical to `140ca86`; the 14 file
 hashes of the freeze record hold.
@@ -180,6 +192,6 @@ repository's `results/` stayed byte-identical with no Phase 4 ledger.
 **Residual limits** (none blocks a live run): a reservation whose sending is unknown, or a send that
 got no response this run kept, confirms nothing, so a cell with no earlier proven send stays not
 run; an aborted cell is scored up to its last recorded step only; the headroom near the end and the
-limits carried from ADR-027 are as in section 6. The rehearsal ran on the round-4 fixes as well,
-with the same results.
+limits carried from ADR-027 are as in section 6. The rehearsal ran on the round-4 and round-5
+fixes as well, with the same results.
 

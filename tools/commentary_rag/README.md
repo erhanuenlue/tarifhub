@@ -781,9 +781,10 @@ frozen order; a call whose sending is unknown stays open at its reservation, a c
 sending stays released, and neither is sent again or confirms a send. Since 2026-11-27 a cell that an
 unexpected error or an interruption ends is recorded from the books before the run stops (outcome
 `aborted`): the calls this run demonstrably sent (its own saved request and response, consistent
-with the books) make it a cell that ran and failed, as the frozen rubric counts it, with the
-searches those calls ran as the cell recorded them; a reservation without that proof is listed as
-unconfirmed, and nothing after the last recorded step is inferred. The replay failure C and D share
+with the books where they can be read) make it a cell that ran and failed, as the frozen rubric
+counts it, with the searches those calls ran as the cell recorded them; its other bookings are
+listed as unconfirmed, one it cannot show as its own (another run's, possibly) is left out, and
+nothing after the last recorded step is inferred. The replay failure C and D share
 (a lone surrogate the model escaped in a tool input) is such a cell. A
 local output folder (or a request or response folder in it) that is a symbolic link is refused
 before the model loads. Since 2026-11-27 a run of either design claims its local folder before the
