@@ -780,10 +780,11 @@ A rerun after an interruption (under a new tag) skips every cell in the books an
 frozen order; a call whose sending is unknown stays open at its reservation, a call released before
 sending stays released, and neither is sent again or confirms a send. Since 2026-11-27 a cell that an
 unexpected error or an interruption ends is recorded from the books before the run stops (outcome
-`aborted`): the calls whose request this run saved and whose settlement says sent make it a cell
-that ran and failed, as the frozen rubric counts it; a reservation without such a settlement is
-listed as unconfirmed; its searches and decisions, never recorded, are left out, not inferred. The
-replay failure C and D share (a lone surrogate the model escaped in a tool input) is such a cell. A
+`aborted`): the calls this run demonstrably sent (its own saved request and response, consistent
+with the books) make it a cell that ran and failed, as the frozen rubric counts it, with the
+searches those calls ran as the cell recorded them; a reservation without that proof is listed as
+unconfirmed, and nothing after the last recorded step is inferred. The replay failure C and D share
+(a lone surrogate the model escaped in a tool input) is such a cell. A
 local output folder (or a request or response folder in it) that is a symbolic link is refused
 before the model loads. Since 2026-11-27 a run of either design claims its local folder before the
 client is built or the model loads (the folder, then `claimed.json` naming the design and a token
@@ -805,9 +806,10 @@ ran), rebuilds each C and D cell's decision points by capacity before each call 
 warranted, unnecessary, gap-check and missed useful searches, refused searches and points without
 action; D's coverage diagnostics are counted apart and never enter a measure. It implements the
 thresholds and both outcome tables as pure functions (T3 and T4 not assessable on an incomplete
-repetition). A cell the runner recorded as aborted (since 2026-11-27) ran when the books confirmed a
-sent call and did not run otherwise; it gets no decision point and adds nothing to any search
-measure, since its trace was never recorded, and the summary counts such cells apart (`aborted`).
+repetition). A cell the runner recorded as aborted (since 2026-11-27) ran when its run demonstrably
+sent a call and did not run otherwise; its recorded searches are scored like any failed cell's
+(the call that ended it after them is no decision with an action), one kept without its trace has
+no decision point, and the summary counts aborted cells apart (`aborted`).
 Since 2026-11-26 it reports amendment A1 beside T3 (`a1`, `search_thresholds`):
 unnecessary search attempts, an executed search or a refused request at a no-search-needed point
 counted once, executed and refused apart, over T3's own denominator, for C and D alike; T3 itself
@@ -860,8 +862,8 @@ completed the repetition without sending any call again; while a Phase 4 run loa
 Phase 3 and a second Phase 4 invocation under its tag were refused before loading anything, and
 while a Phase 3 invocation loaded, a Phase 4 invocation under its tag was refused (the Phase 3
 invocation, interrupted before its first cell, gave its claim back); a replay failure in C of one
-case and in D of another each stopped the run with the cell recorded as run, and two restarts
-completed the repetition with no call sent twice ([evidence](../../docs/evidence/2026-11-26-phase4-repetition-books-offline.md#8-the-fixes-of-2026-11-27)).
+case and in D of another each stopped the run with the cell recorded as run, its search kept, and
+two restarts completed the repetition with no call sent twice ([evidence](../../docs/evidence/2026-11-26-phase4-repetition-books-offline.md#8-the-fixes-of-2026-11-27)).
 
 ## Tracing one synthetic run in a local Phoenix
 

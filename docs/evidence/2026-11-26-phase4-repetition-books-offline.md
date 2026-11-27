@@ -138,7 +138,7 @@ cap, authorizes no expenditure; a live run needs his separate decision.
 |---|---|
 | "Commit the time-budget pin with the first reservation" | the first call's request is saved first; the pin and the first reservation are then written as one accounting event (the ledger is created holding both lines or not at all: staged beside it and linked into place, never replacing a ledger). A failed request write, or a ledger write that leaves the ledger absent, leaves neither line; a write whose result is not known stops the run before anything is sent |
 | "Make output tags exclusive across both comparison designs" | both designs claim the run's local folder before the client is built or the model loads (the folder, then a claim file naming the design and a token only that invocation holds); a second invocation under the tag, of either design and in either start order, is refused before it loads anything |
-| "Preserve confirmed sends when a Phase 4 cell aborts" | C's and D's shared failure and model behaviour are unchanged. The runner records the aborted cell from the books before the run stops: a reservation counts only when this run saved its request, and its call as sent only with a settlement that says so, which makes the cell one that ran and failed, as the frozen rubric counts it; a reservation without a confirmed send confirms nothing. Its searches and decisions were never recorded, so the scorer builds no decision point for it and infers no action: it adds nothing to T3, to the supplemental A1 report or to T4, and the summary counts such cells apart |
+| "Preserve confirmed sends when a Phase 4 cell aborts" | C's and D's shared failure and model behaviour are unchanged; the same error now carries the cell's record as it stood. The runner records the aborted cell before the run stops: a call counts as sent only when this run saved its request and its response, consistent with the books (a settlement, where there is one, saying sent with that response's SHA-256), which makes the cell one that ran and failed, as the frozen rubric counts it; a reservation without that proof confirms nothing. The searches those calls ran are kept as the cell recorded them and scored like any failed cell's (T3 counts an executed unnecessary search; the supplemental A1 report counts the executed or refused attempt beside it); nothing after the last recorded step is inferred, and the summary counts such cells apart |
 | "Release unused claims if marker creation fails or `_run` aborts during pre-cell setup" | a failure while the claim is written, before the first cell, or an interruption there gives back only that invocation's own unused claim; another invocation's claim and any artifact stay |
 
 Unchanged: the frozen requests (B's and C's request hashes, D's frozen texts), the file names
@@ -146,10 +146,18 @@ Unchanged: the frozen requests (B's and C's request hashes, D's frozen texts), t
 their strict reading (books written in the earlier order read as before), the recorded ledgers and
 results, the freeze record's file hashes and the scoring rules.
 
-**Checks.** The pilot's offline suite: 767 tests in fifteen files, all passing (734 before): D 56
-(52), runner 83 (69), scorer 187 (172). Run against the code of `e3a6bfb`, the three changed test
-files fail in 26 of their 326 tests, all of them the new behaviour (the ten refusals of malformed
-aborted records pass there too, since that code refused every aborted record). Lint clean. A
+**Independent review of the fixes (round 4, on `6ac26cf`)** found 0 P1, 3 P2 and a P3 line, all on
+the recovery of an aborted cell: a saved response should prove a send whose settlement was
+interrupted; a matching request hash does not prove which run booked a call (the frozen requests
+are identical across runs); a search that ran before the abort should be scored. Fixed the same
+day as stated in the table above (the proof is the run's own request and response; the cell's
+record rides on the error); a typed `/ship-it source-only` in a fresh session is left for Erhan.
+
+**Checks.** The pilot's offline suite: 777 tests in fifteen files, all passing (734 before): D 56
+(52), runner 86 (69), scorer 194 (172). Run against the code of `e3a6bfb`, the three changed test
+files of the first fix commit failed in 26 of their 326 tests, all of them the new behaviour (the
+ten refusals of malformed aborted records passed there too, since that code refused every aborted
+record); run against the code of `6ac26cf`, the round-4 fixes' tests fail in 10 of 336. Lint clean. A
 scripted B cell and C cell in the Phase 2 and 3 books give identical records, requests and ledger
 lines (times aside) at `140ca86` and now; `results/` is byte-identical to `140ca86`; the 14 file
 hashes of the freeze record hold.
@@ -163,14 +171,15 @@ hashes of the freeze record hold.
 | Interrupted while `P4-F05`'s C call 2 was on the wire (call 1 sent and settled), then restarted | the cell is kept as run and failed (one confirmed send, the open call unconfirmed); the restart sends no call again; 77 calls; 19 of 19 complete |
 | Same tag, Phase 4 first: a Phase 3 and a second Phase 4 invocation start while it loads the model | both refused before loading anything; one model load; 77 calls, each sent once; 19 of 19 complete |
 | Same tag, Phase 3 first: a Phase 4 invocation starts while it loads the model | refused: nothing counted, sent or booked, no Phase 4 ledger; the Phase 3 invocation, interrupted before its first cell, gave its claim back; the Phase 2 and 3 books unchanged |
-| Replay failure in C of `P4-F03` and in D of `P4-F07` | each stopped its run with the cell recorded as run (one confirmed send, priced); two restarts completed the repetition: 75 calls, none sent twice, 19 of 19 complete, 2 aborted cells |
+| Replay failure in C of `P4-F03` and in D of `P4-F07` | each stopped its run with the cell recorded as run (one confirmed send, priced) and its one search kept; two restarts completed the repetition: 75 calls, none sent twice, 19 of 19 complete, 2 aborted cells |
 | Expensive usage; another case kept at USD 29.6512; one micro-dollar more | as in section 5: a stop before `P4-F14` (USD 32.118), the exact fit admitted (a stop before `P4-F02`), one micro-dollar more refused before the model loads |
 
 The copies of the Phase 2 and 3 ledgers stayed byte-identical in every scenario, and the
 repository's `results/` stayed byte-identical with no Phase 4 ledger.
 
-**Residual limits** (none blocks a live run): an aborted cell's searches and decisions were never
-recorded, so they enter no search measure and are listed apart; a reservation whose sending is
-unknown still confirms nothing; the headroom near the end and the limits carried from ADR-027 are
-as in section 6.
+**Residual limits** (none blocks a live run): a reservation whose sending is unknown, or a send that
+got no response this run kept, confirms nothing, so a cell with no earlier proven send stays not
+run; an aborted cell is scored up to its last recorded step only; the headroom near the end and the
+limits carried from ADR-027 are as in section 6. The rehearsal ran on the round-4 fixes as well,
+with the same results.
 
