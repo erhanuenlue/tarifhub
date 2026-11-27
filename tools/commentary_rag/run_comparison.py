@@ -60,10 +60,11 @@ error stops the matrix: ``local/<tag>-comparison/`` (git-ignored: each call's
 request and response, ``result.json`` with questions, answers and traces) and
 ``results/<tag>-comparison.json`` (metadata only: hashes, IDs, scores, codes, counts, amounts).
 Under ``phase4`` a cell that an unexpected error or an interruption ends inside ``run_case`` is
-recorded before the error stops the run (``_aborted``): the calls the books show as sent (only
-reservations whose request this run saved) make it a cell that ran and failed (outcome
-``aborted``), a reservation without a confirmed send is listed as unconfirmed and confirms
-nothing, and its searches and decisions, never recorded, are left out rather than inferred.
+recorded before the error stops the run (``_aborted``): the calls this run demonstrably sent (its
+own request and response files, consistent with the books) make it a cell that ran and failed
+(outcome ``aborted``), with the searches those calls ran as the cell recorded them; a
+reservation without such proof is listed as unconfirmed and confirms nothing, and nothing after
+the last recorded step is inferred.
 """
 
 from __future__ import annotations
@@ -1010,7 +1011,7 @@ def _run(  # noqa: PLR0913
                     if phase4:  # what the books show of the cell is kept first
                         try:
                             aborted, booked = _aborted(
-                                paths, item, name, args.time_budget_s, error
+                                paths, item, name, args.time_budget_s, task, error
                             )
                         except Exception:  # noqa: BLE001 - the error raised below stops the run
                             aborted, booked = None, False
@@ -1378,57 +1379,71 @@ def _release(paths: dict[str, Path], owner: str | None) -> None:
         return
 
 
-def _aborted(
-    paths: dict[str, Path], item: dict, name: str, budget_s: float, error: BaseException
+def _aborted(  # noqa: PLR0913
+    paths: dict[str, Path],
+    item: dict,
+    name: str,
+    budget_s: float,
+    task: evidence_agent.AgentTask,
+    error: BaseException,
 ) -> tuple[tuple | None, bool]:
     """A Phase 4 cell that an unexpected error or an interruption ended inside ``run_case``, as
-    the books and this run's request files show it (phase4/amendments.md, interpretation 1), and
-    whether this run booked anything for it. A reservation is this cell's in this run only when
-    the run saved its request (the request file in the run's own folder has the SHA-256 the
-    reservation records), and its call was sent only when the books hold a settlement with
-    ``sent`` true. Those calls, from the first on, are ``generation_calls``, so a cell with one
-    ran and failed (outcome ``aborted``). A reservation without such a settlement (open: sending
-    unknown; released: never sent) is listed under ``unconfirmed_calls`` and confirms nothing.
-    Its searches and decisions were never recorded (``trace``: ``not_recorded``): the record
-    holds none, and nothing is inferred about them. Books that cannot be read show nothing."""
+    this run's own files and the books show it (phase4/amendments.md, interpretation 1), and
+    whether this run booked anything for it. A reservation is this run's only when the run saved
+    its request (the request file in the run's folder has the SHA-256 the reservation records);
+    its call was demonstrably sent only when the run also saved a response to it, and the books,
+    where they settled the call, say it was sent with that response's SHA-256. Those calls, from
+    the first on, are ``generation_calls``, so a cell with one ran and failed (outcome
+    ``aborted``). Any other reservation of the run (open: sending unknown; released: never sent;
+    or sent without a response this run kept) is listed under ``unconfirmed_calls`` and
+    confirms nothing. The cell's own record, carried on the error (``case_record``), is kept for
+    those calls only: their entries, the searches they ran (search i belongs to call i) and the
+    passages those supplied, so a search that ran is scored and nothing after it is inferred.
+    Without that record the cell keeps only what the books show (``trace`` ``not_recorded``).
+    Books that cannot be read show nothing."""
 
     try:
         booked = evidence_agent.phase4_cell(item["id"], name, PHASE4_REPETITION)
         readable = True
     except (ValueError, OSError):
         booked, readable = [], False
-    requests = paths["local"] / "requests"
+    folder = paths["local"]
 
-    def saved(reserve: dict) -> bool:  # this run's request, byte for byte
-        path = requests / f"{reserve['attempt']}.json"
+    def saved(kind: str, attempt: str) -> str | None:  # this run's file's SHA-256, if any
+        path = folder / kind / f"{attempt}.json"
         try:
-            return (
-                not path.is_symlink()
-                and path.is_file()
-                and hashlib.sha256(path.read_bytes()).hexdigest() == reserve["request_sha256"]
-            )
+            if path.is_symlink() or not path.is_file():
+                return None
+            return hashlib.sha256(path.read_bytes()).hexdigest()
         except OSError:
-            return False
+            return None
 
-    ours = [b for b in booked if saved(b["reserve"])]
-    sent = []
-    for b in ours:  # the confirmed sends, from the first call on
-        if b["settle"] is None or b["settle"]["sent"] is not True:
+    ours = [
+        b
+        for b in booked
+        if saved("requests", b["reserve"]["attempt"]) == b["reserve"].get("request_sha256")
+    ]
+    sent = []  # (booking, response SHA-256), from the first call on
+    for b in ours:
+        response, settle = saved("responses", b["reserve"]["attempt"]), b["settle"]
+        if (
+            response is None
+            or b["reserve"]["call"] != len(sent) + 1
+            or (
+                settle is not None
+                and (settle.get("sent") is not True or settle.get("response_sha256") != response)
+            )
+        ):
             break
-        if b["reserve"]["call"] != len(sent) + 1:
-            break
-        sent.append(b)
-    unconfirmed = ours[len(sent):]
+        sent.append((b, response))
+    unconfirmed = ours[len(sent) :]
     detail = type(error).__name__
-    record = {
-        "case": item["id"],
-        "condition": name,
-        "repetition": PHASE4_REPETITION,
-        "budget_s": budget_s,
-        "generation_calls": len(sent),
-        "calls": [
-            {
-                **{
+    initial = [p["passage_id"] for p in task.passages]
+    kept = _traced(getattr(error, "case_record", None), sent, initial)
+    if kept is None:  # only what the books show: no trace, nothing inferred
+        kept = {
+            "calls": [
+                {
                     k: b["reserve"].get(k)
                     for k in (
                         "call",
@@ -1437,21 +1452,28 @@ def _aborted(
                         "counted_input_tokens",
                         "reserved_usd",
                     )
-                },
-                **{
-                    k: b["settle"].get(k)
-                    for k in (
-                        "sent",
-                        "cost_usd",
-                        "cost_basis",
-                        "above_reservation",
-                        "usage",
-                        "response_sha256",
-                    )
-                },
-            }
-            for b in sent
-        ],
+                }
+                for b, _ in sent
+            ],
+            "trace": "not_recorded",
+        }
+    for entry, (b, response) in zip(kept["calls"], sent, strict=True):
+        settle = b["settle"] or {}  # an unsettled send: its cost is not known yet
+        entry.update(
+            sent=True,
+            response_sha256=response,
+            **{
+                k: settle.get(k)
+                for k in ("cost_usd", "cost_basis", "above_reservation", "usage")
+            },
+        )
+    record = {
+        "case": item["id"],
+        "condition": name,
+        "repetition": PHASE4_REPETITION,
+        "budget_s": budget_s,
+        "generation_calls": len(sent),
+        **kept,
         "unconfirmed_calls": [
             {
                 **{
@@ -1464,15 +1486,14 @@ def _aborted(
         ],
         "outcome": "aborted",
         "detail": detail,
-        "trace": "not_recorded",
     }
     if not readable:
         accounting = "unknown"
     elif not ours:
         accounting = "nothing_reserved"
     elif any(b["settle"] is None for b in ours):
-        accounting = "uncertain"  # a reservation whose sending is unknown
-    elif any(b["settle"].get("above_reservation") for b in sent):
+        accounting = "uncertain"  # a reservation without a settlement
+    elif any(b["settle"].get("above_reservation") for b, _ in sent):
         accounting = "above_reservation"
     elif any(b["settle"]["cost_basis"] not in ("usage", "not_sent") for b in ours):
         accounting = "uncertain"
@@ -1488,6 +1509,47 @@ def _aborted(
         local={"requests": [], "responses": [], "searches": [], "errors": [detail]},
     )
     return (name, result, status, None), bool(ours)
+
+
+def _traced(partial, sent: list, initial: list[str]) -> dict | None:
+    """The trace an aborted cell recorded, kept for its demonstrably sent calls only: their
+    entries, the searches those calls ran (at most one per call, search i belonging to call i),
+    the passages supplied by the initial context and those searches, and D's coverage entries of
+    those searches; None when there is no record or its calls disagree with the sent ones."""
+
+    if not isinstance(partial, dict):
+        return None
+    calls, searches = partial.get("calls"), partial.get("searches")
+    if (
+        not isinstance(calls, list)
+        or not isinstance(searches, list)
+        or len(calls) < len(sent)
+        or any(
+            not isinstance(entry, dict) or entry.get("attempt") != b["reserve"]["attempt"]
+            for entry, (b, _) in zip(calls, sent)
+        )
+    ):
+        return None
+    ran = [s for s in searches[: len(sent)] if isinstance(s, dict)]
+    if len(ran) != len(searches[: len(sent)]):
+        return None
+    returned = [
+        r.get("passage_id") for s in ran for r in (s.get("returned") or []) if isinstance(r, dict)
+    ]
+    kept = {
+        "calls": [dict(entry) for entry in calls[: len(sent)]],
+        "searches": ran,
+        "supplied": [*initial, *returned],
+    }
+    if isinstance(partial.get("spending"), dict):
+        kept["spending"] = partial["spending"]
+    if isinstance(partial.get("coverage"), list):  # D: the coverage of the searches kept
+        kept["coverage"] = [
+            e
+            for e in partial["coverage"]
+            if isinstance(e, dict) and isinstance(e.get("call"), int) and e["call"] <= len(ran)
+        ]
+    return kept
 
 
 def _rankings(cases: list[dict], loaded) -> tuple:

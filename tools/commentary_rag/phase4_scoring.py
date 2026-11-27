@@ -24,12 +24,14 @@ condition contract describes (``phase4/conditions.md``, section 5):
   ``summary``, whose completeness is the scoring's own, never a caller's.
 
 A cell an unexpected error or an interruption ended inside the agent's loop is recorded by the
-runner from the books (``run_comparison._aborted``, outcome ``aborted``): ``generation_calls``
-counts the calls the books show as sent, so with one it ran and failed (a non-success, as the
-rubric counts it); a reservation without a confirmed send confirms nothing. Its searches and
-decisions were never recorded (``trace`` ``not_recorded``), so it has no decision point and adds
-nothing to any search measure: no action is inferred for it, and the summary counts such cells
-apart (``aborted``).
+runner (``run_comparison._aborted``, outcome ``aborted``): ``generation_calls`` counts the calls
+its run demonstrably sent (its own request and response files, consistent with the books), so with
+one it ran and failed (a non-success, as the rubric counts it); a reservation without that proof
+confirms nothing. Its trace holds what the cell recorded for those calls (their searches and the
+passages those supplied) and is scored like any failed cell's: a search that ran is a decision,
+and the call that ended the cell after it is none, so no action is inferred. When the runner kept
+no trace (``trace`` ``not_recorded``) the cell has no decision point and adds nothing to any
+search measure. The summary counts aborted cells apart (``aborted``).
 
 Every record names its repetition (Phase 4's books, ``evidence_agent.PHASE4_REPETITIONS``) and
 its time budget (a finite number of seconds above 0); one scoring holds one repetition. The
@@ -118,7 +120,8 @@ NOT_SENT = (
     "deadline",
     "persistence_error",
 )  # how a cell ends with its last call unsent
-ABORTED = "aborted"  # a cell the runner recorded from the books after an unexpected stop
+ABORTED = "aborted"  # a cell the runner recorded after an unexpected stop (run_comparison)
+UNRECORDED = "not_recorded"  # an aborted cell whose trace the runner could not keep
 CHECKS = (
     "ok",
     "malformed",
@@ -255,7 +258,7 @@ def _checked_record(record, condition: str) -> None:
     aborted cell, one ``run_comparison._aborted`` writes."""
     if not isinstance(record, dict) or record.get("condition") != condition:
         raise ValueError("a cell's record must be a record of the cell's condition")
-    if record.get("outcome") == ABORTED:
+    if _untraced(record):
         _checked_aborted(record)
         _checked_identity(record)
         return
@@ -268,10 +271,14 @@ def _checked_record(record, condition: str) -> None:
         raise ValueError(
             "a record needs its calls, its searches and the supplied passage IDs"
         )
-    if record.get("outcome") not in ANSWERED + ENDED:
+    if record.get("outcome") not in (*ANSWERED, *ENDED, ABORTED):
         raise ValueError(
-            "a record's outcome must be one evidence_agent ends a cell with"
+            "a record's outcome must be one evidence_agent ends a cell with, or aborted"
         )
+    if record["outcome"] == ABORTED:  # with its trace: the sent calls, the rest apart
+        if "trace" in record:
+            raise ValueError("an aborted record either keeps its trace or says it has none")
+        _checked_sends(record)
     if not all(
         isinstance(call, dict) and call.get("call") == number
         for number, call in enumerate(calls, start=1)
@@ -291,23 +298,34 @@ def _checked_record(record, condition: str) -> None:
     _checked_identity(record)
 
 
+def _untraced(record) -> bool:
+    """Whether a record is an aborted cell's that the runner kept without its trace."""
+    return (
+        isinstance(record, dict)
+        and record.get("outcome") == ABORTED
+        and record.get("trace") == UNRECORDED
+    )
+
+
 def _checked_aborted(record: dict) -> None:
-    """Refuse an aborted record that is not one the runner writes: the calls the books show as
-    sent, numbered from 1 and counted by ``generation_calls``, the unconfirmed ones apart, and
-    no trace (no search, supplied or cited passage, coverage or answer count)."""
-    calls, unconfirmed = record.get("calls"), record.get("unconfirmed_calls")
-    if (
-        record.get("trace") != "not_recorded"
-        or not isinstance(calls, list)
-        or not isinstance(unconfirmed, list)
-        or any(
-            key in record
-            for key in ("searches", "supplied", "cited", "coverage", "schema_problems")
-        )
+    """Refuse an aborted record without a trace that is not one the runner writes: its sent
+    calls only, and no search, supplied or cited passage, coverage or answer count."""
+    if not isinstance(record.get("calls"), list) or any(
+        key in record
+        for key in ("searches", "supplied", "cited", "coverage", "schema_problems")
     ):
         raise ValueError(
             "an aborted record holds the calls the books show as sent and no trace"
         )
+    _checked_sends(record)
+
+
+def _checked_sends(record: dict) -> None:
+    """An aborted record's calls: each demonstrably sent, numbered from 1 and counted by
+    ``generation_calls``, and the unconfirmed ones apart, numbered after them."""
+    calls, unconfirmed = record.get("calls"), record.get("unconfirmed_calls")
+    if not isinstance(calls, list) or not isinstance(unconfirmed, list):
+        raise ValueError("an aborted record lists its sent and its unconfirmed calls")
     if not all(
         isinstance(call, dict) and call.get("call") == number and call.get("sent") is True
         for number, call in enumerate(calls, start=1)
@@ -478,6 +496,9 @@ def decision_points(record, parts, condition: str) -> list[dict]:
     checked = _parts(parts)
     if record is None or condition not in SEARCHING:
         return []
+    if _untraced(record):  # its decisions were not kept: none is rebuilt or inferred
+        _checked_record(record, condition)
+        return []
     return _decisions(record, checked, condition)[0]
 
 
@@ -614,7 +635,7 @@ def _scored_record(
     _checked_record(record, condition)
     if record.get("case") != case_id:
         raise ValueError("a cell's record must name the cell's case")
-    if record["outcome"] == ABORTED:  # no trace recorded: no decision point, nothing inferred
+    if _untraced(record):  # no trace kept: no decision point, nothing inferred
         return {"points": [], "counts": _zero(condition)}
     top = ranking[: _condition(condition).passages]
     if condition not in SEARCHING:
@@ -667,8 +688,8 @@ def _merged_cell(
         "ran": True,
         "outcome": record["outcome"],
         "calls": record["generation_calls"],
-        # an aborted cell's searches were not recorded: not counted, never taken as none
-        "searches": None if record["outcome"] == ABORTED else len(record["searches"]),
+        # searches an aborted cell's runner kept no trace of: not counted, never taken as none
+        "searches": None if _untraced(record) else len(record["searches"]),
         "decision_points": result["points"],
         "counts": result["counts"],
     }

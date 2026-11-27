@@ -1809,6 +1809,60 @@ def test_an_aborted_cell_and_its_refusal_in_the_resumed_run_are_one_cell_that_ra
     assert counts["decision_points"]["search_needed"] == {"with_action": 0, "without_action": 0}
 
 
+def traced(condition: str, choices: list, searches=(), unconfirmed: int = 0) -> dict:
+    """An aborted cell's record with the trace it recorded for its demonstrably sent calls."""
+    rec = record(condition, choices, searches, outcome="aborted")
+    for entry in rec["calls"]:
+        entry["sent"] = True
+    rec["detail"] = "UnicodeEncodeError"
+    n = len(choices)
+    rec["unconfirmed_calls"] = [
+        {"call": k, "attempt": f"X-01-{condition}-r1-call{k}", "request_sha256": "0" * 64,
+         "reserved_usd": 1.5, "settlement": None}
+        for k in range(n + 1, n + unconfirmed + 1)
+    ]
+    return rec
+
+
+@pytest.mark.parametrize("condition", ["agent", "coverage"])
+def test_an_aborted_cells_recorded_search_is_scored_and_nothing_after_it_is_inferred(condition):
+    # The replay failure: call 1 ran a search where nothing was missing, then the cell stopped
+    # before its next call. That search is a decision (T3 counts it as unnecessary, and A1
+    # beside T3 counts it once as an executed attempt); the call never made is none.
+    rec = traced(condition, ["auto"], [search(1, "passages", "jul/c")], unconfirmed=1)
+
+    scored = one_cell(rec, COVERED, condition)
+
+    assert view([scored], "ran", "outcome", "calls", "searches") == [(True, "aborted", 1, 1)]
+    assert view(scored["decision_points"], "call", "kind", "action", "measure") == [
+        (1, "no_search_needed", "search_run", "unnecessary")
+    ]
+    assert scored["counts"]["unnecessary"] == 1
+    assert scored["counts"]["unnecessary_attempts"] == {"executed": 1, "refused": 0, "total": 1}
+    assert ps.decision_points(rec, COVERED, condition) == scored["decision_points"]
+
+
+def test_decision_points_of_an_aborted_cell_without_a_trace_are_none():
+    assert ps.decision_points(aborted("agent"), MISSING, "agent") == []
+    with pytest.raises(ValueError):
+        ps.decision_points(changed(aborted("agent"), searches=[]), MISSING, "agent")
+
+
+BROKEN_TRACED = {
+    "another trace marker": lambda r: changed(r, trace="partial"),
+    "no unconfirmed list": lambda r: {k: v for k, v in r.items() if k != "unconfirmed_calls"},
+    "a call not sent": lambda r: changed(r, calls=[{**r["calls"][0], "sent": False}]),
+    "an unsent call kept": lambda r: changed(r, generation_calls=0),
+}
+
+
+@pytest.mark.parametrize("name", list(BROKEN_TRACED))
+def test_an_aborted_record_with_a_trace_the_runner_does_not_write_is_refused(name):
+    rec = traced("agent", ["auto"], [search(1, "passages", "jul/c")])
+    with pytest.raises(ValueError):
+        one_cell(BROKEN_TRACED[name](rec), COVERED, "agent")
+
+
 BROKEN_ABORTED = {
     "a recorded search": lambda r: changed(r, searches=[]),
     "supplied passages": lambda r: changed(r, supplied=list(INITIAL)),

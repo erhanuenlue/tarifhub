@@ -919,12 +919,19 @@ def test_c_and_d_fail_alike_on_an_unencodable_replay_with_their_calls_settled(
 ):
     provider = Provider(Clock(), unencodable(condition))
 
-    with pytest.raises(UnicodeError):
+    with pytest.raises(UnicodeError) as raised:
         run(provider, task(), spending, condition=condition, repetition=1)
 
     # The same stage for both: the first call was sent and settled from its usage; the
     # replay fails before the next count, so nothing more is reserved or sent.
     assert (len(provider.counts), len(provider.creates)) == (1, 1)
+    # The same error, carrying what the cell recorded until then: one call, its search.
+    kept = raised.value.case_record
+    assert ([c["attempt"] for c in kept["calls"]], len(kept["searches"])) == (
+        [f"T1-{condition}-r1-call1"],
+        1,
+    )
+    assert kept["generation_calls"] == 1 and "outcome" not in kept
     rows = events(spending)[1:]
     assert [(e["event"], e.get("cost_basis")) for e in rows] == [
         ("reserve", None),

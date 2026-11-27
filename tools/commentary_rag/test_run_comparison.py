@@ -2031,19 +2031,22 @@ def test_a_shared_replay_failure_keeps_the_sent_cell_as_run_and_a_restart_sends_
         {"execution": "aborted", "detail": error, "answer": None, "accounting": "priced"},
     )
     record = kept_cell["record"]
-    assert (record["outcome"], record["detail"], record["trace"]) == (
-        "aborted",
-        error,
-        "not_recorded",
-    )
+    assert (record["outcome"], record["detail"], "trace" in record) == ("aborted", error, False)
     assert (record["generation_calls"], record["unconfirmed_calls"]) == (1, [])
     assert [(x["attempt"], x["sent"], x["cost_basis"]) for x in record["calls"]] == [
         (attempt, True, "usage")
     ]
     request = (local / "requests" / f"{attempt}.json").read_bytes()
+    response = (local / "responses" / f"{attempt}.json").read_bytes()
     assert record["calls"][0]["request_sha256"] == hashlib.sha256(request).hexdigest()
-    # The search that call asked for was never recorded: no action is kept or inferred.
-    assert not {"searches", "supplied", "cited", "coverage"} & record.keys()
+    assert record["calls"][0]["response_sha256"] == hashlib.sha256(response).hexdigest()
+    # The search its call ran is kept as the cell recorded it; nothing after it is.
+    (search,) = record["searches"]
+    ran = "passages" if condition == "agent" else "refused_coverage"  # D named no passage it had
+    assert search["outcome"] == ran
+    assert record["supplied"] == TOP5 + [r["passage_id"] for r in search["returned"]]
+    assert "cited" not in record
+    assert len(record["coverage"]) == 1 if condition == "coverage" else "coverage" not in record
     shown = json.loads(public.read_text("utf-8"))["cases"][0]["cells"][-1]
     assert (shown["status"]["execution"], shown["agent"]["generation_calls"]) == ("aborted", 1)
     assert not any(pid in json.dumps(shown) for pid in RANKED)  # no passage ID published
@@ -2069,11 +2072,28 @@ def test_a_shared_replay_failure_keeps_the_sent_cell_as_run_and_a_restart_sends_
     ]
     assert case_["complete"] is True  # the cell ran and failed: a non-success, but run
     aborted = next(x for x in case_["cells"] if x["condition"] == condition)
-    assert (aborted["outcome"], aborted["calls"], aborted["searches"]) == ("aborted", 1, None)
-    assert aborted["decision_points"] == []  # no missing action invented
-    assert aborted["counts"] == phase4_scoring._zero(condition)
+    assert (aborted["outcome"], aborted["calls"], aborted["searches"]) == ("aborted", 1, 1)
+    # One decision, the one that happened: the search at call 1 (no part was missing); the call
+    # the replay never made is no decision point, and no action is invented for it.
+    action = "search_run" if condition == "agent" else "search_refused"
+    assert [(p["call"], p["kind"], p["action"]) for p in aborted["decision_points"]] == [
+        (1, "no_search_needed", action)
+    ]
     counts = phase4_scoring.summary(scored)["conditions"][condition]
-    assert (counts["aborted"], counts["calls_per_cell"]) == (1, {"1": 1})
+    assert (counts["aborted"], counts["calls_per_cell"], counts["searches_per_cell"]) == (
+        1,
+        {"1": 1},
+        {"1": 1},
+    )
+    # T3 counts the executed search alone; the supplementary A1 report counts it, or the
+    # refused request, beside it.
+    executed = int(condition == "agent")
+    assert counts["unnecessary"] == executed
+    assert counts["unnecessary_attempts"] == {
+        "executed": executed,
+        "refused": 1 - executed,
+        "total": 1,
+    }
 
 
 def test_estimates_read_cells_of_every_condition_under_either_design(
@@ -2435,6 +2455,7 @@ def test_an_interruption_after_a_sent_call_keeps_the_cell_as_run_with_its_open_c
     assert [(x["attempt"], x["settlement"]) for x in record["unconfirmed_calls"]] == [
         ("E1-agent-r1-call2", None)
     ]  # booked, sending unknown: confirms nothing
+    assert [s["outcome"] for s in record["searches"]] == ["passages"]  # call 1's, as recorded
     capsys.readouterr()
     again = live(isolated, monkeypatch, d)
 
@@ -2447,12 +2468,8 @@ def test_an_interruption_after_a_sent_call_keeps_the_cell_as_run_with_its_open_c
     ]
     (case_,) = phase4_scoring.score(results, gold("E1"))["cases"]
     c_cell = case_["cells"][1]
-    assert (c_cell["ran"], c_cell["outcome"], c_cell["calls"], c_cell["decision_points"]) == (
-        True,
-        "aborted",
-        1,
-        [],
-    )
+    assert (c_cell["ran"], c_cell["outcome"], c_cell["calls"]) == (True, "aborted", 1)
+    assert [(p["call"], p["action"]) for p in c_cell["decision_points"]] == [(1, "search_run")]
     assert case_["complete"] is True
 
 
@@ -2534,3 +2551,122 @@ def test_an_uncertain_first_booking_stops_the_run_before_anything_is_sent(
     ]
     pin, reserve = phase4_ledger(isolated)  # the pin and the first reservation, whole
     assert (pin["event"], reserve["attempt"]) == ("books", "E1-fixed10-r1-call1")
+
+
+def test_a_response_saved_before_its_settlement_proves_the_send(isolated, monkeypatch, capsys):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, d = phase4_answers()
+    live(isolated, monkeypatch, b, c)
+    real = generation._append
+
+    def interrupted(ledger, event):  # C's response is saved; its settlement never reaches the books
+        if event["event"] == "settle" and event["attempt"] == "E1-agent-r1-call1":
+            raise KeyboardInterrupt
+        return real(ledger, event)
+
+    monkeypatch.setattr(generation, "_append", interrupted)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_append", real)
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    assert (kept_cell["status"]["execution"], kept_cell["status"]["accounting"]) == (
+        "aborted",
+        "uncertain",  # its cost is not settled: held at its reservation
+    )
+    (call,) = kept_cell["record"]["calls"]
+    response = (local / "responses" / "E1-agent-r1-call1.json").read_bytes()
+    assert (call["sent"], call["cost_basis"], call["response_sha256"]) == (
+        True,
+        None,
+        hashlib.sha256(response).hexdigest(),
+    )
+    assert kept_cell["record"]["generation_calls"] == 1  # the saved response proves the send
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+
+    assert len(again.creates) == 1  # D only: C is never sent again
+    results = [
+        json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
+        for tag in ("2026-11-26", "2026-11-27")
+    ]
+    (case_,) = phase4_scoring.score(results, gold("E1"))["cases"]
+    c_cell = case_["cells"][1]
+    assert (c_cell["ran"], c_cell["outcome"], case_["complete"]) == (True, "aborted", True)
+    # Its answer turn was never processed: the call that ended the cell is no decision with an
+    # action, so it is listed and left out of every rate, never taken as an answer.
+    assert [(p["call"], p["action"]) for p in c_cell["decision_points"]] == [(1, "no_action")]
+
+
+def test_a_send_another_run_booked_after_this_one_stopped_is_not_this_ones(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, d = phase4_answers()
+    provider = live(isolated, monkeypatch, b, c, d)
+    real_append, real_cell, seen = generation._append, evidence_agent.phase4_cell, {}
+
+    def interrupted(ledger, event):  # this run stops after saving C's request, before booking it
+        if event["event"] == "reserve" and event["attempt"] == "E1-agent-r1-call1" and not seen:
+            seen["stopped"] = True
+            raise KeyboardInterrupt
+        return real_append(ledger, event)
+
+    def recovering(*args):  # before this run reads the books, another run books and sends C
+        if "other" not in seen:
+            seen["other"] = exit_code(phase4_argv(isolated, cases, tag="2026-11-27"))
+        return real_cell(*args)
+
+    monkeypatch.setattr(generation, "_append", interrupted)
+    monkeypatch.setattr(evidence_agent, "phase4_cell", recovering)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+
+    assert seen["other"] == 0 and len(provider.creates) == 3  # C was sent once, by the other run
+    local = outputs(isolated, tag="2026-11-26")[1]
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    record = kept_cell["record"]
+    assert (record["generation_calls"], record["calls"]) == (0, [])  # not this run's send
+    assert [x["attempt"] for x in record["unconfirmed_calls"]] == ["E1-agent-r1-call1"]
+    assert not (local / "responses" / "E1-agent-r1-call1.json").exists()
+    results = [
+        json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
+        for tag in ("2026-11-26", "2026-11-27")
+    ]
+    (case_,) = phase4_scoring.score(results, gold("E1"))["cases"]  # no cell counted twice
+    assert [(x["condition"], x["ran"]) for x in case_["cells"]] == [
+        ("fixed10", True),
+        ("agent", True),
+        ("coverage", True),
+    ]
+    assert case_["cells"][1]["outcome"] == "answer"  # the other run's cell, as it ended
+
+
+def test_an_aborted_cell_without_its_record_keeps_only_what_the_books_show(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    live(isolated, monkeypatch, *phase4_answers()[:2])
+    real = evidence_agent.run_case
+
+    def failing(the_task, **kwargs):  # C ran to its end, then an error without its record
+        result = real(the_task, **kwargs)
+        if kwargs["condition"] == "agent":
+            raise RuntimeError("unexpected failure after the cell")
+        return result
+
+    monkeypatch.setattr(evidence_agent, "run_case", failing)
+    with pytest.raises(RuntimeError, match="after the cell"):
+        run_comparison.main(phase4_argv(isolated, cases))
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    first = json.loads((local / "result.json").read_text("utf-8"))
+    record = first["cases"][0]["cells"][1]["record"]
+    assert (record["generation_calls"], record["trace"]) == (1, "not_recorded")
+    assert not {"searches", "supplied", "cited"} & record.keys()
+    (case_,) = phase4_scoring.score([first], gold("E1"))["cases"]
+    c_cell = case_["cells"][1]
+    assert (c_cell["ran"], c_cell["searches"], c_cell["decision_points"]) == (True, None, [])

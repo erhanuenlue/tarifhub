@@ -951,7 +951,10 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
     is the worst case of a comparison's cells still to run after this one: the admission, under
     the lock, must fit it beside this cell's own (0 for a question on its own). ``repetition``
     books the cell in the Phase 4 books under (repetition, case, condition); None books it in the
-    Phase 2 and 3 books, where condition D is refused."""
+    Phase 2 and 3 books, where condition D is refused. An unexpected error or an interruption
+    that ends the cell is raised unchanged, carrying the cell's record as it stood
+    (``case_record``: codes, counts and hashes, the same fields the record holds) for a caller
+    that keeps what the books confirm of the cell (the Phase 4 runner); nothing else changes."""
 
     config = config or generation.Config()
     limits = limits or evidence_search.SearchLimits()
@@ -987,11 +990,17 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
                          "editions only")
     if repetition is not None and not _seconds(budget_s):
         raise ValueError("the time budget must be a finite number of seconds above 0")
+    trace: dict = {}  # the cell's record as it stands, for an error that ends the cell
     with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
-        return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
-                     budget_s=budget_s, spending=spending, pricing=pricing, config=config,
-                     limits=limits, held=held, chosen=chosen, asked=asked,
-                     rest=_micro(matrix_rest_usd), repetition=repetition)
+        try:
+            return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
+                         budget_s=budget_s, spending=spending, pricing=pricing, config=config,
+                         limits=limits, held=held, chosen=chosen, asked=asked,
+                         rest=_micro(matrix_rest_usd), repetition=repetition, trace=trace)
+        except BaseException as error:  # the same error goes on; what the cell recorded rides on it
+            with contextlib.suppress(AttributeError, TypeError):
+                error.case_record = trace.get("record")  # codes, counts and hashes, as recorded
+            raise
 
 
 def _phase3_spending(spending: Spending, chosen: Condition,
@@ -1045,7 +1054,8 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
           clock: Callable[[], float], budget_s: float, spending: Spending,
           pricing: generation.Pricing, config: generation.Config,
           limits: evidence_search.SearchLimits, held: bool, chosen: Condition,
-          asked: tuple[str, list[str]], rest: int, repetition: int | None) -> CaseResult:
+          asked: tuple[str, list[str]], rest: int, repetition: int | None,
+          trace: dict) -> CaseResult:
     started = clock()
     deadline = started + budget_s
     first = generation.request({"question": task.question, "editions": list(task.editions),
@@ -1062,6 +1072,7 @@ def _case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mapping]
     local = {"requests": [], "responses": [], "searches": [], "errors": []}
     if chosen.coverage:  # D's coverage decisions: codes and counts here, the record itself local
         record["coverage"], local["coverage"] = [], []
+    trace["record"] = record  # read by a caller only if an unexpected error ends the cell
 
     def failed(exc: Exception, stage: str) -> CaseResult:
         """A provider error ends the case once, with no retry; past the deadline it is one."""
