@@ -1,8 +1,14 @@
 ---
-name: tarifhub-ship
-description: Land a finished tarifhub change in five steps (confirm scope, run the applicable checks, review the change, handle PR and CI only when Erhan explicitly asks, report). Invoke when work is ready to land or a prompt ends with "then /tarifhub-ship".
+name: ship-it
+description: Land a finished tarifhub change in five steps (confirm scope, run the applicable checks, review the change, handle PR and CI only when Erhan explicitly asks, report). Invoke when work is ready to land or a prompt ends with "then /ship-it"; `/ship-it source-only` only reports which SKILL.md was loaded.
 allowed-tools: Bash, Read, Write, Edit, Grep, Glob, Agent
 ---
+
+This is TarifHub's release procedure, the repository file `.claude/skills/ship-it/SKILL.md`. The skill loader read it from `${CLAUDE_SKILL_DIR}/SKILL.md`, with the arguments `$ARGUMENTS` (empty for a release). Read directly instead of through the loader, both placeholders stay as written: that read is the direct-file fallback.
+
+**Source check, read-only.** When the arguments are exactly `source-only`, reply with the loaded path, `${CLAUDE_SKILL_DIR}/SKILL.md`, and stop: no step below, no command, no file written.
+
+**Before acting on release authority** (commit, push, PR, merge), confirm that the loaded path is `.claude/skills/ship-it/SKILL.md` under the current Git root (`git rev-parse --show-toplevel`). When it is another file, or the loader cannot establish the source, read that repository file directly, follow it, and say that the direct-file fallback was used. Never substitute a global, bundled or plugin shipping procedure (a `/ship` of gstack or of Claude Code among them).
 
 Ship the current change. Commit, push, open a PR or merge only when Erhan has explicitly asked for that step in this session; without that request, stop after step 5 and leave the working tree as it is.
 

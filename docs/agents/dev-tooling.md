@@ -7,16 +7,21 @@ Machine facts are Erhan's macOS host as set up on 2026-11-22 (milestone
 tool below unchanged: merge conditions, the freeze line, the independent Codex review, spending
 decisions and the .env rule are not altered by any of them.
 
-## Superpowers and `/tarifhub-ship`
+## Superpowers and `/ship-it`
 
 - Superpowers is a user-level Claude Code plugin. Its `systematic-debugging` (a failing test or
   unexpected behaviour) and `verification-before-completion` (before calling work done) fit this
   repository's way of working; they never override AGENTS.md or CLAUDE.md. Matt Pocock's skills in
   `.claude/skills/` (locked in `skills-lock.json`) stay the repository's TDD, design, domain and
   grilling skills; for test-first work use `tdd`.
-- `/tarifhub-ship` is `.claude/skills/tarifhub-ship/SKILL.md`, read directly (renamed from `ship`
-  on 2026-11-24; a user-global gstack skill is named `/ship`). The tooling below changes none of its steps: there is one release procedure, with the
-  same checks, protection tests and merge conditions.
+- `/ship-it` is `.claude/skills/ship-it/SKILL.md`, the repository's one release procedure (renamed
+  from `ship` to `tarifhub-ship` on 2026-11-24, since a user-global gstack skill is named `/ship`,
+  and to `ship-it` on 2026-11-27). Before acting on release authority the loaded skill is checked
+  against that file under the current Git root (`/ship-it source-only` reports the loaded path);
+  when the loader cannot establish the source, the file is read directly and the direct-file
+  fallback is named. No global, bundled or plugin shipping procedure stands in for it. The tooling
+  below changes none of its steps: there is one release procedure, with the same checks,
+  protection tests and merge conditions.
 
 ## OpenRig (trial, pinned 0.7.21)
 
