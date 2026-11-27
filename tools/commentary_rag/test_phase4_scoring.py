@@ -1842,6 +1842,22 @@ def test_an_aborted_cells_recorded_search_is_scored_and_nothing_after_it_is_infe
     assert ps.decision_points(rec, COVERED, condition) == scored["decision_points"]
 
 
+def test_an_aborted_cell_that_had_ended_keeps_its_recorded_answer_turn():
+    # Interrupted after the cell ended (while its lock was given back): the outcome it had
+    # recorded stays its last call's action, never replaced by no action.
+    rec = changed(traced("agent", ["auto", "auto"], [search(1, "passages", "jul/c")]),
+                  ended="answer")
+
+    points = ps.decision_points(rec, MISSING, "agent")
+
+    assert view(points, "call", "action") == [(1, "search_run"), (2, "answer")]
+    with pytest.raises(ValueError, match="ending"):
+        ps.decision_points(changed(rec, ended="aborted"), MISSING, "agent")
+    answered_after_search = changed(rec, generation_calls=1, calls=rec["calls"][:1])
+    with pytest.raises(ValueError):  # a call that ended in an answer ran no search
+        ps.decision_points(answered_after_search, MISSING, "agent")
+
+
 def test_decision_points_of_an_aborted_cell_without_a_trace_are_none():
     assert ps.decision_points(aborted("agent"), MISSING, "agent") == []
     with pytest.raises(ValueError):

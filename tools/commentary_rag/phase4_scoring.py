@@ -29,7 +29,8 @@ its run demonstrably sent (its own request and response files, consistent with t
 one it ran and failed (a non-success, as the rubric counts it); a reservation without that proof
 confirms nothing. Its trace holds what the cell recorded for those calls (their searches and the
 passages those supplied) and is scored like any failed cell's: a search that ran is a decision,
-and the call that ended the cell after it is none, so no action is inferred. When the runner kept
+and the call that ended the cell after it has no action, unless the cell had already ended and
+recorded that call's answer turn (``ended``), so no action is inferred. When the runner kept
 no trace (``trace`` ``not_recorded``) the cell has no decision point and adds nothing to any
 search measure. The summary counts aborted cells apart (``aborted``).
 
@@ -278,6 +279,8 @@ def _checked_record(record, condition: str) -> None:
     if record["outcome"] == ABORTED:  # with its trace: the sent calls, the rest apart
         if "trace" in record:
             raise ValueError("an aborted record either keeps its trace or says it has none")
+        if "ended" in record and record["ended"] not in (*ANSWERED, *ENDED):
+            raise ValueError("an aborted record's ending must be one evidence_agent records")
         _checked_sends(record)
     if not all(
         isinstance(call, dict) and call.get("call") == number
@@ -296,6 +299,14 @@ def _checked_record(record, condition: str) -> None:
     if condition not in SEARCHING and searches:
         raise ValueError("a fixed condition never searches")
     _checked_identity(record)
+
+
+def _answered(record: dict) -> bool:
+    """Whether the call that ended a cell ended in an answer turn: its outcome says so, or, for
+    a cell aborted after it had ended, the outcome it had recorded (``ended``)."""
+    return record["outcome"] in ANSWERED or (
+        record["outcome"] == ABORTED and record.get("ended") in ANSWERED
+    )
 
 
 def _untraced(record) -> bool:
@@ -370,7 +381,7 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
         )
     if (
         len(searches) not in (len(sent) - 1, len(sent))
-        or (len(searches) == len(sent) and record["outcome"] in ANSWERED)
+        or (len(searches) == len(sent) and _answered(record))
         or (len(sent) < len(calls) and len(searches) != len(sent))
     ):
         raise ValueError(
@@ -437,7 +448,7 @@ def _decisions(record, checked, condition: str) -> tuple[list[dict], list[str]]:
         missing = [part_id for part_id, support in facts if not support & before]
         returned = [r["passage_id"] for r in search["returned"]] if search else []
         if search is None:  # the call that ended the cell
-            action = "answer" if record["outcome"] in ANSWERED else "no_action"
+            action = "answer" if _answered(record) else "no_action"
         else:
             action = "search_run" if search["outcome"] in RUN else "search_refused"
         kind = measure = found = None
@@ -860,8 +871,9 @@ def summary(scored: dict) -> dict:
     when the cohort is the frozen one and ``complete_cases`` equals ``gold_cases``. Per
     condition: its cells (one per case in the results), those ``not_run``,
     calls per cell (generation calls sent) and searches per cell (refused requests included)
-    over the cells that ran (an ``aborted`` cell, counted apart, has calls but no recorded
-    searches), the search measures of C and D, and D's coverage diagnostics.
+    over the cells that ran (``aborted`` cells are counted apart; one kept without its trace has
+    calls but no recorded searches and is left out of that count), the search measures of C and
+    D, and D's coverage diagnostics.
     """
     cases = scored["cases"]
     complete = sum(case["complete"] for case in cases)

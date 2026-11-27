@@ -22,6 +22,7 @@ passage has 12 and would lead any ranking that let it in.
 
 from __future__ import annotations
 
+import contextlib
 import errno
 import hashlib
 import json
@@ -2601,40 +2602,57 @@ def test_a_response_saved_before_its_settlement_proves_the_send(isolated, monkey
     assert [(p["call"], p["action"]) for p in c_cell["decision_points"]] == [(1, "no_action")]
 
 
+@pytest.mark.parametrize("first", ["fixed10", "agent"])
 def test_a_send_another_run_booked_after_this_one_stopped_is_not_this_ones(
-    isolated, monkeypatch, capsys
+    isolated, monkeypatch, capsys, first
 ):
     cases = frozen_input(isolated, monkeypatch, case("E1"))
     b, c, d = phase4_answers()
     provider = live(isolated, monkeypatch, b, c, d)
-    real_append, real_cell, seen = generation._append, evidence_agent.phase4_cell, {}
+    attempt = f"E1-{first}-r1-call1"
+    real_books, real_append = evidence_agent._create_books, generation._append
+    real_cell, seen = evidence_agent.phase4_cell, {}
 
-    def interrupted(ledger, event):  # this run stops after saving C's request, before booking it
-        if event["event"] == "reserve" and event["attempt"] == "E1-agent-r1-call1" and not seen:
+    def stop_before_booking():  # this run saved the request, then stopped before booking it
+        if not seen:
             seen["stopped"] = True
             raise KeyboardInterrupt
+
+    def books_once(ledger, events, errors):  # B's booking is the books' first event
+        if events[-1]["attempt"] == attempt:
+            stop_before_booking()
+        return real_books(ledger, events, errors)
+
+    def append_once(ledger, event):  # C's booking is a later reservation
+        if event["event"] == "reserve" and event["attempt"] == attempt:
+            stop_before_booking()
         return real_append(ledger, event)
 
-    def recovering(*args):  # before this run reads the books, another run books and sends C
+    def recovering(*args):  # before this run reads the books, another run books and sends it
         if "other" not in seen:
             seen["other"] = exit_code(phase4_argv(isolated, cases, tag="2026-11-27"))
         return real_cell(*args)
 
-    monkeypatch.setattr(generation, "_append", interrupted)
+    monkeypatch.setattr(evidence_agent, "_create_books", books_once)
+    monkeypatch.setattr(generation, "_append", append_once)
     monkeypatch.setattr(evidence_agent, "phase4_cell", recovering)
     with pytest.raises(KeyboardInterrupt):
         run_comparison.main(phase4_argv(isolated, cases))
 
-    assert seen["other"] == 0 and len(provider.creates) == 3  # C was sent once, by the other run
-    local = outputs(isolated, tag="2026-11-26")[1]
-    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
-    record = kept_cell["record"]
-    assert (record["generation_calls"], record["calls"]) == (0, [])  # not this run's send
-    assert [x["attempt"] for x in record["unconfirmed_calls"]] == ["E1-agent-r1-call1"]
-    assert not (local / "responses" / "E1-agent-r1-call1.json").exists()
+    assert seen["other"] == 0 and len(provider.creates) == 3  # each cell sent once in all
+    public, local = outputs(isolated, tag="2026-11-26")
+    assert (local / "requests" / f"{attempt}.json").exists()  # its own request, kept
+    if first == "fixed10":  # this run booked nothing: it writes no record of the matrix
+        assert not public.exists() and not (local / "result.json").exists()
+    else:
+        mine = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+        assert mine["status"]["accounting"] == "nothing_reserved"  # not the other run's books
+        assert (mine["record"]["generation_calls"], mine["record"]["calls"]) == (0, [])
+        assert mine["record"]["unconfirmed_calls"] == []  # the other run's booking is left out
     results = [
-        json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
-        for tag in ("2026-11-26", "2026-11-27")
+        json.loads(path.read_text("utf-8"))
+        for path in (outputs(isolated, tag=tag)[1] / "result.json" for tag in ("2026-11-26", "2026-11-27"))
+        if path.exists()
     ]
     (case_,) = phase4_scoring.score(results, gold("E1"))["cases"]  # no cell counted twice
     assert [(x["condition"], x["ran"]) for x in case_["cells"]] == [
@@ -2642,7 +2660,87 @@ def test_a_send_another_run_booked_after_this_one_stopped_is_not_this_ones(
         ("agent", True),
         ("coverage", True),
     ]
-    assert case_["cells"][1]["outcome"] == "answer"  # the other run's cell, as it ended
+
+
+def test_a_settlement_cut_short_keeps_the_send_this_run_proves(isolated, monkeypatch, capsys):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, d = phase4_answers()
+    live(isolated, monkeypatch, b, c)
+    real = generation._append
+
+    def cut_short(ledger, event):  # C's settlement reaches the ledger only in part
+        if event["event"] == "settle" and event["attempt"] == "E1-agent-r1-call1":
+            with ledger.open("a", encoding="utf-8") as handle:
+                handle.write(json.dumps(event)[:40])
+            raise KeyboardInterrupt
+        return real(ledger, event)
+
+    monkeypatch.setattr(generation, "_append", cut_short)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_append", real)
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    assert kept_cell["status"]["accounting"] == "unknown"  # the books cannot be read
+    assert kept_cell["record"]["generation_calls"] == 1  # its own request and response show it
+    assert (kept_cell["record"]["calls"][0]["sent"], kept_cell["record"]["calls"][0]["cost_basis"]) == (
+        True,
+        None,
+    )
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+    assert exit_code(phase4_argv(isolated, cases, tag="2026-11-27")) == 3  # damaged: refused
+    assert again.creates == []
+    path = phase4_path(isolated)  # Erhan repairs the books: the line cut short is removed
+    text = path.read_text("utf-8")
+    path.write_text(text[: text.rindex("\n") + 1], "utf-8")
+
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-28")) == 0
+
+    assert len(again.creates) == 1  # D only: C is in the books and never sent again
+    results = [
+        json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
+        for tag in ("2026-11-26", "2026-11-28")
+    ]
+    (case_,) = phase4_scoring.score(results, gold("E1"))["cases"]
+    assert (case_["cells"][1]["ran"], case_["complete"]) == (True, True)
+
+
+def test_an_interruption_while_the_lock_is_given_back_keeps_the_cells_record(
+    isolated, monkeypatch, capsys
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, _, d = phase4_answers()
+    live(isolated, monkeypatch, b, search_call("Pauschale", "Begründung"), final(("C.", [TOP5[0]])))
+    real, uses = generation._ledger_lock, []
+
+    @contextlib.contextmanager
+    def releasing(ledger):  # C's cell ends, then its lock is interrupted while given back
+        uses.append(ledger)
+        with real(ledger) as held:
+            yield held
+        if len(uses) == 2:
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(generation, "_ledger_lock", releasing)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_ledger_lock", real)
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    first = json.loads((local / "result.json").read_text("utf-8"))
+    record = first["cases"][0]["cells"][1]["record"]
+    assert (record["outcome"], record["ended"], record["generation_calls"]) == ("aborted", "answer", 2)
+    assert [s["outcome"] for s in record["searches"]] == ["passages"]
+    capsys.readouterr()
+    live(isolated, monkeypatch, d)
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    second = json.loads((outputs(isolated, tag="2026-11-27")[1] / "result.json").read_text("utf-8"))
+    (case_,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
+    points = case_["cells"][1]["decision_points"]
+    assert [(p["call"], p["action"]) for p in points] == [(1, "search_run"), (2, "answer")]
+    assert case_["complete"] is True
 
 
 def test_an_aborted_cell_without_its_record_keeps_only_what_the_books_show(

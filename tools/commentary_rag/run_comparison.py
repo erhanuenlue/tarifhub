@@ -1388,25 +1388,39 @@ def _aborted(  # noqa: PLR0913
     error: BaseException,
 ) -> tuple[tuple | None, bool]:
     """A Phase 4 cell that an unexpected error or an interruption ended inside ``run_case``, as
-    this run's own files and the books show it (phase4/amendments.md, interpretation 1), and
-    whether this run booked anything for it. A reservation is this run's only when the run saved
-    its request (the request file in the run's folder has the SHA-256 the reservation records);
-    its call was demonstrably sent only when the run also saved a response to it, and the books,
-    where they settled the call, say it was sent with that response's SHA-256. Those calls, from
-    the first on, are ``generation_calls``, so a cell with one ran and failed (outcome
-    ``aborted``). Any other reservation of the run (open: sending unknown; released: never sent;
-    or sent without a response this run kept) is listed under ``unconfirmed_calls`` and
-    confirms nothing. The cell's own record, carried on the error (``case_record``), is kept for
-    those calls only: their entries, the searches they ran (search i belongs to call i) and the
-    passages those supplied, so a search that ran is scored and nothing after it is inferred.
-    Without that record the cell keeps only what the books show (``trace`` ``not_recorded``).
-    Books that cannot be read show nothing."""
+    this run's own files, the cell's own record and the books show it (phase4/amendments.md,
+    interpretation 1), and whether this run booked anything for it.
+
+    Call n is this run's when the run saved its request and either saved a response to it or
+    recorded the call after booking it (the record the error carries, ``case_record``, with the
+    request's SHA-256); readable books must hold that reservation with that request. It was
+    demonstrably sent when the run also saved its response and readable books, where they
+    settled it, say sent with that response's SHA-256. Those calls, from the first on, are
+    ``generation_calls``, so a cell with one ran and failed (outcome ``aborted``); the run's
+    other calls (open: sending unknown; released: never sent; or sent without a response it
+    kept) are listed under ``unconfirmed_calls`` and confirm nothing. A reservation that only
+    matches a saved request (another run's, possibly: the frozen requests hash alike) is not this
+    run's: it is left out of the record, the accounting and the outputs. The cell's own record
+    is kept for the sent calls: their entries, the searches they ran (search i belongs to call
+    i), the passages those supplied, and the outcome it had recorded if it had already ended
+    (``ended``), so a search that ran is scored and nothing after the last recorded step is
+    inferred. Without that record the cell keeps what the files and books show (``trace``
+    ``not_recorded``). Books that cannot be read take no part (accounting ``unknown``)."""
 
     try:
-        booked = evidence_agent.phase4_cell(item["id"], name, PHASE4_REPETITION)
+        books = {
+            b["reserve"]["attempt"]: b
+            for b in evidence_agent.phase4_cell(item["id"], name, PHASE4_REPETITION)
+        }
         readable = True
-    except (ValueError, OSError):
-        booked, readable = [], False
+    except (ValueError, OSError):  # damaged or unreadable: the files and the record still show
+        books, readable = {}, False
+    partial = getattr(error, "case_record", None)
+    entries = {
+        c.get("attempt"): c
+        for c in (partial.get("calls") if isinstance(partial, dict) else None) or []
+        if isinstance(c, dict)
+    }
     folder = paths["local"]
 
     def saved(kind: str, attempt: str) -> str | None:  # this run's file's SHA-256, if any
@@ -1418,47 +1432,49 @@ def _aborted(  # noqa: PLR0913
         except OSError:
             return None
 
-    ours = [
-        b
-        for b in booked
-        if saved("requests", b["reserve"]["attempt"]) == b["reserve"].get("request_sha256")
-    ]
-    sent = []  # (booking, response SHA-256), from the first call on
-    for b in ours:
-        response, settle = saved("responses", b["reserve"]["attempt"]), b["settle"]
+    calls = []  # this run's calls: (n, attempt, request, response, booking or None)
+    for n in range(1, evidence_agent.CONDITIONS[name].calls + 1):
+        attempt = f"{item['id']}-{name}-r{PHASE4_REPETITION}-call{n}"
+        request, response = saved("requests", attempt), saved("responses", attempt)
+        booked = books.get(attempt)
+        recorded = entries.get(attempt, {}).get("request_sha256") == request
         if (
-            response is None
-            or b["reserve"]["call"] != len(sent) + 1
-            or (
-                settle is not None
-                and (settle.get("sent") is not True or settle.get("response_sha256") != response)
-            )
+            request is None
+            or (response is None and not recorded)
+            or (readable and (booked is None or booked["reserve"].get("request_sha256") != request))
+        ):
+            break  # not this run's: nothing later is either
+        calls.append((n, attempt, request, response, booked))
+    sent = []
+    for n, attempt, request, response, booked in calls:  # from the first call on
+        settle = booked["settle"] if booked else None
+        if response is None or (
+            settle is not None
+            and (settle.get("sent") is not True or settle.get("response_sha256") != response)
         ):
             break
-        sent.append((b, response))
-    unconfirmed = ours[len(sent) :]
+        sent.append((n, attempt, request, response, booked))
+    unconfirmed = calls[len(sent) :]
     detail = type(error).__name__
-    initial = [p["passage_id"] for p in task.passages]
-    kept = _traced(getattr(error, "case_record", None), sent, initial)
-    if kept is None:  # only what the books show: no trace, nothing inferred
+    kept = _traced(partial, sent, [p["passage_id"] for p in task.passages])
+    if kept is None:  # what the files and books show: no trace, nothing inferred
         kept = {
             "calls": [
                 {
-                    k: b["reserve"].get(k)
-                    for k in (
-                        "call",
-                        "attempt",
-                        "request_sha256",
-                        "counted_input_tokens",
-                        "reserved_usd",
-                    )
+                    "call": n,
+                    "attempt": attempt,
+                    "request_sha256": request,
+                    **{
+                        k: (booked or {"reserve": {}})["reserve"].get(k)
+                        for k in ("counted_input_tokens", "reserved_usd")
+                    },
                 }
-                for b, _ in sent
+                for n, attempt, request, _, booked in sent
             ],
             "trace": "not_recorded",
         }
-    for entry, (b, response) in zip(kept["calls"], sent, strict=True):
-        settle = b["settle"] or {}  # an unsettled send: its cost is not known yet
+    for entry, (_, _, _, response, booked) in zip(kept["calls"], sent, strict=True):
+        settle = (booked or {}).get("settle") or {}  # unsettled or unreadable: cost not known
         entry.update(
             sent=True,
             response_sha256=response,
@@ -1476,26 +1492,27 @@ def _aborted(  # noqa: PLR0913
         **kept,
         "unconfirmed_calls": [
             {
-                **{
-                    k: b["reserve"].get(k)
-                    for k in ("call", "attempt", "request_sha256", "reserved_usd")
-                },
-                "settlement": b["settle"]["cost_basis"] if b["settle"] else None,
+                "call": n,
+                "attempt": attempt,
+                "request_sha256": request,
+                "reserved_usd": ((booked or {}).get("reserve") or {}).get("reserved_usd"),
+                "settlement": (((booked or {}).get("settle")) or {}).get("cost_basis"),
             }
-            for b in unconfirmed
+            for n, attempt, request, _, booked in unconfirmed
         ],
         "outcome": "aborted",
         "detail": detail,
     }
+    settles = [(booked or {}).get("settle") for *_, booked in calls]
     if not readable:
         accounting = "unknown"
-    elif not ours:
+    elif not calls:
         accounting = "nothing_reserved"
-    elif any(b["settle"] is None for b in ours):
+    elif any(s is None for s in settles):
         accounting = "uncertain"  # a reservation without a settlement
-    elif any(b["settle"].get("above_reservation") for b, _ in sent):
+    elif any(s.get("above_reservation") for s in settles):
         accounting = "above_reservation"
-    elif any(b["settle"]["cost_basis"] not in ("usage", "not_sent") for b in ours):
+    elif any(s.get("cost_basis") not in ("usage", "not_sent") for s in settles):
         accounting = "uncertain"
     else:
         accounting = "priced"
@@ -1508,14 +1525,15 @@ def _aborted(  # noqa: PLR0913
         record=record,
         local={"requests": [], "responses": [], "searches": [], "errors": [detail]},
     )
-    return (name, result, status, None), bool(ours)
+    return (name, result, status, None), bool(calls)
 
 
 def _traced(partial, sent: list, initial: list[str]) -> dict | None:
     """The trace an aborted cell recorded, kept for its demonstrably sent calls only: their
     entries, the searches those calls ran (at most one per call, search i belonging to call i),
-    the passages supplied by the initial context and those searches, and D's coverage entries of
-    those searches; None when there is no record or its calls disagree with the sent ones."""
+    the passages supplied by the initial context and those searches, D's coverage entries of the
+    calls kept, and the outcome the cell had recorded if it had already ended (``ended``); None
+    when there is no record or its calls disagree with the sent ones."""
 
     if not isinstance(partial, dict):
         return None
@@ -1525,13 +1543,15 @@ def _traced(partial, sent: list, initial: list[str]) -> dict | None:
         or not isinstance(searches, list)
         or len(calls) < len(sent)
         or any(
-            not isinstance(entry, dict) or entry.get("attempt") != b["reserve"]["attempt"]
-            for entry, (b, _) in zip(calls, sent)
+            not isinstance(entry, dict)
+            or entry.get("attempt") != attempt
+            or entry.get("request_sha256") != request
+            for entry, (_, attempt, request, _, _) in zip(calls, sent)
         )
     ):
         return None
-    ran = [s for s in searches[: len(sent)] if isinstance(s, dict)]
-    if len(ran) != len(searches[: len(sent)]):
+    ran = searches[: len(sent)]
+    if not all(isinstance(s, dict) for s in ran):
         return None
     returned = [
         r.get("passage_id") for s in ran for r in (s.get("returned") or []) if isinstance(r, dict)
@@ -1541,13 +1561,19 @@ def _traced(partial, sent: list, initial: list[str]) -> dict | None:
         "searches": ran,
         "supplied": [*initial, *returned],
     }
+    # A cell that had ended (its outcome recorded) before the error keeps that ending, so its
+    # last call's action is the one it recorded; a cell cut off mid-way ends at its last search.
+    ended = partial.get("outcome") if len(sent) == len(calls) else None
+    if isinstance(ended, str):
+        kept["ended"] = ended
     if isinstance(partial.get("spending"), dict):
         kept["spending"] = partial["spending"]
-    if isinstance(partial.get("coverage"), list):  # D: the coverage of the searches kept
+    if isinstance(partial.get("coverage"), list):  # D: the coverage of the calls kept
+        last = len(sent) if ended is not None else len(ran)
         kept["coverage"] = [
             e
             for e in partial["coverage"]
-            if isinstance(e, dict) and isinstance(e.get("call"), int) and e["call"] <= len(ran)
+            if isinstance(e, dict) and isinstance(e.get("call"), int) and e["call"] <= last
         ]
     return kept
 

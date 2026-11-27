@@ -991,16 +991,16 @@ def run_case(task: AgentTask, *, client, retriever, passages: Mapping[str, Mappi
     if repetition is not None and not _seconds(budget_s):
         raise ValueError("the time budget must be a finite number of seconds above 0")
     trace: dict = {}  # the cell's record as it stands, for an error that ends the cell
-    with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
-        try:
-            return _case(task, client=client, retriever=retriever, passages=passages, clock=clock,
-                         budget_s=budget_s, spending=spending, pricing=pricing, config=config,
-                         limits=limits, held=held, chosen=chosen, asked=asked,
+    try:  # around the lock too: an error while it is given back carries the record as well
+        with generation._ledger_lock(spending.ledger) as held:  # Phase 2's exclusive folder lock
+            return _case(task, client=client, retriever=retriever, passages=passages,
+                         clock=clock, budget_s=budget_s, spending=spending, pricing=pricing,
+                         config=config, limits=limits, held=held, chosen=chosen, asked=asked,
                          rest=_micro(matrix_rest_usd), repetition=repetition, trace=trace)
-        except BaseException as error:  # the same error goes on; what the cell recorded rides on it
-            with contextlib.suppress(AttributeError, TypeError):
-                error.case_record = trace.get("record")  # codes, counts and hashes, as recorded
-            raise
+    except BaseException as error:  # the same error goes on; what the cell recorded rides on it
+        with contextlib.suppress(AttributeError, TypeError):
+            error.case_record = trace.get("record")  # codes, counts and hashes, as recorded
+        raise
 
 
 def _phase3_spending(spending: Spending, chosen: Condition,
