@@ -183,10 +183,12 @@ ingestion PostgreSQL legs need network.
   (liteparse fetches it without a check) and `manifest.json` the one liteparse's pull writes.
 - **Model download:** `pull` is the only command that downloads (OCRia-nano-1, `ocria-nano` 1.0.0,
   Hugging Face `llamaindex/OCRia-nano-1`). Before liteparse downloads it refuses the platform,
-  variable and model-directory cases above; it installs into the one absolute model directory,
-  sends no Hugging Face token, and checks the sixteen pins after the download. While downloading,
-  liteparse checks the model files and the ONNX Runtime against pins built into its release (its
-  own check, not covered by this tool's tests).
+  variable and model-directory cases above; it then runs liteparse's pull with the one absolute
+  model directory set, without `HF_TOKEN` and with `HF_HOME` naming an empty directory, and checks
+  the sixteen pins after the download. While downloading, liteparse checks the model files and the
+  ONNX Runtime against pins built into its release. The offline tests replace liteparse's pull with
+  a stand-in that only records the call, so the transfer, what it sends and liteparse's own checks
+  are not tested.
 - **OCR failures:** liteparse 2.21.4 reports a page whose OCR failed only on native stderr
   (`[ocr] failed for page N: ...`, then `[ocr] k/n page(s) failed OCR; continuing with partial
   results`) and returns the page anyway, without OCR text; it raises only when every OCR task failed
@@ -197,14 +199,16 @@ ingestion PostgreSQL legs need network.
   itself and must match its manifest's SHA-256. A manifest that cannot be read (one nested too
   deeply for the JSON parser included), has neither a `sources` nor an `editions` list (a section
   that is not a list counts), or names a commentary path no file system can take (an embedded NUL)
-  is refused by name. Every section a manifest has gets the same structural checks, so a valid
-  `sources` section cannot hide an `editions` section that fails them: `sources` is a list of
-  objects with a string path without NUL, a string SHA-256 and a list of effective dates;
+  is refused by name. The checks see the manifest as the JSON parser decodes it, in which a
+  repeated key keeps only its last value. `sources` and `editions`, whichever it holds, are each
+  checked by their own structure, so a valid `sources` section cannot hide an `editions` section
+  that fails its checks: `sources` is a list of objects with a string path without NUL, a string
+  SHA-256 and a list of effective dates;
   `editions` is a list of objects, each with a `documents` list, in which every document is an
   object with a `kind`, every commentary document has a string path without NUL and a string
   SHA-256, and every edition holding a commentary document has an `effective_date`. Paths of other
-  document kinds and the values of the dates are not checked. With both sections, the PDF comes
-  from `sources`.
+  document kinds and the values of the dates are not checked. With both sections valid, the PDF
+  comes from `sources`.
 - **Network:** `parse` never downloads a model. `uv run --with` fetches liteparse itself when uv's
   cache lacks it, and `uv --offline` stops only uv's own fetches, not the parser process (liteparse
   turns ONNX Runtime's telemetry off only when `ORT_DISABLE_TELEMETRY` is unset; an inherited value,

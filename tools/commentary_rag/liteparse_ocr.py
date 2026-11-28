@@ -36,21 +36,24 @@ own fetches. A parse without network was observed under the network-denying sand
 (``sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...``), which no test
 covers.
 
-What the offline tests check: the backend must be named (``--ocr-backend ocria-nano`` or ``none``,
-no Tesseract), and a parser that resolves another backend is refused before it parses. An
-edition's PDF must lie inside ``--root``, must not be a link and must match its manifest's SHA-256;
-a manifest that cannot be read, lacks a ``sources`` or ``editions`` list, or names a commentary
-path with a NUL, in any section it has, is refused by name (with both sections, the PDF comes from
-``sources``). The OCRia-nano path first refuses another platform than macOS arm64, any variable
+What the offline tests check (with liteparse replaced at its import seam): the backend must be
+named (``--ocr-backend ocria-nano`` or ``none``, no Tesseract), and a parser that resolves another
+backend is refused before it parses. An edition's PDF must lie inside ``--root``, must not be a
+link and must match its manifest's SHA-256; a manifest that cannot be read, has neither a
+``sources`` nor an ``editions`` list, or names a commentary path with a NUL is refused by name, and
+so is a malformed ``editions`` section beside a valid ``sources`` section (with both sections
+valid, the PDF comes from ``sources``). The OCRia-nano path first refuses another platform than
+macOS arm64, any variable
 named ``DYLD_*`` or ``LD_*`` or ``ORT_DYLIB_PATH`` (even empty), and an empty or relative
 ``LITEPARSE_MODEL_DIR``. It then uses one absolute model directory (``LITEPARSE_MODEL_DIR``, else
 ``$HOME/.cache/liteparse/models``), handed to liteparse, both for parsing and for the check that the
 package liteparse lists there is ocria-nano 1.0.0 with exactly the sixteen files pinned below, each
 matching its size and SHA-256. An OCR failure that liteparse reports only on native stderr (file
 descriptor 2 is captured during the parse) refuses the run, and so do pages the request did not
-name or did not get. ``--ocr-backend none`` needs no model. ``pull``, the only command that
-downloads, refuses the platform, variable and directory cases before liteparse downloads, sends no
-Hugging Face token, and checks the pins afterwards. A refusal exits 1 with nothing on stdout.
+name or did not get. ``--ocr-backend none`` needs no model. ``pull`` refuses the platform, variable
+and directory cases before it calls liteparse's pull, calls it for ``ocria-nano@1.0.0`` with the
+model directory set, no ``HF_TOKEN`` and ``HF_HOME`` naming an empty directory, and checks the
+listed package against the pins afterwards. A refusal exits 1 with nothing on stdout.
 
 The weights have their own licence (OCRia-nano-1 Model License, a modified OpenRAIL-M): see
 docs/agents/dev-tooling.md, and keep their output out of the corpus.
@@ -263,11 +266,13 @@ def _checked(name: str, listed: list[tuple]) -> list[tuple]:
 def documents(data: dict) -> list[dict]:
     """A manifest's commentary PDFs, from ``sources[]`` or from ``editions[].documents[]``.
 
-    Every section present gets the same structural checks, so a valid ``sources`` section cannot
-    hide an ``editions`` section that fails them; when both are present, the PDFs come from
-    ``sources``. Documents of other kinds are checked only for having a ``kind``; the values of
-    the dates are not checked. A manifest without either section, or whose structure fails, raises
-    ValueError, KeyError or TypeError, each of which the manifest reader refuses by name.
+    ``data`` is the manifest as ``json.loads`` decodes it, so of a repeated key only the last value
+    is here. ``sources`` and ``editions``, whichever ``data`` holds, are each checked by their own
+    structure, so a valid ``sources`` section cannot hide an ``editions`` section that fails its
+    checks; when both are present and valid, the PDFs come from ``sources``. Documents of other
+    kinds are checked only for having a ``kind``; the values of the dates are not checked. A
+    manifest without either section, or whose structure fails, raises ValueError, KeyError or
+    TypeError, each of which the manifest reader refuses by name.
     """
 
     if not isinstance(data, dict) or not ("sources" in data or "editions" in data):
