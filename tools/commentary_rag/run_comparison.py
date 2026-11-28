@@ -28,7 +28,8 @@ cells still to run (every call at the input cap: USD 10.3488 for B, C and D of a
 fit beside everything committed in those books, so a case that does not fit stops the run before
 anything of it is sent. A rerun after an interruption skips every cell already in the books and
 goes on in the frozen order; a cell whose booking is unresolved (a reservation without a
-settlement: sending unknown) is never sent again, and its case stays incomplete.
+settlement: sending unknown) is never sent again, and its case stays incomplete unless an earlier
+call of that cell was demonstrably sent (the cell then ran and failed).
 
 The input is a cases file holding each case's ID, question and editions and nothing else: any
 other field (a reference answer, gold evidence, a rubric) is refused before the file is used, so
@@ -1419,7 +1420,8 @@ def _aborted(  # noqa: PLR0913
     after the last recorded step is inferred. Without that record the cell keeps what the files
     and books show (``trace`` ``not_recorded``). Books that cannot be read, whatever their damage,
     take no part (accounting ``unknown``); a call readable books settle as sent that the run
-    cannot show it sent leaves the accounting ``uncertain``."""
+    cannot show it sent leaves the accounting ``uncertain``, ahead of any overage, which stays
+    on its call (``above_reservation``, unconfirmed calls included)."""
 
     try:
         books = {
@@ -1531,6 +1533,9 @@ def _aborted(  # noqa: PLR0913
                 "request_sha256": request,
                 "reserved_usd": ((booked or {}).get("reserve") or {}).get("reserved_usd"),
                 "settlement": (((booked or {}).get("settle")) or {}).get("cost_basis"),
+                "above_reservation": (((booked or {}).get("settle")) or {}).get(
+                    "above_reservation"
+                ),
             }
             for n, attempt, request, _, booked in unconfirmed
         ],
@@ -1542,14 +1547,16 @@ def _aborted(  # noqa: PLR0913
         accounting = "unknown"
     elif not calls:
         accounting = "nothing_reserved"
-    elif any(s is None for s in settles):
-        accounting = "uncertain"  # a reservation without a settlement
+    elif (
+        any(s is None for s in settles)  # a reservation without a settlement
+        or any(s.get("cost_basis") not in ("usage", "not_sent") for s in settles)
+        or any(  # a call the books settle as sent that this run cannot show it sent
+            ((booked or {}).get("settle") or {}).get("sent") is True for *_, booked in unconfirmed
+        )
+    ):  # any uncertainty first: an overage stays visible on its call (above_reservation)
+        accounting = "uncertain"
     elif any(s.get("above_reservation") for s in settles):
         accounting = "above_reservation"
-    elif any(s.get("cost_basis") not in ("usage", "not_sent") for s in settles) or any(
-        ((booked or {}).get("settle") or {}).get("sent") is True for *_, booked in unconfirmed
-    ):  # also a call the books settle as sent that this run cannot show it sent
-        accounting = "uncertain"
     else:
         accounting = "priced"
     status = {"execution": "aborted", "detail": detail, "answer": None, "accounting": accounting}

@@ -3252,3 +3252,36 @@ def test_books_that_cannot_be_read_for_any_reason_keep_the_send_the_run_proves(
     second = json.loads((outputs(isolated, tag="2026-11-27")[1] / "result.json").read_text("utf-8"))
     (case_,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
     assert (case_["cells"][1]["ran"], case_["complete"]) == (True, True)
+
+
+def test_a_digest_conflict_on_a_call_above_its_reservation_stays_uncertain_with_its_overage(
+    isolated, monkeypatch, capsys
+):
+    # C's answer costs more than its reservation (settled from usage, above it); when the run
+    # recovers (the lock's release interrupted), its response file no longer holds that answer.
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, _, d = phase4_answers()
+    live(isolated, monkeypatch, b, {**final(("C.", [TOP5[0]])), "usage": _dearest(1651)})
+    local = outputs(isolated, tag="2026-11-26")[1]
+
+    def altered():
+        (local / "responses" / "E1-agent-r1-call1.json").write_text("{}", "utf-8")
+
+    real_lock = generation._ledger_lock
+    interrupt_release(monkeypatch, after=altered)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_ledger_lock", real_lock)
+
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    record = kept_cell["record"]
+    assert (record["generation_calls"], record["calls"]) == (0, [])
+    # The uncertainty is the cell's accounting; the overage stays with its call.
+    assert kept_cell["status"]["accounting"] == "uncertain"
+    assert [
+        (x["attempt"], x["settlement"], x["above_reservation"]) for x in record["unconfirmed_calls"]
+    ] == [("E1-agent-r1-call1", "usage", True)]
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    assert len(again.creates) == 1  # D only: C's call is never sent again
