@@ -1,0 +1,508 @@
+"""Offline tests for liteparse_ocr.py, the opt-in LiteParse / OCRia-nano-1 diagnostic.
+
+liteparse is in no environment of this repository, so every test replaces it at the module's
+import seam (``LiteParse``, ``ParseError``, ``models`` and the version lookup) with a stand-in
+that records what the tool asked for. Nothing is downloaded and nothing is parsed: the PDF bytes
+are synthetic and only their SHA-256 matters, the page text is made up.
+"""
+
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import os
+import sys
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+
+import liteparse_ocr
+
+PDF = b"%PDF-1.7\n% synthetic bytes: the stand-in parser never reads them\n"
+EDITION = "2031-07-01"
+NANO = "ocria-nano"
+
+
+def sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+class FakeParseError(Exception):
+    """Stands in for liteparse.ParseError."""
+
+
+class FakeModels:
+    """Stands in for liteparse.models: what is installed, and a pull that only records."""
+
+    def __init__(self) -> None:
+        self.installed: list[SimpleNamespace] = []
+        self.pulled: list[str] = []
+        self.credentials: list[tuple] = []
+
+    def list(self) -> list[SimpleNamespace]:
+        """The installed packages, as liteparse.models.list() returns them."""
+        return list(self.installed)
+
+    def pull(
+        self, spec: str, *, from_dir: str | None = None, quiet: bool = False
+    ) -> str:
+        """Record the request and the Hugging Face credentials liteparse could have sent."""
+        self.pulled.append(spec)
+        home = os.environ.get("HF_HOME")
+        stored = sorted(os.listdir(home)) if home else None
+        self.credentials.append((os.environ.get("HF_TOKEN"), home is not None, stored))
+        return "/models/ocria-nano"
+
+
+class Library:
+    """One stand-in liteparse per test: its parser class, its models and what it reports."""
+
+    def __init__(self) -> None:
+        self.models = FakeModels()
+        self.built: list = []
+        self.report: dict = {}
+        self.pages = [page(3)]
+        self.total_pages = 4
+        self.error: Exception | None = None
+        library = self
+
+        class Parser:
+            def __init__(self, **options) -> None:
+                self.options = options
+                self.parsed: list[bytes] = []
+                library.built.append(self)
+
+            def get_config(self) -> None:
+                """As in liteparse 2.21.4: its native config lacks keep_clipped_text."""
+                raise AttributeError(
+                    "'builtins.PyLiteParseConfig' object has no attribute"
+                    " 'keep_clipped_text'"
+                )
+
+            @property
+            def _native(self) -> SimpleNamespace:
+                """The native parser; its config holds the resolved values, unless overridden."""
+                resolved = {
+                    "ocr_enabled": self.options.get("ocr_enabled", True),
+                    "ocr_backend": self.options.get("ocr_backend") or "tesseract",
+                    "dpi": 150.0,
+                    "table_model": None,
+                    "ocr_failure_fatal": True,
+                    "target_pages": self.options.get("target_pages"),
+                }
+                resolved.update(library.report)
+                return SimpleNamespace(config=SimpleNamespace(**resolved))
+
+            def parse(self, data: bytes) -> SimpleNamespace:
+                """Return the test's pages, or raise the test's error."""
+                self.parsed.append(data)
+                if library.error is not None:
+                    raise library.error
+                return SimpleNamespace(
+                    pages=library.pages, total_pages=library.total_pages
+                )
+
+        self.parser = Parser
+
+
+@pytest.fixture
+def lib(monkeypatch: pytest.MonkeyPatch) -> Library:
+    library = Library()
+    monkeypatch.setattr(liteparse_ocr, "LiteParse", library.parser)
+    monkeypatch.setattr(liteparse_ocr, "ParseError", FakeParseError)
+    monkeypatch.setattr(liteparse_ocr, "models", library.models)
+    monkeypatch.setattr(liteparse_ocr, "liteparse_version", lambda: "9.9.9")
+    return library
+
+
+def item(text: str, *, confidence: float | None = None) -> SimpleNamespace:
+    return SimpleNamespace(
+        text=text,
+        x=10.0,
+        y=20.0,
+        width=30.0,
+        height=8.0,
+        font_name="Synthetic-Bold",
+        font_size=1.0,
+        font_height=11.0,
+        font_weight=700,
+        confidence=confidence,
+    )
+
+
+def block(text: str, kind: str = "paragraph") -> SimpleNamespace:
+    return SimpleNamespace(
+        kind=kind,
+        text=text,
+        level=None,
+        bold=False,
+        text_item_indices=[0],
+        bbox=SimpleNamespace(x=10.0, y=20.0, width=30.0, height=8.0),
+    )
+
+
+def page(number: int, items=(), blocks=()) -> SimpleNamespace:
+    return SimpleNamespace(
+        page_num=number,
+        page_label=None,
+        width=595.32,
+        height=841.92,
+        text_items=list(items),
+        blocks=list(blocks),
+    )
+
+
+def package(tmp_path: Path, *, complete: bool = True) -> SimpleNamespace:
+    """An installed ocria-nano package with two synthetic files, as models.list() reports it."""
+    folder = tmp_path / "models" / NANO
+    (folder / "runtime").mkdir(parents=True)
+    (folder / "det.onnx").write_bytes(b"detector")
+    (folder / "runtime" / "libonnxruntime.dylib").write_bytes(b"runtime")
+    return SimpleNamespace(
+        name=NANO, version="1.0.0", path=str(folder), size_bytes=15, complete=complete
+    )
+
+
+def a_pdf(tmp_path: Path) -> str:
+    path = tmp_path / "synthetic.pdf"
+    path.write_bytes(PDF)
+    return str(path)
+
+
+def edition_tree(tmp_path: Path, shape: str, digest: str) -> tuple[Path, Path]:
+    """A checkout root holding one commentary PDF and a manifest in one of the two layouts."""
+    root = tmp_path / "root"
+    pdf = root / "data" / "raw" / "commentary.pdf"
+    pdf.parent.mkdir(parents=True)
+    pdf.write_bytes(PDF)
+    entry = {"path": "data/raw/commentary.pdf", "sha256": digest}
+    if shape == "sources":
+        data = {
+            "kind": "commentary_sources",
+            "sources": [{**entry, "effective_dates": [EDITION]}],
+        }
+    else:
+        data = {
+            "editions": [
+                {
+                    "effective_date": EDITION,
+                    "documents": [
+                        {
+                            **entry,
+                            "kind": "full_list_xlsx",
+                            "path": "data/raw/list.xlsx",
+                        },
+                        {**entry, "kind": "commentary_pdf"},
+                    ],
+                }
+            ]
+        }
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(json.dumps(data), encoding="utf-8")
+    return root, manifest
+
+
+def run(*argv: str) -> int:
+    return liteparse_ocr.main(list(argv))
+
+
+def nano(pdf: str, *extra: str) -> int:
+    return run("parse", "--pdf", pdf, "--ocr-backend", NANO, *extra)
+
+
+def test_the_backend_must_be_chosen_explicitly(lib, tmp_path, capsys) -> None:
+    with pytest.raises(SystemExit) as stop:
+        run("parse", "--pdf", a_pdf(tmp_path))
+    assert stop.value.code == 2
+    assert "--ocr-backend" in capsys.readouterr().err
+    assert lib.built == []
+
+
+def test_tesseract_is_not_one_of_the_choices(lib, tmp_path, capsys) -> None:
+    with pytest.raises(SystemExit) as stop:
+        run("parse", "--pdf", a_pdf(tmp_path), "--ocr-backend", "tesseract")
+    assert stop.value.code == 2
+    assert "invalid choice" in capsys.readouterr().err
+    assert lib.built == []
+
+
+@pytest.mark.parametrize("source", [[], ["--pdf", "a.pdf", "--edition", EDITION]])
+def test_the_input_is_one_pdf_or_one_edition(lib, source, capsys) -> None:
+    with pytest.raises(SystemExit) as stop:
+        run("parse", *source, "--ocr-backend", NANO)
+    assert stop.value.code == 2
+    assert lib.built == []
+
+
+@pytest.mark.parametrize("text", ["0", "-1", "3,x", ""])
+def test_pages_are_positive_page_numbers(text) -> None:
+    with pytest.raises(argparse.ArgumentTypeError):
+        liteparse_ocr.page_list(text)
+
+
+def test_pages_come_out_sorted_and_once() -> None:
+    assert liteparse_ocr.page_list("4, 3,4") == [3, 4]
+
+
+def test_without_liteparse_both_commands_exit_2_and_name_the_ephemeral_run(
+    monkeypatch, tmp_path, capsys
+) -> None:
+    monkeypatch.setattr(liteparse_ocr, "LiteParse", None)
+    monkeypatch.setattr(liteparse_ocr, "models", None)
+    assert nano(a_pdf(tmp_path)) == 2
+    assert run("pull") == 2
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert err.count("uv run --no-project --with liteparse==2.21.4") == 2
+
+
+def test_a_missing_model_refuses_without_a_fallback_or_a_download(
+    lib, tmp_path, capsys
+) -> None:
+    assert nano(a_pdf(tmp_path)) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "ocria-nano is not installed" in err
+    assert "liteparse_ocr.py pull" in err
+    assert lib.built == []  # no parser at all, so no other OCR engine either
+    assert lib.models.pulled == []  # and nothing was downloaded
+
+
+def test_an_incomplete_model_package_is_refused(lib, tmp_path, capsys) -> None:
+    lib.models.installed = [package(tmp_path, complete=False)]
+    assert nano(a_pdf(tmp_path)) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "incomplete" in err
+    assert lib.built == []
+    assert lib.models.pulled == []
+
+
+def test_the_nano_path_names_its_backend_and_fails_loudly(lib, tmp_path) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.pages = [page(3), page(4)]
+    assert nano(a_pdf(tmp_path), "--pages", "4,3") == 0
+    options = lib.built[0].options
+    assert options["ocr_enabled"] is True
+    assert options["ocr_backend"] == NANO
+    assert options["ocr_failure_fatal"] is True
+    assert options["target_pages"] == "3,4"
+    assert lib.built[0].parsed == [PDF]
+    assert lib.models.pulled == []
+
+
+def test_the_native_path_turns_ocr_off_and_keeps_the_model_package_out(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]  # installed, and still not used
+    assert (
+        run("parse", "--pdf", a_pdf(tmp_path), "--pages", "3", "--ocr-backend", "none")
+        == 0
+    )
+    options = lib.built[0].options
+    assert options["ocr_enabled"] is False
+    # inert while OCR is off; it stops an installed ocria-nano from becoming the resolved backend
+    assert options["ocr_backend"] == "tesseract"
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["backend"] == "none"
+    assert doc["model"] is None
+
+
+def test_the_reported_backend_and_settings_come_from_the_parser(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.report = {"dpi": 250.0, "table_model": "/synthetic/tablenet.bin"}
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["requested_backend"] == NANO
+    assert doc["backend"] == NANO
+    assert doc["library_config"]["dpi"] == 250.0
+    assert doc["library_config"]["table_model"] == "/synthetic/tablenet.bin"
+    assert doc["liteparse_version"] == "9.9.9"
+
+
+@pytest.mark.parametrize(
+    ("requested", "reported"),
+    [
+        (NANO, {"ocr_backend": "tesseract"}),
+        (NANO, {"ocr_enabled": False}),
+        ("none", {"ocr_enabled": True}),
+    ],
+)
+def test_a_backend_the_parser_does_not_confirm_is_refused_before_parsing(
+    lib, tmp_path, capsys, requested, reported
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.report = reported
+    assert run("parse", "--pdf", a_pdf(tmp_path), "--ocr-backend", requested) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "no fallback" in err
+    assert lib.built[0].parsed == []
+
+
+def test_each_item_and_block_keeps_its_source_page(lib, tmp_path, capsys) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.pages = [
+        page(
+            3,
+            [item("Synthetic heading"), item("Position 1234.56", confidence=0.97)],
+            [block("Synthetic heading", "heading")],
+        ),
+        page(4, [item("Synthetic body text")], [block("Synthetic body text")]),
+    ]
+    assert nano(a_pdf(tmp_path), "--pages", "3,4") == 0
+    doc = json.loads(capsys.readouterr().out)
+    pages = doc["pages"]
+    assert [p["page"] for p in pages] == [3, 4]
+    assert [(i["page"], i["text"]) for p in pages for i in p["text_items"]] == [
+        (3, "Synthetic heading"),
+        (3, "Position 1234.56"),
+        (4, "Synthetic body text"),
+    ]
+    assert [(b["page"], b["kind"]) for p in pages for b in p["blocks"]] == [
+        (3, "heading"),
+        (4, "paragraph"),
+    ]
+    assert pages[0]["text_items"][0]["bbox"] == [10.0, 20.0, 40.0, 28.0]
+    assert pages[0]["text_items"][1]["confidence"] == 0.97
+    assert [p["ocr_items"] for p in pages] == [1, 0]
+
+
+@pytest.mark.parametrize(("asked", "returned"), [("3", [1]), ("3,4", [3])])
+def test_pages_the_request_did_not_name_or_get_are_refused(
+    lib, tmp_path, capsys, asked, returned
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.pages = [page(n) for n in returned]
+    assert nano(a_pdf(tmp_path), "--pages", asked) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "attributed" in err
+
+
+@pytest.mark.parametrize(("returned", "code"), [([1, 2], 0), ([1], 1)])
+def test_without_pages_every_page_of_the_document_must_come_back(
+    lib, tmp_path, capsys, returned, code
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.total_pages = 2
+    lib.pages = [page(n) for n in returned]
+    assert nano(a_pdf(tmp_path)) == code
+    assert "target_pages" not in lib.built[0].options
+    out = capsys.readouterr().out
+    assert (out == "") == bool(code)
+
+
+@pytest.mark.parametrize("shape", ["sources", "editions"])
+def test_an_edition_is_read_from_its_manifest_and_checked(
+    lib, tmp_path, capsys, shape
+) -> None:
+    root, manifest = edition_tree(tmp_path, shape, sha(PDF))
+    lib.models.installed = [package(tmp_path)]
+    out = tmp_path / "out.json"
+    assert (
+        run(
+            "parse",
+            "--edition",
+            EDITION,
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+            "--pages",
+            "3",
+            "--ocr-backend",
+            NANO,
+            "--out",
+            str(out),
+        )
+        == 0
+    )
+    assert capsys.readouterr().out == ""
+    doc = json.loads(out.read_text(encoding="utf-8"))
+    assert doc["source"] == {
+        "path": "data/raw/commentary.pdf",
+        "sha256": sha(PDF),
+        "edition": EDITION,
+        "total_pages": 4,
+    }
+    assert lib.built[0].parsed == [PDF]  # the verified bytes, not a second read
+
+
+def test_an_edition_whose_bytes_differ_from_the_manifest_is_refused(
+    lib, tmp_path, capsys
+) -> None:
+    root, manifest = edition_tree(tmp_path, "sources", "0" * 64)
+    lib.models.installed = [package(tmp_path)]
+    assert (
+        run(
+            "parse",
+            "--edition",
+            EDITION,
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+            "--ocr-backend",
+            NANO,
+        )
+        == 1
+    )
+    assert "SHA-256" in capsys.readouterr().err
+    assert lib.built == []
+
+
+def test_the_model_identity_is_hashed_from_the_package_the_library_resolved(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 0
+    model = json.loads(capsys.readouterr().out)["model"]
+    assert (model["name"], model["version"], model["complete"]) == (NANO, "1.0.0", True)
+    assert model["files"] == [
+        {"file": "det.onnx", "bytes": 8, "sha256": sha(b"detector")},
+        {"file": "runtime/libonnxruntime.dylib", "bytes": 7, "sha256": sha(b"runtime")},
+    ]
+
+
+def test_pull_is_the_one_command_that_downloads_and_it_pins_the_model_version(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [
+        package(tmp_path)
+    ]  # what models.list() shows after the pull
+    assert run("pull") == 0
+    assert lib.models.pulled == ["ocria-nano@1.0.0"]
+    assert lib.built == []
+    model = json.loads(capsys.readouterr().out)["model"]
+    assert (model["name"], model["version"]) == (NANO, "1.0.0")
+
+
+def test_pull_sends_no_hugging_face_token_and_leaves_the_environment_as_it_was(
+    lib, tmp_path, monkeypatch
+) -> None:
+    monkeypatch.setenv("HF_TOKEN", "synthetic-token")
+    monkeypatch.setenv("HF_HOME", str(tmp_path / "hf-home-with-a-stored-token"))
+    lib.models.installed = [package(tmp_path)]
+    assert run("pull") == 0
+    # during the pull: no token variable, and HF_HOME names an empty directory
+    assert lib.models.credentials == [(None, True, [])]
+    assert os.environ["HF_TOKEN"] == "synthetic-token"
+    assert os.environ["HF_HOME"] == str(tmp_path / "hf-home-with-a-stored-token")
+
+
+def test_a_parse_error_is_refused_with_the_librarys_message(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.error = FakeParseError("synthetic: ocria-nano models not found")
+    assert nano(a_pdf(tmp_path)) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "synthetic: ocria-nano models not found" in err

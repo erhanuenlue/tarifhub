@@ -128,3 +128,34 @@ ingestion PostgreSQL legs need network.
   checkout and says so. The skin is the plugin's default until Erhan chooses another (the project
   brand would need his decision).
 - **First use:** the agent loop of arc42 §6, Scenario 5 (`docs/diagrams/agent-search-answer-loop`).
+
+## LiteParse with OCRia-nano-1 (diagnostic only, opt-in)
+
+- **Tool:** `tools/commentary_rag/liteparse_ocr.py`, a standalone diagnostic like the layout probe:
+  the pilot never imports it, its offline tests replace liteparse at the import seam, and liteparse
+  is in no lockfile, service environment or image. It runs in an ephemeral environment with an
+  exact pin, `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py`
+  (the official Python package of `run-llama/liteparse`, Apache-2.0, checked on 2026-11-28).
+- **Model:** OCRia-nano-1 (`ocria-nano` 1.0.0, Hugging Face `llamaindex/OCRia-nano-1`). The
+  tool's `pull` command is the only one that downloads: liteparse installs the package into
+  `$LITEPARSE_MODEL_DIR/ocria-nano` (default `~/.cache/liteparse/models`) and checks every model
+  file and its ONNX Runtime 1.31.1 library against SHA-256 pins built into the release. The pull
+  sends no Hugging Face token; `parse` never downloads and also works with networking denied.
+- **Backend:** always named. `--ocr-backend ocria-nano` or `--ocr-backend none` (native PDF text,
+  OCR off); there is no default and no Tesseract choice. A missing or incomplete model package, or a
+  parser that resolves another backend, stops the run with exit 1 before anything is parsed. With
+  OCR off the tool still names a backend: otherwise liteparse makes an installed ocria-nano package
+  the resolved backend, and its table and layout model then changes the blocks of born-digital
+  pages.
+- **Output:** JSON with every text item and layout block, its bounding box and 1-based source page,
+  the backend liteparse reports, the liteparse version and the SHA-256 of every file in the model
+  package. In liteparse 2.21.4 `get_config()` fails (AttributeError on `keep_clipped_text`), so
+  the tool reads the same values from the native configuration object.
+- **Licence:** the weights are not under LiteParse's licence but under the OCRia-nano-1 Model License
+  (a modified OpenRAIL-M; pulling accepts it). Its Attachment A restricts use above revenue or
+  funding thresholds and in competing document-parsing services, except for Research Purposes,
+  which include evaluating and benchmarking the model. Treat the weights and their output as
+  evaluation material: they stay out of the corpus and out of any product path until Erhan decides
+  otherwise.
+- **Local material:** model files, renders, parser output and scores stay in scratch or git-ignored
+  folders (`tools/commentary_rag/local/`); none of it is committed.
