@@ -1394,11 +1394,14 @@ def _aborted(  # noqa: PLR0913
     Call n is this run's when the run saved its request and either saved a response to it or
     recorded the call after booking it (the record the error carries, ``case_record``, with the
     request's SHA-256); readable books must hold that reservation with that request. It was
-    demonstrably sent when the run also saved its response and readable books, where they
-    settled it, say sent with that response's SHA-256. Those calls, from the first on, are
-    ``generation_calls``, so a cell with one ran and failed (outcome ``aborted``); the run's
-    other calls (open: sending unknown; released: never sent; or sent without a response it
-    kept) are listed under ``unconfirmed_calls`` and confirm nothing. A reservation that only
+    demonstrably sent when the response file the run saved is the complete response: its
+    SHA-256 equals the complete response's as recorded apart from the file, by the cell before
+    it saved the file (``case_record``) and by readable books that settled the call as sent,
+    one of them at least and none different. An empty, cut-short or other file proves no send.
+    Those calls, from the first on, are ``generation_calls``, so a cell with one ran and failed
+    (outcome ``aborted``); the run's other calls (open: sending unknown; released: never sent;
+    sent without a response it kept; or a response file the digests do not confirm) are listed
+    under ``unconfirmed_calls`` and confirm nothing. A reservation that only
     matches a saved request (another run's, possibly: the frozen requests hash alike) is not this
     run's: it is left out of the record, the accounting and the outputs. The cell's own record
     is kept for the sent calls: their entries, the searches they ran (search i belongs to call
@@ -1449,11 +1452,18 @@ def _aborted(  # noqa: PLR0913
     sent = []
     for n, attempt, request, response, booked in calls:  # from the first call on
         settle = booked["settle"] if booked else None
-        if response is None or (
-            settle is not None
-            and (settle.get("sent") is not True or settle.get("response_sha256") != response)
-        ):
-            break
+        entry = entries.get(attempt, {})
+        # The complete response's SHA-256 as recorded apart from the saved file: by the cell,
+        # before it saved the file (its record), and by readable books that settled it as sent.
+        digests = (
+            [entry["response_sha256"]]
+            if entry.get("request_sha256") == request and "response_sha256" in entry
+            else []
+        )
+        if settle is not None:
+            digests.append(settle.get("response_sha256") if settle.get("sent") is True else None)
+        if response is None or not digests or any(d != response for d in digests):
+            break  # no file, or an empty, cut-short or other one: no send proven
         sent.append((n, attempt, request, response, booked))
     unconfirmed = calls[len(sent) :]
     detail = type(error).__name__

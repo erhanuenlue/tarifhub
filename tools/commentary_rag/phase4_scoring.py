@@ -25,7 +25,8 @@ condition contract describes (``phase4/conditions.md``, section 5):
 
 A cell an unexpected error or an interruption ended inside the agent's loop is recorded by the
 runner (``run_comparison._aborted``, outcome ``aborted``): ``generation_calls`` counts the calls
-its run demonstrably sent (its own request and response files, consistent with the books), so with
+its run demonstrably sent (its own saved request and complete response, the response's digest
+confirmed by the cell's record or the books' settlement, consistent with the books), so with
 one it ran and failed (a non-success, as the rubric counts it); a reservation without that proof
 confirms nothing. Its trace holds what the cell recorded for those calls (their searches and the
 passages those supplied) and is scored like any failed cell's: a search that ran is a decision,

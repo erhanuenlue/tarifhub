@@ -2851,3 +2851,98 @@ def test_an_interruption_while_ds_search_is_ranked_keeps_ds_recorded_coverage_un
     again = live(isolated, monkeypatch)
     exit_code(phase4_argv(isolated, cases, tag="2026-11-27"))
     assert again.creates == []  # D's call 1 is in the books: never sent again
+
+
+# An interruption while a response file is written: only the complete response proves a send
+
+CUTS = {
+    "empty": lambda text: "",
+    "truncated": lambda text: text[: len(text) // 2],
+    "other JSON": lambda text: json.dumps({"id": "msg_other", "content": []}),
+}
+
+
+@pytest.mark.parametrize(
+    ("call", "keep", "damaged"),
+    [
+        (1, "empty", False),
+        (1, "truncated", False),
+        (1, "other JSON", False),
+        (2, "truncated", False),  # call 1 proven, call 2 cut short
+        (1, "truncated", True),  # the books cannot be read when the run recovers
+    ],
+)
+def test_a_response_file_an_interruption_cut_short_proves_no_send(  # noqa: PLR0913
+    isolated, monkeypatch, capsys, call, keep, damaged
+):
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, d = phase4_answers()
+    replies = (b, search_call("Pauschale", "Begründung"), c) if call == 2 else (b, c)
+    live(isolated, monkeypatch, *replies)
+    attempt = f"E1-agent-r1-call{call}"
+    real = Path.open
+
+    class Cut:  # C's response file as the interruption leaves it, before any settlement
+        def __init__(self, handle) -> None:
+            self.handle = handle
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc) -> None:
+            self.handle.close()
+
+        def write(self, text: str) -> None:
+            self.handle.write(CUTS[keep](text))
+            self.handle.flush()
+            if damaged:  # meanwhile the books were damaged: they cannot be read
+                with phase4_path(isolated).open("a", encoding="utf-8") as books_:
+                    books_.write('{"event": "settle"')
+            raise KeyboardInterrupt
+
+    def opening(self, mode="r", *args, **kwargs):
+        handle = real(self, mode, *args, **kwargs)
+        if self.name == f"{attempt}.json" and self.parent.name == "responses" and "x" in mode:
+            return Cut(handle)
+        return handle
+
+    monkeypatch.setattr(Path, "open", opening)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(Path, "open", real)
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    record = kept_cell["record"]
+    assert kept_cell["status"]["accounting"] == ("unknown" if damaged else "uncertain")
+    # The saved file is not the response the cell recorded: no send proven by it. Its call
+    # stays this run's booking, apart and unconfirmed; an earlier proven call stays proven.
+    assert (record["generation_calls"], [x["attempt"] for x in record["calls"]]) == (
+        call - 1,
+        [f"E1-agent-r1-call{n}" for n in range(1, call)],
+    )
+    assert [(x["attempt"], x["settlement"]) for x in record["unconfirmed_calls"]] == [
+        (attempt, None)
+    ]
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+    if damaged:  # refused until Erhan repairs the books: the damaged line is removed
+        assert exit_code(phase4_argv(isolated, cases, tag="2026-11-27")) == 3
+        path = phase4_path(isolated)
+        text = path.read_text("utf-8")
+        path.write_text(text[: text.rindex("\n") + 1], "utf-8")
+
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-28")) == 0
+
+    assert len(again.creates) == 1  # D only: C's call is never sent again
+    events = [e["event"] for e in phase4_ledger(isolated) if e.get("attempt") == attempt]
+    assert events == ["reserve"]  # its reservation stays open: committed, never released
+    results = [
+        json.loads((outputs(isolated, tag=tag)[1] / "result.json").read_text("utf-8"))
+        for tag in ("2026-11-26", "2026-11-28")
+    ]
+    (case_,) = phase4_scoring.score(results, gold("E1"))["cases"]
+    c_cell = case_["cells"][1]
+    assert (c_cell["ran"], c_cell["calls"], case_["complete"]) == (
+        (True, 1, True) if call == 2 else (False, None, False)
+    )
