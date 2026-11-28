@@ -79,7 +79,6 @@ import dataclasses
 import hashlib
 import json
 import math
-import os
 import platform
 import secrets
 import subprocess
@@ -1424,28 +1423,23 @@ def _aborted(  # noqa: PLR0913
     after the last recorded step is inferred. Without that record the cell keeps what the files
     and books show (``trace`` ``not_recorded``). Books that cannot be read, whatever their damage,
     take no part (accounting ``unknown``), and neither does a Phase 4 ledger that is not there
-    when the run recovers: a missing ledger is a new one to admission only, so absent books
+    when the run recovers (``phase4_cell`` reports it in the same read that would find the
+    booking): a missing ledger is a new one to admission only, so absent books
     confirm and contradict nothing, the run's own files and record still decide, and a missing
     ledger alone proves nothing; a call readable books settle as sent that the run
     cannot show it sent leaves the accounting ``uncertain``, ahead of any overage, which stays
     on its call (``above_reservation``, unconfirmed calls included)."""
 
-    ledger = evidence_agent.BOOKS / evidence_agent.PHASE4_LEDGER  # os.path.exists never raises
-    absent = not os.path.exists(ledger)
     try:
-        books = {
-            b["reserve"]["attempt"]: b
-            for b in evidence_agent.phase4_cell(item["id"], name, PHASE4_REPETITION)
-        }
-        readable = True
+        # None: the ledger was not there as it was read, a new one to admission but never to a
+        # recovery: absent books confirm and contradict nothing, like books that cannot be read
+        cell = evidence_agent.phase4_cell(item["id"], name, PHASE4_REPETITION)
     except (ValueError, OSError, ArithmeticError, RecursionError):
         # damaged or unreadable (an amount past float range or nesting past the parser
         # included): the files and the record still show
-        books, readable = {}, False
-    if readable and not books and (absent or not os.path.exists(ledger)):
-        # A ledger that is not there is a new one to admission, never to recovery: books gone
-        # since the run booked confirm and contradict nothing, like books that cannot be read.
-        readable = False
+        cell = None
+    readable = cell is not None
+    books = {b["reserve"]["attempt"]: b for b in cell or []}
     partial = getattr(error, "case_record", None)
     entries = {
         c.get("attempt"): c

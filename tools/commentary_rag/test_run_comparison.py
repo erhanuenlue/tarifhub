@@ -3437,3 +3437,82 @@ def test_an_uncertain_tool_turn_and_a_later_overage_leave_the_cell_uncertain_wit
     again = live(isolated, monkeypatch, d)
     assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
     assert len(again.creates) == 1  # D only: neither of C's calls is sent again
+
+
+def test_a_phase4_ledger_gone_only_while_recovery_reads_it_keeps_the_proven_send(
+    isolated, monkeypatch, capsys
+):
+    # C's call is booked, sent, saved and settled; the ledger is away exactly while the recovery
+    # reads it (the real reader finds no file) and back before anything else looks.
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, d = phase4_answers()
+    live(isolated, monkeypatch, b, c)
+    kept = isolated["tmp"] / "kept-ledger.jsonl"
+    real_ledger = evidence_agent._ledger
+
+    def gone_while_read(path, *args, **kwargs):
+        os.replace(path, kept)
+        try:
+            return real_ledger(path, *args, **kwargs)
+        finally:
+            os.replace(kept, path)
+
+    real_lock = generation._ledger_lock
+    interrupt_release(
+        monkeypatch,
+        after=lambda: monkeypatch.setattr(evidence_agent, "_ledger", gone_while_read),
+    )
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_ledger_lock", real_lock)
+    monkeypatch.setattr(evidence_agent, "_ledger", real_ledger)
+
+    first = json.loads((outputs(isolated, tag="2026-11-26")[1] / "result.json").read_text("utf-8"))
+    kept_cell = first["cases"][0]["cells"][1]
+    assert kept_cell["status"]["accounting"] == "unknown"  # the books it read were not there
+    assert kept_cell["record"]["generation_calls"] == 1  # the send the run proves is kept
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    assert len(again.creates) == 1  # D only: C is neither sent nor booked again
+    second = json.loads((outputs(isolated, tag="2026-11-27")[1] / "result.json").read_text("utf-8"))
+    (case_,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
+    assert (case_["cells"][1]["ran"], case_["complete"]) == (True, True)
+
+
+def test_readable_books_without_the_cells_booking_decide_even_when_gone_after_the_read(
+    isolated, monkeypatch, capsys
+):
+    # The recovery reads an earlier copy of the ledger that holds no booking of C's cell (the
+    # books contradict the run's files), and the ledger is gone right after that read: the
+    # readable books decide, as for any reservation the run cannot show as its own.
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, _ = phase4_answers()
+    live(isolated, monkeypatch, b, c)
+    kept = isolated["tmp"] / "kept-ledger.jsonl"
+    real_ledger = evidence_agent._ledger
+
+    def earlier_then_gone(path, *args, **kwargs):
+        lines = path.read_bytes().splitlines(keepends=True)
+        path.write_bytes(b"".join(x for x in lines if b"E1-agent-r1-call" not in x))
+        try:
+            return real_ledger(path, *args, **kwargs)
+        finally:
+            os.replace(path, kept)
+
+    real_lock = generation._ledger_lock
+    interrupt_release(
+        monkeypatch,
+        after=lambda: monkeypatch.setattr(evidence_agent, "_ledger", earlier_then_gone),
+    )
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_ledger_lock", real_lock)
+    monkeypatch.setattr(evidence_agent, "_ledger", real_ledger)
+
+    kept_cell = json.loads(
+        (outputs(isolated, tag="2026-11-26")[1] / "result.json").read_text("utf-8")
+    )["cases"][0]["cells"][1]
+    record = kept_cell["record"]
+    assert kept_cell["status"]["accounting"] == "nothing_reserved"
+    assert (record["generation_calls"], record["calls"], record["unconfirmed_calls"]) == (0, [], [])

@@ -703,11 +703,14 @@ def _phase4_state(config: generation.Config, pricing: generation.Pricing,
     }
 
 
-def phase4_cell(case_id: str, condition: str, repetition: int) -> list[dict]:
+def phase4_cell(case_id: str, condition: str, repetition: int) -> list[dict] | None:
     """The reservations of one Phase 4 cell (repetition, case, condition) in ``BOOKS``, in the
     order written, each with its settlement or None (``{"reserve": ..., "settle": ...}``): read
-    strictly but without the lock, as ``spending_state`` reads them, and nothing written. Raises
-    ValueError with the refusal's code when the books cannot be used as they are."""
+    strictly but without the lock, as ``spending_state`` reads them, and nothing written. None
+    when the ledger is not there as it is read: only a missing ledger reads as no events (a
+    present one holds its pin), which admission takes for new books and a recovery for books it
+    cannot consult. Raises ValueError with the refusal's code when the books cannot be used as
+    they are."""
 
     config = generation.Config()
     folder = BOOKS.resolve()
@@ -717,6 +720,8 @@ def phase4_cell(case_id: str, condition: str, repetition: int) -> list[dict]:
         events = _phase4_books(spending, _prices(config))
     except _Refused as refusal:
         raise ValueError(refusal.detail) from None
+    if not events:  # the ledger was not there when it was read
+        return None
     settled = {e["attempt"]: e for e in events if e["event"] == "settle"}
     return [{"reserve": e, "settle": settled.get(e["attempt"])} for e in events
             if e["event"] == "reserve"
