@@ -140,8 +140,8 @@ ingestion PostgreSQL legs need network.
   JSON escape) written past Python's text layer, so they read as UTF-8 whatever encoding stdout is
   set to (the locale or `PYTHONIOENCODING`); the tool has no output option. Write each report into
   a new folder under the git-ignored `tools/commentary_rag/local/` (or outside the repository), so
-  that a repeat cannot overwrite an earlier one, and chain the steps, so that a failed step stops
-  the rest before the redirect:
+  that a repeat cannot overwrite an earlier one, and chain the folder steps with the parse, so that
+  a failed `mkdir` or `mktemp` stops before the redirect:
   `mkdir -p tools/commentary_rag/local && out=$(mktemp -d tools/commentary_rag/local/liteparse-XXXXXX) && ... > "$out/2021-07-01-p3-4.json"`;
   a refused run leaves that file empty and exits 1. The JSON holds every text item and layout
   block (every field of liteparse's block: table header and rows with each cell's text,
@@ -195,13 +195,14 @@ ingestion PostgreSQL legs need network.
   line, so nothing reaches stdout; a page without OCR text in a printed report had no OCR failure.
 - **Input:** an edition's PDF must lie inside `--root` once links are resolved, must not be a link
   itself and must match its manifest's SHA-256. A manifest that cannot be read, has neither a
-  `sources` nor an `editions` list (a section that is not a list counts), or names a path no file
-  system can take (an embedded NUL) is refused by name. Every section a manifest has gets the same
-  structural checks, so a valid `sources` section cannot hide an `editions` section that fails them:
-  `sources` is a list of entries with a string path without NUL, a string SHA-256 and a list of
-  effective dates; `editions` is a list of editions, each with a `documents` list, whose commentary
-  documents have a string path without NUL and a string SHA-256. Documents of other kinds are
-  checked only for having a `kind`, and the dates only for being in a list. With both sections, the PDF comes from `sources`.
+  `sources` nor an `editions` list (a section that is not a list counts), or names a commentary
+  path no file system can take (an embedded NUL) is refused by name. Every section a manifest has
+  gets the same structural checks, so a valid `sources` section cannot hide an `editions` section
+  that fails them: `sources` is a list of entries with a string path without NUL, a string SHA-256
+  and a list of effective dates; `editions` is a list of editions, each with a `documents` list,
+  whose commentary documents have a string path without NUL and a string SHA-256. Documents of
+  other kinds are checked only for having a `kind` (their paths are not checked), and the dates
+  only for being in a list. With both sections, the PDF comes from `sources`.
 - **Network:** `parse` never downloads a model. `uv run --with` fetches liteparse itself when uv's
   cache lacks it, and `uv --offline` stops only uv's own fetches, not the parser process (liteparse
   turns ONNX Runtime's telemetry off only when `ORT_DISABLE_TELEMETRY` is unset; an inherited value,

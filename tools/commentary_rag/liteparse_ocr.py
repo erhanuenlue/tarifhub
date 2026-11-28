@@ -27,9 +27,9 @@ checkout that holds the git-ignored BAG PDFs (or name that checkout with ``--roo
         parse --edition 2021-07-01 --pages 3,4 --ocr-backend ocria-nano \\
         > "$out/2021-07-01-p3-4.json"
 
-Each report goes into a new folder, so a repeat never overwrites an earlier one. The steps are
-chained, so a failed step stops the rest before the redirect; a refused run leaves its file empty
-and exits 1.
+Each report goes into a new folder, so a repeat never overwrites an earlier one. The folder steps
+are chained with the parse, so a failed ``mkdir`` or ``mktemp`` stops before the redirect; a refused run
+(after a failed ``pull``, say) leaves its file empty and exits 1.
 
 ``uv run --with`` fetches liteparse when uv's cache lacks it, and ``uv --offline`` stops only uv's
 own fetches. A parse without network was observed under the network-denying sandbox

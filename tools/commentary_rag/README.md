@@ -158,8 +158,8 @@ observation on this set, not an accuracy figure.
       parse --edition 2021-07-01 --pages 3,4 --ocr-backend ocria-nano > "$out/2021-07-01-p3-4.json"
   ```
 
-  The steps are chained, so a failed step stops the rest before the redirect; a refused run leaves
-  that file empty and exits 1. `uv run --with` fetches liteparse when uv's
+  The folder steps are chained with the parse, so a failed `mkdir` or `mktemp` stops before the
+  redirect; a refused run (after a failed `pull`, say) leaves that file empty and exits 1. `uv run --with` fetches liteparse when uv's
   cache lacks it, and `--offline` stops only uv's own fetches; a parse without network was observed
   under the network-denying sandbox
   (`sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...`), which no
