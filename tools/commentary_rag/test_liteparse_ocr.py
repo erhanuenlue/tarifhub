@@ -1364,3 +1364,18 @@ def test_a_refusal_under_an_ascii_stdout_still_exits_1_with_nothing_on_stdout(
     assert done.returncode == 1
     assert raw == b""
     assert "liteparse_ocr refused:" in done.stderr.decode("utf-8", "replace")
+
+
+def test_a_manifest_nested_past_the_json_parser_is_refused_by_name(
+    lib, tmp_path, capsys
+) -> None:
+    """A manifest too deeply nested for the JSON parser cannot be read: refused by name."""
+    root, _ = edition_tree(tmp_path, "sources", sha(PDF))
+    deep = tmp_path / "deep-manifest.json"
+    deep.write_text("[" * 200_000 + "]" * 200_000, encoding="utf-8")
+    lib.models.installed = [package(tmp_path)]
+    assert parse_edition(root, deep) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "deep-manifest.json" in err
+    assert lib.built == []

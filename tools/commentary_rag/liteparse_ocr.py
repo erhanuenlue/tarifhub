@@ -28,8 +28,8 @@ checkout that holds the git-ignored BAG PDFs (or name that checkout with ``--roo
         > "$out/2021-07-01-p3-4.json"
 
 Each report goes into a new folder, so a repeat never overwrites an earlier one. The folder steps
-are chained with the parse, so a failed ``mkdir`` or ``mktemp`` stops before the redirect; a refused run
-(after a failed ``pull``, say) leaves its file empty and exits 1.
+are chained with the parse, so a failed ``mkdir`` or ``mktemp`` stops before the redirect; a
+refused run (after a failed ``pull``, say) leaves its file empty and exits 1.
 
 ``uv run --with`` fetches liteparse when uv's cache lacks it, and ``uv --offline`` stops only uv's
 own fetches. A parse without network was observed under the network-denying sandbox
@@ -266,7 +266,8 @@ def documents(data: dict) -> list[dict]:
     Every section present gets the same structural checks, so a valid ``sources`` section cannot
     hide an ``editions`` section that fails them; when both are present, the PDFs come from
     ``sources``. Documents of other kinds are checked only for having a ``kind``; the values of
-    the dates are not checked. A manifest without either section, or whose structure fails, is a ValueError.
+    the dates are not checked. A manifest without either section, or whose structure fails, raises
+    ValueError, KeyError or TypeError, each of which the manifest reader refuses by name.
     """
 
     if not isinstance(data, dict) or not ("sources" in data or "editions" in data):
@@ -287,7 +288,8 @@ def documents(data: dict) -> list[dict]:
 def _manifest_documents(manifest: Path) -> list[dict]:
     try:
         return documents(json.loads(manifest.read_text(encoding="utf-8")))
-    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+    # RecursionError: nested past the JSON parser's depth, a manifest that cannot be read
+    except (OSError, ValueError, KeyError, TypeError, AttributeError, RecursionError) as exc:
         raise Refused(
             f"{manifest}: not a readable manifest ({type(exc).__name__}: {exc})"
         ) from exc

@@ -139,8 +139,8 @@ observation on this set, not an accuracy figure.
   one manifest-verified commentary edition (a file inside `--root`, not a link), with LiteParse and
   an explicitly chosen backend (`--ocr-backend ocria-nano` for OCRia-nano-1, or `none` for the
   native text with OCR off), and prints its report to stdout only, as ASCII-only JSON bytes that
-  read as UTF-8 whatever encoding stdout is set to: each text item and block (table cells, code and grid lines included) with
-  its source page, the backend the parser resolved and a per-page count of OCR items. While it
+  read as UTF-8 whatever encoding stdout is set to: each text item and block (table cells, code
+  and grid lines included) with its source page, the backend the parser resolved and a per-page count of OCR items. While it
   parses, with either backend, it captures liteparse's native stderr in a temporary file and then
   passes it on to stderr, so a parse needs a writable temporary directory. Only the OCRia-nano
   backend needs the model and its checks: macOS arm64, no variable named `DYLD_*` or `LD_*` and no
@@ -159,9 +159,9 @@ observation on this set, not an accuracy figure.
   ```
 
   The folder steps are chained with the parse, so a failed `mkdir` or `mktemp` stops before the
-  redirect; a refused run (after a failed `pull`, say) leaves that file empty and exits 1. `uv run --with` fetches liteparse when uv's
-  cache lacks it, and `--offline` stops only uv's own fetches; a parse without network was observed
-  under the network-denying sandbox
+  redirect; a refused run (after a failed `pull`, say) leaves that file empty and exits 1.
+  `uv run --with` fetches liteparse when uv's cache lacks it, and `--offline` stops only uv's own
+  fetches; a parse without network was observed under the network-denying sandbox
   (`sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...`), which no
   test covers. Without liteparse it exits 2, on a refusal 1. The weights have their own licence;
   see `docs/agents/dev-tooling.md`.

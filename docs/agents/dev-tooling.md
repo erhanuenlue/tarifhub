@@ -194,16 +194,17 @@ ingestion PostgreSQL legs need network.
   library). The tool captures file descriptor 2 during the parse and refuses the run on any `[ocr]`
   line, so nothing reaches stdout; a page without OCR text in a printed report had no OCR failure.
 - **Input:** an edition's PDF must lie inside `--root` once links are resolved, must not be a link
-  itself and must match its manifest's SHA-256. A manifest that cannot be read, has neither a
-  `sources` nor an `editions` list (a section that is not a list counts), or names a commentary
-  path no file system can take (an embedded NUL) is refused by name. Every section a manifest has
-  gets the same structural checks, so a valid `sources` section cannot hide an `editions` section
-  that fails them: `sources` is a list of entries with a string path without NUL, a string SHA-256
-  and a list of effective dates; `editions` is a list of editions, each with a `documents` list,
-  in which every document has a `kind`, every commentary document a string path without NUL and a
-  string SHA-256, and every edition holding a commentary document an `effective_date`. Paths of
-  other document kinds and the values of the dates are not checked. With both sections, the PDF
-  comes from `sources`.
+  itself and must match its manifest's SHA-256. A manifest that cannot be read (one nested too
+  deeply for the JSON parser included), has neither a `sources` nor an `editions` list (a section
+  that is not a list counts), or names a commentary path no file system can take (an embedded NUL)
+  is refused by name. Every section a manifest has gets the same structural checks, so a valid
+  `sources` section cannot hide an `editions` section that fails them: `sources` is a list of
+  objects with a string path without NUL, a string SHA-256 and a list of effective dates;
+  `editions` is a list of objects, each with a `documents` list, in which every document is an
+  object with a `kind`, every commentary document has a string path without NUL and a string
+  SHA-256, and every edition holding a commentary document has an `effective_date`. Paths of other
+  document kinds and the values of the dates are not checked. With both sections, the PDF comes
+  from `sources`.
 - **Network:** `parse` never downloads a model. `uv run --with` fetches liteparse itself when uv's
   cache lacks it, and `uv --offline` stops only uv's own fetches, not the parser process (liteparse
   turns ONNX Runtime's telemetry off only when `ORT_DISABLE_TELEMETRY` is unset; an inherited value,
