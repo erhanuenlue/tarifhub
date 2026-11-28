@@ -265,8 +265,8 @@ def documents(data: dict) -> list[dict]:
 
     Every section present gets the same structural checks, so a valid ``sources`` section cannot
     hide an ``editions`` section that fails them; when both are present, the PDFs come from
-    ``sources``. Documents of other kinds are checked only for having a ``kind``, and the dates
-    only for being in a list. A manifest without either section, or whose structure fails, is a ValueError.
+    ``sources``. Documents of other kinds are checked only for having a ``kind``; the values of
+    the dates are not checked. A manifest without either section, or whose structure fails, is a ValueError.
     """
 
     if not isinstance(data, dict) or not ("sources" in data or "editions" in data):

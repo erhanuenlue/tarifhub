@@ -200,9 +200,10 @@ ingestion PostgreSQL legs need network.
   gets the same structural checks, so a valid `sources` section cannot hide an `editions` section
   that fails them: `sources` is a list of entries with a string path without NUL, a string SHA-256
   and a list of effective dates; `editions` is a list of editions, each with a `documents` list,
-  whose commentary documents have a string path without NUL and a string SHA-256. Documents of
-  other kinds are checked only for having a `kind` (their paths are not checked), and the dates
-  only for being in a list. With both sections, the PDF comes from `sources`.
+  in which every document has a `kind`, every commentary document a string path without NUL and a
+  string SHA-256, and every edition holding a commentary document an `effective_date`. Paths of
+  other document kinds and the values of the dates are not checked. With both sections, the PDF
+  comes from `sources`.
 - **Network:** `parse` never downloads a model. `uv run --with` fetches liteparse itself when uv's
   cache lacks it, and `uv --offline` stops only uv's own fetches, not the parser process (liteparse
   turns ONNX Runtime's telemetry off only when `ORT_DISABLE_TELEMETRY` is unset; an inherited value,
