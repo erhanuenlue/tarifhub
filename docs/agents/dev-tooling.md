@@ -136,58 +136,59 @@ ingestion PostgreSQL legs need network.
   is in no lockfile, service environment or image. It runs in an ephemeral environment with an
   exact pin, `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py`
   (the official Python package of `run-llama/liteparse`, Apache-2.0, checked on 2026-11-28).
-  `uv run --with` fetches liteparse itself when uv's cache lacks it, and `uv --offline` stops only
-  uv's own fetches, not the parser process: liteparse turns ONNX Runtime's telemetry off only when
-  `ORT_DISABLE_TELEMETRY` is unset (an inherited value, `0` included, is kept). A parse without
-  network is therefore the one run, with a warm cache, under the network-denying sandbox:
-  `sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline --no-project --with liteparse==2.21.4 ...`.
-- **Model:** OCRia-nano-1 (`ocria-nano` 1.0.0, Hugging Face `llamaindex/OCRia-nano-1`). The
-  tool's `pull` command is the only one that downloads: liteparse installs the package into
-  `$LITEPARSE_MODEL_DIR/ocria-nano` (default `~/.cache/liteparse/models`, on Windows
-  `%LOCALAPPDATA%\liteparse\models`; a set but empty `LITEPARSE_MODEL_DIR` means the current
-  directory) and, while it downloads, checks the model files and the ONNX Runtime 1.31.1 library
-  against SHA-256 pins built into the release; it fetches `LICENSE` without a check and writes
-  `manifest.json` itself. Before the download the tool refuses what it could not verify afterwards
-  (another platform, a runtime or loader override); it sends no Hugging Face token and then checks
-  all sixteen pins. `parse` never downloads and also works with networking denied.
-- **Asset pins:** the tool pins the sixteen files of ocria-nano 1.0.0 as installed on macOS arm64
-  (bytes and SHA-256: the model files equal liteparse's release pins and Hugging Face, the ONNX
-  Runtime library liteparse's NuGet pin, `LICENSE` Hugging Face's file, `manifest.json` the one
-  the pull writes). Before a parser exists the package must match them exactly: a changed, missing
-  or additional file (a stray `.DS_Store` too), another version or another platform is refused,
-  and so is `ORT_DYLIB_PATH` or any dynamic-loader override (`DYLD_LIBRARY_PATH`,
-  `DYLD_FALLBACK_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES`, `DYLD_FRAMEWORK_PATH`,
-  `DYLD_FALLBACK_FRAMEWORK_PATH`, `LD_LIBRARY_PATH`, `LD_PRELOAD`), set at all, even empty: it
-  could make liteparse load an ONNX Runtime the pins do not cover. The report states that the
-  assets matched and that no loader override was set.
-- **Backend:** always named. `--ocr-backend ocria-nano` or `--ocr-backend none` (native PDF text,
-  OCR off); there is no default and no Tesseract choice. A missing or incomplete model package, or a
-  parser that resolves another backend, stops the run with exit 1 before anything is parsed. With
-  OCR off the tool still names a backend: otherwise liteparse makes an installed ocria-nano package
-  the resolved backend, and its table and layout model then changes the blocks of born-digital
-  pages.
+- **Output:** JSON on stdout only; the tool has no output option and writes no file. Redirect it into
+  a new file under the git-ignored `tools/commentary_rag/local/` or outside the repository, for
+  example `... > tools/commentary_rag/local/2021-07-01-p3-4.json`. The JSON holds every text item
+  and layout block (every field of liteparse's block: table header and rows with each cell's text,
+  box and items, code and grid lines), each with its bounding box and 1-based source page; the
+  backend liteparse reports; the liteparse version; and, for OCRia-nano-1, the model directory, the
+  files with their pinned SHA-256 and the environment check, never which runtime the loader chose.
+  In liteparse 2.21.4 `get_config()` fails (AttributeError on `keep_clipped_text`), so the tool
+  reads the same values from the native configuration object; there `table_model` is only an
+  explicit override (with ocria-nano, liteparse uses the package's TableNet and still reports
+  none), so the report calls it `table_model_override`.
+- **Backend:** always named, `--ocr-backend ocria-nano` or `--ocr-backend none`; there is no default
+  and no Tesseract choice, and a parser that resolves another backend is refused before it parses.
+  `--ocr-backend none` needs no model, model directory or environment check. With OCR off the tool
+  still names a backend, because liteparse otherwise makes an installed ocria-nano package the
+  resolved backend and its layout model changes the blocks of born-digital pages (seen in the
+  2026-11-28 evaluation, not a test).
+- **OCRia-nano-1, before a parser exists:** another platform than macOS arm64 is refused, before a
+  missing model is mentioned; so is any variable named `DYLD_*` or `LD_*`, or `ORT_DYLIB_PATH`,
+  present at all, even empty, since the dynamic loader or liteparse could then load an ONNX Runtime
+  the pins do not cover. The tool then resolves one absolute model directory,
+  `LITEPARSE_MODEL_DIR` (refused when empty or relative) or else `$HOME/.cache/liteparse/models`
+  (refused without an absolute `HOME`), and writes it back to `LITEPARSE_MODEL_DIR`, so that
+  liteparse lists that folder and parses with it set; a package liteparse lists elsewhere is
+  refused. The package must be ocria-nano 1.0.0 with exactly the sixteen pinned files, each matching
+  its bytes and SHA-256: a missing or incomplete package, another version, or a changed, missing or
+  additional file (a stray `.DS_Store` counts) is refused.
+- **Asset pins:** the sixteen files of ocria-nano 1.0.0 as installed on macOS arm64, checked on
+  2026-11-28: the model files equal liteparse's release pins and Hugging Face's files at revision
+  v1.0.0, the ONNX Runtime 1.31.1 library liteparse's NuGet pin, `LICENSE` Hugging Face's file
+  (liteparse fetches it without a check) and `manifest.json` the one liteparse's pull writes.
+- **Model download:** `pull` is the only command that downloads (OCRia-nano-1, `ocria-nano` 1.0.0,
+  Hugging Face `llamaindex/OCRia-nano-1`). Before liteparse downloads it refuses the platform,
+  variable and model-directory cases above; it installs into the one absolute model directory,
+  sends no Hugging Face token, and checks the sixteen pins after the download. While downloading,
+  liteparse checks the model files and the ONNX Runtime against pins built into its release (its
+  own check, not covered by this tool's tests).
 - **OCR failures:** liteparse 2.21.4 reports a page whose OCR failed only on native stderr
   (`[ocr] failed for page N: ...`, then `[ocr] k/n page(s) failed OCR; continuing with partial
   results`) and returns the page anyway, without OCR text; it raises only when every OCR task failed
-  and one of them was on a text-poor page. The tool therefore captures file descriptor 2 during the
-  parse and refuses the whole run on any `[ocr]` line, writing no report. A page without OCR text
-  in a written report had no OCR failure, so a blank page stays apart from a failed one. This rests
-  on liteparse's own wording, read in its 2.21.4 source and seen from the installed library.
-- **Input and output:** an edition's PDF must lie inside `--root` once links are resolved and must
-  not be a link itself. `--out` must name a new file (an existing one, the input PDF included, is
-  refused, never replaced). If its folder lies in a Git working tree (this checkout, `--root`, or
-  any other worktree or clone, as `git rev-parse --show-toplevel` finds it), the file may only go
-  under that tree's git-ignored `tools/commentary_rag/local/`, which must be a real folder; when
-  git cannot tell (no git, a folder inside `.git`), the run is refused. Without `--out` the JSON
-  goes to stdout. A manifest without a `sources` or `editions` section, or with a path no file
-  system can take (an embedded NUL), is refused by name.
-- **Output:** JSON with every text item and layout block (every field of liteparse's block, table
-  header and rows with each cell's text, box and items, code and grid lines), each with its bounding
-  box and 1-based source page, the backend liteparse reports, the liteparse version and the model
-  files with their pinned SHA-256. In liteparse 2.21.4 `get_config()` fails (AttributeError on
-  `keep_clipped_text`), so the tool reads the same values from the native configuration object.
-  There `table_model` is only an explicit override: with ocria-nano, liteparse uses the package's
-  TableNet and still reports none, so the report calls it `table_model_override`.
+  and one of them was on a text-poor page (read in its 2.21.4 source and seen from the installed
+  library). The tool captures file descriptor 2 during the parse and refuses the run on any `[ocr]`
+  line, so nothing reaches stdout; a page without OCR text in a printed report had no OCR failure.
+- **Input:** an edition's PDF must lie inside `--root` once links are resolved, must not be a link
+  itself and must match its manifest's SHA-256. A manifest that cannot be read, has neither a
+  `sources` nor an `editions` list (a section that is not a list counts), or names a path no file
+  system can take (an embedded NUL) is refused by name.
+- **Network:** `parse` never downloads a model. `uv run --with` fetches liteparse itself when uv's
+  cache lacks it, and `uv --offline` stops only uv's own fetches, not the parser process (liteparse
+  turns ONNX Runtime's telemetry off only when `ORT_DISABLE_TELEMETRY` is unset; an inherited value,
+  `0` included, is kept). A parse without network is therefore the one run, with a warm cache,
+  under the network-denying sandbox, as on 2026-11-28 (observed, not a test):
+  `sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline --no-project --with liteparse==2.21.4 ...`.
 - **Licence:** the weights are not under LiteParse's licence but under the OCRia-nano-1 Model License
   (a modified OpenRAIL-M; pulling accepts it). Its Attachment A restricts use above revenue or
   funding thresholds and in competing document-parsing services, except for Research Purposes,

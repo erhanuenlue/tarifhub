@@ -1,55 +1,46 @@
 """LiteParse with OCRia-nano-1: an opt-in, local OCR diagnostic beside the commentary pilot.
 
 The pilot never imports this module and it changes nothing. It parses one PDF (a file, or a
-commentary edition read from a manifest and checked against its SHA-256) with LiteParse and prints
-JSON: every text item and layout block (table cells, code and grid lines included) with its text,
-bounding box (PDF points, top-left origin, ``[x0, top, x1, bottom]``) and 1-based source page; the
-backend the parser reports it resolved; the liteparse version; and, for OCRia-nano-1, the model
-name, version and every file of the package with its SHA-256.
+commentary edition read from a manifest) with LiteParse and prints JSON to stdout, the only place
+it writes: every text item and layout block (table cells, code and grid lines included) with its
+text, bounding box (PDF points, top-left origin, ``[x0, top, x1, bottom]``) and 1-based source
+page; the backend the parser reports it resolved; the liteparse version; and, for OCRia-nano-1, the
+model directory, the sixteen files with their pinned size and SHA-256, and the environment check.
+There is no output option: redirect stdout into a new file under the git-ignored
+``tools/commentary_rag/local/`` or outside the repository.
 
 liteparse is not a dependency of this repository. Run the tool in an ephemeral environment, from a
 checkout that holds the git-ignored BAG PDFs (or name that checkout with ``--root``):
 
     uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py pull
     uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py \\
-        parse --edition 2021-07-01 --pages 3,4 --ocr-backend ocria-nano
+        parse --edition 2021-07-01 --pages 3,4 --ocr-backend ocria-nano \\
+        > tools/commentary_rag/local/2021-07-01-p3-4.json
 
-``parse`` never downloads a model, but ``uv run --with`` fetches liteparse itself when uv's cache
-lacks it. ``uv --offline`` stops only uv's own fetches, not the parser process (liteparse turns
-ONNX Runtime's telemetry off only when ``ORT_DISABLE_TELEMETRY`` is unset; an inherited value is
-kept), so a parse without network is the one run, with a warm cache, under the network-denying
-sandbox: ``sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline
---no-project --with liteparse==2.21.4 ...``.
+``uv run --with`` fetches liteparse when uv's cache lacks it, and ``uv --offline`` stops only uv's
+own fetches. A parse without network was observed under the network-denying sandbox
+(``sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...``), which no test
+covers.
 
-The backend is always chosen: ``--ocr-backend ocria-nano`` (LiteParse's OCRia-nano-1 models) or
-``--ocr-backend none`` (native PDF text, OCR off). There is no default and no other engine: a
-parser that resolves another backend is refused before it parses. Before a parser exists, the
-model package must be ocria-nano 1.0.0 with exactly the sixteen files pinned below, each matching
-its size and SHA-256 (verified for macOS arm64 only; other platforms are refused), and neither
-``ORT_DYLIB_PATH`` nor a dynamic-loader override (``DYLD_*``, ``LD_LIBRARY_PATH``, ``LD_PRELOAD``)
-may be set, not even empty: the pins cannot vouch for another ONNX Runtime. liteparse
-reports an OCR failure on a page only on native stderr and returns the page anyway, so the parse
-runs with file descriptor 2 captured: any ``[ocr]`` failure line refuses the whole run and no
-report is written. A page with no OCR text in a written report therefore had no OCR failure.
+What the offline tests check: the backend must be named (``--ocr-backend ocria-nano`` or ``none``,
+no Tesseract), and a parser that resolves another backend is refused before it parses. An
+edition's PDF must lie inside ``--root``, must not be a link and must match its manifest's SHA-256;
+a manifest that cannot be read, lacks a ``sources`` or ``editions`` list, or names a path with a
+NUL is refused by name. The OCRia-nano path first refuses another platform than macOS arm64, any
+variable named ``DYLD_*`` or ``LD_*`` or ``ORT_DYLIB_PATH`` (even empty), and an empty or relative
+``LITEPARSE_MODEL_DIR``. It then uses one absolute model directory (``LITEPARSE_MODEL_DIR``, else
+``$HOME/.cache/liteparse/models``), handed to liteparse, both for parsing and for the check that the
+package liteparse lists there is ocria-nano 1.0.0 with exactly the sixteen files pinned below, each
+matching its size and SHA-256. An OCR failure that liteparse reports only on native stderr (file
+descriptor 2 is captured during the parse) refuses the run, and so do pages the request did not
+name or did not get. ``--ocr-backend none`` needs no model. ``pull``, the only command that
+downloads, refuses the platform, variable and directory cases before liteparse downloads, sends no
+Hugging Face token, and checks the pins afterwards. A refusal exits 1 with nothing on stdout.
 
-``pull`` is the only command that downloads. It first refuses what it could not verify afterwards
-(another platform, a runtime or loader override), then installs ocria-nano 1.0.0 through liteparse,
-which checks the model files and the ONNX Runtime against the SHA-256 pinned in its release while
-it downloads, into ``$LITEPARSE_MODEL_DIR/ocria-nano`` (default ``~/.cache/liteparse/models``, on
-Windows ``%LOCALAPPDATA%\\liteparse\\models``; an empty value means the current directory), and
-sends no Hugging Face token. This tool then checks all sixteen pins, among them ``LICENSE``, which
-liteparse fetches without a check, and ``manifest.json``, which the pull writes.
+The weights have their own licence (OCRia-nano-1 Model License, a modified OpenRAIL-M): see
+docs/agents/dev-tooling.md, and keep their output out of the corpus.
 
-An edition's PDF must lie inside ``--root`` once links are resolved and must not itself be a link.
-``--out`` must name a new file in an existing folder (an existing file is never replaced). If that
-folder lies in a Git working tree (this checkout, ``--root``, or any other worktree or clone, as
-``git rev-parse --show-toplevel`` finds it), the file may only go under that tree's git-ignored
-``tools/commentary_rag/local/``, which must be a real folder; when git cannot tell, the run is
-refused. Without ``--out`` the JSON goes to stdout. The weights have their own licence (OCRia-nano-1 Model License,
-a modified OpenRAIL-M): see docs/agents/dev-tooling.md, and keep their output out of the corpus.
-
-Exit codes: 0 done, 1 refused (input, output, model, backend, OCR or page attribution), 2 without
-liteparse or on a usage error.
+Exit codes: 0 done, 1 refused, 2 without liteparse or on a usage error.
 """
 
 from __future__ import annotations
@@ -57,10 +48,8 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
-import ntpath
 import os
 import platform
-import subprocess
 import sys
 import tempfile
 from importlib import metadata
@@ -73,24 +62,16 @@ except ImportError:  # deliberately absent from every environment of the pilot
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
-LOCAL = (
-    "tools",
-    "commentary_rag",
-    "local",
-)  # git-ignored: the one folder a report may go to
-GIT = "git"  # asked which Git working tree, if any, holds --out
-# ORT_DYLIB_PATH and the dynamic-loader variables that could make liteparse load another ONNX
-# Runtime than the pinned one: present at all, even empty, they refuse the OCRia-nano path.
-LOADER_OVERRIDES = (
-    "ORT_DYLIB_PATH",
-    "DYLD_LIBRARY_PATH",
-    "DYLD_FALLBACK_LIBRARY_PATH",
-    "DYLD_INSERT_LIBRARIES",
-    "DYLD_FRAMEWORK_PATH",
-    "DYLD_FALLBACK_FRAMEWORK_PATH",
-    "LD_LIBRARY_PATH",
-    "LD_PRELOAD",
-)
+# A variable named with one of these prefixes, or ORT_DYLIB_PATH, could make the dynamic loader or
+# liteparse load an ONNX Runtime other than the pinned file: present at all, even empty, it refuses
+# the OCRia-nano path. A prefix, not a list, so that names no list foresaw are refused too.
+LOADER_PREFIXES = ("DYLD_", "LD_")
+RUNTIME_VARIABLE = "ORT_DYLIB_PATH"
+CHECKED_VARIABLES = [
+    "DYLD_*",
+    "LD_*",
+    RUNTIME_VARIABLE,
+]  # as the report names the check
 COMMENTARY_KIND = "commentary_pdf"
 PIN = "2.21.4"  # the liteparse release this tool was checked against
 MODEL = "ocria-nano"
@@ -216,20 +197,6 @@ def this_platform() -> tuple[str, str]:
     return sys.platform, platform.machine()
 
 
-def model_home() -> str:
-    """The folder liteparse searches for model packages: LITEPARSE_MODEL_DIR (set but empty, the
-    current directory), else its default."""
-
-    if "LITEPARSE_MODEL_DIR" in os.environ:
-        return os.environ["LITEPARSE_MODEL_DIR"] or (
-            f"{os.getcwd()}, the current directory (LITEPARSE_MODEL_DIR is set but empty)"
-        )
-    if this_platform()[0] == "win32":
-        base = os.environ.get("LOCALAPPDATA", "%LOCALAPPDATA%")
-        return ntpath.join(base, "liteparse", "models")
-    return "~/.cache/liteparse/models"
-
-
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -244,91 +211,30 @@ def _read(path: Path) -> bytes:
         ) from exc
 
 
-def _inside(target: Path, folder: Path) -> bool:
-    """Whether the resolved ``target`` lies in ``folder``, however either is spelled (a link,
-    another letter case)."""
-
-    if target.is_relative_to(folder.resolve()):
-        return True
-    return folder.is_dir() and any(
-        candidate.exists() and os.path.samefile(candidate, folder)
-        for candidate in (target, *target.parents)
-    )
-
-
-def _work_tree(folder: Path) -> Path | None:
-    """The Git working tree that holds ``folder``, or None outside any; refused when git cannot
-    tell (no git, a folder inside .git, a repository git declines to read)."""
-
-    env = {
-        key: value for key, value in os.environ.items() if not key.startswith("GIT_")
-    }
-    env.update(LC_ALL="C", LANGUAGE="C")  # git's own words, whatever the locale
-    try:
-        asked = subprocess.run(
-            [GIT, "-C", str(folder), "rev-parse", "--show-toplevel"],
-            capture_output=True,
-            text=True,
-            env=env,
-            check=False,
-        )
-    except OSError as exc:
-        raise Refused(
-            f"git cannot tell whether --out lies in a Git working tree ({exc.strerror});"
-            " nothing is written"
-        ) from exc
-    if asked.returncode == 0:
-        return Path(asked.stdout.strip())
-    if "not a git repository" in asked.stderr:
-        return None
-    raise Refused(
-        "git cannot tell whether --out lies in a Git working tree"
-        f" ({asked.stderr.strip() or asked.returncode}); nothing is written"
-    )
-
-
-def check_output(path: Path, checkouts: list[Path]) -> None:
-    """Refuse an ``--out`` that exists, or that lies in a Git working tree (this checkout,
-    ``--root``, or any other worktree or clone) outside that tree's git-ignored local folder,
-    before any input is read: page text must not land where Git sees it."""
-
-    if not path.parent.is_dir():
-        raise Refused("--out must name a new file in an existing folder")
-    target = path.resolve()
-    written = Path(os.path.abspath(path))  # as given: a link on the way is not followed
-    tree = _work_tree(target.parent)
-    for repo in [*checkouts, *([tree] if tree else [])]:
-        local = repo.joinpath(*LOCAL)
-        if not (_inside(target, repo) or _inside(written, repo)):
-            continue
-        if local.is_symlink():
-            raise Refused(
-                f"{local} is a symbolic link; write the report to the real, git-ignored"
-                " folder or outside any Git working tree"
-            )
-        if not _inside(target, local):
-            raise Refused(
-                f"--out lies in {repo} outside tools/commentary_rag/local/ (git-ignored);"
-                " write the report there or outside any Git working tree"
-            )
-    if path.exists() or path.is_symlink():
-        raise Refused(f"--out {path} already exists; a report never replaces a file")
-
-
 def documents(data: dict) -> list[dict]:
     """A manifest's commentary PDFs, from ``sources[]`` or from ``editions[].documents[]``; a
-    manifest with neither section, or with a path no file system can take, is a ValueError."""
+    manifest without either list, or with a path no file system can take, is a ValueError."""
 
     if not isinstance(data, dict) or not ("sources" in data or "editions" in data):
         raise ValueError("neither a sources nor an editions section")
     if "sources" in data:
+        if not isinstance(data["sources"], list):
+            raise ValueError("the sources section is not a list")
         listed = [
             (s["path"], s["sha256"], s["effective_dates"]) for s in data["sources"]
         ]
     else:
+        editions = data["editions"]
+        if not isinstance(editions, list) or not all(
+            isinstance(e, dict) and isinstance(e.get("documents"), list)
+            for e in editions
+        ):
+            raise ValueError(
+                "the editions section is not a list of editions with documents"
+            )
         listed = [
             (d["path"], d["sha256"], [e["effective_date"]])
-            for e in data["editions"]
+            for e in editions
             for d in e["documents"]
             if d["kind"] == COMMENTARY_KIND
         ]
@@ -408,48 +314,79 @@ def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
     return {"path": entry["path"], "sha256": digest, "edition": args.edition}, content
 
 
-def check_runtime_environment() -> None:
-    """Refuse what the asset pins cannot vouch for: another platform, or ORT_DYLIB_PATH or a
-    dynamic-loader override that could make liteparse load another ONNX Runtime (set at all,
-    even empty)."""
+def check_runtime_environment() -> Path:
+    """Check what the OCRia-nano path needs before anything else, and return the one absolute
+    model directory of this run.
+
+    Refused: another platform than the pins cover; any variable named DYLD_* or LD_*, or
+    ORT_DYLIB_PATH, present at all; an empty or relative LITEPARSE_MODEL_DIR. Without it, the
+    folder is liteparse's default under an absolute HOME. Written back to LITEPARSE_MODEL_DIR, the
+    folder is the one liteparse then lists and loads from.
+    """
 
     if this_platform() != PLATFORM:
         raise Refused(
             f"the asset pins of {MODEL} {MODEL_VERSION} are verified for macOS arm64"
             f" only, not for {' '.join(this_platform())}"
         )
-    present = [name for name in LOADER_OVERRIDES if name in os.environ]
+    present = sorted(
+        name
+        for name in os.environ
+        if name.startswith(LOADER_PREFIXES) or name == RUNTIME_VARIABLE
+    )
     if present:
         raise Refused(
-            f"{', '.join(present)} set (even an empty value counts): liteparse could load an"
-            " ONNX Runtime the asset pins do not cover; unset it"
+            f"{', '.join(present)} set (any DYLD_* or LD_* variable, or ORT_DYLIB_PATH, even"
+            " empty): the dynamic loader or liteparse could load an ONNX Runtime the asset pins"
+            " do not cover; unset it"
         )
+    if "LITEPARSE_MODEL_DIR" in os.environ:
+        value = os.environ["LITEPARSE_MODEL_DIR"]
+        if not value or not os.path.isabs(value):
+            raise Refused(
+                f"LITEPARSE_MODEL_DIR is {value!r}: it must name an absolute folder, the one"
+                " this run checks and liteparse loads from"
+            )
+        folder = Path(value)
+    else:
+        home = os.environ.get("HOME", "")
+        if not os.path.isabs(home):
+            raise Refused(
+                "neither LITEPARSE_MODEL_DIR nor an absolute HOME is set: set"
+                " LITEPARSE_MODEL_DIR to an absolute folder"
+            )
+        folder = Path(home) / ".cache" / "liteparse" / "models"
+    os.environ["LITEPARSE_MODEL_DIR"] = str(folder)  # liteparse reads this very folder
+    return folder
 
 
-def installed_model() -> dict:
-    """The ocria-nano package the library resolved, refused unless it is version 1.0.0 with
-    exactly the pinned files, each matching its pinned size and SHA-256."""
+def installed_model(folder: Path) -> dict:
+    """The ocria-nano package liteparse lists in ``folder``, refused unless it lies there and is
+    version 1.0.0 with exactly the pinned files, each matching its pinned size and SHA-256."""
 
     found = [entry for entry in models.list() if entry.name == MODEL]
     if not found:
         raise Refused(
-            f"{MODEL} is not installed in {model_home()} (LITEPARSE_MODEL_DIR, else"
-            f" liteparse's default model directory); install it once with: {RUN}"
+            f"{MODEL} is not installed in {folder}; install it once with: {RUN}"
             " pull. No fallback: no other OCR engine runs instead"
         )
     entry = found[0]
+    if Path(entry.path) != folder / MODEL:
+        raise Refused(
+            f"liteparse lists {MODEL} in {entry.path}, not in {folder / MODEL}, the folder this"
+            " run resolved and checks"
+        )
     if not entry.complete:
         raise Refused(f"{MODEL} in {entry.path} is incomplete; run {RUN} pull again")
-    check_runtime_environment()
     if entry.version != MODEL_VERSION:
         raise Refused(
             f"{MODEL} {entry.version} is installed; the asset pins are for"
             f" {MODEL_VERSION}"
         )
-    folder = Path(entry.path)
+    package = Path(entry.path)
     present = {
-        path.relative_to(folder).as_posix(): path
-        for path in folder.rglob("*")
+        path.relative_to(package).as_posix(): path
+        for path in package.rglob("*")
         if path.is_file()
     }
     missing, extra = (
@@ -458,7 +395,7 @@ def installed_model() -> dict:
     )
     if missing or extra:
         raise Refused(
-            f"{MODEL} in {folder} does not match its pins: missing {missing or 'none'},"
+            f"{MODEL} in {package} does not match its pins: missing {missing or 'none'},"
             f" not pinned {extra or 'none'}"
         )
     files = []
@@ -471,13 +408,15 @@ def installed_model() -> dict:
                 f" its pin is {size} bytes, {digest}"
             )
         files.append({"file": name, "bytes": size, "sha256": digest})
+    # only what was checked on disk and in the environment, never which runtime was loaded
     return {
         "name": entry.name,
         "version": entry.version,
-        "path": str(folder),
+        "directory": str(folder),
+        "path": str(package),
         "complete": entry.complete,
         "assets_match_pins": True,
-        "loader_overrides": "none",
+        "environment": {"refused_if_set": CHECKED_VARIABLES, "set": []},
         "files": files,
     }
 
@@ -621,10 +560,9 @@ def parse_watching_stderr(parser: object, content: bytes) -> tuple[object, list[
 def parse(args: argparse.Namespace) -> dict:
     """Parse the requested pages with the requested backend, or refuse."""
 
-    if args.out is not None:
-        check_output(args.out, [REPO, args.root])
+    folder = check_runtime_environment() if args.ocr_backend == MODEL else None
     source, content = pdf_input(args)
-    model = installed_model() if args.ocr_backend == MODEL else None
+    model = installed_model(folder) if folder is not None else None
     parser = LiteParse(**options(args.ocr_backend, args.pages))
     config = resolved_config(parser)
     backend = config.ocr_backend if config.ocr_enabled else "none"
@@ -669,11 +607,11 @@ def pull() -> dict:
 
     The model repository is public. liteparse would send HF_TOKEN, or the token stored under
     HF_HOME, so the pull runs without the first and with the second naming an empty directory.
-    What could not be verified afterwards (the platform, a runtime or loader override) is refused
-    before anything is downloaded, so no cache is replaced in vain.
+    What could not be verified afterwards (the platform, a runtime or loader variable, the model
+    directory) is refused before anything is downloaded, so no cache is replaced in vain.
     """
 
-    check_runtime_environment()
+    folder = check_runtime_environment()
     saved = {key: os.environ.pop(key, None) for key in ("HF_TOKEN", "HF_HOME")}
     try:
         with tempfile.TemporaryDirectory() as empty:
@@ -690,7 +628,7 @@ def pull() -> dict:
     return {
         "tool": "liteparse_ocr",
         "liteparse_version": liteparse_version(),
-        "model": installed_model(),
+        "model": installed_model(folder),
     }
 
 
@@ -729,13 +667,6 @@ def _parser() -> argparse.ArgumentParser:
         action="append",
         help="manifest for --edition (repeatable; default data/manifests/*)",
     )
-    parse_cmd.add_argument(
-        "--out",
-        type=Path,
-        default=None,
-        help="a new file for the JSON: outside the repository or under"
-        " tools/commentary_rag/local/ (default: stdout)",
-    )
     return parser
 
 
@@ -748,22 +679,10 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         report = pull() if args.command == "pull" else parse(args)
-        text = json.dumps(report, ensure_ascii=False, indent=1)
-        if getattr(args, "out", None) is None:
-            print(text)
-            return 0
-        try:
-            with args.out.open("x", encoding="utf-8", newline="\n") as handle:
-                handle.write(text + "\n")
-        except FileExistsError as exc:
-            raise Refused(
-                f"--out {args.out} appeared meanwhile; it is not replaced"
-            ) from exc
-        except OSError as exc:
-            raise Refused(f"--out {args.out}: {exc.strerror}") from exc
     except Refused as exc:
         print(f"liteparse_ocr refused: {exc}", file=sys.stderr)
         return 1
+    print(json.dumps(report, ensure_ascii=False, indent=1))  # stdout: the only output
     return 0
 
 

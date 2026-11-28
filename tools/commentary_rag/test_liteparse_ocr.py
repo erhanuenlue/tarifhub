@@ -15,7 +15,6 @@ import hashlib
 import json
 import os
 import platform
-import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -41,7 +40,8 @@ PINS = {
     "runtime/libonnxruntime.dylib": (7, sha(b"runtime")),
 }
 HOST = (sys.platform, platform.machine())
-# ORT_DYLIB_PATH and the dynamic-loader overrides: any of them, even empty, refuses the OCR path
+# The OCRia-nano path refuses any variable named DYLD_* or LD_*, and ORT_DYLIB_PATH, when present
+# at all, even empty: the names known today and ones no list could foresee.
 LOADER = [
     "ORT_DYLIB_PATH",
     "DYLD_LIBRARY_PATH",
@@ -51,6 +51,11 @@ LOADER = [
     "DYLD_FALLBACK_FRAMEWORK_PATH",
     "LD_LIBRARY_PATH",
     "LD_PRELOAD",
+    "DYLD_VERSIONED_LIBRARY_PATH",
+    "DYLD_IMAGE_SUFFIX",
+    "DYLD_NOT_NAMED_YET",
+    "LD_AUDIT",
+    "LD_NOT_NAMED_YET",
 ]
 
 
@@ -65,9 +70,14 @@ class FakeModels:
         self.installed: list[SimpleNamespace] = []
         self.pulled: list[str] = []
         self.credentials: list[tuple] = []
+        self.seen_dirs: list[
+            str | None
+        ] = []  # LITEPARSE_MODEL_DIR when list() was asked
+        self.pulled_into: list[str | None] = []  # LITEPARSE_MODEL_DIR when pull() ran
 
     def list(self) -> list[SimpleNamespace]:
         """The installed packages, as liteparse.models.list() returns them."""
+        self.seen_dirs.append(os.environ.get("LITEPARSE_MODEL_DIR"))
         return list(self.installed)
 
     def pull(
@@ -75,6 +85,7 @@ class FakeModels:
     ) -> str:
         """Record the request and the Hugging Face credentials liteparse could have sent."""
         self.pulled.append(spec)
+        self.pulled_into.append(os.environ.get("LITEPARSE_MODEL_DIR"))
         home = os.environ.get("HF_HOME")
         stored = sorted(os.listdir(home)) if home else None
         self.credentials.append((os.environ.get("HF_TOKEN"), home is not None, stored))
@@ -92,6 +103,7 @@ class Library:
         self.total_pages = 4
         self.error: Exception | None = None
         self.native_stderr = b""  # what the native parse writes to file descriptor 2
+        self.parse_dirs: list[str | None] = []  # LITEPARSE_MODEL_DIR when parse() ran
         library = self
 
         class Parser:
@@ -124,6 +136,7 @@ class Library:
             def parse(self, data: bytes) -> SimpleNamespace:
                 """Return the test's pages, or raise the test's error."""
                 self.parsed.append(data)
+                library.parse_dirs.append(os.environ.get("LITEPARSE_MODEL_DIR"))
                 if library.native_stderr:
                     os.write(2, library.native_stderr)
                 if library.error is not None:
@@ -136,7 +149,7 @@ class Library:
 
 
 @pytest.fixture
-def lib(monkeypatch: pytest.MonkeyPatch) -> Library:
+def lib(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Library:
     library = Library()
     monkeypatch.setattr(liteparse_ocr, "LiteParse", library.parser)
     monkeypatch.setattr(liteparse_ocr, "ParseError", FakeParseError)
@@ -144,9 +157,13 @@ def lib(monkeypatch: pytest.MonkeyPatch) -> Library:
     monkeypatch.setattr(liteparse_ocr, "liteparse_version", lambda: "9.9.9")
     monkeypatch.setattr(liteparse_ocr, "PACKAGE", PINS, raising=False)
     monkeypatch.setattr(liteparse_ocr, "PLATFORM", HOST, raising=False)
-    for name in LOADER:  # a runner's environment must not decide a test
-        monkeypatch.delenv(name, raising=False)
-    monkeypatch.delenv("LITEPARSE_MODEL_DIR", raising=False)
+    inherited = [
+        n for n in os.environ if n.startswith(("DYLD_", "LD_")) or n == "ORT_DYLIB_PATH"
+    ]
+    for name in inherited:  # a runner's environment must not decide a test
+        monkeypatch.delenv(name)
+    # absolute, and where package() installs
+    monkeypatch.setenv("LITEPARSE_MODEL_DIR", str(tmp_path / "models"))
     return library
 
 
@@ -209,9 +226,12 @@ def page(number: int, items=(), blocks=()) -> SimpleNamespace:
     )
 
 
-def package(tmp_path: Path, *, complete: bool = True) -> SimpleNamespace:
-    """An installed ocria-nano package with two synthetic files, as models.list() reports it."""
-    folder = tmp_path / "models" / NANO
+def package(
+    tmp_path: Path, *, complete: bool = True, base: Path | None = None
+) -> SimpleNamespace:
+    """An installed ocria-nano package with two synthetic files, as models.list() reports it;
+    under ``base`` (default: the fixture's LITEPARSE_MODEL_DIR, tmp_path/models)."""
+    folder = (base or tmp_path / "models") / NANO
     (folder / "runtime").mkdir(parents=True)
     (folder / "det.onnx").write_bytes(b"detector")
     (folder / "runtime" / "libonnxruntime.dylib").write_bytes(b"runtime")
@@ -257,21 +277,6 @@ def edition_tree(tmp_path: Path, shape: str, digest: str) -> tuple[Path, Path]:
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps(data), encoding="utf-8")
     return root, manifest
-
-
-def checkout(tmp_path: Path, *, linked_local: bool = False) -> Path:
-    """A repository checkout with tools/commentary_rag/results/ and local/ (a real folder, or a
-    link to a folder elsewhere)."""
-    repo = tmp_path / "checkout"
-    folder = repo / "tools" / "commentary_rag"
-    (folder / "results").mkdir(parents=True)
-    if linked_local:
-        elsewhere = tmp_path / "elsewhere"
-        elsewhere.mkdir()
-        (folder / "local").symlink_to(elsewhere)
-    else:
-        (folder / "local").mkdir()
-    return repo
 
 
 def run(*argv: str) -> int:
@@ -475,7 +480,6 @@ def test_an_edition_is_read_from_its_manifest_and_checked(
 ) -> None:
     root, manifest = edition_tree(tmp_path, shape, sha(PDF))
     lib.models.installed = [package(tmp_path)]
-    out = tmp_path / "out.json"
     assert (
         run(
             "parse",
@@ -489,13 +493,10 @@ def test_an_edition_is_read_from_its_manifest_and_checked(
             "3",
             "--ocr-backend",
             NANO,
-            "--out",
-            str(out),
         )
         == 0
     )
-    assert capsys.readouterr().out == ""
-    doc = json.loads(out.read_text(encoding="utf-8"))
+    doc = json.loads(capsys.readouterr().out)
     assert doc["source"] == {
         "path": "data/raw/commentary.pdf",
         "sha256": sha(PDF),
@@ -614,8 +615,12 @@ def test_assets_that_match_their_pins_are_reported_as_matched(
     assert nano(a_pdf(tmp_path), "--pages", "3") == 0
     model = json.loads(capsys.readouterr().out)["model"]
     assert model["assets_match_pins"] is True
-    assert model["loader_overrides"] == "none"
-    assert "ort_dylib_path" not in model
+    assert model["directory"] == str(tmp_path / "models")
+    assert model["environment"] == {
+        "refused_if_set": ["DYLD_*", "LD_*", "ORT_DYLIB_PATH"],
+        "set": [],
+    }
+    assert "loader_overrides" not in model  # what the loader chose is never claimed
 
 
 @pytest.mark.parametrize("change", ["altered", "missing", "extra", "version"])
@@ -786,58 +791,6 @@ def test_a_manifest_path_that_leaves_the_checkout_or_is_a_link_is_refused(
     assert lib.built == []
 
 
-# Review round 1, P2: --out is a new file, and in a checkout only under its local/ folder.
-
-
-@pytest.mark.parametrize("target", ["an existing file", "the input PDF"])
-def test_out_never_replaces_a_file(lib, tmp_path, capsys, target) -> None:
-    lib.models.installed = [package(tmp_path)]
-    pdf = a_pdf(tmp_path)
-    out = Path(pdf)
-    if target == "an existing file":
-        out = tmp_path / "kept.json"
-        out.write_text("kept", encoding="utf-8")
-    before = out.read_bytes()
-    assert nano(pdf, "--pages", "3", "--out", str(out)) == 1
-    assert out.read_bytes() == before
-    assert "already exists" in capsys.readouterr().err
-    assert lib.built == []  # refused before anything was read or parsed
-
-
-@pytest.mark.parametrize(
-    ("where", "code"),
-    [
-        ("tools/commentary_rag/local/report.json", 0),
-        ("tools/commentary_rag/results/report.json", 1),
-        ("report.json", 1),
-    ],
-)
-def test_out_inside_a_checkout_goes_only_to_its_git_ignored_local_folder(
-    lib, tmp_path, capsys, where, code
-) -> None:
-    repo = checkout(tmp_path)
-    lib.models.installed = [package(tmp_path)]
-    out = repo / where
-    assert (
-        nano(a_pdf(tmp_path), "--pages", "3", "--root", str(repo), "--out", str(out))
-        == code
-    )
-    assert out.exists() == (code == 0)
-    assert ("local/" in capsys.readouterr().err) == bool(code)
-
-
-def test_out_under_a_linked_local_folder_is_refused(lib, tmp_path, capsys) -> None:
-    repo = checkout(tmp_path, linked_local=True)
-    lib.models.installed = [package(tmp_path)]
-    out = repo / "tools" / "commentary_rag" / "local" / "report.json"
-    assert (
-        nano(a_pdf(tmp_path), "--pages", "3", "--root", str(repo), "--out", str(out))
-        == 1
-    )
-    assert not (tmp_path / "elsewhere" / "report.json").exists()
-    assert "symbolic link" in capsys.readouterr().err
-
-
 # Review round 1, P2: an OCR failure that liteparse reports only on stderr fails the run.
 
 
@@ -850,11 +803,9 @@ def test_an_ocr_failure_reported_only_on_native_stderr_refuses_the_run(
         b"[ocr] failed for page 3: synthetic engine error\n"
         b"[ocr] 1/2 page(s) failed OCR; continuing with partial results\n"
     )
-    report = tmp_path / "report.json"
-    assert nano(a_pdf(tmp_path), "--pages", "3,4", "--out", str(report)) == 1
+    assert nano(a_pdf(tmp_path), "--pages", "3,4") == 1
     out, err = capsys.readouterr()
     assert out == ""
-    assert not report.exists()
     assert (
         "[ocr] failed for page 3: synthetic engine error" in err
     )  # passed on as written
@@ -904,128 +855,6 @@ def test_an_unreadable_or_malformed_manifest_is_refused_by_name(
     assert out == ""
     assert "broken-manifest.json" in err
     assert lib.built == []
-
-
-# Review round 1, P3: the missing-model message names the folder liteparse searches.
-
-
-@pytest.mark.parametrize(
-    "case",
-    [
-        (
-            ("win32", "AMD64"),
-            {"LOCALAPPDATA": "C:\\Users\\someone\\AppData\\Local"},
-            "C:\\Users\\someone\\AppData\\Local\\liteparse\\models",
-        ),
-        (("darwin", "arm64"), {}, "~/.cache/liteparse/models"),
-        (("linux", "x86_64"), {"LITEPARSE_MODEL_DIR": "/srv/models"}, "/srv/models"),
-    ],
-)
-def test_the_missing_model_message_names_the_folder_liteparse_searches(
-    lib, tmp_path, capsys, monkeypatch, case
-) -> None:
-    host, env, shown = case  # platform, environment, the folder the message must name
-    for key, value in env.items():
-        monkeypatch.setenv(key, value)
-    monkeypatch.setattr(liteparse_ocr, "this_platform", lambda: host, raising=False)
-    assert nano(a_pdf(tmp_path)) == 1
-    assert shown in capsys.readouterr().err
-
-
-# Review round 2, P2: --out in any Git working tree goes only to that tree's local/ folder.
-
-
-def work_tree(tmp_path: Path) -> Path:
-    """A fresh Git repository standing in for another TarifHub worktree or clone."""
-    tree = tmp_path / "other-worktree"
-    folder = tree / "tools" / "commentary_rag"
-    (folder / "results").mkdir(parents=True)
-    (folder / "local").mkdir()
-    (tree / "notes").mkdir()
-    subprocess.run(["git", "init", "-q", str(tree)], check=True, capture_output=True)
-    return tree
-
-
-@pytest.mark.parametrize(
-    ("where", "code"),
-    [
-        ("tools/commentary_rag/results/report.json", 1),
-        ("notes/report.json", 1),
-        (".git/report.json", 1),
-        ("tools/commentary_rag/local/report.json", 0),
-    ],
-)
-def test_out_in_any_git_working_tree_goes_only_to_its_local_folder(
-    lib, tmp_path, capsys, where, code
-) -> None:
-    tree = work_tree(tmp_path)
-    lib.models.installed = [package(tmp_path)]
-    out = tree / where
-    assert nano(a_pdf(tmp_path), "--pages", "3", "--out", str(out)) == code
-    assert out.exists() == (code == 0)
-
-
-def test_out_is_refused_when_git_cannot_tell_whether_it_lies_in_a_working_tree(
-    lib, tmp_path, capsys, monkeypatch
-) -> None:
-    monkeypatch.setattr(
-        liteparse_ocr, "GIT", str(tmp_path / "no-git-here"), raising=False
-    )
-    lib.models.installed = [package(tmp_path)]
-    out = tmp_path / "report.json"
-    assert nano(a_pdf(tmp_path), "--pages", "3", "--out", str(out)) == 1
-    assert not out.exists()
-    assert "git" in capsys.readouterr().err
-
-
-# Review round 2, P2 and P3: ORT_DYLIB_PATH or a loader override, even empty, is refused.
-
-
-@pytest.mark.parametrize(
-    "override", [(name, value) for name in LOADER for value in ("", "/elsewhere")]
-)
-def test_a_runtime_or_loader_override_is_refused_even_when_empty(
-    lib, tmp_path, capsys, monkeypatch, override
-) -> None:
-    name, value = override
-    monkeypatch.setenv(name, value)
-    lib.models.installed = [package(tmp_path)]
-    assert nano(a_pdf(tmp_path)) == 1
-    assert name in capsys.readouterr().err
-    assert lib.built == []
-
-
-# Review round 2, P2: pull refuses what it could not verify before anything is downloaded.
-
-
-@pytest.mark.parametrize("hazard", ["platform", "loader override"])
-def test_pull_refuses_before_downloading_what_it_could_not_verify(
-    lib, tmp_path, capsys, monkeypatch, hazard
-) -> None:
-    if hazard == "platform":
-        monkeypatch.setattr(
-            liteparse_ocr, "this_platform", lambda: ("plan9", "mips"), raising=False
-        )
-    else:
-        monkeypatch.setenv("LD_PRELOAD", "")
-    lib.models.installed = [package(tmp_path)]
-    assert run("pull") == 1
-    assert lib.models.pulled == []  # nothing downloaded, no cache replaced
-    assert capsys.readouterr().out == ""
-
-
-# Review round 2, P3: an empty LITEPARSE_MODEL_DIR makes liteparse search the current folder.
-
-
-def test_an_empty_model_dir_names_the_current_directory_liteparse_searches(
-    lib, tmp_path, capsys, monkeypatch
-) -> None:
-    monkeypatch.setenv("LITEPARSE_MODEL_DIR", "")
-    monkeypatch.chdir(tmp_path)
-    assert nano(a_pdf(tmp_path)) == 1
-    err = capsys.readouterr().err
-    assert str(tmp_path) in err
-    assert "current directory" in err
 
 
 # Review round 2, P3: a manifest without either section, or with a path no file system can
@@ -1096,4 +925,222 @@ def test_a_manifest_path_with_an_embedded_nul_is_refused_by_name(
     out, err = capsys.readouterr()
     assert out == ""
     assert "nul-manifest.json" in err
+    assert lib.built == []
+
+
+# Review round 3: there is no output option; the report goes to stdout only.
+
+
+def test_out_is_no_longer_an_option(lib, tmp_path, capsys) -> None:
+    lib.models.installed = [package(tmp_path)]
+    with pytest.raises(SystemExit) as stop:
+        nano(a_pdf(tmp_path), "--pages", "3", "--out", str(tmp_path / "report.json"))
+    assert stop.value.code == 2
+    assert "--out" in capsys.readouterr().err
+    assert not (tmp_path / "report.json").exists()
+    assert lib.built == []
+
+
+# Review round 3: any DYLD_* or LD_* variable, or ORT_DYLIB_PATH, set even empty, is refused.
+
+
+@pytest.mark.parametrize(
+    "override", [(name, value) for name in LOADER for value in ("", "/elsewhere")]
+)
+def test_a_runtime_or_loader_variable_is_refused_by_its_prefix_even_when_empty(
+    lib, tmp_path, capsys, monkeypatch, override
+) -> None:
+    name, value = override
+    monkeypatch.setenv(name, value)
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 1
+    assert name in capsys.readouterr().err
+    assert lib.built == []
+
+
+# Review round 3: one absolute model directory, resolved first, used by the checks and liteparse.
+
+
+@pytest.mark.parametrize("value", ["", "models", "./models"])
+def test_an_empty_or_relative_model_directory_is_refused_before_liteparse_is_asked(
+    lib, tmp_path, capsys, monkeypatch, value
+) -> None:
+    monkeypatch.setenv("LITEPARSE_MODEL_DIR", value)
+    monkeypatch.chdir(tmp_path)  # a relative folder would find the package here
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 1
+    err = capsys.readouterr().err
+    assert "LITEPARSE_MODEL_DIR" in err
+    assert "absolute" in err
+    assert lib.models.seen_dirs == []
+    assert lib.built == []
+
+
+def test_without_a_model_dir_the_default_under_home_is_used_and_handed_to_liteparse(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    home = tmp_path / "home"
+    default = home / ".cache" / "liteparse" / "models"
+    monkeypatch.delenv("LITEPARSE_MODEL_DIR")
+    monkeypatch.setenv("HOME", str(home))
+    lib.models.installed = [package(tmp_path, base=default)]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 0
+    assert json.loads(capsys.readouterr().out)["model"]["directory"] == str(default)
+    assert lib.models.seen_dirs == [str(default)]  # liteparse listed this very folder
+    assert lib.parse_dirs == [str(default)]  # and parsed with it set
+
+
+def test_without_a_model_dir_or_home_the_ocr_path_is_refused(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    monkeypatch.delenv("LITEPARSE_MODEL_DIR")
+    monkeypatch.delenv("HOME", raising=False)
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 1
+    assert "HOME" in capsys.readouterr().err
+    assert lib.built == []
+
+
+def test_a_package_liteparse_lists_outside_the_resolved_directory_is_refused(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path, base=tmp_path / "elsewhere")]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 1
+    assert "elsewhere" in capsys.readouterr().err
+    assert lib.built == []
+
+
+def test_the_native_path_needs_no_model_directory_or_package(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    monkeypatch.delenv("LITEPARSE_MODEL_DIR")
+    monkeypatch.delenv("HOME", raising=False)
+    monkeypatch.setenv("LD_PRELOAD", "")  # no ONNX Runtime is loaded without OCR
+    assert (
+        run("parse", "--pdf", a_pdf(tmp_path), "--pages", "3", "--ocr-backend", "none")
+        == 0
+    )
+    assert json.loads(capsys.readouterr().out)["model"] is None
+    assert lib.models.seen_dirs == []
+
+
+def test_the_missing_model_message_names_the_absolute_directory_and_suggests_pull(
+    lib, tmp_path, capsys
+) -> None:
+    assert nano(a_pdf(tmp_path)) == 1
+    err = capsys.readouterr().err
+    assert str(tmp_path / "models") in err
+    assert "liteparse_ocr.py pull" in err
+
+
+def test_an_unsupported_platform_is_refused_before_a_missing_model_is_mentioned(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        liteparse_ocr, "this_platform", lambda: ("plan9", "mips"), raising=False
+    )
+    assert nano(a_pdf(tmp_path)) == 1  # and no model is installed either
+    err = capsys.readouterr().err
+    assert "macOS arm64" in err
+    assert "pull" not in err
+
+
+# Review round 3: pull refuses before downloading what it could not verify, then checks the pins.
+
+
+@pytest.mark.parametrize(
+    "hazard",
+    [
+        "platform",
+        "loader variable",
+        "empty model directory",
+        "relative model directory",
+        "no home",
+    ],
+)
+def test_pull_refuses_before_downloading_what_it_could_not_verify(
+    lib, tmp_path, capsys, monkeypatch, hazard
+) -> None:
+    if hazard == "platform":
+        monkeypatch.setattr(
+            liteparse_ocr, "this_platform", lambda: ("plan9", "mips"), raising=False
+        )
+    elif hazard == "loader variable":
+        monkeypatch.setenv("DYLD_VERSIONED_LIBRARY_PATH", "")
+    elif hazard == "empty model directory":
+        monkeypatch.setenv("LITEPARSE_MODEL_DIR", "")
+    elif hazard == "relative model directory":
+        monkeypatch.setenv("LITEPARSE_MODEL_DIR", "models")
+    else:
+        monkeypatch.delenv("LITEPARSE_MODEL_DIR")
+        monkeypatch.delenv("HOME", raising=False)
+    lib.models.installed = [package(tmp_path)]
+    assert run("pull") == 1
+    assert lib.models.pulled == []  # nothing downloaded, no cache replaced
+    assert capsys.readouterr().out == ""
+
+
+def test_pull_installs_into_the_one_absolute_model_directory(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    home = tmp_path / "home"
+    default = home / ".cache" / "liteparse" / "models"
+    monkeypatch.delenv("LITEPARSE_MODEL_DIR")
+    monkeypatch.setenv("HOME", str(home))
+    lib.models.installed = [package(tmp_path, base=default)]
+    assert run("pull") == 0
+    assert lib.models.pulled_into == [str(default)]
+    assert json.loads(capsys.readouterr().out)["model"]["directory"] == str(default)
+
+
+def test_pull_checks_the_pins_after_the_download(lib, tmp_path, capsys) -> None:
+    entry = package(tmp_path)
+    (Path(entry.path) / "det.onnx").write_bytes(b"detectoR")  # same size, other bytes
+    lib.models.installed = [entry]
+    assert run("pull") == 1
+    assert lib.models.pulled == ["ocria-nano@1.0.0"]  # downloaded, then refused
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "det.onnx" in err
+
+
+# Review round 3: a manifest section that is not a list is refused by name.
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        '{"sources": {}}',
+        '{"editions": {}}',
+        '{"editions": [{"effective_date": "2031-07-01", "documents": {}}]}',
+    ],
+)
+def test_a_manifest_section_that_is_not_a_list_is_refused_by_name(
+    lib, tmp_path, capsys, bad
+) -> None:
+    root, manifest = edition_tree(tmp_path, "sources", sha(PDF))
+    unlisted = tmp_path / "unlisted-manifest.json"
+    unlisted.write_text(bad, encoding="utf-8")
+    lib.models.installed = [package(tmp_path)]
+    assert (
+        run(
+            "parse",
+            "--edition",
+            EDITION,
+            "--manifest",
+            str(manifest),
+            "--manifest",
+            str(unlisted),
+            "--root",
+            str(root),
+            "--pages",
+            "3",
+            "--ocr-backend",
+            NANO,
+        )
+        == 1
+    )
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "unlisted-manifest.json" in err
     assert lib.built == []

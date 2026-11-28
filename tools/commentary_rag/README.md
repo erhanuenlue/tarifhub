@@ -138,20 +138,22 @@ observation on this set, not an accuracy figure.
 - `liteparse_ocr.py`: a diagnostic outside the pilot (nothing imports it). It parses one PDF, or
   one manifest-verified commentary edition (a file inside `--root`, not a link), with LiteParse and
   an explicitly chosen backend (`--ocr-backend ocria-nano` for OCRia-nano-1, or `none` for the
-  native text with OCR off) and prints each text item and block (table cells, code and grid lines
-  included) with its source page, the backend the parser resolved and a per-page count of OCR
-  items. The model package must match the sixteen pinned files of ocria-nano 1.0.0 (checked for
-  macOS arm64; another platform, or `ORT_DYLIB_PATH` or a dynamic-loader override even when empty,
-  is refused), and an OCR failure that liteparse reports only on stderr refuses the run. `--out`
-  writes a new file only, and in any Git working tree only under that tree's git-ignored
-  `tools/commentary_rag/local/`. liteparse is in no environment here: run
+  native text with OCR off), and prints JSON to stdout only: each text item and block (table cells,
+  code and grid lines included) with its source page, the backend the parser resolved and a
+  per-page count of OCR items. Redirect it into a new file under the git-ignored `local/` or
+  outside the repository. Only the OCRia-nano backend needs the model and its checks: macOS arm64,
+  no variable named `DYLD_*` or `LD_*` and no `ORT_DYLIB_PATH` (even empty), one absolute model
+  directory, and a package matching the sixteen pinned files of ocria-nano 1.0.0; on that backend
+  an OCR failure that liteparse reports only on stderr refuses the run. liteparse is in no
+  environment here: run
   `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py pull`
   once (the only model download), then the same with `parse --edition 2021-07-01 --pages 3,4
-  --ocr-backend ocria-nano`. `uv run --with` itself fetches liteparse when uv's cache lacks it, and
-  `--offline` stops only uv's own fetches, not the parser process: a parse without network is the
-  one run, with a warm cache, under the network-denying sandbox
-  (`sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...`). Without liteparse it exits 2, on
-  a refusal 1. The weights have their own licence; see `docs/agents/dev-tooling.md`.
+  --ocr-backend ocria-nano > tools/commentary_rag/local/2021-07-01-p3-4.json`. `uv run --with`
+  fetches liteparse when uv's cache lacks it, and `--offline` stops only uv's own fetches; a parse
+  without network was observed under the network-denying sandbox
+  (`sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...`), which no
+  test covers. Without liteparse it exits 2, on a refusal 1. The weights have their own licence;
+  see `docs/agents/dev-tooling.md`.
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the
   answer schema (status, claims with passage citations, missing evidence), local validation
