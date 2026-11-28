@@ -141,14 +141,16 @@ observation on this set, not an accuracy figure.
   native text with OCR off) and prints each text item and block (table cells, code and grid lines
   included) with its source page, the backend the parser resolved and a per-page count of OCR
   items. The model package must match the sixteen pinned files of ocria-nano 1.0.0 (checked for
-  macOS arm64; another platform and a set `ORT_DYLIB_PATH` are refused), and an OCR failure that
-  liteparse reports only on stderr refuses the run. `--out` writes a new file only, and in a
-  checkout only under the git-ignored `local/`. liteparse is in no environment here: run
+  macOS arm64; another platform, or `ORT_DYLIB_PATH` or a dynamic-loader override even when empty,
+  is refused), and an OCR failure that liteparse reports only on stderr refuses the run. `--out`
+  writes a new file only, and in any Git working tree only under that tree's git-ignored
+  `tools/commentary_rag/local/`. liteparse is in no environment here: run
   `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py pull`
   once (the only model download), then the same with `parse --edition 2021-07-01 --pages 3,4
-  --ocr-backend ocria-nano`. `uv run --with` itself fetches liteparse when uv's cache lacks it: for
-  a run without network, warm the cache once and add `--offline` (for example under
-  `sandbox-exec -p '(version 1)(allow default)(deny network*)'`). Without liteparse it exits 2, on
+  --ocr-backend ocria-nano`. `uv run --with` itself fetches liteparse when uv's cache lacks it, and
+  `--offline` stops only uv's own fetches, not the parser process: a parse without network is the
+  one run, with a warm cache, under the network-denying sandbox
+  (`sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...`). Without liteparse it exits 2, on
   a refusal 1. The weights have their own licence; see `docs/agents/dev-tooling.md`.
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the

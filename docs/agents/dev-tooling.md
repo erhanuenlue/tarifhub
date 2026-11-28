@@ -136,22 +136,30 @@ ingestion PostgreSQL legs need network.
   is in no lockfile, service environment or image. It runs in an ephemeral environment with an
   exact pin, `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py`
   (the official Python package of `run-llama/liteparse`, Apache-2.0, checked on 2026-11-28).
-  `uv run --with` fetches liteparse itself when uv's cache lacks it, so a run without network
-  needs a warm cache and `--offline`, for example
-  `sandbox-exec -p '(version 1)(allow default)(deny network*)' uv run --offline --no-project --with liteparse==2.21.4 ...`.
+  `uv run --with` fetches liteparse itself when uv's cache lacks it, and `uv --offline` stops only
+  uv's own fetches, not the parser process: liteparse turns ONNX Runtime's telemetry off only when
+  `ORT_DISABLE_TELEMETRY` is unset (an inherited value, `0` included, is kept). A parse without
+  network is therefore the one run, with a warm cache, under the network-denying sandbox:
+  `sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline --no-project --with liteparse==2.21.4 ...`.
 - **Model:** OCRia-nano-1 (`ocria-nano` 1.0.0, Hugging Face `llamaindex/OCRia-nano-1`). The
   tool's `pull` command is the only one that downloads: liteparse installs the package into
   `$LITEPARSE_MODEL_DIR/ocria-nano` (default `~/.cache/liteparse/models`, on Windows
-  `%LOCALAPPDATA%\liteparse\models`) and checks every model file and its ONNX Runtime 1.31.1
-  library against SHA-256 pins built into the release. The pull sends no Hugging Face token;
-  `parse` never downloads and also works with networking denied.
+  `%LOCALAPPDATA%\liteparse\models`; a set but empty `LITEPARSE_MODEL_DIR` means the current
+  directory) and, while it downloads, checks the model files and the ONNX Runtime 1.31.1 library
+  against SHA-256 pins built into the release; it fetches `LICENSE` without a check and writes
+  `manifest.json` itself. Before the download the tool refuses what it could not verify afterwards
+  (another platform, a runtime or loader override); it sends no Hugging Face token and then checks
+  all sixteen pins. `parse` never downloads and also works with networking denied.
 - **Asset pins:** the tool pins the sixteen files of ocria-nano 1.0.0 as installed on macOS arm64
   (bytes and SHA-256: the model files equal liteparse's release pins and Hugging Face, the ONNX
   Runtime library liteparse's NuGet pin, `LICENSE` Hugging Face's file, `manifest.json` the one
   the pull writes). Before a parser exists the package must match them exactly: a changed, missing
-  or additional file (a stray `.DS_Store` too), another version, another platform or a set
-  `ORT_DYLIB_PATH` (another ONNX Runtime) is refused, and the report states that the assets
-  matched.
+  or additional file (a stray `.DS_Store` too), another version or another platform is refused,
+  and so is `ORT_DYLIB_PATH` or any dynamic-loader override (`DYLD_LIBRARY_PATH`,
+  `DYLD_FALLBACK_LIBRARY_PATH`, `DYLD_INSERT_LIBRARIES`, `DYLD_FRAMEWORK_PATH`,
+  `DYLD_FALLBACK_FRAMEWORK_PATH`, `LD_LIBRARY_PATH`, `LD_PRELOAD`), set at all, even empty: it
+  could make liteparse load an ONNX Runtime the pins do not cover. The report states that the
+  assets matched and that no loader override was set.
 - **Backend:** always named. `--ocr-backend ocria-nano` or `--ocr-backend none` (native PDF text,
   OCR off); there is no default and no Tesseract choice. A missing or incomplete model package, or a
   parser that resolves another backend, stops the run with exit 1 before anything is parsed. With
@@ -167,9 +175,12 @@ ingestion PostgreSQL legs need network.
   on liteparse's own wording, read in its 2.21.4 source and seen from the installed library.
 - **Input and output:** an edition's PDF must lie inside `--root` once links are resolved and must
   not be a link itself. `--out` must name a new file (an existing one, the input PDF included, is
-  refused, never replaced); in a checkout it may only lie under the git-ignored
-  `tools/commentary_rag/local/`, which must be a real folder. Without `--out` the JSON goes to
-  stdout.
+  refused, never replaced). If its folder lies in a Git working tree (this checkout, `--root`, or
+  any other worktree or clone, as `git rev-parse --show-toplevel` finds it), the file may only go
+  under that tree's git-ignored `tools/commentary_rag/local/`, which must be a real folder; when
+  git cannot tell (no git, a folder inside `.git`), the run is refused. Without `--out` the JSON
+  goes to stdout. A manifest without a `sources` or `editions` section, or with a path no file
+  system can take (an embedded NUL), is refused by name.
 - **Output:** JSON with every text item and layout block (every field of liteparse's block, table
   header and rows with each cell's text, box and items, code and grid lines), each with its bounding
   box and 1-based source page, the backend liteparse reports, the liteparse version and the model

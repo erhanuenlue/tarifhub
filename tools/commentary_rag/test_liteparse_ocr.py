@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import platform
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -40,6 +41,17 @@ PINS = {
     "runtime/libonnxruntime.dylib": (7, sha(b"runtime")),
 }
 HOST = (sys.platform, platform.machine())
+# ORT_DYLIB_PATH and the dynamic-loader overrides: any of them, even empty, refuses the OCR path
+LOADER = [
+    "ORT_DYLIB_PATH",
+    "DYLD_LIBRARY_PATH",
+    "DYLD_FALLBACK_LIBRARY_PATH",
+    "DYLD_INSERT_LIBRARIES",
+    "DYLD_FRAMEWORK_PATH",
+    "DYLD_FALLBACK_FRAMEWORK_PATH",
+    "LD_LIBRARY_PATH",
+    "LD_PRELOAD",
+]
 
 
 class FakeParseError(Exception):
@@ -132,7 +144,8 @@ def lib(monkeypatch: pytest.MonkeyPatch) -> Library:
     monkeypatch.setattr(liteparse_ocr, "liteparse_version", lambda: "9.9.9")
     monkeypatch.setattr(liteparse_ocr, "PACKAGE", PINS, raising=False)
     monkeypatch.setattr(liteparse_ocr, "PLATFORM", HOST, raising=False)
-    monkeypatch.delenv("ORT_DYLIB_PATH", raising=False)
+    for name in LOADER:  # a runner's environment must not decide a test
+        monkeypatch.delenv(name, raising=False)
     monkeypatch.delenv("LITEPARSE_MODEL_DIR", raising=False)
     return library
 
@@ -601,6 +614,7 @@ def test_assets_that_match_their_pins_are_reported_as_matched(
     assert nano(a_pdf(tmp_path), "--pages", "3") == 0
     model = json.loads(capsys.readouterr().out)["model"]
     assert model["assets_match_pins"] is True
+    assert model["loader_overrides"] == "none"
     assert "ort_dylib_path" not in model
 
 
@@ -916,3 +930,170 @@ def test_the_missing_model_message_names_the_folder_liteparse_searches(
     monkeypatch.setattr(liteparse_ocr, "this_platform", lambda: host, raising=False)
     assert nano(a_pdf(tmp_path)) == 1
     assert shown in capsys.readouterr().err
+
+
+# Review round 2, P2: --out in any Git working tree goes only to that tree's local/ folder.
+
+
+def work_tree(tmp_path: Path) -> Path:
+    """A fresh Git repository standing in for another TarifHub worktree or clone."""
+    tree = tmp_path / "other-worktree"
+    folder = tree / "tools" / "commentary_rag"
+    (folder / "results").mkdir(parents=True)
+    (folder / "local").mkdir()
+    (tree / "notes").mkdir()
+    subprocess.run(["git", "init", "-q", str(tree)], check=True, capture_output=True)
+    return tree
+
+
+@pytest.mark.parametrize(
+    ("where", "code"),
+    [
+        ("tools/commentary_rag/results/report.json", 1),
+        ("notes/report.json", 1),
+        (".git/report.json", 1),
+        ("tools/commentary_rag/local/report.json", 0),
+    ],
+)
+def test_out_in_any_git_working_tree_goes_only_to_its_local_folder(
+    lib, tmp_path, capsys, where, code
+) -> None:
+    tree = work_tree(tmp_path)
+    lib.models.installed = [package(tmp_path)]
+    out = tree / where
+    assert nano(a_pdf(tmp_path), "--pages", "3", "--out", str(out)) == code
+    assert out.exists() == (code == 0)
+
+
+def test_out_is_refused_when_git_cannot_tell_whether_it_lies_in_a_working_tree(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        liteparse_ocr, "GIT", str(tmp_path / "no-git-here"), raising=False
+    )
+    lib.models.installed = [package(tmp_path)]
+    out = tmp_path / "report.json"
+    assert nano(a_pdf(tmp_path), "--pages", "3", "--out", str(out)) == 1
+    assert not out.exists()
+    assert "git" in capsys.readouterr().err
+
+
+# Review round 2, P2 and P3: ORT_DYLIB_PATH or a loader override, even empty, is refused.
+
+
+@pytest.mark.parametrize(
+    "override", [(name, value) for name in LOADER for value in ("", "/elsewhere")]
+)
+def test_a_runtime_or_loader_override_is_refused_even_when_empty(
+    lib, tmp_path, capsys, monkeypatch, override
+) -> None:
+    name, value = override
+    monkeypatch.setenv(name, value)
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path)) == 1
+    assert name in capsys.readouterr().err
+    assert lib.built == []
+
+
+# Review round 2, P2: pull refuses what it could not verify before anything is downloaded.
+
+
+@pytest.mark.parametrize("hazard", ["platform", "loader override"])
+def test_pull_refuses_before_downloading_what_it_could_not_verify(
+    lib, tmp_path, capsys, monkeypatch, hazard
+) -> None:
+    if hazard == "platform":
+        monkeypatch.setattr(
+            liteparse_ocr, "this_platform", lambda: ("plan9", "mips"), raising=False
+        )
+    else:
+        monkeypatch.setenv("LD_PRELOAD", "")
+    lib.models.installed = [package(tmp_path)]
+    assert run("pull") == 1
+    assert lib.models.pulled == []  # nothing downloaded, no cache replaced
+    assert capsys.readouterr().out == ""
+
+
+# Review round 2, P3: an empty LITEPARSE_MODEL_DIR makes liteparse search the current folder.
+
+
+def test_an_empty_model_dir_names_the_current_directory_liteparse_searches(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    monkeypatch.setenv("LITEPARSE_MODEL_DIR", "")
+    monkeypatch.chdir(tmp_path)
+    assert nano(a_pdf(tmp_path)) == 1
+    err = capsys.readouterr().err
+    assert str(tmp_path) in err
+    assert "current directory" in err
+
+
+# Review round 2, P3: a manifest without either section, or with a path no file system can
+# take, is refused by name.
+
+
+def test_a_manifest_without_a_sources_or_editions_section_is_refused_by_name(
+    lib, tmp_path, capsys
+) -> None:
+    root, manifest = edition_tree(tmp_path, "sources", sha(PDF))
+    sectionless = tmp_path / "sectionless-manifest.json"
+    sectionless.write_text("{}", encoding="utf-8")
+    lib.models.installed = [package(tmp_path)]
+    assert (
+        run(
+            "parse",
+            "--edition",
+            EDITION,
+            "--manifest",
+            str(manifest),
+            "--manifest",
+            str(sectionless),
+            "--root",
+            str(root),
+            "--pages",
+            "3",
+            "--ocr-backend",
+            NANO,
+        )
+        == 1
+    )
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "sectionless-manifest.json" in err
+    assert lib.built == []
+
+
+def test_a_manifest_path_with_an_embedded_nul_is_refused_by_name(
+    lib, tmp_path, capsys
+) -> None:
+    root = tmp_path / "root"
+    root.mkdir()
+    manifest = tmp_path / "nul-manifest.json"
+    source = {
+        "path": "data/raw/com\x00mentary.pdf",
+        "sha256": sha(PDF),
+        "effective_dates": [EDITION],
+    }
+    manifest.write_text(
+        json.dumps({"kind": "commentary_sources", "sources": [source]}),
+        encoding="utf-8",
+    )
+    lib.models.installed = [package(tmp_path)]
+    assert (
+        run(
+            "parse",
+            "--edition",
+            EDITION,
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+            "--ocr-backend",
+            NANO,
+        )
+        == 1
+    )
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "nul-manifest.json" in err
+    assert lib.built == []
