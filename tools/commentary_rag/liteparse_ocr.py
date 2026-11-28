@@ -2,10 +2,10 @@
 
 The pilot never imports this module and it changes nothing. It parses one PDF (a file, or a
 commentary edition read from a manifest and checked against its SHA-256) with LiteParse and prints
-JSON: every text item and layout block with its text, bounding box (PDF points, top-left origin,
-``[x0, top, x1, bottom]``) and 1-based source page; the backend the parser reports it resolved;
-the liteparse version; and, for OCRia-nano-1, the model name, version and the SHA-256 of every file
-in the model package directory the library resolved.
+JSON: every text item and layout block (table cells, code and grid lines included) with its text,
+bounding box (PDF points, top-left origin, ``[x0, top, x1, bottom]``) and 1-based source page; the
+backend the parser reports it resolved; the liteparse version; and, for OCRia-nano-1, the model
+name, version and every file of the package with its SHA-256.
 
 liteparse is not a dependency of this repository. Run the tool in an ephemeral environment, from a
 checkout that holds the git-ignored BAG PDFs (or name that checkout with ``--root``):
@@ -14,17 +14,33 @@ checkout that holds the git-ignored BAG PDFs (or name that checkout with ``--roo
     uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py \\
         parse --edition 2021-07-01 --pages 3,4 --ocr-backend ocria-nano
 
+``parse`` never downloads a model, but ``uv run --with`` fetches liteparse itself when uv's cache
+lacks it: for a run without network, warm the cache once and add ``--offline`` (``uv run --offline
+--no-project --with liteparse==2.21.4 ...``).
+
 The backend is always chosen: ``--ocr-backend ocria-nano`` (LiteParse's OCRia-nano-1 models) or
 ``--ocr-backend none`` (native PDF text, OCR off). There is no default and no other engine: a
-parser that resolves another backend is refused before it parses, and a missing or incomplete model
-package stops the run before a parser exists. ``pull`` is the only command that downloads: it
-installs ocria-nano 1.0.0 through liteparse, which checks every file against the SHA-256 pinned in
-its release, into ``$LITEPARSE_MODEL_DIR/ocria-nano`` (default ``~/.cache/liteparse/models``), and
-it sends no Hugging Face token. The weights have their own licence (OCRia-nano-1 Model License, a
-modified OpenRAIL-M): see docs/agents/dev-tooling.md, and keep their output out of the corpus.
+parser that resolves another backend is refused before it parses. Before a parser exists, the
+model package must be ocria-nano 1.0.0 with exactly the sixteen files pinned below, each matching
+its size and SHA-256 (verified for macOS arm64 only; other platforms are refused), and
+``ORT_DYLIB_PATH`` must be unset (the pins cannot vouch for another ONNX Runtime). liteparse
+reports an OCR failure on a page only on native stderr and returns the page anyway, so the parse
+runs with file descriptor 2 captured: any ``[ocr]`` failure line refuses the whole run and no
+report is written. A page with no OCR text in a written report therefore had no OCR failure.
 
-Exit codes: 0 done, 1 refused (input, model, backend or page attribution), 2 without liteparse or
-on a usage error.
+``pull`` is the only command that downloads: it installs ocria-nano 1.0.0 through liteparse (which
+checks every file against the SHA-256 pinned in its release) into
+``$LITEPARSE_MODEL_DIR/ocria-nano`` (default ``~/.cache/liteparse/models``, on Windows
+``%LOCALAPPDATA%\\liteparse\\models``), sends no Hugging Face token, and then checks the pins too.
+
+An edition's PDF must lie inside ``--root`` once links are resolved and must not itself be a link.
+``--out`` must name a new file (an existing one is never replaced); inside a checkout it may only
+lie under the git-ignored ``tools/commentary_rag/local/``, which must be a real folder. Without
+``--out`` the JSON goes to stdout. The weights have their own licence (OCRia-nano-1 Model License,
+a modified OpenRAIL-M): see docs/agents/dev-tooling.md, and keep their output out of the corpus.
+
+Exit codes: 0 done, 1 refused (input, output, model, backend, OCR or page attribution), 2 without
+liteparse or on a usage error.
 """
 
 from __future__ import annotations
@@ -32,7 +48,9 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import ntpath
 import os
+import platform
 import sys
 import tempfile
 from importlib import metadata
@@ -45,6 +63,11 @@ except ImportError:  # deliberately absent from every environment of the pilot
 
 HERE = Path(__file__).resolve().parent
 REPO = HERE.parents[1]
+LOCAL = (
+    "tools",
+    "commentary_rag",
+    "local",
+)  # git-ignored: the one folder a report may go to
 COMMENTARY_KIND = "commentary_pdf"
 PIN = "2.21.4"  # the liteparse release this tool was checked against
 MODEL = "ocria-nano"
@@ -56,19 +79,92 @@ REFUSAL = (
     f" Run it in an ephemeral environment instead:\n  {RUN} parse --edition 2021-07-01 --pages 3,4"
     " --ocr-backend ocria-nano"
 )
-# The parts of the parser's resolved configuration the output reports.
-REPORTED = (
-    "ocr_enabled",
-    "ocr_backend",
-    "dpi",
-    "table_model",
-    "ocr_failure_fatal",
-    "target_pages",
-)
+# ocria-nano 1.0.0 as liteparse 2.21.4 installs it on macOS arm64, file by file (bytes, SHA-256),
+# checked on 2026-11-28: the model files equal liteparse's release pins and Hugging Face's files at
+# revision v1.0.0, the ONNX Runtime library equals liteparse's NuGet pin, LICENSE equals Hugging
+# Face's git object, and manifest.json is the one liteparse's pull writes. Other platforms get
+# other files (tablenet.onnx, another ONNX Runtime build), which nobody has checked here.
+PLATFORM = ("darwin", "arm64")
+PACKAGE = {
+    "LICENSE": (
+        18383,
+        "f1cee1fc810a9ba0553df347ca1238eb43efb4c9c87f590a8b17a06af6dcfd46",
+    ),
+    "det.meta.json": (
+        17,
+        "ada6b3c5de0800eb43fa81dbec714d47cd2a712a22952ef23cf38c805b27350e",
+    ),
+    "det.onnx": (
+        347580,
+        "70ea641d74c4d7d3acb734002cc1507350d8350ad44aeedc6f8ac6017dbcff7a",
+    ),
+    "manifest.json": (
+        65,
+        "60671d4fa7fae946d76bb8679c69b1377f2a6e165c66ffe8b6e25100c667346e",
+    ),
+    "rec_cjk.charset.json": (
+        43274,
+        "0e48eca81c1c0afa5a3e081fdf5fcbdc669e746e7e0a7f264e85ac76c496035b",
+    ),
+    "rec_cjk.onnx": (
+        5077778,
+        "ad7154b54a549dbfead48dd49142bcc76ee168cb0cd874f6efacab543f0b9262",
+    ),
+    "rec_latin.charset.json": (
+        4933,
+        "d386eea5691a4f3d9e40f48a3979cf859caf626c3ec43214c7911a713e1f4ed0",
+    ),
+    "rec_latin.onnx": (
+        943530,
+        "7ac8f6815b4b127f244c14f86c51f65224c82e022c1ee71f867f2be955be4da4",
+    ),
+    "rec_rtl.charset.json": (
+        1876,
+        "8ad9b8f6c1bdc17b42a2351948e84a73c487f5bed7f783bc5e8474efad126a80",
+    ),
+    "rec_rtl.meta.json": (
+        20,
+        "31fd2893cc4d48ec50b4b21a1f113f527ae9a4ac1b3ea395b0cc5969f56d46b5",
+    ),
+    "rec_rtl.onnx": (
+        2842451,
+        "9ccee36bb07b81ef310c6b50e707adabe8c6b92caea61105213686ea8977f4cf",
+    ),
+    "rec_world.charset.json": (
+        11602,
+        "ebfd39142cec3f267eda2b81b42966ac9b0f73841a52285770f4db40a016d689",
+    ),
+    "rec_world.onnx": (
+        3913987,
+        "c57d01a945d741886d356bdedc636f0572d0810c6a7c2f26dbb9ce0466b92220",
+    ),
+    "router.onnx": (
+        159029,
+        "daccb2e3ce3891b7cb95037ada3861e05fd288d7678d2a1e662d9483e04dd361",
+    ),
+    "runtime/libonnxruntime.dylib": (
+        44830288,
+        "2685dc296147c47b0dbd8e0615547b12fc0c445d158d1f374cbd0705d9626fdc",
+    ),
+    "tablenet.bin": (
+        17084482,
+        "27b5f3ff2d6842d397a21954026b1e6411e8b35085b0b32c616e67e33852d1b4",
+    ),
+}
+# What the output reports of the parser's resolved configuration (output key: config field).
+# liteparse reports only an explicit table model; the one ocria-nano brings is not shown there.
+REPORTED = {
+    "ocr_enabled": "ocr_enabled",
+    "ocr_backend": "ocr_backend",
+    "dpi": "dpi",
+    "table_model_override": "table_model",
+    "ocr_failure_fatal": "ocr_failure_fatal",
+    "target_pages": "target_pages",
+}
 
 
 class Refused(RuntimeError):
-    """The run cannot go ahead: bad input, a missing model, or a parser that disagrees."""
+    """The run cannot go ahead: bad input or output, the model, or a parser that disagrees."""
 
 
 def page_list(text: str) -> list[int]:
@@ -91,6 +187,23 @@ def liteparse_version() -> str:
     return metadata.version("liteparse")
 
 
+def this_platform() -> tuple[str, str]:
+    """The operating system and machine, as the pins name them."""
+
+    return sys.platform, platform.machine()
+
+
+def model_home() -> str:
+    """The folder liteparse searches for model packages: LITEPARSE_MODEL_DIR, else its default."""
+
+    if os.environ.get("LITEPARSE_MODEL_DIR"):
+        return os.environ["LITEPARSE_MODEL_DIR"]
+    if this_platform()[0] == "win32":
+        base = os.environ.get("LOCALAPPDATA", "%LOCALAPPDATA%")
+        return ntpath.join(base, "liteparse", "models")
+    return "~/.cache/liteparse/models"
+
+
 def _sha256(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
@@ -105,24 +218,83 @@ def _read(path: Path) -> bytes:
         ) from exc
 
 
+def _inside(target: Path, folder: Path) -> bool:
+    """Whether the resolved ``target`` lies in ``folder``, however either is spelled (a link,
+    another letter case)."""
+
+    if target.is_relative_to(folder.resolve()):
+        return True
+    return folder.is_dir() and any(
+        candidate.exists() and os.path.samefile(candidate, folder)
+        for candidate in (target, *target.parents)
+    )
+
+
+def check_output(path: Path, checkouts: list[Path]) -> None:
+    """Refuse an ``--out`` that exists or that lies in a checkout outside its git-ignored
+    local folder (page text must not land where Git sees it), before any input is read."""
+
+    target = path.resolve()
+    written = Path(os.path.abspath(path))  # as given: a link on the way is not followed
+    for repo in checkouts:
+        local = repo.joinpath(*LOCAL)
+        if not (_inside(target, repo) or _inside(written, repo)):
+            continue
+        if local.is_symlink():
+            raise Refused(
+                f"{local} is a symbolic link; write the report to the real, git-ignored"
+                " folder or outside the repository"
+            )
+        if not _inside(target, local):
+            raise Refused(
+                f"--out lies in the checkout {repo} outside tools/commentary_rag/local/"
+                " (git-ignored); write the report there or outside the repository"
+            )
+    if path.exists() or path.is_symlink():
+        raise Refused(f"--out {path} already exists; a report never replaces a file")
+    if not path.parent.is_dir():
+        raise Refused("--out must name a new file in an existing folder")
+
+
 def documents(data: dict) -> list[dict]:
     """A manifest's commentary PDFs, from ``sources[]`` or from ``editions[].documents[]``."""
 
     if "sources" in data:
-        return [
-            {"path": s["path"], "sha256": s["sha256"], "editions": s["effective_dates"]}
-            for s in data["sources"]
+        listed = [
+            (s["path"], s["sha256"], s["effective_dates"]) for s in data["sources"]
         ]
+    else:
+        listed = [
+            (d["path"], d["sha256"], [e["effective_date"]])
+            for e in data.get("editions", [])
+            for d in e["documents"]
+            if d["kind"] == COMMENTARY_KIND
+        ]
+    if not all(
+        isinstance(path, str) and isinstance(digest, str) and isinstance(dates, list)
+        for path, digest, dates in listed
+    ):
+        raise ValueError(
+            "a path, SHA-256 or list of effective dates has the wrong type"
+        )
     return [
-        {"path": d["path"], "sha256": d["sha256"], "editions": [e["effective_date"]]}
-        for e in data.get("editions", [])
-        for d in e["documents"]
-        if d["kind"] == COMMENTARY_KIND
+        {"path": path, "sha256": digest, "editions": dates}
+        for path, digest, dates in listed
     ]
 
 
+def _manifest_documents(manifest: Path) -> list[dict]:
+    try:
+        return documents(json.loads(manifest.read_text(encoding="utf-8")))
+    except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
+        raise Refused(
+            f"{manifest}: not a readable manifest ({type(exc).__name__}: {exc})"
+        ) from exc
+
+
 def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
-    """The PDF to parse, read once; an edition's bytes must match its manifest's SHA-256."""
+    """The PDF to parse, read once; an edition's file must lie inside --root, must not be a
+    link, and its bytes must match the manifest's SHA-256."""
 
     if args.pdf is not None:
         content = _read(args.pdf)
@@ -135,7 +307,7 @@ def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
     found = [
         doc
         for manifest in manifests
-        for doc in documents(json.loads(manifest.read_text(encoding="utf-8")))
+        for doc in _manifest_documents(manifest)
         if args.edition in doc["editions"]
     ]
     if len(found) != 1:
@@ -145,7 +317,15 @@ def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
             " expected one"
         )
     entry = found[0]
-    content = _read(args.root / entry["path"])
+    located = args.root / entry["path"]
+    if located.is_symlink():
+        raise Refused(
+            f"{entry['path']}: a symbolic link; the manifest must name the file itself"
+        )
+    target = located.resolve()
+    if not target.is_relative_to(args.root.resolve()):
+        raise Refused(f"{entry['path']}: resolves outside --root ({args.root})")
+    content = _read(target)
     digest = _sha256(content)
     if digest != entry["sha256"]:
         raise Refused(
@@ -155,39 +335,66 @@ def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
 
 
 def installed_model() -> dict:
-    """The ocria-nano package the library resolved, with the SHA-256 of every file in it."""
+    """The ocria-nano package the library resolved, refused unless it is version 1.0.0 with
+    exactly the pinned files, each matching its pinned size and SHA-256."""
 
     found = [entry for entry in models.list() if entry.name == MODEL]
     if not found:
-        home = os.environ.get("LITEPARSE_MODEL_DIR") or "~/.cache/liteparse/models"
         raise Refused(
-            f"{MODEL} is not installed (model directory {home}, set by"
-            f" LITEPARSE_MODEL_DIR); install it once with: {RUN} pull."
-            " No fallback: no other OCR engine runs instead"
+            f"{MODEL} is not installed in {model_home()} (LITEPARSE_MODEL_DIR, else"
+            f" liteparse's default model directory); install it once with: {RUN}"
+            " pull. No fallback: no other OCR engine runs instead"
         )
     entry = found[0]
     if not entry.complete:
         raise Refused(f"{MODEL} in {entry.path} is incomplete; run {RUN} pull again")
+    if os.environ.get("ORT_DYLIB_PATH"):
+        raise Refused(
+            "ORT_DYLIB_PATH is set: liteparse would load that ONNX Runtime, which the"
+            " asset pins do not cover; unset it"
+        )
+    if this_platform() != PLATFORM:
+        raise Refused(
+            f"the asset pins of {MODEL} {MODEL_VERSION} are verified for macOS arm64"
+            f" only, not for {' '.join(this_platform())}"
+        )
+    if entry.version != MODEL_VERSION:
+        raise Refused(
+            f"{MODEL} {entry.version} is installed; the asset pins are for"
+            f" {MODEL_VERSION}"
+        )
     folder = Path(entry.path)
-    files = sorted(
-        (path for path in folder.rglob("*") if path.is_file()),
-        key=lambda path: path.relative_to(folder).as_posix(),
+    present = {
+        path.relative_to(folder).as_posix(): path
+        for path in folder.rglob("*")
+        if path.is_file()
+    }
+    missing, extra = (
+        sorted(set(PACKAGE) - set(present)),
+        sorted(set(present) - set(PACKAGE)),
     )
+    if missing or extra:
+        raise Refused(
+            f"{MODEL} in {folder} does not match its pins: missing {missing or 'none'},"
+            f" not pinned {extra or 'none'}"
+        )
+    files = []
+    for name in sorted(PACKAGE):
+        data = present[name].read_bytes()
+        size, digest = PACKAGE[name]
+        if len(data) != size or _sha256(data) != digest:
+            raise Refused(
+                f"{MODEL} file {name}: {len(data)} bytes, SHA-256 {_sha256(data)};"
+                f" its pin is {size} bytes, {digest}"
+            )
+        files.append({"file": name, "bytes": size, "sha256": digest})
     return {
         "name": entry.name,
         "version": entry.version,
         "path": str(folder),
         "complete": entry.complete,
-        # when set, liteparse loads ONNX Runtime from here instead of runtime/
-        "ort_dylib_path": os.environ.get("ORT_DYLIB_PATH"),
-        "files": [
-            {
-                "file": path.relative_to(folder).as_posix(),
-                "bytes": path.stat().st_size,
-                "sha256": _sha256(path.read_bytes()),
-            }
-            for path in files
-        ],
+        "assets_match_pins": True,
+        "files": files,
     }
 
 
@@ -218,8 +425,27 @@ def _box(x: float, y: float, width: float, height: float) -> list[float]:
     return [x, y, x + width, y + height]
 
 
+def _rect(rect: object) -> list[float] | None:
+    return None if rect is None else _box(rect.x, rect.y, rect.width, rect.height)
+
+
+def _cells(cells: list | None, number: int) -> list[dict] | None:
+    if cells is None:
+        return None
+    return [
+        {
+            "page": number,
+            "text": cell.text,
+            "bbox": _rect(cell.bbox),
+            "text_items": list(cell.text_item_indices),
+        }
+        for cell in cells
+    ]
+
+
 def page_record(page: object) -> dict:
-    """One parsed page: its text items and blocks, each carrying the page's source number."""
+    """One parsed page: its text items and blocks (every field of liteparse's LayoutBlock, table
+    cells with their boxes), each carrying the page's source number."""
 
     number = page.page_num
     items = [
@@ -243,10 +469,19 @@ def page_record(page: object) -> dict:
             "kind": block.kind,
             "level": block.level,
             "bold": block.bold,
+            "italic": block.italic,
+            "ordered": block.ordered,
+            "marker": block.marker,
             "text": block.text,
-            "bbox": None
-            if block.bbox is None
-            else _box(block.bbox.x, block.bbox.y, block.bbox.width, block.bbox.height),
+            "lines": None if block.lines is None else list(block.lines),
+            "lang": block.lang,
+            "header": _cells(block.header, number),
+            "rows": None
+            if block.rows is None
+            else [_cells(row, number) for row in block.rows],
+            "id": block.id,
+            "format": block.format,
+            "bbox": _rect(block.bbox),
             # indices into this page's text_items
             "text_items": list(block.text_item_indices),
         }
@@ -274,9 +509,36 @@ def resolved_config(parser: object) -> object:
     return parser._native.config
 
 
+def parse_watching_stderr(parser: object, content: bytes) -> tuple[object, list[str]]:
+    """Parse ``content`` with file descriptor 2 captured, and return the result with liteparse's
+    OCR failure lines.
+
+    liteparse 2.21.4 reports a page whose OCR failed only there (``[ocr] failed for page N: ...``
+    for the first, then ``[ocr] k/n page(s) failed OCR; continuing with partial results``), not to
+    Python, and returns the page anyway; every ``[ocr] `` line it prints is such a failure. What
+    was captured is passed on to stderr.
+    """
+
+    sys.stderr.flush()
+    saved = os.dup(2)
+    with tempfile.TemporaryFile() as sink:
+        os.dup2(sink.fileno(), 2)
+        try:
+            result = parser.parse(content)
+        finally:
+            os.dup2(saved, 2)
+            os.close(saved)
+            sink.seek(0)
+            native = sink.read().decode("utf-8", "replace")
+            sys.stderr.write(native)
+    return result, [line for line in native.splitlines() if line.startswith("[ocr] ")]
+
+
 def parse(args: argparse.Namespace) -> dict:
     """Parse the requested pages with the requested backend, or refuse."""
 
+    if args.out is not None:
+        check_output(args.out, [REPO, args.root])
     source, content = pdf_input(args)
     model = installed_model() if args.ocr_backend == MODEL else None
     parser = LiteParse(**options(args.ocr_backend, args.pages))
@@ -288,9 +550,14 @@ def parse(args: argparse.Namespace) -> dict:
             f" {backend}: no fallback, nothing was parsed"
         )
     try:
-        result = parser.parse(content)
+        result, failures = parse_watching_stderr(parser, content)
     except ParseError as exc:
         raise Refused(f"liteparse could not parse {source['path']}: {exc}") from exc
+    if failures:
+        raise Refused(
+            f"liteparse reported failed OCR ({' / '.join(failures)}); it returns such"
+            " a page anyway, as if it had no text, so no report is written"
+        )
     numbers = sorted(page.page_num for page in result.pages)
     expected = args.pages or list(range(1, result.total_pages + 1))
     if numbers != expected:
@@ -303,7 +570,9 @@ def parse(args: argparse.Namespace) -> dict:
         "liteparse_version": liteparse_version(),
         "requested_backend": args.ocr_backend,
         "backend": backend,
-        "library_config": {key: getattr(config, key) for key in REPORTED},
+        "library_config": {
+            key: getattr(config, field) for key, field in REPORTED.items()
+        },
         "model": model,
         "source": {**source, "total_pages": result.total_pages},
         "pages": [page_record(page) for page in result.pages],
@@ -311,7 +580,8 @@ def parse(args: argparse.Namespace) -> dict:
 
 
 def pull() -> dict:
-    """Install ocria-nano through liteparse's checked pull, the only command that downloads.
+    """Install ocria-nano through liteparse's checked pull, the only command that downloads, then
+    check the installed files against the pins.
 
     The model repository is public. liteparse would send HF_TOKEN, or the token stored under
     HF_HOME, so the pull runs without the first and with the second naming an empty directory.
@@ -373,7 +643,11 @@ def _parser() -> argparse.ArgumentParser:
         help="manifest for --edition (repeatable; default data/manifests/*)",
     )
     parse_cmd.add_argument(
-        "--out", type=Path, default=None, help="write the JSON to this file"
+        "--out",
+        type=Path,
+        default=None,
+        help="a new file for the JSON: outside the repository or under"
+        " tools/commentary_rag/local/ (default: stdout)",
     )
     return parser
 
@@ -387,14 +661,22 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     try:
         report = pull() if args.command == "pull" else parse(args)
+        text = json.dumps(report, ensure_ascii=False, indent=1)
+        if getattr(args, "out", None) is None:
+            print(text)
+            return 0
+        try:
+            with args.out.open("x", encoding="utf-8", newline="\n") as handle:
+                handle.write(text + "\n")
+        except FileExistsError as exc:
+            raise Refused(
+                f"--out {args.out} appeared meanwhile; it is not replaced"
+            ) from exc
+        except OSError as exc:
+            raise Refused(f"--out {args.out}: {exc.strerror}") from exc
     except Refused as exc:
         print(f"liteparse_ocr refused: {exc}", file=sys.stderr)
         return 1
-    text = json.dumps(report, ensure_ascii=False, indent=1)
-    if getattr(args, "out", None) is not None:
-        args.out.write_text(text + "\n", encoding="utf-8")
-    else:
-        print(text)
     return 0
 
 

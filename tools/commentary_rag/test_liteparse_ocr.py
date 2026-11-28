@@ -2,8 +2,10 @@
 
 liteparse is in no environment of this repository, so every test replaces it at the module's
 import seam (``LiteParse``, ``ParseError``, ``models`` and the version lookup) with a stand-in
-that records what the tool asked for. Nothing is downloaded and nothing is parsed: the PDF bytes
-are synthetic and only their SHA-256 matters, the page text is made up.
+that records what the tool asked for, and replaces the asset pins and the platform with ones that
+fit a two-file synthetic package. Nothing is downloaded and nothing is parsed: the PDF bytes are
+synthetic and only their SHA-256 matters, the page text is made up. The stand-in parser can write
+to file descriptor 2, the only place liteparse reports a page whose OCR failed.
 """
 
 from __future__ import annotations
@@ -12,6 +14,7 @@ import argparse
 import hashlib
 import json
 import os
+import platform
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -29,6 +32,14 @@ NANO = "ocria-nano"
 
 def sha(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+# the synthetic package of package() below, pinned the way the tool pins ocria-nano 1.0.0
+PINS = {
+    "det.onnx": (8, sha(b"detector")),
+    "runtime/libonnxruntime.dylib": (7, sha(b"runtime")),
+}
+HOST = (sys.platform, platform.machine())
 
 
 class FakeParseError(Exception):
@@ -68,6 +79,7 @@ class Library:
         self.pages = [page(3)]
         self.total_pages = 4
         self.error: Exception | None = None
+        self.native_stderr = b""  # what the native parse writes to file descriptor 2
         library = self
 
         class Parser:
@@ -100,6 +112,8 @@ class Library:
             def parse(self, data: bytes) -> SimpleNamespace:
                 """Return the test's pages, or raise the test's error."""
                 self.parsed.append(data)
+                if library.native_stderr:
+                    os.write(2, library.native_stderr)
                 if library.error is not None:
                     raise library.error
                 return SimpleNamespace(
@@ -116,6 +130,10 @@ def lib(monkeypatch: pytest.MonkeyPatch) -> Library:
     monkeypatch.setattr(liteparse_ocr, "ParseError", FakeParseError)
     monkeypatch.setattr(liteparse_ocr, "models", library.models)
     monkeypatch.setattr(liteparse_ocr, "liteparse_version", lambda: "9.9.9")
+    monkeypatch.setattr(liteparse_ocr, "PACKAGE", PINS, raising=False)
+    monkeypatch.setattr(liteparse_ocr, "PLATFORM", HOST, raising=False)
+    monkeypatch.delenv("ORT_DYLIB_PATH", raising=False)
+    monkeypatch.delenv("LITEPARSE_MODEL_DIR", raising=False)
     return library
 
 
@@ -134,14 +152,36 @@ def item(text: str, *, confidence: float | None = None) -> SimpleNamespace:
     )
 
 
-def block(text: str, kind: str = "paragraph") -> SimpleNamespace:
+def block(text: str | None, kind: str = "paragraph", **fields) -> SimpleNamespace:
+    """A block with every field of liteparse 2.21.4's LayoutBlock; ``fields`` override."""
+    shape = {
+        "kind": kind,
+        "text": text,
+        "level": None,
+        "bold": False,
+        "italic": False,
+        "ordered": None,
+        "marker": None,
+        "lines": None,
+        "lang": None,
+        "header": None,
+        "rows": None,
+        "id": None,
+        "format": None,
+        "bbox": SimpleNamespace(x=10.0, y=20.0, width=30.0, height=8.0),
+        "text_item_indices": [0],
+    }
+    return SimpleNamespace(**{**shape, **fields})
+
+
+def cell(text: str, x: float | None) -> SimpleNamespace:
+    """A table cell; ``x=None`` is a padding cell without ink (no box, no text items)."""
+    if x is None:
+        return SimpleNamespace(text=text, bbox=None, text_item_indices=[])
     return SimpleNamespace(
-        kind=kind,
         text=text,
-        level=None,
-        bold=False,
-        text_item_indices=[0],
-        bbox=SimpleNamespace(x=10.0, y=20.0, width=30.0, height=8.0),
+        bbox=SimpleNamespace(x=x, y=40.0, width=20.0, height=6.0),
+        text_item_indices=[1],
     )
 
 
@@ -204,6 +244,21 @@ def edition_tree(tmp_path: Path, shape: str, digest: str) -> tuple[Path, Path]:
     manifest = tmp_path / "manifest.json"
     manifest.write_text(json.dumps(data), encoding="utf-8")
     return root, manifest
+
+
+def checkout(tmp_path: Path, *, linked_local: bool = False) -> Path:
+    """A repository checkout with tools/commentary_rag/results/ and local/ (a real folder, or a
+    link to a folder elsewhere)."""
+    repo = tmp_path / "checkout"
+    folder = repo / "tools" / "commentary_rag"
+    (folder / "results").mkdir(parents=True)
+    if linked_local:
+        elsewhere = tmp_path / "elsewhere"
+        elsewhere.mkdir()
+        (folder / "local").symlink_to(elsewhere)
+    else:
+        (folder / "local").mkdir()
+    return repo
 
 
 def run(*argv: str) -> int:
@@ -322,7 +377,9 @@ def test_the_reported_backend_and_settings_come_from_the_parser(
     assert doc["requested_backend"] == NANO
     assert doc["backend"] == NANO
     assert doc["library_config"]["dpi"] == 250.0
-    assert doc["library_config"]["table_model"] == "/synthetic/tablenet.bin"
+    # liteparse reports only an explicit table model there, never the one ocria-nano brings
+    assert doc["library_config"]["table_model_override"] == "/synthetic/tablenet.bin"
+    assert "table_model" not in doc["library_config"]
     assert doc["liteparse_version"] == "9.9.9"
 
 
@@ -506,3 +563,356 @@ def test_a_parse_error_is_refused_with_the_librarys_message(
     out, err = capsys.readouterr()
     assert out == ""
     assert "synthetic: ocria-nano models not found" in err
+
+
+# Review round 1, P2: the model assets must match the pins before anything is parsed.
+
+
+def test_the_pins_cover_the_sixteen_files_of_ocria_nano_1_0_0_on_macos_arm64() -> None:
+    assert sorted(liteparse_ocr.PACKAGE) == [
+        "LICENSE",
+        "det.meta.json",
+        "det.onnx",
+        "manifest.json",
+        "rec_cjk.charset.json",
+        "rec_cjk.onnx",
+        "rec_latin.charset.json",
+        "rec_latin.onnx",
+        "rec_rtl.charset.json",
+        "rec_rtl.meta.json",
+        "rec_rtl.onnx",
+        "rec_world.charset.json",
+        "rec_world.onnx",
+        "router.onnx",
+        "runtime/libonnxruntime.dylib",
+        "tablenet.bin",
+    ]
+    assert liteparse_ocr.PACKAGE["runtime/libonnxruntime.dylib"] == (
+        44830288,
+        "2685dc296147c47b0dbd8e0615547b12fc0c445d158d1f374cbd0705d9626fdc",
+    )
+    assert liteparse_ocr.PLATFORM == ("darwin", "arm64")
+
+
+def test_assets_that_match_their_pins_are_reported_as_matched(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 0
+    model = json.loads(capsys.readouterr().out)["model"]
+    assert model["assets_match_pins"] is True
+    assert "ort_dylib_path" not in model
+
+
+@pytest.mark.parametrize("change", ["altered", "missing", "extra", "version"])
+def test_an_asset_that_does_not_match_its_pin_is_refused_before_parsing(
+    lib, tmp_path, capsys, change
+) -> None:
+    entry = package(tmp_path)
+    folder = Path(entry.path)
+    if change == "altered":
+        (folder / "det.onnx").write_bytes(b"detectoR")  # same size, other bytes
+    elif change == "missing":
+        (folder / "runtime" / "libonnxruntime.dylib").unlink()
+    elif change == "extra":
+        (folder / "rec_extra.onnx").write_bytes(b"unpinned")
+    else:
+        entry.version = "1.0.1"
+    lib.models.installed = [entry]
+    assert nano(a_pdf(tmp_path)) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "pin" in err
+    assert lib.built == []
+
+
+def test_a_runtime_named_by_ort_dylib_path_is_refused(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    monkeypatch.setenv("ORT_DYLIB_PATH", str(tmp_path / "libonnxruntime.dylib"))
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path)) == 1
+    assert "ORT_DYLIB_PATH" in capsys.readouterr().err
+    assert lib.built == []
+
+
+def test_a_platform_without_verified_pins_is_refused(
+    lib, tmp_path, capsys, monkeypatch
+) -> None:
+    monkeypatch.setattr(
+        liteparse_ocr, "this_platform", lambda: ("plan9", "mips"), raising=False
+    )
+    lib.models.installed = [package(tmp_path)]
+    assert nano(a_pdf(tmp_path)) == 1
+    assert "macOS arm64" in capsys.readouterr().err
+    assert lib.built == []
+
+
+# Review round 1, P2: tables, code and grids keep their content, each with its page.
+
+
+def test_tables_code_and_grids_keep_their_cells_and_lines_with_their_page(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    table = block(
+        None,
+        "table",
+        header=[cell("Code", 10.0), cell("Name", 30.0)],
+        rows=[[cell("1234.56", 10.0), cell("", None)]],
+    )
+    code = block(
+        None, "code", lines=["synthetic line one", "synthetic line two"], lang="text"
+    )
+    grid = block(None, "grid_fallback", lines=["a  b", "c  d"])
+    entry = block("Synthetic item", "list_item", ordered=True, marker="1.", level=1)
+    figure = block(None, "figure", id="7", format="png", text_item_indices=[])
+    lib.pages = [
+        page(3, [item("Code"), item("1234.56")], [table, code, grid, entry, figure])
+    ]
+    assert nano(a_pdf(tmp_path), "--pages", "3") == 0
+    blocks = json.loads(capsys.readouterr().out)["pages"][0]["blocks"]
+    first = {
+        "page": 3,
+        "text": "Code",
+        "bbox": [10.0, 40.0, 30.0, 46.0],
+        "text_items": [1],
+    }
+    assert blocks[0]["header"][0] == first
+    assert [c["text"] for c in blocks[0]["header"]] == ["Code", "Name"]
+    assert blocks[0]["rows"] == [
+        [
+            {
+                "page": 3,
+                "text": "1234.56",
+                "bbox": [10.0, 40.0, 30.0, 46.0],
+                "text_items": [1],
+            },
+            {"page": 3, "text": "", "bbox": None, "text_items": []},
+        ]
+    ]
+    assert (blocks[1]["lines"], blocks[1]["lang"]) == (
+        ["synthetic line one", "synthetic line two"],
+        "text",
+    )
+    assert blocks[2]["lines"] == ["a  b", "c  d"]
+    assert (blocks[3]["ordered"], blocks[3]["marker"], blocks[3]["italic"]) == (
+        True,
+        "1.",
+        False,
+    )
+    assert (blocks[4]["id"], blocks[4]["format"], blocks[4]["text_items"]) == (
+        "7",
+        "png",
+        [],
+    )
+    assert {b["page"] for b in blocks} == {3}
+
+
+# Review round 1, P2: a manifest may select only a file inside --root, never a link.
+
+
+@pytest.mark.parametrize(
+    ("where", "reason"),
+    [
+        ("parent", "outside --root"),
+        ("absolute", "outside --root"),
+        ("link out", "symbolic link"),
+        ("link in", "symbolic link"),
+    ],
+)
+def test_a_manifest_path_that_leaves_the_checkout_or_is_a_link_is_refused(
+    lib, tmp_path, capsys, where, reason
+) -> None:
+    root = tmp_path / "root"
+    raw = root / "data" / "raw"
+    raw.mkdir(parents=True)
+    outside = tmp_path / "private.pdf"
+    outside.write_bytes(PDF)
+    path = "data/raw/commentary.pdf"
+    if where == "parent":
+        path = "../private.pdf"
+    elif where == "absolute":
+        path = str(outside)
+    elif where == "link out":
+        (raw / "commentary.pdf").symlink_to(outside)
+    else:
+        (raw / "real.pdf").write_bytes(PDF)
+        (raw / "commentary.pdf").symlink_to(raw / "real.pdf")
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "kind": "commentary_sources",
+                "sources": [
+                    {"path": path, "sha256": sha(PDF), "effective_dates": [EDITION]}
+                ],
+            }
+        ),
+        encoding="utf-8",
+    )
+    lib.models.installed = [package(tmp_path)]
+    assert (
+        run(
+            "parse",
+            "--edition",
+            EDITION,
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(root),
+            "--ocr-backend",
+            NANO,
+        )
+        == 1
+    )
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert reason in err
+    assert lib.built == []
+
+
+# Review round 1, P2: --out is a new file, and in a checkout only under its local/ folder.
+
+
+@pytest.mark.parametrize("target", ["an existing file", "the input PDF"])
+def test_out_never_replaces_a_file(lib, tmp_path, capsys, target) -> None:
+    lib.models.installed = [package(tmp_path)]
+    pdf = a_pdf(tmp_path)
+    out = Path(pdf)
+    if target == "an existing file":
+        out = tmp_path / "kept.json"
+        out.write_text("kept", encoding="utf-8")
+    before = out.read_bytes()
+    assert nano(pdf, "--pages", "3", "--out", str(out)) == 1
+    assert out.read_bytes() == before
+    assert "already exists" in capsys.readouterr().err
+    assert lib.built == []  # refused before anything was read or parsed
+
+
+@pytest.mark.parametrize(
+    ("where", "code"),
+    [
+        ("tools/commentary_rag/local/report.json", 0),
+        ("tools/commentary_rag/results/report.json", 1),
+        ("report.json", 1),
+    ],
+)
+def test_out_inside_a_checkout_goes_only_to_its_git_ignored_local_folder(
+    lib, tmp_path, capsys, where, code
+) -> None:
+    repo = checkout(tmp_path)
+    lib.models.installed = [package(tmp_path)]
+    out = repo / where
+    assert (
+        nano(a_pdf(tmp_path), "--pages", "3", "--root", str(repo), "--out", str(out))
+        == code
+    )
+    assert out.exists() == (code == 0)
+    assert ("local/" in capsys.readouterr().err) == bool(code)
+
+
+def test_out_under_a_linked_local_folder_is_refused(lib, tmp_path, capsys) -> None:
+    repo = checkout(tmp_path, linked_local=True)
+    lib.models.installed = [package(tmp_path)]
+    out = repo / "tools" / "commentary_rag" / "local" / "report.json"
+    assert (
+        nano(a_pdf(tmp_path), "--pages", "3", "--root", str(repo), "--out", str(out))
+        == 1
+    )
+    assert not (tmp_path / "elsewhere" / "report.json").exists()
+    assert "symbolic link" in capsys.readouterr().err
+
+
+# Review round 1, P2: an OCR failure that liteparse reports only on stderr fails the run.
+
+
+def test_an_ocr_failure_reported_only_on_native_stderr_refuses_the_run(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.pages = [page(3), page(4, [item("Synthetic text", confidence=0.9)])]
+    lib.native_stderr = (
+        b"[ocr] failed for page 3: synthetic engine error\n"
+        b"[ocr] 1/2 page(s) failed OCR; continuing with partial results\n"
+    )
+    report = tmp_path / "report.json"
+    assert nano(a_pdf(tmp_path), "--pages", "3,4", "--out", str(report)) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert not report.exists()
+    assert (
+        "[ocr] failed for page 3: synthetic engine error" in err
+    )  # passed on as written
+    assert "no report" in err
+
+
+def test_a_page_without_ocr_text_and_without_a_failure_is_reported(
+    lib, tmp_path, capsys
+) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.pages = [page(1), page(2, [item("Synthetic text", confidence=0.9)])]
+    lib.total_pages = 2
+    lib.native_stderr = b"[liteparse] ocr: 10.5ms\n"  # a log line, not a failure
+    assert nano(a_pdf(tmp_path), "--pages", "1,2") == 0
+    out, err = capsys.readouterr()
+    assert [p["ocr_items"] for p in json.loads(out)["pages"]] == [0, 1]
+    assert "[liteparse] ocr: 10.5ms" in err
+
+
+# Review round 1, P3: an unreadable or malformed manifest is an input refusal naming it.
+
+
+@pytest.mark.parametrize(
+    "content", [None, "{not json", '{"sources": [{"path": 1}]}', "[]"]
+)
+def test_an_unreadable_or_malformed_manifest_is_refused_by_name(
+    lib, tmp_path, capsys, content
+) -> None:
+    manifest = tmp_path / "broken-manifest.json"
+    if content is not None:
+        manifest.write_text(content, encoding="utf-8")
+    assert (
+        run(
+            "parse",
+            "--edition",
+            EDITION,
+            "--manifest",
+            str(manifest),
+            "--root",
+            str(tmp_path),
+            "--ocr-backend",
+            NANO,
+        )
+        == 1
+    )
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "broken-manifest.json" in err
+    assert lib.built == []
+
+
+# Review round 1, P3: the missing-model message names the folder liteparse searches.
+
+
+@pytest.mark.parametrize(
+    "case",
+    [
+        (
+            ("win32", "AMD64"),
+            {"LOCALAPPDATA": "C:\\Users\\someone\\AppData\\Local"},
+            "C:\\Users\\someone\\AppData\\Local\\liteparse\\models",
+        ),
+        (("darwin", "arm64"), {}, "~/.cache/liteparse/models"),
+        (("linux", "x86_64"), {"LITEPARSE_MODEL_DIR": "/srv/models"}, "/srv/models"),
+    ],
+)
+def test_the_missing_model_message_names_the_folder_liteparse_searches(
+    lib, tmp_path, capsys, monkeypatch, case
+) -> None:
+    host, env, shown = case  # platform, environment, the folder the message must name
+    for key, value in env.items():
+        monkeypatch.setenv(key, value)
+    monkeypatch.setattr(liteparse_ocr, "this_platform", lambda: host, raising=False)
+    assert nano(a_pdf(tmp_path)) == 1
+    assert shown in capsys.readouterr().err

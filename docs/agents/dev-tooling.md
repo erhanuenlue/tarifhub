@@ -136,21 +136,47 @@ ingestion PostgreSQL legs need network.
   is in no lockfile, service environment or image. It runs in an ephemeral environment with an
   exact pin, `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py`
   (the official Python package of `run-llama/liteparse`, Apache-2.0, checked on 2026-11-28).
+  `uv run --with` fetches liteparse itself when uv's cache lacks it, so a run without network
+  needs a warm cache and `--offline`, for example
+  `sandbox-exec -p '(version 1)(allow default)(deny network*)' uv run --offline --no-project --with liteparse==2.21.4 ...`.
 - **Model:** OCRia-nano-1 (`ocria-nano` 1.0.0, Hugging Face `llamaindex/OCRia-nano-1`). The
   tool's `pull` command is the only one that downloads: liteparse installs the package into
-  `$LITEPARSE_MODEL_DIR/ocria-nano` (default `~/.cache/liteparse/models`) and checks every model
-  file and its ONNX Runtime 1.31.1 library against SHA-256 pins built into the release. The pull
-  sends no Hugging Face token; `parse` never downloads and also works with networking denied.
+  `$LITEPARSE_MODEL_DIR/ocria-nano` (default `~/.cache/liteparse/models`, on Windows
+  `%LOCALAPPDATA%\liteparse\models`) and checks every model file and its ONNX Runtime 1.31.1
+  library against SHA-256 pins built into the release. The pull sends no Hugging Face token;
+  `parse` never downloads and also works with networking denied.
+- **Asset pins:** the tool pins the sixteen files of ocria-nano 1.0.0 as installed on macOS arm64
+  (bytes and SHA-256: the model files equal liteparse's release pins and Hugging Face, the ONNX
+  Runtime library liteparse's NuGet pin, `LICENSE` Hugging Face's file, `manifest.json` the one
+  the pull writes). Before a parser exists the package must match them exactly: a changed, missing
+  or additional file (a stray `.DS_Store` too), another version, another platform or a set
+  `ORT_DYLIB_PATH` (another ONNX Runtime) is refused, and the report states that the assets
+  matched.
 - **Backend:** always named. `--ocr-backend ocria-nano` or `--ocr-backend none` (native PDF text,
   OCR off); there is no default and no Tesseract choice. A missing or incomplete model package, or a
   parser that resolves another backend, stops the run with exit 1 before anything is parsed. With
   OCR off the tool still names a backend: otherwise liteparse makes an installed ocria-nano package
   the resolved backend, and its table and layout model then changes the blocks of born-digital
   pages.
-- **Output:** JSON with every text item and layout block, its bounding box and 1-based source page,
-  the backend liteparse reports, the liteparse version and the SHA-256 of every file in the model
-  package. In liteparse 2.21.4 `get_config()` fails (AttributeError on `keep_clipped_text`), so
-  the tool reads the same values from the native configuration object.
+- **OCR failures:** liteparse 2.21.4 reports a page whose OCR failed only on native stderr
+  (`[ocr] failed for page N: ...`, then `[ocr] k/n page(s) failed OCR; continuing with partial
+  results`) and returns the page anyway, without OCR text; it raises only when every OCR task failed
+  and one of them was on a text-poor page. The tool therefore captures file descriptor 2 during the
+  parse and refuses the whole run on any `[ocr]` line, writing no report. A page without OCR text
+  in a written report had no OCR failure, so a blank page stays apart from a failed one. This rests
+  on liteparse's own wording, read in its 2.21.4 source and seen from the installed library.
+- **Input and output:** an edition's PDF must lie inside `--root` once links are resolved and must
+  not be a link itself. `--out` must name a new file (an existing one, the input PDF included, is
+  refused, never replaced); in a checkout it may only lie under the git-ignored
+  `tools/commentary_rag/local/`, which must be a real folder. Without `--out` the JSON goes to
+  stdout.
+- **Output:** JSON with every text item and layout block (every field of liteparse's block, table
+  header and rows with each cell's text, box and items, code and grid lines), each with its bounding
+  box and 1-based source page, the backend liteparse reports, the liteparse version and the model
+  files with their pinned SHA-256. In liteparse 2.21.4 `get_config()` fails (AttributeError on
+  `keep_clipped_text`), so the tool reads the same values from the native configuration object.
+  There `table_model` is only an explicit override: with ocria-nano, liteparse uses the package's
+  TableNet and still reports none, so the report calls it `table_model_override`.
 - **Licence:** the weights are not under LiteParse's licence but under the OCRia-nano-1 Model License
   (a modified OpenRAIL-M; pulling accepts it). Its Attachment A restricts use above revenue or
   funding thresholds and in competing document-parsing services, except for Research Purposes,
