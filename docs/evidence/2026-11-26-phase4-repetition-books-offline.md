@@ -261,8 +261,8 @@ the runner's module docstring is qualified, and this page names the reviewed rev
 a Phase 4 ledger that is missing when the run recovers (there since an earlier booking) is a new
 one to the books' reader, so the recovery took the books as readable and empty, dropped the call
 the run's own files prove (accounting `nothing_reserved`), and a restart with the ledger restored
-skipped the cell, leaving the case incomplete. Fixed the same day, test-first, in the runner
-alone: a ledger that is not there when the run recovers takes no part, like books that cannot be
+skipped the cell, leaving the case incomplete. Fixed the same day, test-first (in the runner; after
+the tenth review also in the books' recovery reader, below): a ledger that is not there when the run recovers takes no part, like books that cannot be
 read (accounting `unknown`); the run's own request, complete response and record still decide, no
 cost is taken from the response, and nothing is written to the books. A missing ledger alone
 proves nothing: a first use books as any other, a complete response file without the cell's record
@@ -273,6 +273,19 @@ points are taken in: a call can itself prove its send (the runner's module docst
 README and arc42 section 6), the uncertainty and an overage can arise on different calls (the
 sentence above, now with a guard test), and the scorer's `aborted` subtotal counts only aborted
 cells with a proven send (its docstrings, ADR-028 and arc42 section 13, with a guard test).
+
+**The review of that fix** (round 10, its revision named in
+[#73](https://github.com/erhanuenlue/tarifhub/pull/73)) found the ledger could still be missed:
+probed before and after the read, a ledger away only while the recovery read it, and back
+afterwards, looked present, so the books read as empty dropped the proven send again; the other
+way round, a probe after the read could override readable books that hold no booking of the cell.
+Fixed the same day, test-first: the books' recovery reader (`evidence_agent.phase4_cell`, used by
+the recovery alone) reports a ledger that is not there as it is read (only a missing ledger reads
+as no events, since a present one holds its pin), so the recovery observes the ledger once and the
+probes are gone; the strict ledger reading, admission, `run_case`, B, C, D and the scoring are
+unchanged. Its two P3 points are taken in: ADR-028's guarantee that a restart sends or books no
+cell twice holds while the books hold its booking, and a deadline ending is kept only when
+readable books hold the release (ADR-028, arc42 section 6 and the README).
 
 **Test first** (the repository's `tdd` skill; the scripted provider, temporary books and
 deterministic interruptions, through the runner's and the scorer's entry points): each regression
@@ -288,6 +301,8 @@ failed on the code before its fix and passes with it.
 | Unreadable books (round 7) | the books damaged by an amount past float range, or by nesting past the parser, while C's lock is given back | C's cell dropped (`['fixed10'] == ['fixed10', 'agent']`) | passes: the cell kept with its proven send, accounting `unknown` |
 | Overage and conflict (round 8) | C's answer settled above its reservation, its response file then altered, the lock's release interrupted | `'above_reservation' == 'uncertain'` | passes: accounting `uncertain`, the overage on the unconfirmed call |
 | Missing ledger (round 9) | C's call booked, sent, saved and settled; the Phase 4 ledger moved away while C's lock is given back, then restored, byte for byte, before a restart | the proven call dropped (`'nothing_reserved' == 'unknown'`) | passes: one proven call, accounting `unknown`, no cost; the case complete; the restart sends and books D only |
+| Ledger gone during the read (round 10) | C's call proven; the ledger moved away exactly while the recovery reads it, then moved back | the proven call dropped (`'nothing_reserved' == 'unknown'`) | passes: accounting `unknown`, the send kept, the case complete after the restart, which sends D only |
+| Books read, then gone (round 10) | the recovery reads an earlier copy without C's booking, and the ledger is gone right after the read | the probe overrode the readable books (`'unknown' == 'nothing_reserved'`) | passes: the readable books decide (`nothing_reserved`, nothing kept) |
 | Missing ledger alone (round 9) | the ledger moved away after C ran, the error carrying no record of the cell; a response file cut short while the ledger is moved away | `'nothing_reserved' == 'unknown'` in both | passes: no send proven, the call unconfirmed, accounting `unknown`; nothing sent again |
 
 Guards that pass before and after: an entry whose action is not its call's stays refused in a
@@ -301,12 +316,13 @@ on the restart; a tool turn kept at its reservation followed by an answer above 
 reservation leaves the accounting `uncertain` with the overage on its call; the summary counts an
 aborted cell without a proven send as not run.
 
-**Checks** (on the code of these fixes): the pilot's offline suite, 809 tests in fifteen files, all
-passing, none skipped (803 before the round-9 fix, 781 before round 6's): runner 109 (104, 89),
+**Checks** (on the code of these fixes): the pilot's offline suite, 811 tests in fifteen files, all
+passing, none skipped (809 before the round-10 fix, 803 before round 9's, 781 before round 6's):
+runner 111 (109, 104, 89),
 scorer 203 (202, 195); D 56 and the agent loop 156 unchanged. Lint clean. A scripted B cell and C cell in the Phase 2 and 3 books give identical
 records, requests and ledger lines at `140ca86` and now; `results/` is byte-identical to
 `140ca86`; the 14 file hashes of the freeze record hold; no Phase 4 ledger exists. The simulated
-rehearsal of section 5, run again on this code (after the round-7, round-8 and round-9 fixes too),
+rehearsal of section 5, run again on this code (after the round-7 to round-10 fixes too),
 gave the same results in all nine scenarios. A
 typed `/ship-it source-only` (after `/clear`, on this branch) loaded
 `.claude/skills/ship-it/SKILL.md` from the repository's Git root, not a link; a newly launched

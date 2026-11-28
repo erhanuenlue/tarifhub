@@ -790,7 +790,7 @@ response's as the cell recorded it or as the books settled it, so a zero-byte or
 proves no send, even for an empty response) make it a cell that ran and failed,
 as the frozen rubric counts it, with the searches those calls ran as the cell recorded them, D's
 coverage entries for those calls (also for a call cut off before its search was recorded) and the
-cell's recorded ending if it had ended (also after its last booking was released unsent, as the
+cell's recorded ending if it had ended (also after its last booking was released unsent, as readable
 books hold); its other bookings are listed as unconfirmed, one it cannot show as its own (another
 run's, possibly) is left out, and nothing after the last recorded step is inferred. Books that
 cannot be read, whatever their damage, take no part (accounting `unknown`), and since 2026-11-28
