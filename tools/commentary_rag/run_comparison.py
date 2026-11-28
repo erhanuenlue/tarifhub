@@ -28,8 +28,11 @@ cells still to run (every call at the input cap: USD 10.3488 for B, C and D of a
 fit beside everything committed in those books, so a case that does not fit stops the run before
 anything of it is sent. A rerun after an interruption skips every cell already in the books and
 goes on in the frozen order; a cell whose booking is unresolved (a reservation without a
-settlement: sending unknown) is never sent again, and its case stays incomplete unless an earlier
-call of that cell was demonstrably sent (the cell then ran and failed).
+settlement) is never sent again, and its case stays incomplete unless the cell demonstrably sent a
+call (the cell then ran and failed): that call itself, when the run saved its complete response,
+or an earlier one. The books are the only record of what was booked: a run started while the
+Phase 4 ledger is missing finds new books and would book and send every cell again, so a missing
+ledger is restored before any restart (recovery never rebuilds it from a run's files).
 
 The input is a cases file holding each case's ID, question and editions and nothing else: any
 other field (a reference answer, gold evidence, a rubric) is refused before the file is used, so
@@ -76,6 +79,7 @@ import dataclasses
 import hashlib
 import json
 import math
+import os
 import platform
 import secrets
 import subprocess
@@ -1419,10 +1423,15 @@ def _aborted(  # noqa: PLR0913
     sending), never from an open or unknown booking. So a search that ran is scored and nothing
     after the last recorded step is inferred. Without that record the cell keeps what the files
     and books show (``trace`` ``not_recorded``). Books that cannot be read, whatever their damage,
-    take no part (accounting ``unknown``); a call readable books settle as sent that the run
+    take no part (accounting ``unknown``), and neither does a Phase 4 ledger that is not there
+    when the run recovers: a missing ledger is a new one to admission only, so absent books
+    confirm and contradict nothing, the run's own files and record still decide, and a missing
+    ledger alone proves nothing; a call readable books settle as sent that the run
     cannot show it sent leaves the accounting ``uncertain``, ahead of any overage, which stays
     on its call (``above_reservation``, unconfirmed calls included)."""
 
+    ledger = evidence_agent.BOOKS / evidence_agent.PHASE4_LEDGER  # os.path.exists never raises
+    absent = not os.path.exists(ledger)
     try:
         books = {
             b["reserve"]["attempt"]: b
@@ -1433,6 +1442,10 @@ def _aborted(  # noqa: PLR0913
         # damaged or unreadable (an amount past float range or nesting past the parser
         # included): the files and the record still show
         books, readable = {}, False
+    if readable and not books and (absent or not os.path.exists(ledger)):
+        # A ledger that is not there is a new one to admission, never to recovery: books gone
+        # since the run booked confirm and contradict nothing, like books that cannot be read.
+        readable = False
     partial = getattr(error, "case_record", None)
     entries = {
         c.get("attempt"): c
