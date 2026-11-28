@@ -780,11 +780,15 @@ A rerun after an interruption (under a new tag) skips every cell in the books an
 frozen order; a call whose sending is unknown stays open at its reservation, a call released before
 sending stays released, and neither is sent again or confirms a send. Since 2026-11-27 a cell that an
 unexpected error or an interruption ends is recorded from the books before the run stops (outcome
-`aborted`): the calls this run demonstrably sent (its own saved request and response, consistent
-with the books where they can be read) make it a cell that ran and failed, as the frozen rubric
-counts it, with the searches those calls ran as the cell recorded them; its other bookings are
-listed as unconfirmed, one it cannot show as its own (another run's, possibly) is left out, and
-nothing after the last recorded step is inferred. The replay failure C and D share
+`aborted`): the calls this run demonstrably sent (its own saved request and its complete
+response, consistent with the books where they can be read: since 2026-11-28 the saved response
+file counts only when its SHA-256 equals the complete response's as the cell recorded it or as the
+books settled it, so an empty or cut-short file proves no send) make it a cell that ran and failed,
+as the frozen rubric counts it, with the searches those calls ran as the cell recorded them, D's
+coverage entries for those calls (also for a call cut off before its search was recorded) and the
+cell's recorded ending if it had ended (also after its last booking was released unsent, as the
+books hold); its other bookings are listed as unconfirmed, one it cannot show as its own (another
+run's, possibly) is left out, and nothing after the last recorded step is inferred. The replay failure C and D share
 (a lone surrogate the model escaped in a tool input) is such a cell. A
 local output folder (or a request or response folder in it) that is a symbolic link is refused
 before the model loads. Since 2026-11-27 a run of either design claims its local folder before the
@@ -809,7 +813,9 @@ action; D's coverage diagnostics are counted apart and never enter a measure. It
 thresholds and both outcome tables as pure functions (T3 and T4 not assessable on an incomplete
 repetition). A cell the runner recorded as aborted (since 2026-11-27) ran when its run demonstrably
 sent a call and did not run otherwise; its recorded searches are scored like any failed cell's
-(the call that ended it after them is no decision with an action), one kept without its trace has
+(the call that ended it after them is no decision with an action; since 2026-11-28 D's coverage
+entry for that call, if the cell recorded one before the cut, counts among the coverage
+diagnostics only, a search entry only for a call offered the tool), one kept without its trace has
 no decision point, and the summary counts aborted cells apart (`aborted`).
 Since 2026-11-26 it reports amendment A1 beside T3 (`a1`, `search_thresholds`):
 unnecessary search attempts, an executed search or a refused request at a no-search-needed point

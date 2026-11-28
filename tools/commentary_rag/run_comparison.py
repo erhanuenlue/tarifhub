@@ -1401,17 +1401,18 @@ def _aborted(  # noqa: PLR0913
     Those calls, from the first on, are ``generation_calls``, so a cell with one ran and failed
     (outcome ``aborted``); the run's other calls (open: sending unknown; released: never sent;
     sent without a response it kept; or a response file the digests do not confirm) are listed
-    under ``unconfirmed_calls`` and confirm nothing. A reservation that only
-    matches a saved request (another run's, possibly: the frozen requests hash alike) is not this
-    run's: it is left out of the record, the accounting and the outputs. The cell's own record
-    is kept for the sent calls: their entries, the searches they ran (search i belongs to call
-    i), the passages those supplied, D's coverage entries for them (also for the call cut off,
-    whose action is not inferred from it), and the outcome it had recorded if it had already
-    ended (``ended``): when every call it recorded is sent, or when its one call after them was
+    under ``unconfirmed_calls`` and confirm nothing. A reservation that only matches a saved
+    request (another run's, possibly: the frozen requests hash alike) is not this run's: it is
+    left out of the record, the accounting and the outputs. The cell's own record is kept for
+    the sent calls: their entries, the searches they ran (search i belongs to call i), the
+    passages those supplied, D's coverage entries for them (also for the call cut off, whose
+    action is not inferred from it), and the outcome it had recorded if it had already ended
+    (``ended``): when every call it recorded is sent, or when its one call after them was
     released unsent as its record says and readable books hold (never sent: a deadline before
-    sending); never from an open or unknown booking. So a search that ran is scored and nothing
-    after the last recorded step is inferred. Without that record the cell keeps what the files and books show (``trace``
-    ``not_recorded``). Books that cannot be read take no part (accounting ``unknown``)."""
+    sending), never from an open or unknown booking. So a search that ran is scored and nothing
+    after the last recorded step is inferred. Without that record the cell keeps what the files
+    and books show (``trace`` ``not_recorded``). Books that cannot be read take no part
+    (accounting ``unknown``)."""
 
     try:
         books = {

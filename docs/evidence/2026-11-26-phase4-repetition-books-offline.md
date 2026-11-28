@@ -4,7 +4,8 @@
 ([previous page](2026-11-25-phase4-coverage-decision-offline.md)): an analysis amendment recorded
 before any live result, Phase 4's own books for one exploratory repetition, the remaining review
 points of that step, and a simulated rehearsal through the ordinary entry point; section 8 records
-the fixes Erhan approved on 2026-11-27 and their checks. No live run, no
+the fixes Erhan approved on 2026-11-27 and section 9 those of 2026-11-28, with their checks. No
+live run, no
 provider call, no GPU job and no spending (USD 0); the Phase 2 and 3 books stay at USD 7.060552 of
 their USD 100, and no Phase 4 ledger exists yet. Decision records: amendments A1 and O1
 ([`phase4/amendments.md`](https://github.com/erhanuenlue/tarifhub/blob/main/tools/commentary_rag/phase4/amendments.md)),
@@ -138,7 +139,7 @@ cap, authorizes no expenditure; a live run needs his separate decision.
 |---|---|
 | "Commit the time-budget pin with the first reservation" | the first call's request is saved first; the pin and the first reservation are then written as one accounting event (the ledger is created holding both lines or not at all: staged beside it and linked into place, never replacing a ledger). A failed request write, or a ledger write that leaves the ledger absent, leaves neither line; a write whose result is not known stops the run before anything is sent |
 | "Make output tags exclusive across both comparison designs" | both designs claim the run's local folder before the client is built or the model loads (the folder, then a claim file naming the design and a token only that invocation holds); a second invocation under the tag, of either design and in either start order, is refused before it loads anything |
-| "Preserve confirmed sends when a Phase 4 cell aborts" | C's and D's shared failure and model behaviour are unchanged; the same error now carries the cell's record as it stood. The runner records the aborted cell before the run stops: a call counts as sent only when this run saved its request and its response, consistent with the books (a settlement, where there is one, saying sent with that response's SHA-256), which makes the cell one that ran and failed, as the frozen rubric counts it; a reservation without that proof confirms nothing. The searches those calls ran are kept as the cell recorded them and scored like any failed cell's (T3 counts an executed unnecessary search; the supplemental A1 report counts the executed or refused attempt beside it); nothing after the last recorded step is inferred, and the summary counts such cells apart |
+| "Preserve confirmed sends when a Phase 4 cell aborts" | C's and D's shared failure and model behaviour are unchanged; the same error now carries the cell's record as it stood. The runner records the aborted cell before the run stops: a call counts as sent only when this run saved its request and its response, consistent with the books (a settlement, where there is one, saying sent with that response's SHA-256; since 2026-11-28 only when that response is the complete one, section 9), which makes the cell one that ran and failed, as the frozen rubric counts it; a reservation without that proof confirms nothing. The searches those calls ran are kept as the cell recorded them and scored like any failed cell's (T3 counts an executed unnecessary search; the supplemental A1 report counts the executed or refused attempt beside it); nothing after the last recorded step is inferred, and the summary counts such cells apart |
 | "Release unused claims if marker creation fails or `_run` aborts during pre-cell setup" | a failure while the claim is written, before the first cell, or an interruption there gives back only that invocation's own unused claim; another invocation's claim and any artifact stay |
 
 Unchanged: the frozen requests (B's and C's request hashes, D's frozen texts), the file names
@@ -150,8 +151,8 @@ results, the freeze record's file hashes and the scoring rules.
 the recovery of an aborted cell: a saved response should prove a send whose settlement was
 interrupted; a matching request hash does not prove which run booked a call (the frozen requests
 are identical across runs); a search that ran before the abort should be scored. Fixed the same
-day as stated in the table above (the proof is the run's own request and response; the cell's
-record rides on the error); a typed `/ship-it source-only` in a fresh session is left for Erhan.
+day as stated in the table above (the proof is the run's own request and response, since
+2026-11-28 its complete response, section 9; the cell's record rides on the error); a typed `/ship-it source-only` in a fresh session is left for Erhan.
 
 **Independent review of those fixes (round 5, on `f8590bf`)** found 0 P1, 3 P2 and a P3 line, again
 in the recovery path: a booking another run made after this run stopped still entered its
@@ -190,8 +191,71 @@ The copies of the Phase 2 and 3 ledgers stayed byte-identical in every scenario,
 repository's `results/` stayed byte-identical with no Phase 4 ledger.
 
 **Residual limits** (none blocks a live run): a reservation whose sending is unknown, or a send that
-got no response this run kept, confirms nothing, so a cell with no earlier proven send stays not
+got no response this run kept (since 2026-11-28 also one whose response file an interruption cut
+short, section 9), confirms nothing, so a cell with no earlier proven send stays not
 run; an aborted cell is scored up to its last recorded step only; the headroom near the end and the
 limits carried from ADR-027 are as in section 6. The rehearsal ran on the round-4 and round-5
 fixes as well, with the same results.
 
+## 9. The fixes of 2026-11-28
+
+**Decided by Erhan on 2026-11-28.** He confirmed the parts of the fixes of 2026-11-27 that go
+beyond the runner layer, narrowly for recovering what an aborted cell observed: the cell's record
+carried on the unchanged error of the shared `evidence_agent.run_case`, raised where it was before,
+and the scorer's reading of aborted records. The error and when it is raised, B's and C's requests
+and behaviour, D's frozen contract and the scoring rules stay unchanged. He had the two P2 points
+and the P3 point that the sixth independent review round left open (as the reviewer reported them
+in [#73](https://github.com/erhanuenlue/tarifhub/pull/73)) fixed test-first, recorded in
+[ADR-028](../adr/028-phase4-books.md). Approving them authorizes no expenditure; a live run needs
+his separate decision.
+
+For each interruption, what the cell observed, what the books establish and what the scorer may
+count:
+
+| Point (as the reviewer reported it) | The cell observed | The books establish | The scorer may count |
+|---|---|---|---|
+| "Preserve D's recorded coverage when ranking is interrupted" | D's call sent, its complete response saved and settled; D's coverage decision recorded with a valid targeted search; the search interrupted while being ranked, no result recorded | the call reserved and settled as sent, with the response's SHA-256 | the call as sent, at a decision point without action (listed, left out of the rates); D's coverage entry in its coverage diagnostics only; no executed or refused search, no returned passage, nothing in T3 or in the supplemental A1 report |
+| "Reject incomplete response files as proof of a send" | the call sent and the complete response's SHA-256 recorded; the response file empty, cut short or holding other bytes when the interruption came | the call reserved and not settled: open, committed at its reservation | no send: the call is listed as unconfirmed and never sent again; an earlier proven call stays proven; with none, the cell did not run and its case stays incomplete |
+| "Keep `ended: deadline` when lock release is interrupted after the final reservation was released unsent" | its earlier calls sent; its last call reserved, then released unsent because the deadline had passed; the deadline recorded as its ending; then the lock's release interrupted | the earlier calls settled as sent, the last one as not sent (released) | the earlier calls and their searches as before; the released call is none; the local record keeps the ending (`ended: deadline`), the public outcome stays `aborted`; a release that was never saved, or books that cannot be read, infer neither a release nor an ending |
+
+**Rules in code.** A saved response file proves a send only when its SHA-256 equals the complete
+response's as recorded apart from the file, by the cell before it saved the file (its record,
+carried on the error) and by readable books that settled the call as sent: at least one of them
+present and none different (`run_comparison._aborted`). D's coverage entries are kept for every
+proven call (`run_comparison._traced`); the scorer counts the entry of the call an aborted cell
+was cut off at, before that call's action was recorded, as recorded (a search entry only for a
+call offered the tool), while completed cells, cells that had ended and every other call keep the
+strict check that an entry's action is its call's (`phase4_scoring._coverage`). A cell's recorded
+ending is kept also when its one booking after the sent calls was released unsent, as its record
+says and readable books hold.
+
+**Test first** (the repository's `tdd` skill; the scripted provider, temporary books and
+deterministic interruptions, through the runner's and the scorer's entry points): each regression
+failed on the code before its fix and passes with it.
+
+| Point | Regression | Before the fix | With the fix |
+|---|---|---|---|
+| D's coverage | an interruption while D's search is ranked (raised at the e5 boundary when the search's query is embedded), the record scored by the real scorer | the record kept no coverage entry (`assert [] == [{...}]`); with the runner's change alone the scorer refused the record ("a coverage entry's action must be the action of its call") | passes |
+| Complete response | C's response file left empty, truncated or as other JSON; call 1 proven, then call 2 cut short; books that cannot be read; each ending in a restart | the cut-short file counted as a sent call (`(1, [...]) == (0, [])`, and `(2, ...) == (1, ...)` after a proven call) | passes: no send counted, the reservation open, nothing sent again |
+| Deadline ending | C's last call released unsent at the deadline, then the lock's release interrupted | `('aborted', None, 1) == ('aborted', 'deadline', 1)` | passes |
+
+Guards that pass before and after: an entry whose action is not its call's stays refused in a
+completed cell, in a cell that had ended and for an earlier call; a release that was never saved
+and books that cannot be read infer neither an ending nor a release. Three scorer tests of the
+rule (D's entry for the call cut off as a search, a refused search or an answer turn) were written
+after the fix and fail on the code before it; a search entry for a call never offered the tool
+failed first and is refused now.
+
+**Checks** (on the code of these fixes): the pilot's offline suite, 797 tests in fifteen files, all
+passing, none skipped (781 before): runner 98 (89), scorer 202 (195); D 56 and the agent loop 156
+unchanged. Lint clean. A scripted B cell and C cell in the Phase 2 and 3 books give identical
+records, requests and ledger lines at `140ca86` and now; `results/` is byte-identical to
+`140ca86`; the 14 file hashes of the freeze record hold; no Phase 4 ledger exists. The simulated
+rehearsal of section 5, run again on this code, gave the same results in all nine scenarios. A
+typed `/ship-it source-only` (after `/clear`, on this branch) loaded
+`.claude/skills/ship-it/SKILL.md` from the repository's Git root, not a link.
+
+**Residual limits** (none blocks a live run): a call whose response file an interruption cut short
+stays open at its reservation and proves no send, like a call interrupted on the wire, so a cell
+with no earlier proven call stays not run and its case incomplete; the cell's recorded ending
+(`ended`) is kept in the local record only.
