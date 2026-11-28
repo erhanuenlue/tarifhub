@@ -1777,6 +1777,17 @@ def test_an_aborted_cell_without_a_confirmed_send_did_not_run():
     ]
 
 
+def test_the_summary_counts_an_aborted_cell_without_a_confirmed_send_as_not_run():
+    result, gold = fixture()
+    cells = result["cases"][0]["cells"]
+    unsent = cell("agent", aborted("agent", sent=0, unconfirmed=1))
+    run = {"cases": [result_case("X-01", [cells[0], unsent, cells[2]])]}
+
+    counts = ps.summary(ps.score([run], gold))["conditions"]["agent"]
+
+    assert (counts["cells"], counts["not_run"], counts["aborted"]) == (1, 1, 0)
+
+
 def test_an_aborted_cell_and_its_refusal_in_the_resumed_run_are_one_cell_that_ran():
     result, gold = fixture()
     cells = result["cases"][0]["cells"]

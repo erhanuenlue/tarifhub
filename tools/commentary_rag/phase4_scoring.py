@@ -35,8 +35,9 @@ recorded that call's answer turn (``ended``), so no action is inferred. D's cove
 that call, if the cell recorded one before it was cut off, counts among D's coverage
 diagnostics only (a search entry only for a call offered the tool), never as an action or in a
 measure. When the runner kept no trace (``trace`` ``not_recorded``) the cell has no decision
-point and adds nothing to any search measure. The summary counts aborted cells apart
-(``aborted``).
+point and adds nothing to any search measure. The summary's ``aborted`` subtotal counts the
+aborted cells that ran (a demonstrably sent call) apart; an aborted cell without one counts under
+``not_run``.
 
 Every record names its repetition (Phase 4's books, ``evidence_agent.PHASE4_REPETITIONS``) and
 its time budget (a finite number of seconds above 0); one scoring holds one repetition. The
@@ -890,8 +891,10 @@ def summary(scored: dict) -> dict:
     when the cohort is the frozen one and ``complete_cases`` equals ``gold_cases``. Per
     condition: its cells (one per case in the results), those ``not_run``,
     calls per cell (generation calls sent) and searches per cell (refused requests included)
-    over the cells that ran (``aborted`` cells are counted apart; one kept without its trace has
-    calls but no recorded searches and is left out of that count), the search measures of C and
+    over the cells that ran (``aborted``: the aborted cells among them, each with a demonstrably
+    sent call, counted apart, while an aborted cell without one is among those ``not_run``; one
+    kept without its trace has calls but no recorded searches and is left out of the searches
+    count), the search measures of C and
     D, and D's coverage diagnostics.
     """
     cases = scored["cases"]

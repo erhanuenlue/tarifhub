@@ -139,7 +139,7 @@ cap, authorizes no expenditure; a live run needs his separate decision.
 |---|---|
 | "Commit the time-budget pin with the first reservation" | the first call's request is saved first; the pin and the first reservation are then written as one accounting event (the ledger is created holding both lines or not at all: staged beside it and linked into place, never replacing a ledger). A failed request write, or a ledger write that leaves the ledger absent, leaves neither line; a write whose result is not known stops the run before anything is sent |
 | "Make output tags exclusive across both comparison designs" | both designs claim the run's local folder before the client is built or the model loads (the folder, then a claim file naming the design and a token only that invocation holds); a second invocation under the tag, of either design and in either start order, is refused before it loads anything |
-| "Preserve confirmed sends when a Phase 4 cell aborts" | C's and D's shared failure and model behaviour are unchanged; the same error now carries the cell's record as it stood. The runner records the aborted cell before the run stops: a call counts as sent only when this run saved its request and its response, consistent with the books (a settlement, where there is one, saying sent with that response's SHA-256; since 2026-11-28 only when that response is the complete one, section 9), which makes the cell one that ran and failed, as the frozen rubric counts it; a reservation without that proof confirms nothing. The searches those calls ran are kept as the cell recorded them and scored like any failed cell's (T3 counts an executed unnecessary search; the supplemental A1 report counts the executed or refused attempt beside it); nothing after the last recorded step is inferred, and the summary counts such cells apart |
+| "Preserve confirmed sends when a Phase 4 cell aborts" | C's and D's shared failure and model behaviour are unchanged; the same error now carries the cell's record as it stood. The runner records the aborted cell before the run stops: a call counts as sent only when this run saved its request and its response, consistent with the books (a settlement, where there is one, saying sent with that response's SHA-256; since 2026-11-28 only when that response is the complete one, section 9), which makes the cell one that ran and failed, as the frozen rubric counts it; a reservation without that proof confirms nothing. The searches those calls ran are kept as the cell recorded them and scored like any failed cell's (T3 counts an executed unnecessary search; the supplemental A1 report counts the executed or refused attempt beside it); nothing after the last recorded step is inferred, and the summary counts those that ran apart (one without a proven send is not run) |
 | "Release unused claims if marker creation fails or `_run` aborts during pre-cell setup" | a failure while the claim is written, before the first cell, or an interruption there gives back only that invocation's own unused claim; another invocation's claim and any artifact stay |
 
 Unchanged: the frozen requests (B's and C's request hashes, D's frozen texts), the file names
@@ -152,7 +152,7 @@ the recovery of an aborted cell: a saved response should prove a send whose sett
 interrupted; a matching request hash does not prove which run booked a call (the frozen requests
 are identical across runs); a search that ran before the abort should be scored. Fixed the same
 day as stated in the table above (the proof is the run's own request and response, since
-2026-11-28 its complete response, section 9; the cell's record rides on the error); a typed `/ship-it source-only` in a fresh session was left for Erhan (done on 2026-11-28, section 9).
+2026-11-28 its complete response, section 9; the cell's record rides on the error); a typed `/ship-it source-only` in a fresh session was left for Erhan (typed after `/clear` on 2026-11-28, which he accepted as resolving the point; section 9).
 
 **Independent review of those fixes (round 5, its revision named in [#73](https://github.com/erhanuenlue/tarifhub/pull/73))** found 0 P1, 3 P2 and a P3 line, again
 in the recovery path: a booking another run made after this run stopped still entered its
@@ -230,7 +230,8 @@ call offered the tool), while completed cells, cells that had ended and every ot
 strict check that an entry's action is its call's (`phase4_scoring._coverage`). A cell's recorded
 ending is kept also when its one booking after the sent calls was released unsent, as its record
 says and readable books hold. Books that cannot be read, whatever their damage, take no part
-(accounting `unknown`), and a call readable books settle as sent that the run cannot show it sent
+(accounting `unknown`), and since the ninth review neither does a Phase 4 ledger missing when the
+run recovers; a call readable books settle as sent that the run cannot show it sent
 leaves the accounting `uncertain`, ahead of any overage, which stays on its call
 (`above_reservation`, unconfirmed calls included).
 
@@ -248,10 +249,30 @@ booking, a recorded answer turn, the aborted cells counted).
 resolved but one: the uncertainty was still hidden when that call's usage settlement was also above
 its reservation (the overage took the accounting). Fixed the same day, test-first: any uncertainty
 makes the accounting `uncertain` ahead of an overage, and each unconfirmed call carries its
-settlement's `above_reservation`, as the sent calls already did; an overage always ends its cell,
-so no other pairing of the two arises. Its P3 points are taken in: the unresolved-tail sentence of
+settlement's `above_reservation`, as the sent calls already did. (This page added that an overage
+always ends its cell, so no other pairing of the two arises; the ninth review refuted that: a tool
+turn kept at its reservation can precede a later call above its own, so the uncertainty and the
+overage arise on different calls, with the same result, tested since.) Its P3 points are taken in: the unresolved-tail sentence of
 the runner's module docstring is qualified, and this page names the reviewed revisions through
 #73 instead of citing branch commits.
+
+**The final review of those fixes** (round 9, its revision named in
+[#73](https://github.com/erhanuenlue/tarifhub/pull/73)) found one more gap in the same recovery:
+a Phase 4 ledger that is missing when the run recovers (there since an earlier booking) is a new
+one to the books' reader, so the recovery took the books as readable and empty, dropped the call
+the run's own files prove (accounting `nothing_reserved`), and a restart with the ledger restored
+skipped the cell, leaving the case incomplete. Fixed the same day, test-first, in the runner
+alone: a ledger that is not there when the run recovers takes no part, like books that cannot be
+read (accounting `unknown`); the run's own request, complete response and record still decide, no
+cost is taken from the response, and nothing is written to the books. A missing ledger alone
+proves nothing: a first use books as any other, a complete response file without the cell's record
+proves no send, and one cut short stays unconfirmed. The books stay the only record of what was
+booked: a run started while the ledger is still missing finds new books and would book and send
+every cell again (shown offline), so a missing ledger is restored before any restart. Its three P3
+points are taken in: a call can itself prove its send (the runner's module docstring, ADR-028, the
+README and arc42 section 6), the uncertainty and an overage can arise on different calls (the
+sentence above, now with a guard test), and the scorer's `aborted` subtotal counts only aborted
+cells with a proven send (its docstrings, ADR-028 and arc42 section 13, with a guard test).
 
 **Test first** (the repository's `tdd` skill; the scripted provider, temporary books and
 deterministic interruptions, through the runner's and the scorer's entry points): each regression
@@ -266,26 +287,36 @@ failed on the code before its fix and passes with it.
 | Digest conflict (round 7) | C's response file altered after its usage settlement, then the lock's release interrupted | `'priced' == 'uncertain'` | passes |
 | Unreadable books (round 7) | the books damaged by an amount past float range, or by nesting past the parser, while C's lock is given back | C's cell dropped (`['fixed10'] == ['fixed10', 'agent']`) | passes: the cell kept with its proven send, accounting `unknown` |
 | Overage and conflict (round 8) | C's answer settled above its reservation, its response file then altered, the lock's release interrupted | `'above_reservation' == 'uncertain'` | passes: accounting `uncertain`, the overage on the unconfirmed call |
+| Missing ledger (round 9) | C's call booked, sent, saved and settled; the Phase 4 ledger moved away while C's lock is given back, then restored, byte for byte, before a restart | the proven call dropped (`'nothing_reserved' == 'unknown'`) | passes: one proven call, accounting `unknown`, no cost; the case complete; the restart sends and books D only |
+| Missing ledger alone (round 9) | the ledger moved away after C ran, the error carrying no record of the cell; a response file cut short while the ledger is moved away | `'nothing_reserved' == 'unknown'` in both | passes: no send proven, the call unconfirmed, accounting `unknown`; nothing sent again |
 
 Guards that pass before and after: an entry whose action is not its call's stays refused in a
 completed cell, in a cell that had ended and for an earlier call; a release that was never saved
 and books that cannot be read infer neither an ending nor a release. Three scorer tests of the
 rule (D's entry for the call cut off as a search, a refused search or an answer turn) were written
 after the fix and fail on the code before it; a search entry for a call never offered the tool
-failed first and is refused now.
+failed first and is refused now. Since the ninth review, three more guards that pass before and
+after: a first use whose run stopped before its books were created books and sends each cell once
+on the restart; a tool turn kept at its reservation followed by an answer above its own
+reservation leaves the accounting `uncertain` with the overage on its call; the summary counts an
+aborted cell without a proven send as not run.
 
-**Checks** (on the code of these fixes): the pilot's offline suite, 803 tests in fifteen files, all
-passing, none skipped (781 before): runner 104 (89), scorer 202 (195); D 56 and the agent loop 156
-unchanged. Lint clean. A scripted B cell and C cell in the Phase 2 and 3 books give identical
+**Checks** (on the code of these fixes): the pilot's offline suite, 809 tests in fifteen files, all
+passing, none skipped (803 before the round-9 fix, 781 before round 6's): runner 109 (104, 89),
+scorer 203 (202, 195); D 56 and the agent loop 156 unchanged. Lint clean. A scripted B cell and C cell in the Phase 2 and 3 books give identical
 records, requests and ledger lines at `140ca86` and now; `results/` is byte-identical to
 `140ca86`; the 14 file hashes of the freeze record hold; no Phase 4 ledger exists. The simulated
-rehearsal of section 5, run again on this code (after the round-7 and round-8 fixes too), gave the
-same results in all nine scenarios. A
+rehearsal of section 5, run again on this code (after the round-7, round-8 and round-9 fixes too),
+gave the same results in all nine scenarios. A
 typed `/ship-it source-only` (after `/clear`, on this branch) loaded
-`.claude/skills/ship-it/SKILL.md` from the repository's Git root, not a link.
+`.claude/skills/ship-it/SKILL.md` from the repository's Git root, not a link; a newly launched
+lead process later loaded `/ship-it source-only` through its skill loader (invoked by the lead, not
+typed) and it reported the same repository file.
 
 **Residual limits** (none blocks a live run): a call whose response file an interruption cut short
 or left at zero bytes proves no send (open at its reservation when the interruption came before
 its settlement), like a call interrupted on the wire, so a cell
 with no earlier proven call stays not run and its case incomplete; the cell's recorded ending
-(`ended`) is kept in the local record only.
+(`ended`) is kept in the local record only; a run started while the Phase 4 ledger is missing finds
+new books and would book and send every cell again, so a missing ledger is restored before any
+restart.

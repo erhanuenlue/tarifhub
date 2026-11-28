@@ -777,8 +777,11 @@ beside everything committed there (settled calls at their cost, calls kept at th
 reservations without a settlement), so a fresh case starts only while at most USD 29.6512 is
 committed, and a case that does not fit stops the run before anything of it is counted or sent.
 A rerun after an interruption (under a new tag) skips every cell in the books and continues in the
-frozen order; a call whose sending is unknown stays open at its reservation, a call released before
-sending stays released, and neither is sent again or confirms a send. Since 2026-11-27 a cell that an
+frozen order; a booking without a settlement stays open at its reservation and a call released
+before sending stays released; neither is sent again, and an open one confirms a send only when
+the run saved its complete response (below). A run started while the Phase 4 ledger is missing
+finds new books and would book and send every cell again: restore a missing ledger before any
+rerun (no recovery rebuilds it from a run's files). Since 2026-11-27 a cell that an
 unexpected error or an interruption ends is recorded before the run stops, in the run's outputs,
 which a run writes once it booked anything (outcome `aborted`): the calls this run demonstrably
 sent (its own saved request and its complete response, consistent with the books where they can be
@@ -790,9 +793,12 @@ coverage entries for those calls (also for a call cut off before its search was 
 cell's recorded ending if it had ended (also after its last booking was released unsent, as the
 books hold); its other bookings are listed as unconfirmed, one it cannot show as its own (another
 run's, possibly) is left out, and nothing after the last recorded step is inferred. Books that
-cannot be read, whatever their damage, take no part (accounting `unknown`), and a call readable
+cannot be read, whatever their damage, take no part (accounting `unknown`), and since 2026-11-28
+neither does a Phase 4 ledger that is not there when the run recovers (a missing ledger is new
+only to admission, and alone proves nothing); a call readable
 books settle as sent that the run cannot show it sent leaves the accounting `uncertain`, ahead of
-any overage, which stays on its call (`above_reservation`). The replay failure C and D share
+any overage, which stays on its call (`above_reservation`), also when the two arise on different
+calls. The replay failure C and D share
 (a lone surrogate the model escaped in a tool input) is such a cell. A
 local output folder (or a request or response folder in it) that is a symbolic link is refused
 before the model loads. Since 2026-11-27 a run of either design claims its local folder before the
