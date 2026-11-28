@@ -55,12 +55,14 @@ name or did not get; the parser is always handed ``max_pages``. ``--ocr-backend 
 model. ``pull`` refuses the platform, variable and directory cases before it calls liteparse's
 pull, calls it for ``ocria-nano@1.0.0`` with the model directory set, no ``HF_TOKEN`` and
 ``HF_HOME`` naming an empty directory, and checks the listed package against the pins afterwards.
-A refusal exits 1 with nothing on stdout.
+Bytes that do not start with ``%PDF-`` are refused before a parser exists, and another liteparse
+release than 2.21.4 (or one without metadata) exits 2 before either command acts. A refusal
+exits 1 with nothing on stdout.
 
 The weights have their own licence (OCRia-nano-1 Model License, a modified OpenRAIL-M): see
 docs/agents/dev-tooling.md, and keep their output out of the corpus.
 
-Exit codes: 0 done, 1 refused, 2 without liteparse or on a usage error.
+Exit codes: 0 done, 1 refused, 2 without liteparse 2.21.4 or on a usage error.
 """
 
 from __future__ import annotations
@@ -93,7 +95,8 @@ CHECKED_VARIABLES = [
     RUNTIME_VARIABLE,
 ]  # as the report names the check
 COMMENTARY_KIND = "commentary_pdf"
-PIN = "2.21.4"  # the liteparse release this tool was checked against
+PIN = "2.21.4"  # the liteparse release this tool was checked against, and the only one it runs
+PDF_HEADER = b"%PDF-"
 MODEL = "ocria-nano"
 MODEL_VERSION = "1.0.0"  # the package liteparse 2.21.4 installs and pins file by file
 BACKENDS = (MODEL, "none")
@@ -231,6 +234,18 @@ def _read(path: Path) -> bytes:
         ) from exc
 
 
+def _pdf(name: str, content: bytes) -> bytes:
+    """The bytes, when they start like a PDF: liteparse converts other formats (an image into a
+    one-page document) and would number the pages of the conversion, not the source's."""
+
+    if not content.startswith(PDF_HEADER):
+        raise Refused(
+            f"{name}: not a PDF (it does not start with %PDF-); liteparse would convert it"
+            " and number the pages of the conversion"
+        )
+    return content
+
+
 def _sources(section: object) -> list[tuple]:
     if not isinstance(section, list):
         raise ValueError("the sources section is not a list")
@@ -306,11 +321,12 @@ def _manifest_documents(manifest: Path) -> list[dict]:
 
 
 def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
-    """The PDF to parse, read once; the file an edition or source ID names must lie inside
-    --root, must not be a link, and its bytes must match the manifest's SHA-256."""
+    """The PDF to parse, read once, and refused unless it starts with %PDF-; the file an edition
+    or source ID names must lie inside --root, must not be a link, and its bytes must match the
+    manifest's SHA-256."""
 
     if args.pdf is not None:
-        content = _read(args.pdf)
+        content = _pdf(str(args.pdf), _read(args.pdf))
         return {
             "path": str(args.pdf),
             "sha256": _sha256(content),
@@ -361,6 +377,7 @@ def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
         raise Refused(
             f"{entry['path']}: SHA-256 {digest}, the manifest pins {entry['sha256']}"
         )
+    _pdf(entry["path"], content)
     return {
         "path": entry["path"],
         "sha256": digest,
@@ -732,11 +749,22 @@ def _parser() -> argparse.ArgumentParser:
 
 
 def main(argv: list[str] | None = None) -> int:
-    """Run one command: 0 done, 1 refused, 2 without liteparse."""
+    """Run one command: 0 done, 1 refused, 2 without liteparse 2.21.4."""
 
     args = _parser().parse_args(argv)
     if LiteParse is None or models is None:
         print(REFUSAL, file=sys.stderr)
+        return 2
+    try:
+        installed = liteparse_version()
+    except metadata.PackageNotFoundError:
+        installed = "a release without metadata"
+    if installed != PIN:
+        print(
+            f"liteparse_ocr was checked against liteparse {PIN} only, and {installed} is"
+            f" installed; nothing was run. Run it with that release:\n  {RUN} {args.command}",
+            file=sys.stderr,
+        )
         return 2
     try:
         report = pull() if args.command == "pull" else parse(args)

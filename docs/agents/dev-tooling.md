@@ -135,7 +135,8 @@ ingestion PostgreSQL legs need network.
   the pilot never imports it, its offline tests replace liteparse at the import seam, and liteparse
   is in no lockfile, service environment or image. It runs in an ephemeral environment with an
   exact pin, `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py`
-  (the official Python package of `run-llama/liteparse`, Apache-2.0, checked on 2026-11-28).
+  (the official Python package of `run-llama/liteparse`, Apache-2.0, checked on 2026-11-28), and
+  with no other release: another one, or one without metadata, stops both commands (exit 2).
 - **Output:** the report goes to stdout only, as ASCII-only JSON bytes (every other character as a
   JSON escape) written past Python's text layer, so they read as UTF-8 whatever encoding stdout is
   set to (the locale or `PYTHONIOENCODING`); the tool has no output option. Write each report into
@@ -200,7 +201,10 @@ ingestion PostgreSQL legs need network.
 - **Input:** the PDF an edition (`--edition`, an effective date) or a source ID (`--source-id`, a
   `sources` entry's `source_id`, for a date two commentaries share, such as 2023-01-01) names must
   be the only one it names, must lie inside `--root` once links are resolved, must not be a link
-  itself and must match its manifest's SHA-256. A manifest that cannot be read (one nested too
+  itself and must match its manifest's SHA-256. Any input, a `--pdf` file too, must start with
+  `%PDF-`: liteparse converts other formats and numbers the pages of the conversion (an image
+  became a one-page document on 2026-11-28; observed, not a test). A manifest that cannot be read
+  (one nested too
   deeply for the JSON parser included), has neither a `sources` nor an `editions` list (a section
   that is not a list counts), or names a commentary path no file system can take (an embedded NUL)
   is refused by name. The checks see the manifest as the JSON parser decodes it, in which a

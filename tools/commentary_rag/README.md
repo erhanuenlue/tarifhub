@@ -164,7 +164,7 @@ observation on this set, not an accuracy figure.
   `uv run --with` fetches liteparse when uv's cache lacks it, and `--offline` stops only uv's own
   fetches; a parse without network was observed under the network-denying sandbox
   (`sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...`), which no
-  test covers. Without liteparse it exits 2, on a refusal 1. The weights have their own licence;
+  test covers. Without liteparse 2.21.4 it exits 2, on a refusal 1. The weights have their own licence;
   see `docs/agents/dev-tooling.md`.
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the

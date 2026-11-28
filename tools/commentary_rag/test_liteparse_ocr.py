@@ -155,7 +155,7 @@ def lib(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> Library:
     monkeypatch.setattr(liteparse_ocr, "LiteParse", library.parser)
     monkeypatch.setattr(liteparse_ocr, "ParseError", FakeParseError)
     monkeypatch.setattr(liteparse_ocr, "models", library.models)
-    monkeypatch.setattr(liteparse_ocr, "liteparse_version", lambda: "9.9.9")
+    monkeypatch.setattr(liteparse_ocr, "liteparse_version", lambda: "2.21.4")
     monkeypatch.setattr(liteparse_ocr, "PACKAGE", PINS, raising=False)
     monkeypatch.setattr(liteparse_ocr, "PLATFORM", HOST, raising=False)
     inherited = [
@@ -407,7 +407,7 @@ def test_the_reported_backend_and_settings_come_from_the_parser(
     # liteparse reports only an explicit table model there, never the one ocria-nano brings
     assert doc["library_config"]["table_model_override"] == "/synthetic/tablenet.bin"
     assert "table_model" not in doc["library_config"]
-    assert doc["liteparse_version"] == "9.9.9"
+    assert doc["liteparse_version"] == "2.21.4"
 
 
 @pytest.mark.parametrize(
@@ -1516,3 +1516,71 @@ def test_the_library_page_cap_is_set_with_or_without_pages(lib, tmp_path, pages)
     lib.total_pages = 1
     assert nano(a_pdf(tmp_path), *pages) == 0
     assert lib.built[0].options["max_pages"] == sys.maxsize
+
+
+# Review round 11, P2: only PDF bytes reach liteparse. It converts other formats (an image became a
+# one-page document on 2026-11-28, not a test) and would number the converted pages.
+
+PNG = b"\x89PNG\r\n\x1a\n" + b"\x00" * 16
+
+
+@pytest.mark.parametrize(
+    "content", [PNG, b"junk\n" + PDF], ids=["image", "bytes-before-the-header"]
+)
+def test_a_file_that_is_not_a_pdf_is_refused_before_parsing(
+    lib, tmp_path, capsys, content
+) -> None:
+    path = tmp_path / "not-a.pdf"
+    path.write_bytes(content)
+    argv = ["--pdf", str(path), "--pages", "3", "--ocr-backend", "none"]
+    assert run("parse", *argv) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "not a PDF" in err
+    assert lib.built == []
+
+
+def test_a_manifest_that_pins_bytes_that_are_not_a_pdf_is_refused(
+    lib, tmp_path, capsys
+) -> None:
+    root, manifest = edition_tree(tmp_path, "sources", sha(PNG))
+    (root / "data" / "raw" / "commentary.pdf").write_bytes(PNG)
+    lib.models.installed = [package(tmp_path)]
+    assert parse_edition(root, manifest) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "not a PDF" in err
+    assert lib.built == []
+
+
+# Review round 11, P3: the tool runs with the liteparse release it was checked against, or not at
+# all: another release, or one whose version cannot be read, stops both commands before they act.
+
+
+def version_lookup(installed: str | None):
+    def lookup() -> str:
+        if installed is None:
+            raise liteparse_ocr.metadata.PackageNotFoundError("liteparse")
+        return installed
+
+    return lookup
+
+
+@pytest.mark.parametrize(
+    "case",
+    [("pull", "2.21.5"), ("parse", "2.21.5"), ("pull", None), ("parse", None)],
+    ids=["pull-other", "parse-other", "pull-unknown", "parse-unknown"],
+)
+def test_another_liteparse_release_is_refused_before_either_command(
+    lib, tmp_path, capsys, monkeypatch, case
+) -> None:
+    command, installed = case
+    monkeypatch.setattr(liteparse_ocr, "liteparse_version", version_lookup(installed))
+    lib.models.installed = [package(tmp_path)]
+    argv = ["--pdf", a_pdf(tmp_path), "--pages", "3", "--ocr-backend", "none"]
+    assert run(command, *(argv if command == "parse" else [])) == 2
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "liteparse==2.21.4" in err
+    assert lib.models.pulled == []
+    assert lib.built == []
