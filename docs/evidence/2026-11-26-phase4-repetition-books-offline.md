@@ -284,8 +284,12 @@ the recovery alone) reports a ledger that is not there as it is read (only a mis
 as no events, since a present one holds its pin), so the recovery observes the ledger once and the
 probes are gone; the strict ledger reading, admission, `run_case`, B, C, D and the scoring are
 unchanged. Its two P3 points are taken in: ADR-028's guarantee that a restart sends or books no
-cell twice holds while the books hold its booking, and a deadline ending is kept only when
-readable books hold the release (ADR-028, arc42 section 6 and the README).
+cell twice holds while the books hold its booking, and a deadline ending after the cell's
+last booking was released unsent is kept only when readable books hold that release (ADR-028,
+arc42 section 6 and the README; a cell whose every recorded call is proven keeps its recorded
+ending). The review of that fix (round 11) found no P1 or P2 and two documentation points, taken
+in: a restart finds new books only while the ledger is missing, and the readable-release condition
+applies to a deadline ending after an unsent last booking.
 
 **Test first** (the repository's `tdd` skill; the scripted provider, temporary books and
 deterministic interruptions, through the runner's and the scorer's entry points): each regression
