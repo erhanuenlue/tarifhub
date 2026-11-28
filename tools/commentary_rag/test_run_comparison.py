@@ -42,7 +42,7 @@ import phase4_scoring
 import run_comparison
 import run_question
 from test_corpus import make_repo
-from test_coverage_condition import unencodable
+from test_coverage_condition import coverage_search, part, unencodable
 from test_evidence_agent import (
     Clock,
     Provider,
@@ -2768,3 +2768,86 @@ def test_an_aborted_cell_without_its_record_keeps_only_what_the_books_show(
     (case_,) = phase4_scoring.score([first], gold("E1"))["cases"]
     c_cell = case_["cells"][1]
     assert (c_cell["ran"], c_cell["searches"], c_cell["decision_points"]) == (True, None, [])
+
+
+def test_an_interruption_while_ds_search_is_ranked_keeps_ds_recorded_coverage_unscored(
+    isolated, monkeypatch, capsys
+):
+    # D's call 1 is sent and settled; D records its coverage decision and asks a valid
+    # targeted search for its missing part 2; the search is being ranked (the e5 boundary
+    # embeds its query) when the interruption comes, before any search result is recorded.
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, _ = phase4_answers()
+    query = "Begründung der Pauschale"
+    coverage = [part("Pauschale", "covered", TOP5[0]), part("Begründung", "missing")]
+    live(isolated, monkeypatch, b, c, coverage_search(coverage, 2, query, "Begründung"))
+    real = isolated["e5"].embed_query
+
+    def ranking(text):  # the case's ranking runs before any cell; D's query only here
+        if text == query:
+            raise KeyboardInterrupt
+        return real(text)
+
+    monkeypatch.setattr(isolated["e5"], "embed_query", ranking)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    first = json.loads((local / "result.json").read_text("utf-8"))
+    record = first["cases"][0]["cells"][2]["record"]
+    assert (record["outcome"], record["generation_calls"], record["searches"]) == (
+        "aborted",
+        1,
+        [],
+    )
+    # D's coverage decision of its proven call 1, as the cell recorded it (codes and counts)
+    assert record["coverage"] == [
+        {
+            "call": 1,
+            "action": "search",
+            "check": "ok",
+            "parts": 2,
+            "covered": 1,
+            "missing": 1,
+            "search_for": 2,
+            "missing_not_reported": None,
+        }
+    ]
+    (case_,) = phase4_scoring.score([first], gold("E1"))["cases"]
+    d_cell = case_["cells"][2]
+    assert (d_cell["ran"], d_cell["outcome"], d_cell["calls"], d_cell["searches"]) == (
+        True,
+        "aborted",
+        1,
+        0,
+    )
+    # Every fact part was covered: a no-search-needed point whose search never ran, so no
+    # action, no search executed or refused, no passage returned and no T3 or A1 increment.
+    assert [(p["call"], p["kind"], p["action"], p["measure"]) for p in d_cell["decision_points"]] == [
+        (1, "no_search_needed", "no_action", None)
+    ]
+    counts = d_cell["counts"]
+    assert (counts["searches"], counts["refused_searches"]["total"], counts["unnecessary"]) == (
+        0,
+        0,
+        0,
+    )
+    assert counts["unnecessary_attempts"] == {"executed": 0, "refused": 0, "total": 0}
+    assert counts["unnecessary_rate"] == counts["unnecessary_attempt_rate"] == {"k": 0, "n": 0}
+    assert counts["decision_points"]["no_search_needed"] == {"with_action": 0, "without_action": 1}
+    diagnostics = counts["coverage_diagnostics"]
+    assert diagnostics["checks"]["search"] == {
+        "ok": 1,
+        "malformed": 0,
+        "passage_reference": 0,
+        "search_for": 0,
+    }
+    assert diagnostics["decision_points_with_ok_check"]["no_search_needed"] == {
+        "marked_missing": 1,
+        "marked_all_covered": 0,
+    }
+    assert case_["complete"] is True
+    capsys.readouterr()
+    again = live(isolated, monkeypatch)
+    exit_code(phase4_argv(isolated, cases, tag="2026-11-27"))
+    assert again.creates == []  # D's call 1 is in the books: never sent again

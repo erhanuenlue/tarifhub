@@ -1402,8 +1402,9 @@ def _aborted(  # noqa: PLR0913
     matches a saved request (another run's, possibly: the frozen requests hash alike) is not this
     run's: it is left out of the record, the accounting and the outputs. The cell's own record
     is kept for the sent calls: their entries, the searches they ran (search i belongs to call
-    i), the passages those supplied, and the outcome it had recorded if it had already ended
-    (``ended``), so a search that ran is scored and nothing after the last recorded step is
+    i), the passages those supplied, D's coverage entries for them (also for the call cut off,
+    whose action is not inferred from it), and the outcome it had recorded if it had already
+    ended (``ended``), so a search that ran is scored and nothing after the last recorded step is
     inferred. Without that record the cell keeps what the files and books show (``trace``
     ``not_recorded``). Books that cannot be read take no part (accounting ``unknown``)."""
 
@@ -1568,12 +1569,11 @@ def _traced(partial, sent: list, initial: list[str]) -> dict | None:
         kept["ended"] = ended
     if isinstance(partial.get("spending"), dict):
         kept["spending"] = partial["spending"]
-    if isinstance(partial.get("coverage"), list):  # D: the coverage of the calls kept
-        last = len(sent) if ended is not None else len(ran)
+    if isinstance(partial.get("coverage"), list):  # D: the coverage of every sent call kept
         kept["coverage"] = [
             e
             for e in partial["coverage"]
-            if isinstance(e, dict) and isinstance(e.get("call"), int) and e["call"] <= last
+            if isinstance(e, dict) and isinstance(e.get("call"), int) and e["call"] <= len(sent)
         ]
     return kept
 

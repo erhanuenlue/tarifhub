@@ -30,9 +30,12 @@ one it ran and failed (a non-success, as the rubric counts it); a reservation wi
 confirms nothing. Its trace holds what the cell recorded for those calls (their searches and the
 passages those supplied) and is scored like any failed cell's: a search that ran is a decision,
 and the call that ended the cell after it has no action, unless the cell had already ended and
-recorded that call's answer turn (``ended``), so no action is inferred. When the runner kept
-no trace (``trace`` ``not_recorded``) the cell has no decision point and adds nothing to any
-search measure. The summary counts aborted cells apart (``aborted``).
+recorded that call's answer turn (``ended``), so no action is inferred. D's coverage entry for
+that call, if the cell recorded one before it was cut off, counts among D's coverage
+diagnostics only (a search entry only for a call offered the tool), never as an action or in a
+measure. When the runner kept no trace (``trace`` ``not_recorded``) the cell has no decision
+point and adds nothing to any search measure. The summary counts aborted cells apart
+(``aborted``).
 
 Every record names its repetition (Phase 4's books, ``evidence_agent.PHASE4_REPETITIONS``) and
 its time budget (a finite number of seconds above 0); one scoring holds one repetition. The
@@ -569,7 +572,9 @@ def _coverage(record, points: list[dict]) -> dict:
     From ``record["coverage"]`` (conditions.md, 4.8): check codes by action;
     ``missing_not_reported`` as true, false or null; and, at decision points whose entry has
     check ``ok``, the point's kind by whether D marked a part missing. Every entry must name a
-    different sent call and carry that call's action.
+    different sent call and carry that call's action, except the entry for the call an aborted
+    cell was cut off at before that call's action was recorded (no ``ended``): counted as
+    recorded (a search entry only for a call offered the tool), it infers no action.
     """
     diagnostics = {
         "checks": {action: dict.fromkeys(CHECKS, 0) for action in ("search", "answer")},
@@ -586,6 +591,17 @@ def _coverage(record, points: list[dict]) -> dict:
     if not isinstance(entries, list):
         raise ValueError("D's coverage record must be a list of coverage entries")
     by_call, seen = {p["call"]: p for p in points}, set()
+    # An aborted cell cut off before the action of its last sent call was recorded (no
+    # ``ended``): D's entry for that call, recorded before the cut, is counted here as recorded;
+    # the call keeps no action, so no search and no answer is inferred from the entry.
+    cut = (
+        points[-1]["call"]
+        if points
+        and points[-1]["action"] == "no_action"
+        and record.get("outcome") == ABORTED
+        and "ended" not in record
+        else None
+    )
     for entry in entries:
         flag = entry.get("missing_not_reported") if isinstance(entry, dict) else None
         if (
@@ -610,7 +626,9 @@ def _coverage(record, points: list[dict]) -> dict:
             if point["action"] == "answer"
             else None
         )
-        if entry["action"] != expected:
+        if entry["action"] != expected and not (
+            call == cut and (entry["action"] == "answer" or point["tool_choice"] == "auto")
+        ):  # the call cut off: an answer turn, or a search only where the tool was offered
             raise ValueError("a coverage entry's action must be the action of its call")
         diagnostics["checks"][entry["action"]][entry["check"]] += 1
         diagnostics["missing_not_reported"][

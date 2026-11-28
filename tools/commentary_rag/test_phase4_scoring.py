@@ -1909,6 +1909,90 @@ def test_cells_of_one_repetition_run_with_different_time_budgets_are_refused():
         ps.score([result], gold)
 
 
+# D's coverage entry for the call an interruption cut off (run_comparison._traced)
+
+CUT_SEARCH = {
+    "call": 1,
+    "action": "search",
+    "check": "ok",
+    "parts": 2,
+    "covered": 1,
+    "missing": 1,
+    "search_for": 2,
+    "missing_not_reported": None,
+}
+CUT_ENTRIES = {
+    "a valid targeted search": CUT_SEARCH,
+    "a search its coverage check refused": {**CUT_SEARCH, "check": "search_for", "search_for": 1},
+    "an answer turn": COMPLETE,
+}
+
+
+def cut_off(choices: list, searches=(), **entry) -> dict:
+    """An aborted D record cut off at its last sent call (no ``ended``, no search recorded for
+    it), with D's entries: an ok search for each call before it and ``entry`` for the call cut
+    off (a valid targeted search unless given)."""
+    rec = traced("coverage", choices, searches)
+    before = [{**CUT_SEARCH, "call": n} for n in range(1, len(searches) + 1)]
+    return changed(rec, coverage=[*before, {**CUT_SEARCH, **entry, "call": len(choices)}])
+
+
+@pytest.mark.parametrize("name", list(CUT_ENTRIES))
+def test_ds_entry_for_the_call_an_interruption_cut_off_is_counted_and_infers_nothing(name):
+    entry = CUT_ENTRIES[name]
+    rec = cut_off(["auto"], **entry)
+
+    scored = one_cell(rec, COVERED, "coverage")
+
+    assert view(scored["decision_points"], "call", "kind", "action", "measure") == [
+        (1, "no_search_needed", "no_action", None)
+    ]
+    counts = scored["counts"]
+    assert counts["coverage_diagnostics"]["checks"][entry["action"]][entry["check"]] == 1
+    plain = one_cell(changed(rec, coverage=[]), COVERED, "coverage")["counts"]
+    del plain["coverage_diagnostics"], counts["coverage_diagnostics"]
+    assert plain == counts  # no search, refused request or answer inferred from the entry
+
+
+def two_calls_cut_off() -> dict:
+    """An aborted D record: call 1 ran a search, call 2 was cut off after D recorded its search."""
+    return cut_off(["auto", "auto"], [search(1, "passages", "jul/c")])
+
+
+BROKEN_CUT = {
+    # a completed cell whose last call ended without action has no entry for that call
+    "a completed cell": lambda: changed(
+        record("coverage", ["auto", "auto"], [search(1, "passages", "jul/c")],
+               outcome="provider_error"),
+        coverage=two_calls_cut_off()["coverage"],
+    ),
+    # a cell that had ended keeps its recorded ending: its last call's action is that one
+    "a cell that had ended": lambda: changed(two_calls_cut_off(), ended="provider_error"),
+    # only the call cut off may lack its action: an earlier call keeps its own
+    "an earlier call": lambda: changed(
+        two_calls_cut_off(),
+        coverage=[{**COMPLETE, "call": 1}, two_calls_cut_off()["coverage"][1]],
+    ),
+}
+
+
+@pytest.mark.parametrize("name", list(BROKEN_CUT))
+def test_an_entry_whose_action_is_not_its_calls_stays_refused_outside_the_call_cut_off(name):
+    with pytest.raises(ValueError, match="action"):
+        one_cell(BROKEN_CUT[name](), MISSING, "coverage")
+
+
+def test_a_search_entry_for_a_cut_off_call_never_offered_the_tool_is_refused():
+    # D's last call is never offered the tool: D cannot have asked a search there, so a search
+    # entry for it is refused; an answer turn's entry for it is counted like any other.
+    searches = [search(1, "passages", "jul/c"), search(2, "passages", "jul/f")]
+    with pytest.raises(ValueError, match="action"):
+        one_cell(cut_off(["auto", "auto", "none"], searches), MISSING, "coverage")
+    answered = cut_off(["auto", "auto", "none"], searches, **COMPLETE)
+    diagnostics = one_cell(answered, MISSING, "coverage")["counts"]["coverage_diagnostics"]
+    assert diagnostics["checks"]["answer"] == {**NO_CHECKS, "ok": 1}
+
+
 # Amendment A1 (phase4/amendments.md): unnecessary search attempts beside T3
 
 
