@@ -151,7 +151,9 @@ ingestion PostgreSQL legs need network.
   In liteparse 2.21.4 `get_config()` fails (AttributeError on `keep_clipped_text`), so the tool
   reads the same values from the native configuration object; there `table_model` is only an
   explicit override (with ocria-nano, liteparse uses the package's TableNet and still reports
-  none), so the report calls it `table_model_override`.
+  none), so the report calls it `table_model_override`. The tool also sets `max_pages`: without it,
+  liteparse 2.21.4 returned 1,000 pages of a generated 1,005-page PDF parsed without `--pages`
+  (OCR off, 2026-11-28; observed, not a test), which the tool refuses as incomplete.
 - **Temporary files:** besides the report on stdout, `parse` writes one temporary file with either
   backend: liteparse's native stderr (file descriptor 2) goes into a file from Python's
   `tempfile.TemporaryFile` in the system temporary directory while the parser runs (on macOS and
@@ -195,7 +197,9 @@ ingestion PostgreSQL legs need network.
   and one of them was on a text-poor page (read in its 2.21.4 source and seen from the installed
   library). The tool captures file descriptor 2 during the parse and refuses the run on any `[ocr]`
   line, so nothing reaches stdout; a page without OCR text in a printed report had no OCR failure.
-- **Input:** an edition's PDF must lie inside `--root` once links are resolved, must not be a link
+- **Input:** the PDF an edition (`--edition`, an effective date) or a source ID (`--source-id`, a
+  `sources` entry's `source_id`, for a date two commentaries share, such as 2023-01-01) names must
+  be the only one it names, must lie inside `--root` once links are resolved, must not be a link
   itself and must match its manifest's SHA-256. A manifest that cannot be read (one nested too
   deeply for the JSON parser included), has neither a `sources` nor an `editions` list (a section
   that is not a list counts), or names a commentary path no file system can take (an embedded NUL)

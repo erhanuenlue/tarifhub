@@ -1,7 +1,7 @@
 """LiteParse with OCRia-nano-1: an opt-in, local OCR diagnostic beside the commentary pilot.
 
 The pilot never imports this module and it changes nothing. It parses one PDF (a file, or a
-commentary edition read from a manifest) with LiteParse and prints its report to stdout as
+commentary edition or source read from a manifest) with LiteParse and prints its report to stdout as
 ASCII-only JSON bytes (every other character as a JSON escape), written past Python's text layer
 so that they read as UTF-8 whatever encoding stdout is set to. The report holds every text item
 and layout block (table cells, code and grid lines included) with its text, bounding box (PDF
@@ -38,8 +38,9 @@ covers.
 
 What the offline tests check (with liteparse replaced at its import seam): the backend must be
 named (``--ocr-backend ocria-nano`` or ``none``, no Tesseract), and a parser that resolves another
-backend is refused before it parses. An edition's PDF must lie inside ``--root``, must not be a
-link and must match its manifest's SHA-256; a manifest that cannot be read, has neither a
+backend is refused before it parses. The PDF an edition or a source ID names (a source ID tells two
+commentaries of one date apart) must be the only one it names, lie inside ``--root``, not be a link
+and match its manifest's SHA-256; a manifest that cannot be read, has neither a
 ``sources`` nor an ``editions`` list, or names a commentary path with a NUL is refused by name, and
 so is a malformed ``editions`` section beside a valid ``sources`` section (with both sections
 valid, the PDF comes from ``sources``). The OCRia-nano path first refuses another platform than
@@ -50,10 +51,11 @@ named ``DYLD_*`` or ``LD_*`` or ``ORT_DYLIB_PATH`` (even empty), and an empty or
 package liteparse lists there is ocria-nano 1.0.0 with exactly the sixteen files pinned below, each
 matching its size and SHA-256. An OCR failure that liteparse reports only on native stderr (file
 descriptor 2 is captured during the parse) refuses the run, and so do pages the request did not
-name or did not get. ``--ocr-backend none`` needs no model. ``pull`` refuses the platform, variable
-and directory cases before it calls liteparse's pull, calls it for ``ocria-nano@1.0.0`` with the
-model directory set, no ``HF_TOKEN`` and ``HF_HOME`` naming an empty directory, and checks the
-listed package against the pins afterwards. A refusal exits 1 with nothing on stdout.
+name or did not get; the parser is always handed ``max_pages``. ``--ocr-backend none`` needs no
+model. ``pull`` refuses the platform, variable and directory cases before it calls liteparse's
+pull, calls it for ``ocria-nano@1.0.0`` with the model directory set, no ``HF_TOKEN`` and
+``HF_HOME`` naming an empty directory, and checks the listed package against the pins afterwards.
+A refusal exits 1 with nothing on stdout.
 
 The weights have their own licence (OCRia-nano-1 Model License, a modified OpenRAIL-M): see
 docs/agents/dev-tooling.md, and keep their output out of the corpus.
@@ -232,7 +234,9 @@ def _read(path: Path) -> bytes:
 def _sources(section: object) -> list[tuple]:
     if not isinstance(section, list):
         raise ValueError("the sources section is not a list")
-    return [(s["path"], s["sha256"], s["effective_dates"]) for s in section]
+    return [
+        (s["path"], s["sha256"], s["effective_dates"], s.get("source_id")) for s in section
+    ]
 
 
 def _editions(section: object) -> list[tuple]:
@@ -241,7 +245,7 @@ def _editions(section: object) -> list[tuple]:
     ):
         raise ValueError("the editions section is not a list of editions with documents")
     return [
-        (d["path"], d["sha256"], [e["effective_date"]])
+        (d["path"], d["sha256"], [e["effective_date"]], None)
         for e in section
         for d in e["documents"]
         if d["kind"] == COMMENTARY_KIND
@@ -254,7 +258,7 @@ def _checked(name: str, listed: list[tuple]) -> list[tuple]:
         and "\x00" not in path
         and isinstance(digest, str)
         and isinstance(dates, list)
-        for path, digest, dates in listed
+        for path, digest, dates, _ in listed
     ):
         raise ValueError(
             f"in the {name} section, a path (an embedded NUL included), SHA-256 or list of"
@@ -264,7 +268,8 @@ def _checked(name: str, listed: list[tuple]) -> list[tuple]:
 
 
 def documents(data: dict) -> list[dict]:
-    """A manifest's commentary PDFs, from ``sources[]`` or from ``editions[].documents[]``.
+    """A manifest's commentary PDFs, from ``sources[]`` (with each ``source_id``, None where it
+    is missing) or from ``editions[].documents[]`` (no source ID).
 
     ``data`` is the manifest as ``json.loads`` decodes it, so of a repeated key only the last value
     is here. ``sources`` and ``editions``, whichever ``data`` holds, are each checked by their own
@@ -285,8 +290,8 @@ def documents(data: dict) -> list[dict]:
     }
     listed = sections["sources"] if "sources" in sections else sections["editions"]
     return [
-        {"path": path, "sha256": digest, "editions": dates}
-        for path, digest, dates in listed
+        {"path": path, "sha256": digest, "editions": dates, "source_id": source_id}
+        for path, digest, dates, source_id in listed
     ]
 
 
@@ -301,8 +306,8 @@ def _manifest_documents(manifest: Path) -> list[dict]:
 
 
 def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
-    """The PDF to parse, read once; an edition's file must lie inside --root, must not be a
-    link, and its bytes must match the manifest's SHA-256."""
+    """The PDF to parse, read once; the file an edition or source ID names must lie inside
+    --root, must not be a link, and its bytes must match the manifest's SHA-256."""
 
     if args.pdf is not None:
         content = _read(args.pdf)
@@ -310,19 +315,28 @@ def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
             "path": str(args.pdf),
             "sha256": _sha256(content),
             "edition": None,
+            "source_id": None,
         }, content
     manifests = args.manifest or sorted((REPO / "data" / "manifests").glob("*.json"))
     found = [
         doc
         for manifest in manifests
         for doc in _manifest_documents(manifest)
-        if args.edition in doc["editions"]
+        if (
+            args.edition in doc["editions"]
+            if args.edition is not None
+            else doc["source_id"] == args.source_id
+        )
     ]
     if len(found) != 1:
         names = ", ".join(manifest.name for manifest in manifests)
+        chosen = (
+            f"edition {args.edition}"
+            if args.edition is not None
+            else f"source ID {args.source_id}"
+        )
         raise Refused(
-            f"edition {args.edition}: {len(found)} commentary PDFs in {names},"
-            " expected one"
+            f"{chosen}: {len(found)} commentary PDFs in {names}, expected one"
         )
     entry = found[0]
     located = args.root / entry["path"]
@@ -347,7 +361,12 @@ def pdf_input(args: argparse.Namespace) -> tuple[dict, bytes]:
         raise Refused(
             f"{entry['path']}: SHA-256 {digest}, the manifest pins {entry['sha256']}"
         )
-    return {"path": entry["path"], "sha256": digest, "edition": args.edition}, content
+    return {
+        "path": entry["path"],
+        "sha256": digest,
+        "edition": args.edition,
+        "source_id": args.source_id,
+    }, content
 
 
 def check_runtime_environment() -> Path:
@@ -465,6 +484,8 @@ def options(backend: str, pages: list[int] | None) -> dict:
         "extract_blocks": True,
         "extract_text_metadata": True,
         "quiet": True,
+        # liteparse 2.21.4 otherwise returns at most 1,000 pages when no target pages are set
+        "max_pages": sys.maxsize,
     }
     if pages:
         chosen["target_pages"] = ",".join(map(str, pages))
@@ -682,6 +703,10 @@ def _parser() -> argparse.ArgumentParser:
     source.add_argument(
         "--edition", help="a commentary's effective date, e.g. 2021-07-01"
     )
+    source.add_argument(
+        "--source-id",
+        help="a commentary's source_id in a sources manifest, e.g. 2023-01-01-urgent",
+    )
     parse_cmd.add_argument(
         "--pages",
         type=page_list,
@@ -701,7 +726,7 @@ def _parser() -> argparse.ArgumentParser:
         "--manifest",
         type=Path,
         action="append",
-        help="manifest for --edition (repeatable; default data/manifests/*)",
+        help="manifest for --edition or --source-id (repeatable; default data/manifests/*)",
     )
     return parser
 

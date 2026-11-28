@@ -304,7 +304,15 @@ def test_tesseract_is_not_one_of_the_choices(lib, tmp_path, capsys) -> None:
     assert lib.built == []
 
 
-@pytest.mark.parametrize("source", [[], ["--pdf", "a.pdf", "--edition", EDITION]])
+@pytest.mark.parametrize(
+    "source",
+    [
+        [],
+        ["--pdf", "a.pdf", "--edition", EDITION],
+        ["--pdf", "a.pdf", "--source-id", "first"],
+        ["--edition", EDITION, "--source-id", "first"],
+    ],
+)
 def test_the_input_is_one_pdf_or_one_edition(lib, source, capsys) -> None:
     with pytest.raises(SystemExit) as stop:
         run("parse", *source, "--ocr-backend", NANO)
@@ -502,6 +510,7 @@ def test_an_edition_is_read_from_its_manifest_and_checked(
         "path": "data/raw/commentary.pdf",
         "sha256": sha(PDF),
         "edition": EDITION,
+        "source_id": None,
         "total_pages": 4,
     }
     assert lib.built[0].parsed == [PDF]  # the verified bytes, not a second read
@@ -1379,3 +1388,131 @@ def test_a_manifest_nested_past_the_json_parser_is_refused_by_name(
     assert out == ""
     assert "deep-manifest.json" in err
     assert lib.built == []
+
+
+# Review round 10, P2: two pinned commentaries share an effective date (2023-01-01 in
+# bag-al-commentaries-2021-2023.json), so --source-id selects one by its manifest source_id.
+
+OTHER = b"%PDF-1.7\n% a second synthetic commentary of the same date\n"
+
+
+def same_date_tree(tmp_path: Path, second_id: str = "second") -> tuple[Path, Path]:
+    """A checkout root with two commentary PDFs effective on EDITION, listed as two sources."""
+    root = tmp_path / "root"
+    raw = root / "data" / "raw"
+    raw.mkdir(parents=True)
+    (raw / "first.pdf").write_bytes(PDF)
+    (raw / "second.pdf").write_bytes(OTHER)
+    sources = [
+        {
+            "source_id": "first",
+            "path": "data/raw/first.pdf",
+            "sha256": sha(PDF),
+            "effective_dates": [EDITION],
+        },
+        {
+            "source_id": second_id,
+            "path": "data/raw/second.pdf",
+            "sha256": sha(OTHER),
+            "effective_dates": [EDITION],
+        },
+    ]
+    manifest = tmp_path / "same-date-manifest.json"
+    manifest.write_text(
+        json.dumps({"kind": "commentary_sources", "sources": sources}), encoding="utf-8"
+    )
+    return root, manifest
+
+
+def parse_selected(root: Path, manifest: Path, *selector: str) -> int:
+    argv = [*selector, "--manifest", str(manifest), "--root", str(root)]
+    return run("parse", *argv, "--pages", "3", "--ocr-backend", NANO)
+
+
+@pytest.mark.parametrize(
+    ("source_id", "content"), [("first", PDF), ("second", OTHER)], ids=["first", "second"]
+)
+def test_a_source_id_selects_one_of_two_commentaries_of_the_same_date(
+    lib, tmp_path, capsys, source_id, content
+) -> None:
+    root, manifest = same_date_tree(tmp_path)
+    lib.models.installed = [package(tmp_path)]
+    assert parse_selected(root, manifest, "--source-id", source_id) == 0
+    doc = json.loads(capsys.readouterr().out)
+    assert doc["source"] == {
+        "path": f"data/raw/{source_id}.pdf",
+        "sha256": sha(content),
+        "edition": None,
+        "source_id": source_id,
+        "total_pages": 4,
+    }
+    assert lib.built[0].parsed == [content]
+
+
+def test_an_edition_two_commentaries_share_is_still_refused(lib, tmp_path, capsys) -> None:
+    root, manifest = same_date_tree(tmp_path)
+    lib.models.installed = [package(tmp_path)]
+    assert parse_selected(root, manifest, "--edition", EDITION) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert f"edition {EDITION}: 2 commentary PDFs" in err
+    assert lib.built == []
+
+
+@pytest.mark.parametrize("case", ["unknown", "repeated", "editions manifest"])
+def test_a_source_id_that_names_no_single_pdf_is_refused(
+    lib, tmp_path, capsys, case
+) -> None:
+    if case == "editions manifest":  # editions list no source IDs
+        root, manifest = edition_tree(tmp_path, "editions", sha(PDF))
+        wanted, count = EDITION, 0
+    elif case == "repeated":
+        root, manifest = same_date_tree(tmp_path, second_id="first")
+        wanted, count = "first", 2
+    else:
+        root, manifest = same_date_tree(tmp_path)
+        wanted, count = "third", 0
+    lib.models.installed = [package(tmp_path)]
+    assert parse_selected(root, manifest, "--source-id", wanted) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert f"source ID {wanted}: {count} commentary PDFs" in err
+    assert lib.built == []
+
+
+def test_a_source_id_keeps_the_manifest_hash_check(lib, tmp_path, capsys) -> None:
+    root, manifest = same_date_tree(tmp_path)
+    (root / "data" / "raw" / "second.pdf").write_bytes(b"%PDF-1.7 other bytes")
+    lib.models.installed = [package(tmp_path)]
+    assert parse_selected(root, manifest, "--source-id", "second") == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "SHA-256" in err
+    assert lib.built == []
+
+
+def test_the_committed_commentary_manifest_tells_its_2023_01_01_sources_apart() -> None:
+    """The finding's case, read from the committed manifest (its PDFs are git-ignored)."""
+    manifest = (
+        liteparse_ocr.REPO / "data" / "manifests" / "bag-al-commentaries-2021-2023.json"
+    )
+    docs = liteparse_ocr._manifest_documents(manifest)
+    ids = [doc["source_id"] for doc in docs]
+    assert None not in ids
+    assert len(set(ids)) == len(ids)
+    shared = [doc for doc in docs if "2023-01-01" in doc["editions"]]
+    assert sorted(doc["source_id"] for doc in shared) == ["2023-01-01", "2023-01-01-urgent"]
+    assert len({doc["path"] for doc in shared}) == 2
+
+
+# Review round 10, P3: liteparse 2.21.4 returns at most 1,000 pages when no target pages are set
+# and max_pages is left at its default (seen on 2026-11-28, not a test), so max_pages is set.
+
+
+@pytest.mark.parametrize("pages", [(), ("--pages", "1")])
+def test_the_library_page_cap_is_set_with_or_without_pages(lib, tmp_path, pages) -> None:
+    lib.models.installed = [package(tmp_path)]
+    lib.pages = [page(1)]
+    lib.total_pages = 1
+    assert nano(a_pdf(tmp_path), *pages) == 0
+    assert lib.built[0].options["max_pages"] == sys.maxsize

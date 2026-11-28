@@ -136,7 +136,8 @@ observation on this set, not an accuracy figure.
   --edition 2026-07-01 --pages 4,6`; without pdfplumber it exits 2. Evidence:
   [`docs/evidence/2026-11-22-pdfplumber-layout-probe.md`](../../docs/evidence/2026-11-22-pdfplumber-layout-probe.md).
 - `liteparse_ocr.py`: a diagnostic outside the pilot (nothing imports it). It parses one PDF, or
-  one manifest-verified commentary edition (a file inside `--root`, not a link), with LiteParse and
+  one manifest-verified commentary chosen by its edition or, where two share a date, by
+  `--source-id` (a file inside `--root`, not a link), with LiteParse and
   an explicitly chosen backend (`--ocr-backend ocria-nano` for OCRia-nano-1, or `none` for the
   native text with OCR off), and prints its report to stdout only, as ASCII-only JSON bytes that
   read as UTF-8 whatever encoding stdout is set to: each text item and block (table cells, code
