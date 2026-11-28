@@ -791,8 +791,8 @@ cell's recorded ending if it had ended (also after its last booking was released
 books hold); its other bookings are listed as unconfirmed, one it cannot show as its own (another
 run's, possibly) is left out, and nothing after the last recorded step is inferred. Books that
 cannot be read, whatever their damage, take no part (accounting `unknown`), and a call readable
-books settle as sent that the run cannot show it sent leaves the accounting `uncertain`. The
-replay failure C and D share
+books settle as sent that the run cannot show it sent leaves the accounting `uncertain`, ahead of
+any overage, which stays on its call (`above_reservation`). The replay failure C and D share
 (a lone surrogate the model escaped in a tool input) is such a cell. A
 local output folder (or a request or response folder in it) that is a symbolic link is refused
 before the model loads. Since 2026-11-27 a run of either design claims its local folder before the

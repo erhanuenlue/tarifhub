@@ -147,14 +147,14 @@ Unchanged: the frozen requests (B's and C's request hashes, D's frozen texts), t
 their strict reading (books written in the earlier order read as before), the recorded ledgers and
 results, the freeze record's file hashes and the scoring rules.
 
-**Independent review of the fixes (round 4, on `6ac26cf`)** found 0 P1, 3 P2 and a P3 line, all on
+**Independent review of the fixes (round 4, its revision named in [#73](https://github.com/erhanuenlue/tarifhub/pull/73))** found 0 P1, 3 P2 and a P3 line, all on
 the recovery of an aborted cell: a saved response should prove a send whose settlement was
 interrupted; a matching request hash does not prove which run booked a call (the frozen requests
 are identical across runs); a search that ran before the abort should be scored. Fixed the same
 day as stated in the table above (the proof is the run's own request and response, since
-2026-11-28 its complete response, section 9; the cell's record rides on the error); a typed `/ship-it source-only` in a fresh session is left for Erhan.
+2026-11-28 its complete response, section 9; the cell's record rides on the error); a typed `/ship-it source-only` in a fresh session was left for Erhan (done on 2026-11-28, section 9).
 
-**Independent review of those fixes (round 5, on `f8590bf`)** found 0 P1, 3 P2 and a P3 line, again
+**Independent review of those fixes (round 5, its revision named in [#73](https://github.com/erhanuenlue/tarifhub/pull/73))** found 0 P1, 3 P2 and a P3 line, again
 in the recovery path: a booking another run made after this run stopped still entered its
 accounting and outputs; a settlement line cut short made the books unreadable and hid a send the
 run's own files prove; an interruption while the lock was given back escaped without the cell's
@@ -166,11 +166,12 @@ had ended keeps its recorded ending (`ended`), so a recorded answer turn is not 
 action.
 
 **Checks.** The pilot's offline suite: 781 tests in fifteen files, all passing (734 before): D 56
-(52), runner 89 (69), scorer 195 (172). Run against the code of `e3a6bfb`, the three changed test
-files of the first fix commit failed in 26 of their 326 tests, all of them the new behaviour (the
+(52), runner 89 (69), scorer 195 (172). Run against the code before the first fix commit (the
+third review round's revision, named in [#73](https://github.com/erhanuenlue/tarifhub/pull/73)), the three changed test files of that commit
+failed in 26 of their 326 tests, all of them the new behaviour (the
 ten refusals of malformed aborted records passed there too, since that code refused every aborted
-record); run against the code of `6ac26cf`, the round-4 fixes' tests fail in 10 of 336, and against the
-code of `f8590bf`, the round-5 fixes' tests fail in 5 of 340. Lint clean. A
+record); run against the code that round 4 and round 5 reviewed (named in [#73](https://github.com/erhanuenlue/tarifhub/pull/73)), the
+round-4 fixes' tests fail in 10 of 336 and the round-5 fixes' tests in 5 of 340. Lint clean. A
 scripted B cell and C cell in the Phase 2 and 3 books give identical records, requests and ledger
 lines (times aside) at `140ca86` and now; `results/` is byte-identical to `140ca86`; the 14 file
 hashes of the freeze record hold.
@@ -230,9 +231,10 @@ strict check that an entry's action is its call's (`phase4_scoring._coverage`). 
 ending is kept also when its one booking after the sent calls was released unsent, as its record
 says and readable books hold. Books that cannot be read, whatever their damage, take no part
 (accounting `unknown`), and a call readable books settle as sent that the run cannot show it sent
-leaves the accounting `uncertain`.
+leaves the accounting `uncertain`, ahead of any overage, which stays on its call
+(`above_reservation`, unconfirmed calls included).
 
-**The independent review of these fixes** (round 7, on `d21beed`) found three more P2 gaps in the
+**The independent review of these fixes** (round 7, its revision named in [#73](https://github.com/erhanuenlue/tarifhub/pull/73)) found three more P2 gaps in the
 same recovery, fixed the same day, test-first, in the runner alone: a zero-byte response file still
 proved a send when the response itself was empty; a response file that disagreed with a usage
 settlement left the accounting `priced`; books made unreadable by an amount past float range or by
@@ -240,6 +242,16 @@ nesting past the parser escaped the unreadable-books rule, so the aborted cell w
 points on the documentation are taken into the sentences above and into ADR-028, the README and
 arc42 sections 5, 6, 11 and 12 (when an aborted record is written, the open and the retained
 booking, a recorded answer turn, the aborted cells counted).
+
+**The review of those fixes** (round 8, its revision named in
+[#73](https://github.com/erhanuenlue/tarifhub/pull/73)) found the round-6 and round-7 points
+resolved but one: the uncertainty was still hidden when that call's usage settlement was also above
+its reservation (the overage took the accounting). Fixed the same day, test-first: any uncertainty
+makes the accounting `uncertain` ahead of an overage, and each unconfirmed call carries its
+settlement's `above_reservation`, as the sent calls already did; an overage always ends its cell,
+so no other pairing of the two arises. Its P3 points are taken in: the unresolved-tail sentence of
+the runner's module docstring is qualified, and this page names the reviewed revisions through
+#73 instead of citing branch commits.
 
 **Test first** (the repository's `tdd` skill; the scripted provider, temporary books and
 deterministic interruptions, through the runner's and the scorer's entry points): each regression
@@ -253,6 +265,7 @@ failed on the code before its fix and passes with it.
 | Zero-byte file (round 7) | C's response an empty body, interrupted while its file is written or after its settlement | the zero-byte file counted as a sent call (`(1, [...]) == (0, [])`) | passes: no send, the call booked and never sent again |
 | Digest conflict (round 7) | C's response file altered after its usage settlement, then the lock's release interrupted | `'priced' == 'uncertain'` | passes |
 | Unreadable books (round 7) | the books damaged by an amount past float range, or by nesting past the parser, while C's lock is given back | C's cell dropped (`['fixed10'] == ['fixed10', 'agent']`) | passes: the cell kept with its proven send, accounting `unknown` |
+| Overage and conflict (round 8) | C's answer settled above its reservation, its response file then altered, the lock's release interrupted | `'above_reservation' == 'uncertain'` | passes: accounting `uncertain`, the overage on the unconfirmed call |
 
 Guards that pass before and after: an entry whose action is not its call's stays refused in a
 completed cell, in a cell that had ended and for an earlier call; a release that was never saved
@@ -261,13 +274,13 @@ rule (D's entry for the call cut off as a search, a refused search or an answer 
 after the fix and fail on the code before it; a search entry for a call never offered the tool
 failed first and is refused now.
 
-**Checks** (on the code of these fixes): the pilot's offline suite, 802 tests in fifteen files, all
-passing, none skipped (781 before): runner 103 (89), scorer 202 (195); D 56 and the agent loop 156
+**Checks** (on the code of these fixes): the pilot's offline suite, 803 tests in fifteen files, all
+passing, none skipped (781 before): runner 104 (89), scorer 202 (195); D 56 and the agent loop 156
 unchanged. Lint clean. A scripted B cell and C cell in the Phase 2 and 3 books give identical
 records, requests and ledger lines at `140ca86` and now; `results/` is byte-identical to
 `140ca86`; the 14 file hashes of the freeze record hold; no Phase 4 ledger exists. The simulated
-rehearsal of section 5, run again on this code (after the round-7 fixes too), gave the same results
-in all nine scenarios. A
+rehearsal of section 5, run again on this code (after the round-7 and round-8 fixes too), gave the
+same results in all nine scenarios. A
 typed `/ship-it source-only` (after `/clear`, on this branch) loaded
 `.claude/skills/ship-it/SKILL.md` from the repository's Git root, not a link.
 
