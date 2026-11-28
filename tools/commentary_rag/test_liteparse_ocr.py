@@ -15,6 +15,7 @@ import hashlib
 import json
 import os
 import platform
+import subprocess
 import sys
 from pathlib import Path
 from types import SimpleNamespace
@@ -1144,3 +1145,222 @@ def test_a_manifest_section_that_is_not_a_list_is_refused_by_name(
     assert out == ""
     assert "unlisted-manifest.json" in err
     assert lib.built == []
+
+
+# Review round 4, P3: a manifest with both sections has both validated, so a valid sources
+# section cannot hide a malformed editions section; sources keeps its precedence.
+
+SOURCE = {
+    "path": "data/raw/commentary.pdf",
+    "sha256": sha(PDF),
+    "effective_dates": [EDITION],
+}
+
+
+def parse_edition(root: Path, *manifests: Path) -> int:
+    argv = ["parse", "--edition", EDITION]
+    for manifest in manifests:
+        argv += ["--manifest", str(manifest)]
+    return run(*argv, "--root", str(root), "--pages", "3", "--ocr-backend", NANO)
+
+
+@pytest.mark.parametrize(
+    ("sources", "editions"),
+    [
+        ([], {}),  # the edition comes from the other manifest
+        ([SOURCE], {}),
+        ([SOURCE], [{"effective_date": EDITION}]),
+        (
+            [SOURCE],
+            [
+                {
+                    "effective_date": EDITION,
+                    "documents": [
+                        {"kind": "commentary_pdf", "path": 1, "sha256": sha(PDF)}
+                    ],
+                }
+            ],
+        ),
+        (
+            [SOURCE],
+            [
+                {
+                    "effective_date": EDITION,
+                    "documents": [
+                        {
+                            "kind": "commentary_pdf",
+                            "path": "data/raw/com\x00mentary.pdf",
+                            "sha256": sha(PDF),
+                        }
+                    ],
+                }
+            ],
+        ),
+    ],
+    ids=["empty-sources", "editions-not-a-list", "edition-without-documents",
+         "path-not-a-string", "path-with-nul"],
+)
+def test_a_valid_sources_section_does_not_hide_malformed_editions(
+    lib, tmp_path, capsys, sources, editions
+) -> None:
+    root, other = edition_tree(tmp_path, "sources", sha(PDF))
+    mixed = tmp_path / "mixed-manifest.json"
+    mixed.write_text(
+        json.dumps({"kind": "commentary_sources", "sources": sources, "editions": editions}),
+        encoding="utf-8",
+    )
+    lib.models.installed = [package(tmp_path)]
+    manifests = (other, mixed) if not sources else (mixed,)
+    assert parse_edition(root, *manifests) == 1
+    out, err = capsys.readouterr()
+    assert out == ""
+    assert "mixed-manifest.json" in err
+    assert "editions" in err
+    assert lib.built == []
+
+
+def test_with_both_sections_valid_the_pdf_still_comes_from_sources(
+    lib, tmp_path, capsys
+) -> None:
+    """Characterization, true before and after the round-4 fix: sources keeps its precedence,
+    and an editions document of another kind is not checked."""
+    root, _ = edition_tree(tmp_path, "sources", sha(PDF))
+    other = root / "data" / "raw" / "other.pdf"
+    other.write_bytes(b"%PDF-1.7 another file")
+    mixed = tmp_path / "mixed-manifest.json"
+    editions = [
+        {
+            "effective_date": EDITION,
+            "documents": [
+                {"kind": "full_list_xlsx"},
+                {
+                    "kind": "commentary_pdf",
+                    "path": "data/raw/other.pdf",
+                    "sha256": sha(other.read_bytes()),
+                },
+            ],
+        }
+    ]
+    mixed.write_text(
+        json.dumps({"sources": [SOURCE], "editions": editions}), encoding="utf-8"
+    )
+    lib.models.installed = [package(tmp_path)]
+    assert parse_edition(root, mixed) == 0
+    assert json.loads(capsys.readouterr().out)["source"]["path"] == SOURCE["path"]
+    assert lib.built[0].parsed == [PDF]
+
+
+# Review round 4, P3: the report does not depend on the stdout encoding. Checked at the command
+# line: the script runs in a child process, its stdout redirected into a file, against a
+# stand-in liteparse package on PYTHONPATH (with its distribution metadata, which the version
+# lookup reads).
+
+SCRIPT = Path(__file__).resolve().parent / "liteparse_ocr.py"
+STAND_IN = '''
+import sys
+from types import SimpleNamespace
+
+print("stdout encoding:", sys.stdout.encoding, file=sys.stderr)
+
+
+class ParseError(Exception):
+    pass
+
+
+class _Models:
+    def list(self):
+        return []
+
+    def pull(self, spec, **options):
+        raise RuntimeError("the stand-in downloads nothing")
+
+
+models = _Models()
+
+
+class LiteParse:
+    def __init__(self, **options):
+        config = SimpleNamespace(
+            ocr_enabled=options["ocr_enabled"],
+            ocr_backend=options["ocr_backend"],
+            dpi=150.0,
+            table_model=None,
+            ocr_failure_fatal=True,
+            target_pages=options.get("target_pages"),
+        )
+        self._native = SimpleNamespace(config=config)
+
+    def parse(self, data):
+        item = SimpleNamespace(
+            text=TEXT, x=10.0, y=20.0, width=30.0, height=8.0, font_name="Synthetic",
+            font_size=1.0, font_height=11.0, font_weight=400, confidence=None,
+        )
+        page = SimpleNamespace(
+            page_num=1, page_label=None, width=595.32, height=841.92,
+            text_items=[item], blocks=[],
+        )
+        return SimpleNamespace(pages=[page], total_pages=1)
+'''
+GERMAN = "Zuschlag für Überzeit, Größe"  # in Windows-1252, not in ASCII
+
+
+def command_line(
+    tmp_path: Path, text: str, encoding: str, *argv: str
+) -> tuple[subprocess.CompletedProcess, bytes]:
+    """Run the script as a command with stdout redirected into a file; return the process and
+    the file's bytes."""
+    site = tmp_path / "site"
+    (site / "liteparse").mkdir(parents=True)
+    (site / "liteparse" / "__init__.py").write_text(
+        f"TEXT = {text!r}\n" + STAND_IN, encoding="utf-8"
+    )
+    (site / "liteparse-2.21.4.dist-info").mkdir()
+    (site / "liteparse-2.21.4.dist-info" / "METADATA").write_text(
+        "Metadata-Version: 2.1\nName: liteparse\nVersion: 2.21.4\n", encoding="utf-8"
+    )
+    env = {k: v for k, v in os.environ.items() if not k.startswith("PYTHON")}
+    env.update(
+        PYTHONPATH=str(site), PYTHONIOENCODING=encoding, PYTHONDONTWRITEBYTECODE="1"
+    )
+    report = tmp_path / "report.json"
+    with report.open("wb") as sink:
+        done = subprocess.run(
+            [sys.executable, str(SCRIPT), *argv],
+            stdin=subprocess.DEVNULL,
+            stdout=sink,
+            stderr=subprocess.PIPE,
+            env=env,
+            timeout=120,
+            check=False,
+        )
+    return done, report.read_bytes()
+
+
+@pytest.mark.parametrize(
+    ("encoding", "text"),
+    [("ascii", GERMAN), ("cp1252", GERMAN), ("ascii", "Zuschlag")],
+    ids=["ascii", "cp1252", "ascii-text-control"],
+)
+def test_the_report_reads_as_utf8_json_whatever_the_stdout_encoding(
+    tmp_path, encoding, text
+) -> None:
+    done, raw = command_line(
+        tmp_path, text, encoding, "parse", "--pdf", a_pdf(tmp_path), "--ocr-backend", "none"
+    )
+    err = done.stderr.decode("utf-8", "replace")
+    assert f"stdout encoding: {encoding}" in err  # the setting reached the child
+    assert done.returncode == 0, err
+    report = json.loads(raw.decode("utf-8"))
+    assert report["pages"][0]["text_items"][0]["text"] == text
+
+
+def test_a_refusal_under_an_ascii_stdout_still_exits_1_with_nothing_on_stdout(
+    tmp_path,
+) -> None:
+    missing = tmp_path / "fehlt-ü.pdf"
+    done, raw = command_line(
+        tmp_path, GERMAN, "ascii", "parse", "--pdf", str(missing), "--ocr-backend", "none"
+    )
+    assert done.returncode == 1
+    assert raw == b""
+    assert "liteparse_ocr refused:" in done.stderr.decode("utf-8", "replace")

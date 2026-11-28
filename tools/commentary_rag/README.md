@@ -138,19 +138,29 @@ observation on this set, not an accuracy figure.
 - `liteparse_ocr.py`: a diagnostic outside the pilot (nothing imports it). It parses one PDF, or
   one manifest-verified commentary edition (a file inside `--root`, not a link), with LiteParse and
   an explicitly chosen backend (`--ocr-backend ocria-nano` for OCRia-nano-1, or `none` for the
-  native text with OCR off), and prints JSON to stdout only: each text item and block (table cells,
-  code and grid lines included) with its source page, the backend the parser resolved and a
-  per-page count of OCR items. Redirect it into a new file under the git-ignored `local/` or
-  outside the repository. Only the OCRia-nano backend needs the model and its checks: macOS arm64,
-  no variable named `DYLD_*` or `LD_*` and no `ORT_DYLIB_PATH` (even empty), one absolute model
-  directory, and a package matching the sixteen pinned files of ocria-nano 1.0.0; on that backend
-  an OCR failure that liteparse reports only on stderr refuses the run. liteparse is in no
-  environment here: run
+  native text with OCR off), and prints its report to stdout only, as ASCII-only JSON that reads as
+  UTF-8 under any locale: each text item and block (table cells, code and grid lines included) with
+  its source page, the backend the parser resolved and a per-page count of OCR items. While it
+  parses, with either backend, it captures liteparse's native stderr in a temporary file and then
+  passes it on to stderr, so a parse needs a writable temporary directory. Only the OCRia-nano
+  backend needs the model and its checks: macOS arm64, no variable named `DYLD_*` or `LD_*` and no
+  `ORT_DYLIB_PATH` (even empty), one absolute model directory, and a package matching the sixteen
+  pinned files of ocria-nano 1.0.0; on that backend an OCR failure that liteparse reports only on
+  stderr refuses the run. liteparse is in no environment here: run
   `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py pull`
-  once (the only model download), then the same with `parse --edition 2021-07-01 --pages 3,4
-  --ocr-backend ocria-nano > tools/commentary_rag/local/2021-07-01-p3-4.json`. `uv run --with`
-  fetches liteparse when uv's cache lacks it, and `--offline` stops only uv's own fetches; a parse
-  without network was observed under the network-denying sandbox
+  once (the only model download). Then write each report into a new folder under the git-ignored
+  `local/` (created when missing), so that a repeat never overwrites an earlier report:
+
+  ```bash
+  mkdir -p tools/commentary_rag/local
+  out=$(mktemp -d tools/commentary_rag/local/liteparse-XXXXXX)
+  uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py \
+    parse --edition 2021-07-01 --pages 3,4 --ocr-backend ocria-nano > "$out/2021-07-01-p3-4.json"
+  ```
+
+  A refused run leaves that file empty and exits 1. `uv run --with` fetches liteparse when uv's
+  cache lacks it, and `--offline` stops only uv's own fetches; a parse without network was observed
+  under the network-denying sandbox
   (`sandbox-exec -p "(version 1)(allow default)(deny network*)" uv run --offline ...`), which no
   test covers. Without liteparse it exits 2, on a refusal 1. The weights have their own licence;
   see `docs/agents/dev-tooling.md`.

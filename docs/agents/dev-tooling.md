@@ -136,10 +136,13 @@ ingestion PostgreSQL legs need network.
   is in no lockfile, service environment or image. It runs in an ephemeral environment with an
   exact pin, `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py`
   (the official Python package of `run-llama/liteparse`, Apache-2.0, checked on 2026-11-28).
-- **Output:** JSON on stdout only; the tool has no output option and writes no file. Redirect it into
-  a new file under the git-ignored `tools/commentary_rag/local/` or outside the repository, for
-  example `... > tools/commentary_rag/local/2021-07-01-p3-4.json`. The JSON holds every text item
-  and layout block (every field of liteparse's block: table header and rows with each cell's text,
+- **Output:** the report goes to stdout only, as ASCII-only JSON (every other character as a JSON
+  escape), so its bytes read as UTF-8 under any locale; the tool has no output option. Write each
+  report into a new folder under the git-ignored `tools/commentary_rag/local/` (or outside the
+  repository), so that a repeat cannot overwrite an earlier one:
+  `mkdir -p tools/commentary_rag/local`, `out=$(mktemp -d tools/commentary_rag/local/liteparse-XXXXXX)`,
+  then `... > "$out/2021-07-01-p3-4.json"`; a refused run leaves that file empty and exits 1. The
+  JSON holds every text item and layout block (every field of liteparse's block: table header and rows with each cell's text,
   box and items, code and grid lines), each with its bounding box and 1-based source page; the
   backend liteparse reports; the liteparse version; and, for OCRia-nano-1, the model directory, the
   files with their pinned SHA-256 and the environment check, never which runtime the loader chose.
@@ -147,6 +150,13 @@ ingestion PostgreSQL legs need network.
   reads the same values from the native configuration object; there `table_model` is only an
   explicit override (with ocria-nano, liteparse uses the package's TableNet and still reports
   none), so the report calls it `table_model_override`.
+- **Temporary files:** besides the report on stdout, `parse` writes one temporary file with either
+  backend: liteparse's native stderr (file descriptor 2) goes into an anonymous file created in the
+  system temporary directory (no name of it remains there; its space is freed when the parse ends)
+  while the parser runs, and is then passed on to stderr; so a parse needs a writable temporary
+  directory. `pull` downloads with
+  `HF_HOME` naming an empty temporary directory and lets liteparse install the model files into the
+  model directory. Temporary files of liteparse's own native code are not checked here.
 - **Backend:** always named, `--ocr-backend ocria-nano` or `--ocr-backend none`; there is no default
   and no Tesseract choice, and a parser that resolves another backend is refused before it parses.
   `--ocr-backend none` needs no model, model directory or environment check. With OCR off the tool
@@ -182,7 +192,9 @@ ingestion PostgreSQL legs need network.
 - **Input:** an edition's PDF must lie inside `--root` once links are resolved, must not be a link
   itself and must match its manifest's SHA-256. A manifest that cannot be read, has neither a
   `sources` nor an `editions` list (a section that is not a list counts), or names a path no file
-  system can take (an embedded NUL) is refused by name.
+  system can take (an embedded NUL) is refused by name. Every section a manifest has is checked, so
+  a valid `sources` section cannot hide a malformed `editions` section; with both, the PDF comes
+  from `sources`.
 - **Network:** `parse` never downloads a model. `uv run --with` fetches liteparse itself when uv's
   cache lacks it, and `uv --offline` stops only uv's own fetches, not the parser process (liteparse
   turns ONNX Runtime's telemetry off only when `ORT_DISABLE_TELEMETRY` is unset; an inherited value,
