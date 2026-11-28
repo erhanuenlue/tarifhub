@@ -1,31 +1,35 @@
 """LiteParse with OCRia-nano-1: an opt-in, local OCR diagnostic beside the commentary pilot.
 
 The pilot never imports this module and it changes nothing. It parses one PDF (a file, or a
-commentary edition read from a manifest) with LiteParse and prints its report to stdout, as
-ASCII-only JSON (every other character as a JSON escape, so the bytes read as UTF-8 whatever
-encoding stdout has): every text item and layout block (table cells, code and grid lines included)
-with its text, bounding box (PDF points, top-left origin, ``[x0, top, x1, bottom]``) and 1-based
-source page; the backend the parser reports it resolved; the liteparse version; and, for
-OCRia-nano-1, the model directory, the sixteen files with their pinned size and SHA-256, and the
-environment check. There is no output option, and the report goes nowhere but stdout: redirect it
-into a new file under the git-ignored ``tools/commentary_rag/local/`` or outside the repository.
-Other writes: with either backend, a parse captures liteparse's native stderr in an anonymous
-temporary file (created in the system temporary directory, where no name of it remains; its space
-is freed when the parse ends) and then passes it on to stderr; ``pull`` downloads with ``HF_HOME`` naming an empty temporary directory and lets
-liteparse install the model files into the model directory.
+commentary edition read from a manifest) with LiteParse and prints its report to stdout as
+ASCII-only JSON bytes (every other character as a JSON escape), written past Python's text layer
+so that they read as UTF-8 whatever encoding stdout is set to. The report holds every text item
+and layout block (table cells, code and grid lines included) with its text, bounding box (PDF
+points, top-left origin, ``[x0, top, x1, bottom]``) and 1-based source page; the backend the
+parser reports it resolved; the liteparse version; and, for OCRia-nano-1, the model directory, the
+sixteen files with their pinned size and SHA-256, and the environment check. There is no output
+option, and the report goes nowhere but stdout: redirect it into a new file under the git-ignored
+``tools/commentary_rag/local/`` or outside the repository. Other writes: with either backend, a
+parse captures liteparse's native stderr in a file from Python's ``tempfile.TemporaryFile`` in the
+system temporary directory (on macOS and Linux it keeps no name there, on Windows it does until it
+is closed; it is gone when the parse ends) and then passes it on to stderr, and Python may first
+write and remove a small probe file there to check that the directory is writable; ``pull``
+downloads with ``HF_HOME`` naming an empty temporary directory and lets liteparse install the model
+files into the model directory.
 
 liteparse is not a dependency of this repository. Run the tool in an ephemeral environment, from a
 checkout that holds the git-ignored BAG PDFs (or name that checkout with ``--root``):
 
     uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py pull
-    mkdir -p tools/commentary_rag/local
-    out=$(mktemp -d tools/commentary_rag/local/liteparse-XXXXXX)
-    uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py \\
+    mkdir -p tools/commentary_rag/local &&
+        out=$(mktemp -d tools/commentary_rag/local/liteparse-XXXXXX) &&
+        uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py \\
         parse --edition 2021-07-01 --pages 3,4 --ocr-backend ocria-nano \\
         > "$out/2021-07-01-p3-4.json"
 
-Each report goes into a new folder, so a repeat never overwrites an earlier one; a refused run
-leaves its file empty and exits 1.
+Each report goes into a new folder, so a repeat never overwrites an earlier one. The steps are
+chained, so a failed step stops the rest before the redirect; a refused run leaves its file empty
+and exits 1.
 
 ``uv run --with`` fetches liteparse when uv's cache lacks it, and ``uv --offline`` stops only uv's
 own fetches. A parse without network was observed under the network-denying sandbox
@@ -35,10 +39,11 @@ covers.
 What the offline tests check: the backend must be named (``--ocr-backend ocria-nano`` or ``none``,
 no Tesseract), and a parser that resolves another backend is refused before it parses. An
 edition's PDF must lie inside ``--root``, must not be a link and must match its manifest's SHA-256;
-a manifest that cannot be read, lacks a ``sources`` or ``editions`` list, or names a path with a
-NUL in any section it has is refused by name (with both sections, the PDF comes from ``sources``).
-The OCRia-nano path first refuses another platform than macOS arm64, any variable named ``DYLD_*``
-or ``LD_*`` or ``ORT_DYLIB_PATH`` (even empty), and an empty or relative ``LITEPARSE_MODEL_DIR``. It then uses one absolute model directory (``LITEPARSE_MODEL_DIR``, else
+a manifest that cannot be read, lacks a ``sources`` or ``editions`` list, or names a commentary
+path with a NUL, in any section it has, is refused by name (with both sections, the PDF comes from
+``sources``). The OCRia-nano path first refuses another platform than macOS arm64, any variable
+named ``DYLD_*`` or ``LD_*`` or ``ORT_DYLIB_PATH`` (even empty), and an empty or relative
+``LITEPARSE_MODEL_DIR``. It then uses one absolute model directory (``LITEPARSE_MODEL_DIR``, else
 ``$HOME/.cache/liteparse/models``), handed to liteparse, both for parsing and for the check that the
 package liteparse lists there is ocria-nano 1.0.0 with exactly the sixteen files pinned below, each
 matching its size and SHA-256. An OCR failure that liteparse reports only on native stderr (file
@@ -258,9 +263,10 @@ def _checked(name: str, listed: list[tuple]) -> list[tuple]:
 def documents(data: dict) -> list[dict]:
     """A manifest's commentary PDFs, from ``sources[]`` or from ``editions[].documents[]``.
 
-    Every section present is checked, so a valid ``sources`` section cannot hide a malformed
-    ``editions`` section; when both are present, the PDFs come from ``sources``. A manifest
-    without either section, or with a path no file system can take, is a ValueError.
+    Every section present gets the same structural checks, so a valid ``sources`` section cannot
+    hide an ``editions`` section that fails them; when both are present, the PDFs come from
+    ``sources``. Documents of other kinds are checked only for having a ``kind``, and the dates
+    only for being in a list. A manifest without either section, or whose structure fails, is a ValueError.
     """
 
     if not isinstance(data, dict) or not ("sources" in data or "editions" in data):
@@ -705,9 +711,12 @@ def main(argv: list[str] | None = None) -> int:
     except Refused as exc:
         print(f"liteparse_ocr refused: {exc}", file=sys.stderr)
         return 1
-    # the report, on stdout: ASCII-only JSON (any other character as a \u escape), so it
-    # reads as UTF-8 whatever encoding stdout has
-    print(json.dumps(report, ensure_ascii=True, indent=1))
+    # the report, on stdout as bytes: ASCII-only JSON (any other character as a \u escape),
+    # written past the text layer, so it reads as UTF-8 whatever encoding stdout is set to
+    data = json.dumps(report, ensure_ascii=True, indent=1).encode("ascii") + b"\n"
+    sys.stdout.flush()
+    sys.stdout.buffer.write(data)
+    sys.stdout.buffer.flush()
     return 0
 
 

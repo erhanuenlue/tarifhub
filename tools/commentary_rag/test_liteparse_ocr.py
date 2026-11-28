@@ -1338,8 +1338,8 @@ def command_line(
 
 @pytest.mark.parametrize(
     ("encoding", "text"),
-    [("ascii", GERMAN), ("cp1252", GERMAN), ("ascii", "Zuschlag")],
-    ids=["ascii", "cp1252", "ascii-text-control"],
+    [("ascii", GERMAN), ("cp1252", GERMAN), ("utf-16", GERMAN), ("ascii", "Zuschlag")],
+    ids=["ascii", "cp1252", "utf-16", "ascii-text-control"],
 )
 def test_the_report_reads_as_utf8_json_whatever_the_stdout_encoding(
     tmp_path, encoding, text
@@ -1347,7 +1347,7 @@ def test_the_report_reads_as_utf8_json_whatever_the_stdout_encoding(
     done, raw = command_line(
         tmp_path, text, encoding, "parse", "--pdf", a_pdf(tmp_path), "--ocr-backend", "none"
     )
-    err = done.stderr.decode("utf-8", "replace")
+    err = done.stderr.decode(encoding, "replace")  # stderr follows the same setting
     assert f"stdout encoding: {encoding}" in err  # the setting reached the child
     assert done.returncode == 0, err
     report = json.loads(raw.decode("utf-8"))
