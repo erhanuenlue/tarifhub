@@ -1407,8 +1407,10 @@ def _aborted(  # noqa: PLR0913
     is kept for the sent calls: their entries, the searches they ran (search i belongs to call
     i), the passages those supplied, D's coverage entries for them (also for the call cut off,
     whose action is not inferred from it), and the outcome it had recorded if it had already
-    ended (``ended``), so a search that ran is scored and nothing after the last recorded step is
-    inferred. Without that record the cell keeps what the files and books show (``trace``
+    ended (``ended``): when every call it recorded is sent, or when its one call after them was
+    released unsent as its record says and readable books hold (never sent: a deadline before
+    sending); never from an open or unknown booking. So a search that ran is scored and nothing
+    after the last recorded step is inferred. Without that record the cell keeps what the files and books show (``trace``
     ``not_recorded``). Books that cannot be read take no part (accounting ``unknown``)."""
 
     try:
@@ -1466,8 +1468,19 @@ def _aborted(  # noqa: PLR0913
             break  # no file, or an empty, cut-short or other one: no send proven
         sent.append((n, attempt, request, response, booked))
     unconfirmed = calls[len(sent) :]
+    # The cell's one booking after its sent calls released unsent, as its record says (set only
+    # once the release was saved) and readable books hold: never sent, so its ending stands.
+    tail = unconfirmed[0] if len(unconfirmed) == 1 else None
+    release = ((tail[4] or {}).get("settle") or {}) if tail else {}
+    released = (
+        readable
+        and tail is not None
+        and entries.get(tail[1], {}).get("cost_basis") == "not_sent"
+        and release.get("sent") is False
+        and release.get("cost_basis") == "not_sent"
+    )
     detail = type(error).__name__
-    kept = _traced(partial, sent, [p["passage_id"] for p in task.passages])
+    kept = _traced(partial, sent, [p["passage_id"] for p in task.passages], released)
     if kept is None:  # what the files and books show: no trace, nothing inferred
         kept = {
             "calls": [
@@ -1539,12 +1552,14 @@ def _aborted(  # noqa: PLR0913
     return (name, result, status, None), bool(calls)
 
 
-def _traced(partial, sent: list, initial: list[str]) -> dict | None:
+def _traced(partial, sent: list, initial: list[str], released: bool) -> dict | None:
     """The trace an aborted cell recorded, kept for its demonstrably sent calls only: their
     entries, the searches those calls ran (at most one per call, search i belonging to call i),
     the passages supplied by the initial context and those searches, D's coverage entries of the
-    calls kept, and the outcome the cell had recorded if it had already ended (``ended``); None
-    when there is no record or its calls disagree with the sent ones."""
+    calls kept, and the outcome the cell had recorded if it had already ended (``ended``), also
+    when its only call after the sent ones was released unsent (``released``, as the cell's
+    record and readable books show); None when there is no record or its calls disagree with
+    the sent ones."""
 
     if not isinstance(partial, dict):
         return None
@@ -1573,8 +1588,13 @@ def _traced(partial, sent: list, initial: list[str]) -> dict | None:
         "supplied": [*initial, *returned],
     }
     # A cell that had ended (its outcome recorded) before the error keeps that ending, so its
-    # last call's action is the one it recorded; a cell cut off mid-way ends at its last search.
-    ended = partial.get("outcome") if len(sent) == len(calls) else None
+    # last call's action is the one it recorded; so does one whose only call after the sent ones
+    # was released unsent (``released``); a cell cut off mid-way ends at its last search.
+    ended = (
+        partial.get("outcome")
+        if len(calls) == len(sent) or (released and len(calls) == len(sent) + 1)
+        else None
+    )
     if isinstance(ended, str):
         kept["ended"] = ended
     if isinstance(partial.get("spending"), dict):

@@ -2946,3 +2946,134 @@ def test_a_response_file_an_interruption_cut_short_proves_no_send(  # noqa: PLR0
     assert (c_cell["ran"], c_cell["calls"], case_["complete"]) == (
         (True, 1, True) if call == 2 else (False, None, False)
     )
+
+
+# A deadline after the cell's last booking was released unsent, then an interrupted lock release
+
+
+class SlowCount(Provider):
+    """The provider's HTTP side whose count number ``slow`` takes longer than a cell's budget."""
+
+    def __init__(self, clock, *replies, slow: int) -> None:
+        super().__init__(clock, *replies)
+        self.slow = slow
+
+    def __call__(self, request: httpx.Request) -> httpx.Response:
+        """Answer one request; the count numbered ``slow`` lets 601 seconds pass."""
+        if request.url.path == "/v1/messages/count_tokens" and len(self.counts) == self.slow - 1:
+            self.clock.advance(601)
+        return super().__call__(request)
+
+
+def deadline_then_interrupted_release(env, monkeypatch, *, after=None) -> Path:
+    """Run E1 until C's cell ends: call 1 sent, a search, call 2 reserved past the deadline and
+    released unsent (deadline, before_send); then the lock is interrupted while given back.
+    ``after`` runs between the cell's end and the interruption. Returns the cases file."""
+    cases = frozen_input(env, monkeypatch, case("E1"))
+    b = phase4_answers()[0]
+    provider = SlowCount(env["clock"], b, search_call("Pauschale", "Begründung"), slow=3)
+    monkeypatch.setattr(run_comparison, "_client", lambda config: provider.client())
+    real, uses = generation._ledger_lock, []
+
+    @contextlib.contextmanager
+    def releasing(ledger):  # B's cell, then C's: C's lock is interrupted while given back
+        uses.append(ledger)
+        with real(ledger) as held:
+            yield held
+        if len(uses) == 2:
+            if after:
+                after()
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(generation, "_ledger_lock", releasing)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(env, cases))
+    monkeypatch.setattr(generation, "_ledger_lock", real)
+    return cases
+
+
+def test_a_deadline_after_the_last_booking_was_released_unsent_stays_the_cells_ending(
+    isolated, monkeypatch, capsys
+):
+    cases = deadline_then_interrupted_release(isolated, monkeypatch)
+
+    released = [e for e in phase4_ledger(isolated) if e.get("attempt") == "E1-agent-r1-call2"]
+    assert [(e["event"], e.get("sent"), e.get("cost_basis")) for e in released] == [
+        ("reserve", None, None),
+        ("settle", False, "not_sent"),
+    ]
+    public, local = outputs(isolated, tag="2026-11-26")
+    first = json.loads((local / "result.json").read_text("utf-8"))
+    record = first["cases"][0]["cells"][1]["record"]
+    assert (record["outcome"], record.get("ended"), record["generation_calls"]) == (
+        "aborted",
+        "deadline",
+        1,
+    )
+    (call,) = record["calls"]  # call 1 keeps its proven send; call 2 adds none
+    assert (call["attempt"], call["sent"], call["cost_basis"]) == ("E1-agent-r1-call1", True, "usage")
+    assert [(x["attempt"], x["settlement"]) for x in record["unconfirmed_calls"]] == [
+        ("E1-agent-r1-call2", "not_sent")
+    ]
+    shown = json.loads(public.read_text("utf-8"))["cases"][0]["cells"][1]["agent"]
+    assert (shown["outcome"], "ended" in shown) == ("aborted", False)  # local only
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, phase4_answers()[2])
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    assert len(again.creates) == 1  # D only: neither of C's calls is sent later
+    second = json.loads((outputs(isolated, tag="2026-11-27")[1] / "result.json").read_text("utf-8"))
+    (case_,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
+    c_cell = case_["cells"][1]
+    assert (c_cell["ran"], c_cell["outcome"], c_cell["calls"]) == (True, "aborted", 1)
+    assert [(p["call"], p["action"]) for p in c_cell["decision_points"]] == [(1, "search_run")]
+    assert case_["complete"] is True
+
+
+@pytest.mark.parametrize("evidence", ["release not saved", "books unreadable"])
+def test_no_ending_or_release_is_inferred_for_a_last_booking_open_or_unknown(
+    isolated, monkeypatch, capsys, evidence
+):
+    real_append = generation._append
+
+    def unsaved(ledger, event):  # the release of C's call 2 never reaches the books
+        if event["event"] == "settle" and event.get("sent") is False:
+            raise OSError(errno.EIO, "simulated I/O failure")
+        return real_append(ledger, event)
+
+    def damaged():  # the release is saved; the books are damaged before the run recovers
+        with phase4_path(isolated).open("a", encoding="utf-8") as books_:
+            books_.write('{"event": "settle"')
+
+    if evidence == "release not saved":
+        monkeypatch.setattr(generation, "_append", unsaved)
+    cases = deadline_then_interrupted_release(
+        isolated, monkeypatch, after=damaged if evidence == "books unreadable" else None
+    )
+    monkeypatch.setattr(generation, "_append", real_append)
+
+    kept_cell = json.loads(
+        (outputs(isolated, tag="2026-11-26")[1] / "result.json").read_text("utf-8")
+    )["cases"][0]["cells"][1]
+    record = kept_cell["record"]
+    assert kept_cell["status"]["accounting"] == (
+        "uncertain" if evidence == "release not saved" else "unknown"
+    )
+    assert (record["outcome"], "ended" in record, record["generation_calls"]) == (
+        "aborted",
+        False,
+        1,
+    )
+    assert [(x["attempt"], x["settlement"]) for x in record["unconfirmed_calls"]] == [
+        ("E1-agent-r1-call2", None)
+    ]
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, phase4_answers()[2])
+    if evidence == "books unreadable":  # refused until the damaged line is removed
+        assert exit_code(phase4_argv(isolated, cases, tag="2026-11-27")) == 3
+        path = phase4_path(isolated)
+        text = path.read_text("utf-8")
+        path.write_text(text[: text.rindex("\n") + 1], "utf-8")
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-28")) == 0
+    assert len(again.creates) == 1  # D only: C's call 2 is never sent
+    events = [e["event"] for e in phase4_ledger(isolated) if e.get("attempt") == "E1-agent-r1-call2"]
+    assert events == (["reserve"] if evidence == "release not saved" else ["reserve", "settle"])
