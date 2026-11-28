@@ -905,7 +905,8 @@ def summary(scored: dict) -> dict:
         entry = {
             "cells": len(cells),
             "not_run": len(cells) - len(ran),
-            # ran and failed, trace not recorded: no decision point, searches not counted
+            # aborted cells that ran (a proven send) and failed; one without a proven send is
+            # not run
             "aborted": sum(c["outcome"] == ABORTED for c in ran),
             "calls_per_cell": _histogram(c["calls"] for c in ran),
         }

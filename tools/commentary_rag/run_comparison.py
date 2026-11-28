@@ -1379,6 +1379,11 @@ def _release(paths: dict[str, Path], owner: str | None) -> None:
         return
 
 
+# A zero-byte response file proves no send, even when the response was empty: an interruption
+# can leave one before a single byte is written (its digest is this one).
+EMPTY_SHA256 = hashlib.sha256(b"").hexdigest()
+
+
 def _aborted(  # noqa: PLR0913
     paths: dict[str, Path],
     item: dict,
@@ -1397,7 +1402,8 @@ def _aborted(  # noqa: PLR0913
     demonstrably sent when the response file the run saved is the complete response: its
     SHA-256 equals the complete response's as recorded apart from the file, by the cell before
     it saved the file (``case_record``) and by readable books that settled the call as sent,
-    one of them at least and none different. An empty, cut-short or other file proves no send.
+    one of them at least and none different. A zero-byte file (even for an empty response), a
+    cut-short or an other file proves no send.
     Those calls, from the first on, are ``generation_calls``, so a cell with one ran and failed
     (outcome ``aborted``); the run's other calls (open: sending unknown; released: never sent;
     sent without a response it kept; or a response file the digests do not confirm) are listed
@@ -1411,8 +1417,9 @@ def _aborted(  # noqa: PLR0913
     released unsent as its record says and readable books hold (never sent: a deadline before
     sending), never from an open or unknown booking. So a search that ran is scored and nothing
     after the last recorded step is inferred. Without that record the cell keeps what the files
-    and books show (``trace`` ``not_recorded``). Books that cannot be read take no part
-    (accounting ``unknown``)."""
+    and books show (``trace`` ``not_recorded``). Books that cannot be read, whatever their damage,
+    take no part (accounting ``unknown``); a call readable books settle as sent that the run
+    cannot show it sent leaves the accounting ``uncertain``."""
 
     try:
         books = {
@@ -1420,7 +1427,9 @@ def _aborted(  # noqa: PLR0913
             for b in evidence_agent.phase4_cell(item["id"], name, PHASE4_REPETITION)
         }
         readable = True
-    except (ValueError, OSError):  # damaged or unreadable: the files and the record still show
+    except (ValueError, OSError, ArithmeticError, RecursionError):
+        # damaged or unreadable (an amount past float range or nesting past the parser
+        # included): the files and the record still show
         books, readable = {}, False
     partial = getattr(error, "case_record", None)
     entries = {
@@ -1465,7 +1474,7 @@ def _aborted(  # noqa: PLR0913
         )
         if settle is not None:
             digests.append(settle.get("response_sha256") if settle.get("sent") is True else None)
-        if response is None or not digests or any(d != response for d in digests):
+        if response in (None, EMPTY_SHA256) or not digests or any(d != response for d in digests):
             break  # no file, or an empty, cut-short or other one: no send proven
         sent.append((n, attempt, request, response, booked))
     unconfirmed = calls[len(sent) :]
@@ -1537,7 +1546,9 @@ def _aborted(  # noqa: PLR0913
         accounting = "uncertain"  # a reservation without a settlement
     elif any(s.get("above_reservation") for s in settles):
         accounting = "above_reservation"
-    elif any(s.get("cost_basis") not in ("usage", "not_sent") for s in settles):
+    elif any(s.get("cost_basis") not in ("usage", "not_sent") for s in settles) or any(
+        ((booked or {}).get("settle") or {}).get("sent") is True for *_, booked in unconfirmed
+    ):  # also a call the books settle as sent that this run cannot show it sent
         accounting = "uncertain"
     else:
         accounting = "priced"

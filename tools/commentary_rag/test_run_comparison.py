@@ -3077,3 +3077,178 @@ def test_no_ending_or_release_is_inferred_for_a_last_booking_open_or_unknown(
     assert len(again.creates) == 1  # D only: C's call 2 is never sent
     events = [e["event"] for e in phase4_ledger(isolated) if e.get("attempt") == "E1-agent-r1-call2"]
     assert events == (["reserve"] if evidence == "release not saved" else ["reserve", "settle"])
+
+
+# Round 7: a zero-byte response file, a response that disagrees with its settlement, and books
+# that cannot be read for a reason other than a value error
+
+
+def interrupt_release(monkeypatch, *, use: int = 2, after=None) -> None:
+    """Interrupt the lock's release after its ``use``-th cell (B's is the first), running
+    ``after`` first."""
+    real, uses = generation._ledger_lock, []
+
+    @contextlib.contextmanager
+    def releasing(ledger):
+        uses.append(ledger)
+        with real(ledger) as held:
+            yield held
+        if len(uses) == use:
+            if after:
+                after()
+            raise KeyboardInterrupt
+
+    monkeypatch.setattr(generation, "_ledger_lock", releasing)
+
+
+@pytest.mark.parametrize("settled", [False, True])
+def test_a_zero_byte_response_file_proves_no_send_even_for_an_empty_body(
+    isolated, monkeypatch, capsys, settled
+):
+    # The provider answers C's call with an empty body, so its complete response is zero bytes:
+    # interrupted while that file is written (before any settlement), or after the cell ended
+    # with the call settled (while the lock is given back), the file proves no send.
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, _, d = phase4_answers()
+    live(isolated, monkeypatch, b, httpx.Response(200, content=b""))
+    real = Path.open
+
+    class Cut:  # the empty response's file, the interruption arriving as it is written
+        def __init__(self, handle) -> None:
+            self.handle = handle
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *exc) -> None:
+            self.handle.close()
+
+        def write(self, text: str) -> None:
+            self.handle.write(text)
+            raise KeyboardInterrupt
+
+    def opening(self, mode="r", *args, **kwargs):
+        handle = real(self, mode, *args, **kwargs)
+        if self.name == "E1-agent-r1-call1.json" and self.parent.name == "responses" and "x" in mode:
+            return Cut(handle)
+        return handle
+
+    real_lock = generation._ledger_lock
+    if settled:
+        interrupt_release(monkeypatch)
+    else:
+        monkeypatch.setattr(Path, "open", opening)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(Path, "open", real)
+    monkeypatch.setattr(generation, "_ledger_lock", real_lock)
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    first = json.loads((local / "result.json").read_text("utf-8"))
+    kept_cell = first["cases"][0]["cells"][1]
+    assert (local / "responses" / "E1-agent-r1-call1.json").read_bytes() == b""
+    assert kept_cell["status"]["accounting"] == "uncertain"
+    assert (kept_cell["record"]["generation_calls"], kept_cell["record"]["calls"]) == (0, [])
+    assert [(x["attempt"], x["settlement"]) for x in kept_cell["record"]["unconfirmed_calls"]] == [
+        ("E1-agent-r1-call1", "reservation_retained" if settled else None)
+    ]
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    assert len(again.creates) == 1  # D only: C's call is never sent again
+    events = [e["event"] for e in phase4_ledger(isolated) if e.get("attempt") == "E1-agent-r1-call1"]
+    assert events == (["reserve", "settle"] if settled else ["reserve"])
+    second = json.loads((outputs(isolated, tag="2026-11-27")[1] / "result.json").read_text("utf-8"))
+    (case_,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
+    assert (case_["cells"][1]["ran"], case_["complete"]) == (False, False)
+
+
+def test_a_response_file_that_disagrees_with_its_settlement_leaves_the_accounting_uncertain(
+    isolated, monkeypatch, capsys
+):
+    # C's call is sent, its response saved and settled from its usage; when the run recovers
+    # (the lock's release interrupted), the file no longer holds that response.
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, d = phase4_answers()
+    live(isolated, monkeypatch, b, c)
+    local = outputs(isolated, tag="2026-11-26")[1]
+
+    def altered():
+        (local / "responses" / "E1-agent-r1-call1.json").write_text("{}", "utf-8")
+
+    real_lock = generation._ledger_lock
+    interrupt_release(monkeypatch, after=altered)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_ledger_lock", real_lock)
+
+    kept_cell = json.loads((local / "result.json").read_text("utf-8"))["cases"][0]["cells"][1]
+    record = kept_cell["record"]
+    assert (record["generation_calls"], record["calls"]) == (0, [])  # the file proves nothing
+    assert [(x["attempt"], x["settlement"]) for x in record["unconfirmed_calls"]] == [
+        ("E1-agent-r1-call1", "usage")
+    ]
+    # the books charge a send this run cannot show: the conflict stays visible, never "priced"
+    assert kept_cell["status"]["accounting"] == "uncertain"
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    assert len(again.creates) == 1  # D only: C's call is never sent again
+
+
+@pytest.mark.parametrize("damage", ["an amount past float range", "nesting too deep to parse"])
+def test_books_that_cannot_be_read_for_any_reason_keep_the_send_the_run_proves(
+    isolated, monkeypatch, capsys, damage
+):
+    # C answered and its call was settled; while its lock is given back the books are damaged
+    # by a line their strict reading cannot take (no value error: an overflow, a recursion).
+    cases = frozen_input(isolated, monkeypatch, case("E1"))
+    b, c, d = phase4_answers()
+    live(isolated, monkeypatch, b, c)
+    reservation = {
+        "event": "reserve",
+        "attempt": "E1-coverage-r1-call1",
+        "case": "E1",
+        "condition": "coverage",
+        "repetition": 1,
+        "question_sha256": hashlib.sha256(QUESTION.encode("utf-8")).hexdigest(),
+        "editions": [JUL],
+        "call": 1,
+        "request_sha256": "0" * 64,
+        "counted_input_tokens": 1500,
+        "reserved_usd": 10**310,
+        "at": "2026-11-26T00:00:00+00:00",
+    }
+    line = (
+        json.dumps(reservation)
+        if damage == "an amount past float range"
+        else "[" * 100_000 + "]" * 100_000
+    )
+
+    def damaged():
+        with phase4_path(isolated).open("a", encoding="utf-8") as books_:
+            books_.write(line + "\n")
+
+    real_lock = generation._ledger_lock
+    interrupt_release(monkeypatch, after=damaged)
+    with pytest.raises(KeyboardInterrupt):
+        run_comparison.main(phase4_argv(isolated, cases))
+    monkeypatch.setattr(generation, "_ledger_lock", real_lock)
+
+    local = outputs(isolated, tag="2026-11-26")[1]
+    first = json.loads((local / "result.json").read_text("utf-8"))
+    cells = first["cases"][0]["cells"]
+    assert [cell["condition"] for cell in cells] == ["fixed10", "agent"]  # C's cell is kept
+    assert cells[1]["status"]["accounting"] == "unknown"  # the books take no part
+    record = cells[1]["record"]
+    assert (record["generation_calls"], record.get("ended")) == (1, "answer")
+    path = phase4_path(isolated)  # Erhan repairs the books: the damaged line is removed
+    text = path.read_text("utf-8")
+    path.write_text(text[: text.rindex("\n", 0, len(text) - 1) + 1], "utf-8")
+    capsys.readouterr()
+    again = live(isolated, monkeypatch, d)
+    assert run_comparison.main(phase4_argv(isolated, cases, tag="2026-11-27")) == 0
+    assert len(again.creates) == 1  # D only: C is never sent again
+    second = json.loads((outputs(isolated, tag="2026-11-27")[1] / "result.json").read_text("utf-8"))
+    (case_,) = phase4_scoring.score([first, second], gold("E1"))["cases"]
+    assert (case_["cells"][1]["ran"], case_["complete"]) == (True, True)
