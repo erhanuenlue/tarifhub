@@ -135,6 +135,15 @@ observation on this set, not an accuracy figure.
   with `uv run --no-project --with pdfplumber==0.11.11 python tools/commentary_rag/layout_probe.py
   --edition 2026-07-01 --pages 4,6`; without pdfplumber it exits 2. Evidence:
   [`docs/evidence/2026-11-22-pdfplumber-layout-probe.md`](../../docs/evidence/2026-11-22-pdfplumber-layout-probe.md).
+- `liteparse_ocr.py`: a diagnostic outside the pilot (nothing imports it). It parses one PDF, or
+  one manifest-verified commentary edition, with LiteParse and an explicitly chosen backend
+  (`--ocr-backend ocria-nano` for OCRia-nano-1, or `none` for the native text with OCR off) and
+  prints each text item and block with its source page, the backend the parser resolved, a
+  per-page count of OCR items and the SHA-256 of every model file. liteparse is in no environment
+  here: run `uv run --no-project --with liteparse==2.21.4 python tools/commentary_rag/liteparse_ocr.py
+  pull` once (the only download), then the same with `parse --edition 2021-07-01 --pages 3,4
+  --ocr-backend ocria-nano`; without liteparse it exits 2, without the model 1. The weights have
+  their own licence; see `docs/agents/dev-tooling.md`.
 - `generation.py`: the request per case (question, selected editions, passages with provenance as
   escaped, untrusted data; no tools, web search, fallback model or sampling parameters), the
   answer schema (status, claims with passage citations, missing evidence), local validation
