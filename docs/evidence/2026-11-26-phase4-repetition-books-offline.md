@@ -221,13 +221,25 @@ count:
 **Rules in code.** A saved response file proves a send only when its SHA-256 equals the complete
 response's as recorded apart from the file, by the cell before it saved the file (its record,
 carried on the error) and by readable books that settled the call as sent: at least one of them
-present and none different (`run_comparison._aborted`). D's coverage entries are kept for every
+present and none different, and a zero-byte file never, even for an empty response
+(`run_comparison._aborted`). D's coverage entries are kept for every
 proven call (`run_comparison._traced`); the scorer counts the entry of the call an aborted cell
 was cut off at, before that call's action was recorded, as recorded (a search entry only for a
 call offered the tool), while completed cells, cells that had ended and every other call keep the
 strict check that an entry's action is its call's (`phase4_scoring._coverage`). A cell's recorded
 ending is kept also when its one booking after the sent calls was released unsent, as its record
-says and readable books hold.
+says and readable books hold. Books that cannot be read, whatever their damage, take no part
+(accounting `unknown`), and a call readable books settle as sent that the run cannot show it sent
+leaves the accounting `uncertain`.
+
+**The independent review of these fixes** (round 7, on `d21beed`) found three more P2 gaps in the
+same recovery, fixed the same day, test-first, in the runner alone: a zero-byte response file still
+proved a send when the response itself was empty; a response file that disagreed with a usage
+settlement left the accounting `priced`; books made unreadable by an amount past float range or by
+nesting past the parser escaped the unreadable-books rule, so the aborted cell was dropped. Its P3
+points on the documentation are taken into the sentences above and into ADR-028, the README and
+arc42 sections 5, 6, 11 and 12 (when an aborted record is written, the open and the retained
+booking, a recorded answer turn, the aborted cells counted).
 
 **Test first** (the repository's `tdd` skill; the scripted provider, temporary books and
 deterministic interruptions, through the runner's and the scorer's entry points): each regression
@@ -238,6 +250,9 @@ failed on the code before its fix and passes with it.
 | D's coverage | an interruption while D's search is ranked (raised at the e5 boundary when the search's query is embedded), the record scored by the real scorer | the record kept no coverage entry (`assert [] == [{...}]`); with the runner's change alone the scorer refused the record ("a coverage entry's action must be the action of its call") | passes |
 | Complete response | C's response file left empty, truncated or as other JSON; call 1 proven, then call 2 cut short; books that cannot be read; each ending in a restart | the cut-short file counted as a sent call (`(1, [...]) == (0, [])`, and `(2, ...) == (1, ...)` after a proven call) | passes: no send counted, the reservation open, nothing sent again |
 | Deadline ending | C's last call released unsent at the deadline, then the lock's release interrupted | `('aborted', None, 1) == ('aborted', 'deadline', 1)` | passes |
+| Zero-byte file (round 7) | C's response an empty body, interrupted while its file is written or after its settlement | the zero-byte file counted as a sent call (`(1, [...]) == (0, [])`) | passes: no send, the call booked and never sent again |
+| Digest conflict (round 7) | C's response file altered after its usage settlement, then the lock's release interrupted | `'priced' == 'uncertain'` | passes |
+| Unreadable books (round 7) | the books damaged by an amount past float range, or by nesting past the parser, while C's lock is given back | C's cell dropped (`['fixed10'] == ['fixed10', 'agent']`) | passes: the cell kept with its proven send, accounting `unknown` |
 
 Guards that pass before and after: an entry whose action is not its call's stays refused in a
 completed cell, in a cell that had ended and for an earlier call; a release that was never saved
@@ -246,16 +261,18 @@ rule (D's entry for the call cut off as a search, a refused search or an answer 
 after the fix and fail on the code before it; a search entry for a call never offered the tool
 failed first and is refused now.
 
-**Checks** (on the code of these fixes): the pilot's offline suite, 797 tests in fifteen files, all
-passing, none skipped (781 before): runner 98 (89), scorer 202 (195); D 56 and the agent loop 156
+**Checks** (on the code of these fixes): the pilot's offline suite, 802 tests in fifteen files, all
+passing, none skipped (781 before): runner 103 (89), scorer 202 (195); D 56 and the agent loop 156
 unchanged. Lint clean. A scripted B cell and C cell in the Phase 2 and 3 books give identical
 records, requests and ledger lines at `140ca86` and now; `results/` is byte-identical to
 `140ca86`; the 14 file hashes of the freeze record hold; no Phase 4 ledger exists. The simulated
-rehearsal of section 5, run again on this code, gave the same results in all nine scenarios. A
+rehearsal of section 5, run again on this code (after the round-7 fixes too), gave the same results
+in all nine scenarios. A
 typed `/ship-it source-only` (after `/clear`, on this branch) loaded
 `.claude/skills/ship-it/SKILL.md` from the repository's Git root, not a link.
 
 **Residual limits** (none blocks a live run): a call whose response file an interruption cut short
-stays open at its reservation and proves no send, like a call interrupted on the wire, so a cell
+or left at zero bytes proves no send (open at its reservation when the interruption came before
+its settlement), like a call interrupted on the wire, so a cell
 with no earlier proven call stays not run and its case incomplete; the cell's recorded ending
 (`ended`) is kept in the local record only.
