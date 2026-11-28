@@ -44,7 +44,7 @@ deploy/                  docker-compose.yml (wired review-loop + batch stack) + 
                          (real-e5 vector recording) + helm/ (k3d, the CAS K8s proof); the root
                          docker-compose.yml is the light read-side dev stack
 docs/                    arc42/ (13 chapters, MkDocs Material → the deliverable site) + adr/ (register
-                         001..027 + legacy/) + method/ (AI-tools chapter) + evidence/ + criterion-map.md
+                         001..028 + legacy/) + method/ (AI-tools chapter) + evidence/ + criterion-map.md
 tools/                   cas_check.py (CI ratchet) + switch_model.sh (main-model pin) + bench/search_latency.py
                          + search_eval/ (latency + quality harnesses: use these for any search
                          performance question before hand-rolling measurement) + commentary_rag/ (BAG
@@ -60,7 +60,7 @@ aise-harness/, prompts/, knowledge/, docs/cockpit/, scripts/setup-claude-code.sh
 
 Python 3.12 + FastAPI + Pydantic v2 (one canonical `TariffRecord` end-to-end) · PostgreSQL 16 + pgvector (HNSW, cosine; multilingual-e5-large 1024-dim) · Claude schema-constrained structured output (pre-freeze only inside the services; the read-only commentary pilot in `tools/`, ADR-025, calls the Messages API directly) · Next.js App Router (demo) · Docker + Helm/k3d · GitHub Actions (ruff, pytest, gitleaks, Trivy, Syft SBOM, CI image builds, GHCR push decided but not yet wired, ADR-010; docs.yml builds the Pages site on any docs/** push to main and publishes when the DEPLOY_PAGES=true repo variable is set; it also offers workflow_dispatch) · OpenTelemetry instrumented in serving (FastAPI request traces + a custom search span and duration histogram; OTLP export opt-in via `OTEL_EXPORTER_OTLP_ENDPOINT`, a true no-op when unset; ADR-011), with Prometheus/Grafana + Sentry as intended backends, not yet wired.
 
-ADR register: `docs/adr/` 001..027, three-digit numbering (ADR-001 Python-first, ADR-013 demo scope, ADR-020 Codex seat; ADR-018 and ADR-020 record the earlier model-seat setup, the current one is CLAUDE.md plus `.claude/`). `docs/adr/legacy/` preserves the pre-2026-06-11 register under DIFFERENT, colliding numbers: never cite a legacy number in new text; resolve old citations via `docs/adr/legacy/README.md`.
+ADR register: `docs/adr/` 001..028, three-digit numbering (ADR-001 Python-first, ADR-013 demo scope, ADR-020 Codex seat; ADR-018 and ADR-020 record the earlier model-seat setup, the current one is CLAUDE.md plus `.claude/`). `docs/adr/legacy/` preserves the pre-2026-06-11 register under DIFFERENT, colliding numbers: never cite a legacy number in new text; resolve old citations via `docs/adr/legacy/README.md`.
 
 ## Commands
 
@@ -146,6 +146,6 @@ Run the checks that apply before calling any work finished; report each result h
 6. Architecture and documentation impact: assess every change for its effect on the architecture and its documentation, update the affected arc42 chapters, their diagrams and the relevant ADRs in the same change, and state the documentation impact briefly in the PR description (what was updated, or why nothing needed to be).
 7. Report: changed files, the checks actually run with their results, anything skipped and why.
 8. Commit, push, PR and merge only on Erhan's explicit request; a merged architectural decision gets an ADR (both in Conventions).
-9. A prompt ending in "then /tarifhub-ship" means the steps in `.claude/skills/tarifhub-ship/SKILL.md` (any harness can follow the file): confirm scope, run checks, review, PR and CI only on explicit request, report.
+9. A prompt ending in "then /ship-it" means the steps in `.claude/skills/ship-it/SKILL.md` (any harness can follow the file): confirm scope, run checks, review, PR and CI only on explicit request, report.
 
 Reusing results: a check result already obtained may stand in for a re-run only while its tested content, the relevant configuration, dependencies and environment, and its coverage all still apply; name each reused result and why it still applies. Re-run the affected checks after a relevant change, a failure or an unresolved concern. Reuse never waives a required check: CI must pass on the latest pushed revision before any merge, and the determinism-boundary check and any required security review must cover the diff as it will land. Postgres legs run only against a disposable database (`TARIFHUB_PG_TEST_URL` under Environment).

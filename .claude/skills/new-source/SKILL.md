@@ -12,4 +12,4 @@ Adding source **$ARGUMENTS** to the harmonisation pipeline. The pattern is fixed
 4. **Mapping:** extend `map_raw` deterministically for structural fields; let `ai_map` refine designations/category only (non-billing fields — the boundary). New tariff_system enum value if needed → that's a model change → ADR first (locked contract, ADR-003).
 5. **Tests:** parser unit tests on the fixture; pipeline integration test source→freeze on SQLite; pinned-hash test for one known record; re-run idempotency test.
 6. **Evidence:** harmonisation report (records in/out, review rate, confidence histogram) — append the figures to `docs/arc42/10-quality-requirements.md`'s results table.
-7. Finish with the AGENTS.md definition of done, including the determinism-boundary check (this is a `services/` change); `/tarifhub-ship` when Erhan wants it landed.
+7. Finish with the AGENTS.md definition of done, including the determinism-boundary check (this is a `services/` change); `/ship-it` when Erhan wants it landed.

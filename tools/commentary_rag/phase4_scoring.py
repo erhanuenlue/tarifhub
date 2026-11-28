@@ -17,6 +17,34 @@ condition contract describes (``phase4/conditions.md``, section 5):
   exploratory diagnostics (counts), never a measure or a threshold.
 - ``t1`` to ``t5``, ``r1``, ``r2``, ``primary_outcome`` and ``reference_outcome``: the decision
   thresholds and both outcome tables as pure functions.
+- ``a1``: amendment A1 (``phase4/amendments.md``), reported beside T3 and never a threshold:
+  unnecessary search attempts, an executed search or a refused search request at a
+  no-search-needed decision point (once per point, for C and D alike), executed and refused
+  apart, over T3's own denominator. ``search_thresholds`` gives T3, A1 and T4 from one
+  ``summary``, whose completeness is the scoring's own, never a caller's.
+
+A cell an unexpected error or an interruption ended inside the agent's loop is recorded by the
+runner (``run_comparison._aborted``, outcome ``aborted``): ``generation_calls`` counts the calls
+its run demonstrably sent (its own saved request and complete response, the response's digest
+confirmed by the cell's record or the books' settlement, consistent with the books), so with
+one it ran and failed (a non-success, as the rubric counts it); a reservation without that proof
+confirms nothing. Its trace holds what the cell recorded for those calls (their searches and the
+passages those supplied) and is scored like any failed cell's: a search that ran is a decision,
+and the call that ended the cell after it has no action, unless the cell had already ended and
+recorded that call's answer turn (``ended``), so no action is inferred. D's coverage entry for
+that call, if the cell recorded one before it was cut off, counts among D's coverage
+diagnostics only (a search entry only for a call offered the tool), never as an action or in a
+measure. When the runner kept no trace (``trace`` ``not_recorded``) the cell has no decision
+point and adds nothing to any search measure. The summary's ``aborted`` subtotal counts the
+aborted cells that ran (a demonstrably sent call) apart; an aborted cell without one counts under
+``not_run``.
+
+Every record names its repetition (Phase 4's books, ``evidence_agent.PHASE4_REPETITIONS``) and
+its time budget (a finite number of seconds above 0); one scoring holds one repetition. The
+repetition is complete when every gold case is complete in it, and the command line takes the
+frozen gold file only (``FROZEN_GOLD_SHA256``), so neither a split batch nor a trimmed gold
+file can look complete. A search refused for want of rounds (``refused_rounds``) is accepted
+only after both rounds were used.
 
 The trace: the generation calls are the sent ones, calls 1 to ``generation_calls`` (a call
 reserved but stopped before sending is none). Every generation call except one that ended the
@@ -29,13 +57,14 @@ after a search, before its next call was recorded: that call is no decision poin
 that disagrees with its case or cannot be rebuilt is refused, never scored in part.
 
 No model, provider, network or books: it reads JSON files and writes one new file, never in
-``results/`` and in the repository only under this module's git-ignored ``local/`` folder;
-stdout carries the counts and the label only.
+``results/`` and in the repository only under this module's git-ignored ``local/`` folder,
+which must be a real folder, not a symbolic link; stdout carries the counts, T3, A1 and T4 and
+the label only.
 
     UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" uv run \\
         --project services/ingestion --frozen --offline --extra ai --extra dev \\
         python tools/commentary_rag/phase4_scoring.py --result <local result.json> \\
-        [--result <the result.json of a resumed run> ...] --gold <gold file> \\
+        [--result <the result.json of a resumed run> ...] --gold <the frozen gold file> \\
         --out <a new file under local/ or outside the repository> [--label SIMULATED]
 
 Exit codes: 0 written, 2 invalid input (nothing written).
@@ -44,6 +73,7 @@ Exit codes: 0 written, 2 invalid input (nothing written).
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -62,6 +92,9 @@ LOCAL = (
     HERE / "local"
 )  # git-ignored: the one folder of the repository a scoring may go to
 EXIT_OK, EXIT_INPUT = 0, 2
+# The frozen gold (results/2026-11-25-phase4-freeze.json, role "private cases and gold"): the
+# command line scores against this file and no other.
+FROZEN_GOLD_SHA256 = "b4906698acdd439b7a599678b543887c7faf7e19422580f8a0c5b69efd1d541b"
 LIMITS = evidence_search.SearchLimits()  # the bounds every comparison cell runs with
 TOP = 10  # the shared ranking's depth: the strata's horizon
 FIRST = 5  # C's and D's initial context: S1 is support within ranks 1 to 5
@@ -93,6 +126,8 @@ NOT_SENT = (
     "deadline",
     "persistence_error",
 )  # how a cell ends with its last call unsent
+ABORTED = "aborted"  # a cell the runner recorded after an unexpected stop (run_comparison)
+UNRECORDED = "not_recorded"  # an aborted cell whose trace the runner could not keep
 CHECKS = (
     "ok",
     "malformed",
@@ -225,9 +260,14 @@ def strata(parts, ranking) -> dict:
 
 
 def _checked_record(record, condition: str) -> None:
-    """Refuse a record that is not one ``evidence_agent`` writes for this condition."""
+    """Refuse a record that is not one ``evidence_agent`` writes for this condition, or, for an
+    aborted cell, one ``run_comparison._aborted`` writes."""
     if not isinstance(record, dict) or record.get("condition") != condition:
         raise ValueError("a cell's record must be a record of the cell's condition")
+    if _untraced(record):
+        _checked_aborted(record)
+        _checked_identity(record)
+        return
     calls, searches = record.get("calls"), record.get("searches")
     if (
         not isinstance(calls, list)
@@ -237,10 +277,16 @@ def _checked_record(record, condition: str) -> None:
         raise ValueError(
             "a record needs its calls, its searches and the supplied passage IDs"
         )
-    if record.get("outcome") not in ANSWERED + ENDED:
+    if record.get("outcome") not in (*ANSWERED, *ENDED, ABORTED):
         raise ValueError(
-            "a record's outcome must be one evidence_agent ends a cell with"
+            "a record's outcome must be one evidence_agent ends a cell with, or aborted"
         )
+    if record["outcome"] == ABORTED:  # with its trace: the sent calls, the rest apart
+        if "trace" in record:
+            raise ValueError("an aborted record either keeps its trace or says it has none")
+        if "ended" in record and record["ended"] not in (*ANSWERED, *ENDED):
+            raise ValueError("an aborted record's ending must be one evidence_agent records")
+        _checked_sends(record)
     if not all(
         isinstance(call, dict) and call.get("call") == number
         for number, call in enumerate(calls, start=1)
@@ -257,6 +303,75 @@ def _checked_record(record, condition: str) -> None:
         )
     if condition not in SEARCHING and searches:
         raise ValueError("a fixed condition never searches")
+    _checked_identity(record)
+
+
+def _answered(record: dict) -> bool:
+    """Whether the call that ended a cell ended in an answer turn: its outcome says so, or, for
+    a cell aborted after it had ended, the outcome it had recorded (``ended``)."""
+    return record["outcome"] in ANSWERED or (
+        record["outcome"] == ABORTED and record.get("ended") in ANSWERED
+    )
+
+
+def _untraced(record) -> bool:
+    """Whether a record is an aborted cell's that the runner kept without its trace."""
+    return (
+        isinstance(record, dict)
+        and record.get("outcome") == ABORTED
+        and record.get("trace") == UNRECORDED
+    )
+
+
+def _checked_aborted(record: dict) -> None:
+    """Refuse an aborted record without a trace that is not one the runner writes: its sent
+    calls only, and no search, supplied or cited passage, coverage or answer count."""
+    if not isinstance(record.get("calls"), list) or any(
+        key in record
+        for key in ("searches", "supplied", "cited", "coverage", "schema_problems")
+    ):
+        raise ValueError(
+            "an aborted record holds the calls the books show as sent and no trace"
+        )
+    _checked_sends(record)
+
+
+def _checked_sends(record: dict) -> None:
+    """An aborted record's calls: each demonstrably sent, numbered from 1 and counted by
+    ``generation_calls``, and the unconfirmed ones apart, numbered after them."""
+    calls, unconfirmed = record.get("calls"), record.get("unconfirmed_calls")
+    if not isinstance(calls, list) or not isinstance(unconfirmed, list):
+        raise ValueError("an aborted record lists its sent and its unconfirmed calls")
+    if not all(
+        isinstance(call, dict) and call.get("call") == number and call.get("sent") is True
+        for number, call in enumerate(calls, start=1)
+    ):
+        raise ValueError("an aborted record's calls are numbered from 1, each one sent")
+    if not _number(record.get("generation_calls")) or record["generation_calls"] != len(
+        calls
+    ):
+        raise ValueError("an aborted record's generation_calls counts its sent calls")
+    if not all(
+        isinstance(call, dict) and call.get("call") == number
+        for number, call in enumerate(unconfirmed, start=len(calls) + 1)
+    ):
+        raise ValueError("an aborted record's unconfirmed calls follow its sent calls")
+
+
+def _checked_identity(record: dict) -> None:
+    """Refuse a record without a valid time budget or an admitted repetition."""
+    if not evidence_agent._seconds(record.get("budget_s")):  # overflow included
+        raise ValueError("a record's budget_s must be a finite number of seconds above 0")
+    repetition = record.get("repetition")
+    if (
+        isinstance(repetition, bool)
+        or not isinstance(repetition, int)
+        or repetition not in evidence_agent.PHASE4_REPETITIONS
+    ):
+        raise ValueError(
+            "a record names its repetition, one Phase 4's books admit "
+            f"({', '.join(str(r) for r in evidence_agent.PHASE4_REPETITIONS)})"
+        )
 
 
 def _trace(record, condition: str) -> tuple[list, list, list]:
@@ -271,7 +386,7 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
         )
     if (
         len(searches) not in (len(sent) - 1, len(sent))
-        or (len(searches) == len(sent) and record["outcome"] in ANSWERED)
+        or (len(searches) == len(sent) and _answered(record))
         or (len(sent) < len(calls) and len(searches) != len(sent))
     ):
         raise ValueError(
@@ -295,8 +410,8 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
                 "a search returns passages exactly when its outcome is passages"
             )
         counted = search.get("round")
-        if outcome == "refused_rounds":
-            numbered = counted is None
+        if outcome == "refused_rounds":  # no round left: only after both were used
+            numbered = counted is None and rounds == LIMITS.max_rounds
         else:
             rounds += 1
             numbered = (
@@ -305,7 +420,7 @@ def _trace(record, condition: str) -> tuple[list, list, list]:
         if not numbered:
             raise ValueError(
                 "counted search rounds are numbered 1 and 2, in order; a request "
-                "refused for want of rounds has none"
+                "refused for want of rounds has none and comes only after both"
             )
         if sent[number - 1]["tool_choice"] != "auto":
             raise ValueError("a search belongs to a call that was offered the tool")
@@ -338,7 +453,7 @@ def _decisions(record, checked, condition: str) -> tuple[list[dict], list[str]]:
         missing = [part_id for part_id, support in facts if not support & before]
         returned = [r["passage_id"] for r in search["returned"]] if search else []
         if search is None:  # the call that ended the cell
-            action = "answer" if record["outcome"] in ANSWERED else "no_action"
+            action = "answer" if _answered(record) else "no_action"
         else:
             action = "search_run" if search["outcome"] in RUN else "search_refused"
         kind = measure = found = None
@@ -397,6 +512,9 @@ def decision_points(record, parts, condition: str) -> list[dict]:
     checked = _parts(parts)
     if record is None or condition not in SEARCHING:
         return []
+    if _untraced(record):  # its decisions were not kept: none is rebuilt or inferred
+        _checked_record(record, condition)
+        return []
     return _decisions(record, checked, condition)[0]
 
 
@@ -406,6 +524,8 @@ def _counts(points: list[dict], searches: list[dict]) -> dict:
     acted = [p for p in at if p["action"] != "no_action"]
     measures = Counter(p["measure"] for p in at)
     refused = Counter(p["kind"] for p in at if p["action"] == "search_refused")
+    # A1: an executed or a refused request at a no-search-needed point, once per point.
+    attempts = measures["unnecessary"] + refused["no_search_needed"]
     return {
         "searches": len(searches),
         "tool_errors": sum(s["outcome"] == "tool_error" for s in searches),
@@ -432,6 +552,15 @@ def _counts(points: list[dict], searches: list[dict]) -> dict:
             "k": measures["unnecessary"],
             "n": sum(p["kind"] == "no_search_needed" for p in acted),
         },
+        "unnecessary_attempts": {
+            "executed": measures["unnecessary"],
+            "refused": refused["no_search_needed"],
+            "total": attempts,
+        },
+        "unnecessary_attempt_rate": {
+            "k": attempts,
+            "n": sum(p["kind"] == "no_search_needed" for p in acted),
+        },
         "missed_rate": {
             "k": measures["missed"],
             "n": sum(p["kind"] == "search_needed" for p in acted),
@@ -445,7 +574,9 @@ def _coverage(record, points: list[dict]) -> dict:
     From ``record["coverage"]`` (conditions.md, 4.8): check codes by action;
     ``missing_not_reported`` as true, false or null; and, at decision points whose entry has
     check ``ok``, the point's kind by whether D marked a part missing. Every entry must name a
-    different sent call and carry that call's action.
+    different sent call and carry that call's action, except the entry for the call an aborted
+    cell was cut off at before that call's action was recorded (no ``ended``): counted as
+    recorded (a search entry only for a call offered the tool), it infers no action.
     """
     diagnostics = {
         "checks": {action: dict.fromkeys(CHECKS, 0) for action in ("search", "answer")},
@@ -462,6 +593,17 @@ def _coverage(record, points: list[dict]) -> dict:
     if not isinstance(entries, list):
         raise ValueError("D's coverage record must be a list of coverage entries")
     by_call, seen = {p["call"]: p for p in points}, set()
+    # An aborted cell cut off before the action of its last sent call was recorded (no
+    # ``ended``): D's entry for that call, recorded before the cut, is counted here as recorded;
+    # the call keeps no action, so no search and no answer is inferred from the entry.
+    cut = (
+        points[-1]["call"]
+        if points
+        and points[-1]["action"] == "no_action"
+        and record.get("outcome") == ABORTED
+        and "ended" not in record
+        else None
+    )
     for entry in entries:
         flag = entry.get("missing_not_reported") if isinstance(entry, dict) else None
         if (
@@ -486,7 +628,9 @@ def _coverage(record, points: list[dict]) -> dict:
             if point["action"] == "answer"
             else None
         )
-        if entry["action"] != expected:
+        if entry["action"] != expected and not (
+            call == cut and (entry["action"] == "answer" or point["tool_choice"] == "auto")
+        ):  # the call cut off: an answer turn, or a search only where the tool was offered
             raise ValueError("a coverage entry's action must be the action of its call")
         diagnostics["checks"][entry["action"]][entry["check"]] += 1
         diagnostics["missing_not_reported"][
@@ -522,6 +666,8 @@ def _scored_record(
     _checked_record(record, condition)
     if record.get("case") != case_id:
         raise ValueError("a cell's record must name the cell's case")
+    if _untraced(record):  # no trace kept: no decision point, nothing inferred
+        return {"points": [], "counts": _zero(condition)}
     top = ranking[: _condition(condition).passages]
     if condition not in SEARCHING:
         if record["supplied"] != top:
@@ -573,7 +719,8 @@ def _merged_cell(
         "ran": True,
         "outcome": record["outcome"],
         "calls": record["generation_calls"],
-        "searches": len(record["searches"]),
+        # searches an aborted cell's runner kept no trace of: not counted, never taken as none
+        "searches": None if _untraced(record) else len(record["searches"]),
         "decision_points": result["points"],
         "counts": result["counts"],
     }
@@ -693,7 +840,31 @@ def score(results, gold) -> dict:
     }
     if len(budgets) > 1:
         raise ValueError("the cells of one repetition ran with different time budgets")
-    return {"gold_cases": len(frozen), "cases": scored}
+    # One scoring, one repetition: the records are checked above, so each names its own.
+    repetitions = {
+        cell["record"]["repetition"]
+        for known in merged.values()
+        for cells in known["cells"].values()
+        for cell in cells
+        if cell.get("record") is not None
+    }
+    if len(repetitions) > 1:
+        raise ValueError("the records of one scoring belong to one repetition")
+    # The frozen cohort: the gold names exactly the freeze record's cases, each with its
+    # question's SHA-256 and its editions; a subset or another case set gives no verdict.
+    cohort = {
+        name: (
+            hashlib.sha256(case["question"].encode("utf-8")).hexdigest(),
+            tuple(sorted(case["editions"])),
+        )
+        for name, case in frozen.items()
+    }
+    return {
+        "gold_cases": len(frozen),
+        "frozen_cohort": cohort == evidence_agent.PHASE4_CASES,
+        "repetition": next(iter(repetitions), None),
+        "cases": scored,
+    }
 
 
 def _histogram(values) -> dict[str, int]:
@@ -713,12 +884,18 @@ def summary(scored: dict) -> dict:
     """Counts of a ``score`` result, safe to show: no case ID, no passage ID, no list in case
     order.
 
-    ``gold_cases``; ``cases_in_results`` (gold cases in any result); ``complete_cases`` (B, C
-    and D all ran) and ``incomplete_cases`` (the other cases in the results; a gold case in no
-    result is neither), so the repetition is complete when ``complete_cases`` equals
-    ``gold_cases``. Per condition: its cells (one per case in the results), those ``not_run``,
+    ``gold_cases``; ``repetition``; ``cases_in_results`` (gold cases in any result);
+    ``complete_cases`` (B, C and D all ran) and ``incomplete_cases`` (the other cases in the
+    results; a gold case in no result is neither); ``frozen_cohort`` (the gold names exactly
+    the freeze record's cases, questions and editions); ``repetition_complete``, true exactly
+    when the cohort is the frozen one and ``complete_cases`` equals ``gold_cases``. Per
+    condition: its cells (one per case in the results), those ``not_run``,
     calls per cell (generation calls sent) and searches per cell (refused requests included)
-    over the cells that ran, the search measures of C and D, and D's coverage diagnostics.
+    over the cells that ran (``aborted``: the aborted cells among them, each with a demonstrably
+    sent call, counted apart, while an aborted cell without one is among those ``not_run``; one
+    kept without its trace has calls but no recorded searches and is left out of the searches
+    count), the search measures of C and
+    D, and D's coverage diagnostics.
     """
     cases = scored["cases"]
     complete = sum(case["complete"] for case in cases)
@@ -731,6 +908,9 @@ def summary(scored: dict) -> dict:
         entry = {
             "cells": len(cells),
             "not_run": len(cells) - len(ran),
+            # aborted cells that ran (a proven send) and failed; one without a proven send is
+            # not run
+            "aborted": sum(c["outcome"] == ABORTED for c in ran),
             "calls_per_cell": _histogram(c["calls"] for c in ran),
         }
         if condition in SEARCHING:
@@ -738,14 +918,22 @@ def summary(scored: dict) -> dict:
             for c in cells:
                 total = _added(total, c["counts"])
             entry.update(
-                total, searches_per_cell=_histogram(c["searches"] for c in ran)
+                total,
+                searches_per_cell=_histogram(
+                    c["searches"] for c in ran if c["searches"] is not None
+                ),
             )
         conditions[condition] = entry
     return {
         "gold_cases": scored["gold_cases"],
+        "frozen_cohort": scored["frozen_cohort"],
+        "repetition": scored["repetition"],
         "cases_in_results": len(cases),
         "complete_cases": complete,
         "incomplete_cases": len(cases) - complete,
+        "repetition_complete": scored["frozen_cohort"]
+        and scored["repetition"] is not None
+        and complete == scored["gold_cases"],
         "conditions": conditions,
     }
 
@@ -800,6 +988,57 @@ def t4(d: dict, c: dict, complete: bool) -> dict:
         "d_missed": d_k,
         "d_search_needed_with_action": d_n,
         "c_missed": c_k,
+    }
+
+
+def a1(d: dict, c: dict) -> dict:
+    """A1 beside T3 (``d`` and ``c``: D's and C's ``summary`` entries), never a threshold.
+
+    Per condition: the executed and the refused unnecessary search attempts, their total and
+    T3's denominator (no-search-needed decision points with an action); ``percent`` only when
+    that denominator is at least 5. The executed attempts are T3's unnecessary searches.
+    """
+
+    def entry(counts: dict, label: str) -> dict:
+        k, n = _rate(counts, "unnecessary_attempt_rate")
+        t3_k, t3_n = _rate(counts, "unnecessary_rate")
+        split = counts.get("unnecessary_attempts")
+        if not isinstance(split, dict):
+            raise ValueError(f"{label}: a summary entry with unnecessary_attempts is needed")
+        executed = _count(split.get("executed"), f"{label} executed attempts")
+        refused = _count(split.get("refused"), f"{label} refused attempts")
+        total = _count(split.get("total"), f"{label} attempts")
+        if executed != t3_k or n != t3_n or executed + refused != total or total != k:
+            raise ValueError(
+                f"{label}: A1 counts T3's unnecessary searches plus refused requests over "
+                "T3's own denominator"
+            )
+        percent = round(100 * k / n, 1) if n >= MIN_POINTS else None
+        return {
+            "executed": executed,
+            "refused": refused,
+            "attempts": k,
+            "n": n,
+            "percent": percent,
+        }
+
+    return {"d": entry(d, "D"), "c": entry(c, "C"), "threshold": None}
+
+
+def search_thresholds(counts: dict) -> dict:
+    """T3, A1 beside it, and T4 from one ``summary``: the repetition is complete when the
+    summary says so (every gold case complete in one repetition), never on a caller's word."""
+
+    if not isinstance(counts, dict) or not isinstance(counts.get("conditions"), dict):
+        raise ValueError("search_thresholds takes a summary")
+    complete = _flag(counts.get("repetition_complete"), "repetition_complete")
+    d, c = counts["conditions"].get("coverage"), counts["conditions"].get("agent")
+    return {
+        "repetition": counts.get("repetition"),
+        "repetition_complete": complete,
+        "T3": t3(d, c, complete),
+        "A1": a1(d, c),
+        "T4": t4(d, c, complete),
     }
 
 
@@ -945,6 +1184,11 @@ def _inside(target: Path, folder: Path) -> bool:
 def _placement(path: Path) -> str | None:
     """Why ``path`` may not hold a scoring, or None: never in ``results/``, and in the
     repository only under this module's git-ignored ``local/`` folder."""
+    if LOCAL.is_symlink():  # a link would carry case-level scoring wherever it points
+        return (
+            "tools/commentary_rag/local/ is a symbolic link; case-level scoring goes to "
+            "the real, git-ignored folder or outside the repository"
+        )
     target = path.resolve()
     if _inside(target, RESULTS):
         return "--out lies in results/, which is public; case-level scoring stays local"
@@ -957,8 +1201,12 @@ def _placement(path: Path) -> str | None:
 
 
 def _load(path: Path):
+    return _parsed(path.read_text(encoding="utf-8"))
+
+
+def _parsed(text: str):
     try:
-        return json.loads(path.read_text(encoding="utf-8"))
+        return json.loads(text)
     except RecursionError:
         raise ValueError("a JSON input nests too deeply") from None
 
@@ -998,19 +1246,31 @@ def main(argv: list[str] | None = None) -> int:
     if not args.out.parent.is_dir():
         return _refuse("--out must name a file in an existing folder")
     try:
+        raw = args.gold.read_bytes()  # read once: the bytes checked are the bytes used
+        if hashlib.sha256(raw).hexdigest() != FROZEN_GOLD_SHA256:
+            return _refuse(
+                "--gold must be the frozen gold file (its SHA-256 as frozen in "
+                "results/2026-11-25-phase4-freeze.json)"
+            )
         results = [_load(path) for path in args.result]
-        gold = _load(args.gold)
+        gold = _parsed(raw.decode("utf-8"))
     except (OSError, ValueError) as exc:
         return _refuse(
             f"--result and --gold must be readable JSON files ({type(exc).__name__})"
         )
     try:
         scored = score(results, gold)
+        counts = summary(scored)
+        thresholds = search_thresholds(counts)
     except ValueError as exc:
         return _refuse(str(exc))
-    counts = summary(scored)
     text = json.dumps(
-        {"label": args.label, "score": scored, "summary": counts},
+        {
+            "label": args.label,
+            "score": scored,
+            "summary": counts,
+            "search_thresholds": thresholds,
+        },
         ensure_ascii=False,
         indent=1,
         sort_keys=True,
@@ -1022,7 +1282,7 @@ def main(argv: list[str] | None = None) -> int:
         return _refuse(f"--out could not be written ({type(exc).__name__})")
     print(
         json.dumps(
-            {"label": args.label, "summary": counts},
+            {"label": args.label, "summary": counts, "search_thresholds": thresholds},
             ensure_ascii=False,
             indent=1,
             sort_keys=True,

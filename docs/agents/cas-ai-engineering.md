@@ -57,7 +57,11 @@ new capability and its measured result.
 - Phase 4, variant 1: the agent's explicit coverage decision (condition D, ADR-027, proposed),
   its evaluation frozen on 2026-11-25 before the code, built and tested offline and dry-run with a
   simulated provider, not run live ([evidence](../evidence/2026-11-25-phase4-coverage-decision-offline.md)).
-- Books: USD 7.060552 committed of the USD 100 aggregate limit for Phases 2 and 3.
+  On 2026-11-26, before any live result, analysis amendment A1 was recorded and the books of one
+  exploratory repetition were decided (ADR-028: USD 40, admission case by case), built offline and
+  rehearsed with a simulated provider ([evidence](../evidence/2026-11-26-phase4-repetition-books-offline.md)).
+- Books: USD 7.060552 committed of the USD 100 aggregate limit for Phases 2 and 3; Phase 4's own
+  books (USD 40, ADR-028) hold nothing yet.
 
 ## Phase 4 options
 

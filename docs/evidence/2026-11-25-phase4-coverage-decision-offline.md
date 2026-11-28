@@ -99,6 +99,8 @@ depend on the private gold and the rankings of the frozen cases and are kept loc
   their own identity: a live repetition needs Erhan's decision on books, cap and admission.
 - Open finding for Erhan: as frozen, a refused search at a decision point where nothing was missing
   counts in T3's denominator but not as an unnecessary search; counting it as unnecessary would
-  mirror T4, where a refused search at a search-needed point already counts as missed.
+  mirror T4, where a refused search at a search-needed point already counts as missed. Decided on
+  2026-11-26, before any live result: T3 stays as frozen, and amendment A1 reports unnecessary search
+  attempts beside it ([next step](2026-11-26-phase4-repetition-books-offline.md)).
 - Delivery items (presentation, demo, FFHS-Git copy with the README declaration and an executed
   notebook) are unchanged: [project frame](../agents/cas-ai-engineering.md).

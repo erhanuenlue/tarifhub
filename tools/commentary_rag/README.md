@@ -241,7 +241,8 @@ observation on this set, not an accuracy figure.
   boundary with the fixtures of `test_evidence_agent.py`; they check D's texts and schemas against
   the hashes frozen in `phase4/conditions.md` and B's and C's requests against hashes taken before D.
 - `phase4/`: the frozen Phase 4 condition contract (`conditions.md`) and rubric with thresholds
-  (`rubric-and-thresholds.md`), hashed in `results/2026-11-25-phase4-freeze.json` (below, "Phase 4").
+  (`rubric-and-thresholds.md`), hashed in `results/2026-11-25-phase4-freeze.json` (below, "Phase 4"),
+  and the dated amendments recorded after the freeze (`amendments.md`: A1 and O1, 2026-11-26).
 - `phase4_scoring.py`, `test_phase4_scoring.py`: the deterministic Phase 4 scorer and its offline
   tests on synthetic records.
 - `trace_demo.py`: one synthetic question through the real agent loop (`evidence_agent.run_case`)
@@ -753,12 +754,64 @@ against hashes taken on the code before D existed.
 same as before). Under `phase4` the public record names no passage (no ranking IDs and no supplied,
 cited or returned passage IDs, no coverage text); the local record keeps everything.
 
-**Books unchanged, and what that means for a live run:** D is booked like every cell, under its case
-and condition, in the same books and under the same aggregate limit. One case under B, C and D is
-admitted at USD 10.3488 (1 + 3 + 3 calls at the input cap), so 19 cases need USD 196.6272 of headroom
-at once; the books leave USD 92.939448, and `run` refuses such a matrix before the model loads. A
-cell already in the books is never sent again, so a second repetition needs case IDs of its own.
-Books, cap and admission for a live repetition are Erhan's decision.
+**Phase 4's own books (since 2026-11-26, [ADR-028](../../docs/adr/028-phase4-books.md), amendment O1):**
+under `--design phase4` every cell is booked in `results/phase4-ledger.jsonl`, beside the Phase 2 and
+3 ledgers and under the same folder lock, with a limit of USD 40 pinned in code
+(`evidence_agent.PHASE4_LIMIT_USD`) and in the ledger's first line; Phase 2 and 3 spending does not
+count against it, nor Phase 4 spending against their USD 100. The identity is (repetition, case,
+condition), call IDs `<case>-<condition>-r<repetition>-call<n>`; the code admits repetition 1 only,
+and D is booked nowhere else; a frozen Phase 4 question (the freeze record's 19 hashes) is refused
+in the Phase 2 and 3 books, so no entry point books its cells on their allowance (a frozen case ID is
+refused there too, and Phase 4's books take a frozen case only under its frozen ID, question and
+editions), and every Phase 4 admission holds back the case's other cells not yet booked, whoever
+calls. The books' first line pins their time budget beside their limit. Since 2026-11-27 the first
+call's request is saved first, and the pin and that first reservation are then written as one
+accounting event: the ledger is created holding both lines or not at all, so a failed request write
+leaves neither, a ledger write that leaves the ledger absent leaves neither (an attempt that books
+nothing pins nothing, and a rerun may correct the budget), and a write whose result is not known
+stops the run before anything is sent. A cell or a rerun with another budget is refused. The cases file must be the frozen runner input (its SHA-256 pinned in
+`run_comparison.PHASE4_RUNNER_INPUT_SHA256`), so one invocation runs the 19 frozen cases in their
+order, B, C and D per case. Admission is per case: before each cell, under the lock, the worst case
+of the case's cells still to run (every call at the input cap; USD 10.3488 for a fresh case) must fit
+beside everything committed there (settled calls at their cost, calls kept at their reservation,
+reservations without a settlement), so a fresh case starts only while at most USD 29.6512 is
+committed, and a case that does not fit stops the run before anything of it is counted or sent.
+A rerun after an interruption (under a new tag) skips every cell in the books and continues in the
+frozen order; a booking without a settlement stays open at its reservation and a call released
+before sending stays released; neither is sent again, and an open one confirms a send only when
+the run saved its complete response (below). A run started while the Phase 4 ledger is missing
+finds new books and would book and send every cell again: restore a missing ledger before any
+rerun (no recovery rebuilds it from a run's files). Since 2026-11-27 a cell that an
+unexpected error or an interruption ends is recorded before the run stops, in the run's outputs,
+which a run writes once it booked anything (outcome `aborted`): the calls this run demonstrably
+sent (its own saved request and its complete response, consistent with the books where they can be
+read: since 2026-11-28 the saved response file counts only when its SHA-256 equals the complete
+response's as the cell recorded it or as the books settled it, so a zero-byte or cut-short file
+proves no send, even for an empty response) make it a cell that ran and failed,
+as the frozen rubric counts it, with the searches those calls ran as the cell recorded them, D's
+coverage entries for those calls (also for a call cut off before its search was recorded) and the
+cell's recorded ending if it had ended (also after its last booking was released unsent, as readable
+books hold); its other bookings are listed as unconfirmed, one it cannot show as its own (another
+run's, possibly) is left out, and nothing after the last recorded step is inferred. Books that
+cannot be read, whatever their damage, take no part (accounting `unknown`), and since 2026-11-28
+neither does a Phase 4 ledger that is not there when the run recovers (a missing ledger is new
+only to admission, and alone proves nothing); a call readable
+books settle as sent that the run cannot show it sent leaves the accounting `uncertain`, ahead of
+any overage, which stays on its call (`above_reservation`), also when the two arise on different
+calls. The replay failure C and D share
+(a lone surrogate the model escaped in a tool input) is such a cell. A
+local output folder (or a request or response folder in it) that is a symbolic link is refused
+before the model loads. Since 2026-11-27 a run of either design claims its local folder before the
+client is built or the model loads (the folder, then `claimed.json` naming the design and a token
+only that invocation holds), so a second invocation under the same tag, of either design and in
+either start order, is refused before it loads anything, and a folder that already exists, even
+empty, is refused; a failure while the claim is written, before the first cell or an interruption
+there gives back only that invocation's own unused claim, while another invocation's claim and any
+artifact stay. A corpus whose PDFs are not
+the frozen ones (`results/2026-11-25-phase4-freeze.json`) is refused before anything is counted,
+and a cell that booked nothing (a failed token count, say) stops the run, so a rerun keeps the
+frozen order. `plan` shows the books, the next
+case's worst case and how the reserved calls stand (`booked`: usage, retained, released, open).
 
 **Scorer:** `phase4_scoring.py` reads the local `result.json` of one repetition (`--result` once per
 file, several after a resumed run, merged by case and condition: a cell ran when a generation call
@@ -768,19 +821,37 @@ ran), rebuilds each C and D cell's decision points by capacity before each call 
 warranted, unnecessary, gap-check and missed useful searches, refused searches and points without
 action; D's coverage diagnostics are counted apart and never enter a measure. It implements the
 thresholds and both outcome tables as pure functions (T3 and T4 not assessable on an incomplete
-repetition). It writes case-level results only to a new file outside the repository or under the
-git-ignored `local/` folder, and prints counts.
+repetition). A cell the runner recorded as aborted (since 2026-11-27) ran when its run demonstrably
+sent a call and did not run otherwise; its recorded searches are scored like any failed cell's
+(the call that ended it after them is no decision with an action, unless the cell had already
+ended and recorded that call's answer turn, `ended`; since 2026-11-28 D's coverage entry for that
+call, if the cell recorded one before the cut, counts among the coverage diagnostics only, a
+search entry only for a call offered the tool), one kept without its trace has no decision point,
+and the summary counts the aborted cells that ran apart (`aborted`; one without a proven send is
+not run).
+Since 2026-11-26 it reports amendment A1 beside T3 (`a1`, `search_thresholds`):
+unnecessary search attempts, an executed search or a refused request at a no-search-needed point
+counted once, executed and refused apart, over T3's own denominator, for C and D alike; T3 itself
+is unchanged. Every record must name its time budget (a finite number of seconds above 0) and its
+repetition (one scoring, one repetition); a search refused for want of rounds is accepted only after
+both rounds were used; the repetition is complete only for the frozen cohort (the freeze record's case
+IDs, question hashes and editions) with every case complete, as the scorer finds it, and the
+command takes the frozen gold file only (`FROZEN_GOLD_SHA256`). It writes case-level
+results only to a new file outside the repository or under the git-ignored `local/` folder, which
+must not be a symbolic link, and prints counts with T3, A1 and T4.
 
 ```bash
 # Offline plan of the Phase 4 matrix (nothing loaded, counted, sent or written):
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
   uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
-  python tools/commentary_rag/run_comparison.py plan --design phase4 --cases <cases.json>
+  python tools/commentary_rag/run_comparison.py plan --design phase4 \
+  --cases tools/commentary_rag/local/2026-11-25-phase4-freeze/runner/cases.json
 # Scoring a run's local record against the private frozen cases (counts printed, cases kept local):
 UV_PROJECT_ENVIRONMENT="${TMPDIR:-/tmp}/tarifhub-commentary-venv" \
   uv run --project services/ingestion --frozen --offline --extra ai --extra dev \
   python tools/commentary_rag/phase4_scoring.py --result <local result.json> \
-  --gold <private cases file> --out <new file under tools/commentary_rag/local/> --label <text>
+  --gold tools/commentary_rag/local/2026-11-25-phase4-freeze/private/cases.json \
+  --out <new file under tools/commentary_rag/local/> --label <text>
 ```
 
 **Dry run (2026-11-25, simulated):** the ordinary entry point with a scripted provider (no key, no
@@ -792,6 +863,26 @@ public records held no passage ID, and the scorer, merging the three batches, fo
 complete and no trace anomaly. Simulated
 answers and costs measure nothing about the model; the scored measures depend on the private gold
 and stay local.
+
+**Rehearsal (2026-11-26, simulated) of Phase 4's books:** the same entry point and inputs with
+disposable books: one repetition in one invocation (57 cells, 77 simulated calls, each sent and
+booked once; the scorer found all 19 cases complete), a concurrent invocation refused by the lock
+with nothing counted, sent, booked or written, an interruption while a call was on the wire resumed
+under a new tag without sending any call again (the interrupted call kept open, its case
+incomplete), a stop before the first case that no longer fit under expensive scripted usage, an
+exact fit admitted and one micro-dollar short refused before the model loaded; the repository's
+`results/` stayed byte-identical with no Phase 4 ledger
+([evidence](../../docs/evidence/2026-11-26-phase4-repetition-books-offline.md)).
+
+**Rehearsal (2026-11-27, simulated) of the approved fixes:** the same entry point, inputs and
+disposable books on the fixed code: the scenarios above with the same results; an interruption while
+a C call 2 was on the wire kept that cell as run with its open call unconfirmed, and the restart
+completed the repetition without sending any call again; while a Phase 4 run loaded the model, a
+Phase 3 and a second Phase 4 invocation under its tag were refused before loading anything, and
+while a Phase 3 invocation loaded, a Phase 4 invocation under its tag was refused (the Phase 3
+invocation, interrupted before its first cell, gave its claim back); a replay failure in C of one
+case and in D of another each stopped the run with the cell recorded as run, its search kept, and
+two restarts completed the repetition with no call sent twice ([evidence](../../docs/evidence/2026-11-26-phase4-repetition-books-offline.md#8-the-fixes-of-2026-11-27)).
 
 ## Tracing one synthetic run in a local Phoenix
 

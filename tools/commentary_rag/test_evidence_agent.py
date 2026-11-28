@@ -82,6 +82,16 @@ def books(history=()) -> evidence_agent.Spending:
                                    artifacts=folder.parent / "artifacts")
 
 
+def phase4_books() -> evidence_agent.Spending:
+    """Phase 4's books in the test's folder: their own ledger, not yet begun, and no historical
+    ledger (phase4/amendments.md, O1)."""
+
+    folder = evidence_agent.BOOKS
+    folder.mkdir(parents=True, exist_ok=True)
+    return evidence_agent.Spending(ledger=folder / evidence_agent.PHASE4_LEDGER, baseline=None,
+                                   baseline_sha256=None, artifacts=folder.parent / "artifacts")
+
+
 @pytest.fixture
 def spending(folder) -> evidence_agent.Spending:
     return books()
@@ -193,11 +203,14 @@ def task(initial=INITIAL, editions=(JUL,), question="Welche Pauschale gilt und w
 
 def run(provider: Provider, the_task, spending: evidence_agent.Spending, *,  # noqa: PLR0913
         budget_s: float = 3600.0, config: generation.Config | None = None,
-        condition: str | None = None, matrix_rest_usd: float | None = None, **world_options):
+        condition: str | None = None, matrix_rest_usd: float | None = None,
+        repetition: int | None = None, **world_options):
     retriever, passages, embedder = world(**world_options)
     chosen = {} if condition is None else {"condition": condition}  # None: the default, agent
     if matrix_rest_usd is not None:  # None: the default, a question on its own
         chosen["matrix_rest_usd"] = matrix_rest_usd
+    if repetition is not None:  # Phase 4's books, under this repetition
+        chosen["repetition"] = repetition
     result = evidence_agent.run_case(the_task, client=provider.client(), retriever=retriever,
                                      passages=passages, clock=provider.clock, budget_s=budget_s,
                                      spending=spending, config=config, **chosen)
